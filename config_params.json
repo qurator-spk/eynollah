@@ -18,7 +18,7 @@
     "scaling_binarization" : false,
     "rotation": false,
     "weighted_loss": true,
-    "dir_train": "/home/vahid/textline_gt_images/train_light",
-    "dir_eval": "/home/vahid/textline_gt_images/eval",
-    "dir_output": "/home/vahid/textline_gt_images/output"
+    "dir_train": "../train",
+    "dir_eval": "../eval",
+    "dir_output": "../output"
 }
