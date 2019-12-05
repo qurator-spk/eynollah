@@ -21,6 +21,7 @@ training , evaluation and output:
     
 patches:
     
-    if you want to train your model with patches, the height and width of patches should be defined and also number of batchs (how many patches should be seen by model by each iteration).
+    if you want to train your model with patches, the height and width of patches should be defined and also number of 
+    batchs (how many patches should be seen by model by each iteration).
     In the case that model should see the image once, like page extraction, the patches should be set to false.
     
