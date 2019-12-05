@@ -4,17 +4,20 @@ how to train:
     
 format of ground truth:
     
-    Lables for each pixel is identified by a number . So if you have a binary case n_classes should be set to 2 and labels should be 0 and 1 for each class and pixel.
-    In the case of multiclass just set n_classes to the number of classes you have and the try to produce the labels by pixels from 0 , 1 ,2 .., n_classes-1.
+    Lables for each pixel is identified by a number . So if you have a binary case n_classes should be set to 2 and 
+    labels should be 0 and 1 for each class and pixel.
+    In the case of multiclass just set n_classes to the number of classes you have and the try to produce the labels
+    by pixels set from 0 , 1 ,2 .., n_classes-1.
     The labels format should be png. 
     
     If you have an image label for binary case it should look like this:
     
-    Label: [ [[1 0 0 1], [1 0 0 1] ,[1 0 0 1]], [[1 0 0 1], [1 0 0 1] ,[1 0 0 1]] ,[[1 0 0 1], [1 0 0 1] ,[1 0 0 1]] ] this means that you have an image by 3*4*3 and pixel[0,0] belongs to class 1 and pixel[0,1] to class 0.
+    Label: [ [[1 0 0 1], [1 0 0 1] ,[1 0 0 1]], [[1 0 0 1], [1 0 0 1] ,[1 0 0 1]] ,[[1 0 0 1], [1 0 0 1] ,[1 0 0 1]] ] 
+    this means that you have an image by 3*4*3 and pixel[0,0] belongs to class 1 and pixel[0,1] to class 0.
     
-traing , evaluation and output:
+training , evaluation and output:
     train and evaluation folder should have subfolder of images and labels.
-    And output folder should be free folder which the output model will be written there.
+    And output folder should be empty folder which the output model will be written there.
     
 patches:
     
