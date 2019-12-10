@@ -169,7 +169,7 @@ def run(n_classes,n_epochs,input_height,
     
     model.fit_generator(
         train_gen,
-        steps_per_epoch=int(len(os.listdir(dir_flow_train_imgs))/n_batch),
+        steps_per_epoch=int(len(os.listdir(dir_flow_train_imgs))/n_batch)-1,
         validation_data=val_gen,
         validation_steps=1,
         epochs=n_epochs)
