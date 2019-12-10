@@ -32,5 +32,5 @@
     In the case that model should see the image once, like page extraction,
     the patches should be set to false.
 # Pretrained encoder
-Download weights from this limk and add it to pretrained_model folder.
+Download weights from this link and add it to pretrained_model folder.
 https://file.spk-berlin.de:8443/pretrained_encoder/
