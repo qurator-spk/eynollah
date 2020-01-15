@@ -7,6 +7,9 @@ This repository contains the source code for training an encoder model for docum
 ## Installation
 Either clone the repository via `git clone https://github.com/qurator-spk/sbb_pixelwise_segmentation.git` or download and unpack the [ZIP](https://github.com/qurator-spk/sbb_pixelwise_segmentation/archive/master.zip).
 
+### Pretrained encoder
+Download our pretrained weights and add them to a ``pretrained_model`` folder:   
+~~https://file.spk-berlin.de:8443/pretrained_encoder/~~
 ## Usage
 
 ### Train
@@ -34,7 +37,7 @@ If you have an image label for a binary case it should look like this:
 The train and evaluation folders should contain subfolders of images and labels.
 The output folder should be an empty folder where the output model will be written to.
     
-# Patches
+### Patches
 If you want to train your model with patches, the height and width of
 the patches should be defined and also the number of batches (how many patches 
 should be seen by the model in each iteration).
@@ -42,6 +45,4 @@ should be seen by the model in each iteration).
 In the case that the model should see the image once, like page extraction,
 patches should be set to ``false``.
     
-### Pretrained encoder
-Download our pretrained weights and add them to a ``pretrained_model`` folder:   
-~~https://file.spk-berlin.de:8443/pretrained_encoder/~~
+
