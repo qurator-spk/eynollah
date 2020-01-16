@@ -1,36 +1,48 @@
-# Train
-    just run: python train.py with config_params.json
+# Pixelwise Segmentation
+> Pixelwise segmentation for document images
+
+## Introduction
+This repository contains the source code for training an encoder model for document image segmentation.
+
+## Installation
+Either clone the repository via `git clone https://github.com/qurator-spk/sbb_pixelwise_segmentation.git` or download and unpack the [ZIP](https://github.com/qurator-spk/sbb_pixelwise_segmentation/archive/master.zip).
+
+### Pretrained encoder
+Download our pretrained weights and add them to a ``pretrained_model`` folder:   
+~~https://file.spk-berlin.de:8443/pretrained_encoder/~~
+## Usage
+
+### Train
+To train a model, run: ``python train.py with config_params.json``
+      
+### Ground truth format
+Lables for each pixel are identified by a number. So if you have a 
+binary case, ``n_classes`` should be set to ``2`` and labels should 
+be ``0`` and ``1`` for each class and pixel.
+
+In the case of multiclass, just set ``n_classes`` to the number of classes 
+you have and the try to produce the labels by pixels set from ``0 , 1 ,2 .., n_classes-1``.
+The labels format should be png. 
     
-    
-# Ground truth format
-    
-    Lables for each pixel is identified by a number . So if you have a
-    binary case n_classes should be set to 2 and 
-    labels should be 0 and 1 for each class and pixel.
-    In the case of multiclass just set n_classes to the number of classes 
-    you have and the try to produce the labels
-    by pixels set from 0 , 1 ,2 .., n_classes-1.
-    The labels format should be png. 
-    
-    If you have an image label for binary case it should look like this:
+If you have an image label for a binary case it should look like this:
     
     Label: [ [[1 0 0 1], [1 0 0 1] ,[1 0 0 1]], 
     [[1 0 0 1], [1 0 0 1] ,[1 0 0 1]] ,
     [[1 0 0 1], [1 0 0 1] ,[1 0 0 1]] ] 
-    This means that you have an image by 3*4*3 and pixel[0,0] belongs
-    to class 1 and pixel[0,1] to class 0.
     
-# Training , evaluation and output 
-    train and evaluation folder should have subfolder of images and labels.
-    And output folder should be empty folder which the output model will be written there.
+ This means that you have an image by `3*4*3` and `pixel[0,0]` belongs
+ to class `1` and `pixel[0,1]` belongs to class `0`.
     
-# Patches
+### Training , evaluation and output 
+The train and evaluation folders should contain subfolders of images and labels.
+The output folder should be an empty folder where the output model will be written to.
     
-    if you want to train your model with patches, the height and width of
-    patches should be defined and also number of 
-    batchs (how many patches should be seen by model by each iteration).
-    In the case that model should see the image once, like page extraction,
-    the patches should be set to false.
-# Pretrained encoder
-Download weights from this link and add it to pretrained_model folder.
-https://file.spk-berlin.de:8443/pretrained_encoder/
+### Patches
+If you want to train your model with patches, the height and width of
+the patches should be defined and also the number of batches (how many patches 
+should be seen by the model in each iteration).
+
+In the case that the model should see the image once, like page extraction,
+patches should be set to ``false``.
+    
+
