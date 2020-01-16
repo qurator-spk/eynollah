@@ -9,7 +9,7 @@ Either clone the repository via `git clone https://github.com/qurator-spk/sbb_pi
 
 ### Pretrained encoder
 Download our pretrained weights and add them to a ``pretrained_model`` folder:   
-~~https://file.spk-berlin.de:8443/pretrained_encoder/~~
+https://qurator-data.de/pretrained_encoder/
 ## Usage
 
 ### Train
