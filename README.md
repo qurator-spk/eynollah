@@ -1,9 +1,21 @@
-# Textline Detection
-> Detect textlines in document images
+# Eynollah
+> Document Layout Analysis
 
 ## Introduction
-This tool (eynollah) performs border, region and textline detection and scaling and enhancing from document image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
-The goal of this project is to extract textlines of a document in order to feed them to an OCR model. This is achieved by four successive stages as follows:
+This tool (eynollah) performs document layout analysis (segmentation) from document image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
+
+It can currently detect the following layout classes:
+* Border
+* Textregion
+* Image
+* Textline
+* Separator
+* Marginalia
+* Initial
+ 
+The final goal is to feed the output to an OCR model. 
+
+The tool uses a combination of various models and heuristics:
 * [Border detection](https://github.com/qurator-spk#border-detection)
 * [Layout detection](https://github.com/qurator-spk#layout-detection)
 * [Textline detection](https://github.com/qurator-spk#textline-detection)
@@ -47,9 +59,17 @@ In order to run this tool you also need trained models. You can download our pre
 
 The basic command-line interface can be called like this:
 
-    eynollah -i <image file name> -o <directory to write output xml or enhanced image> -m <directory of models> -fl <if this parameter is set to true, full layout will be done> -ae <if true, this tool would resize and enhance image and result will be written in  output> -as <if true, this tool would check whether the document needs scaling or not> -cl <if true, the tool will try to extract contours of texlines instead of rectangle bounding boxes> -si <if a directory is given here, this tool would write image regions inside documents there>
+    eynollah \
+    -i <image file name> \
+    -o <directory to write output xml or enhanced image> \
+    -m <directory of models> \
+    -fl <if this parameter is set to true, full layout will be done> \
+    -ae <if true, this tool would resize and enhance image and result will be written in  output> \
+    -as <if true, this tool would check whether the document needs scaling or not> \
+    -cl <if true, the tool will try to extract contours of texlines instead of rectangle bounding boxes> \
+    -si <if a directory is given here, this tool would write image regions inside documents there>
 
-The tool does accepts and works better on original images (RGB format).
+The tool does accept and works better on original images (RGB format) than binarized images.
 
 ### How and where to use
 
