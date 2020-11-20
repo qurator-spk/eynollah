@@ -38,10 +38,18 @@ Some heuristic methods are also employed to further improve the model prediction
 * Finally, using the derived coordinates, bounding boxes are determined for each textline.
 
 ## Installation
-`run ./make`
+
+```
+pip install .
+# or
+make install
+```
 
 ### Models
-In order to run this tool you also need trained models. You can download our pretrained models from qurator-data.
+
+<!-- TODO add link to models -->
+
+In order to run this tool you also need trained models. You can download [pretrained models from qurator-data](https://qurator-data.de/).
 
 ## Usage
 
