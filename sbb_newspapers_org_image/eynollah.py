@@ -1,33 +1,29 @@
 #! /usr/bin/env python3
 
-__version__ = '1.0'
-
+import gc
+import math
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import random
 import sys
+import time
+import warnings
+from multiprocessing import Process, Queue, cpu_count
+from sys import getsizeof
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sys import getsizeof
-import random
-from tqdm import tqdm
-from keras.models import model_from_json
-from keras.models import load_model
-import math
-from shapely import geometry
-from sklearn.cluster import KMeans
-import gc
 from keras import backend as K
+from keras.models import load_model
+from shapely import geometry
 import tensorflow as tf
 tf.get_logger().setLevel('ERROR')
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-import xml.etree.ElementTree as ET
-import warnings
+from lxml import etree as ET
 import click
-import time
-from multiprocessing import Process, Queue, cpu_count
 from matplotlib import pyplot, transforms
 import matplotlib.patches as mpatches
 import imutils
