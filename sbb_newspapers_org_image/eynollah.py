@@ -1,5 +1,9 @@
 #! /usr/bin/env python3
 
+"""
+tool to extract table form data from alto xml data
+"""
+
 import gc
 import math
 import os
@@ -15,16 +19,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 stderr = sys.stderr
-sys.stderr = open(devnull, "w")
+sys.stderr = open(os.devnull, "w")
 from keras import backend as K
 from keras.models import load_model
-
 sys.stderr = stderr
 import tensorflow as tf
-
 tf.get_logger().setLevel("ERROR")
+warnings.filterwarnings("ignore")
+
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from shapely import geometry
@@ -34,11 +38,6 @@ from matplotlib import pyplot, transforms
 import matplotlib.patches as mpatches
 import imutils
 
-warnings.filterwarnings("ignore")
-#
-__doc__ = """
-    tool to extract table form data from alto xml data
-    """
 
 
 class eynollah:
