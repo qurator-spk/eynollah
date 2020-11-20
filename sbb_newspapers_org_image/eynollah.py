@@ -1,5 +1,3 @@
-#! /usr/bin/env python3
-
 """
 tool to extract table form data from alto xml data
 """
@@ -37,6 +35,7 @@ from matplotlib import pyplot, transforms
 import matplotlib.patches as mpatches
 import imutils
 
+from .utils import filter_contours_area_of_image_tables
 
 
 class eynollah:
@@ -75,26 +74,6 @@ class eynollah:
         self.model_region_dir_p_ens = dir_models + "/model_ensemble_s.h5"  # dir_models +'/model_main_covid_19_many_scalin_down_lr5-5_the_best.h5' #dir_models +'/model_ensemble_s.h5'
         ###self.model_region_dir_p = dir_models +'/model_layout_newspapers.h5'#'/model_ensemble_s.h5'#'/model_layout_newspapers.h5'#'/model_ensemble_s.h5'#'/model_main_home_5_soft_new.h5'#'/model_home_soft_5_all_data.h5' #'/model_main_office_long_soft.h5'#'/model_20_cat_main.h5'
         self.model_textline_dir = dir_models + "/model_textline_newspapers.h5"  #'/model_hor_ver_home_trextline_very_good.h5'# '/model_hor_ver_1_great.h5'#'/model_curved_office_works_great.h5'
-
-    def filter_contours_area_of_image_tables(self, image, contours, hirarchy, max_area, min_area):
-        found_polygons_early = list()
-
-        jv = 0
-        for c in contours:
-            if len(c) < 3:  # A polygon cannot have less than 3 points
-                continue
-
-            polygon = geometry.Polygon([point[0] for point in c])
-            # area = cv2.contourArea(c)
-            area = polygon.area
-            ##print(np.prod(thresh.shape[:2]))
-            # Check that polygon has area greater than minimal area
-            # print(hirarchy[0][jv][3],hirarchy )
-            if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]):  # and hirarchy[0][jv][3]==-1 :
-                # print(c[0][0][1])
-                found_polygons_early.append(np.array([[point] for point in polygon.exterior.coords], dtype=np.int32))
-            jv += 1
-        return found_polygons_early
 
     def find_polygons_size_filter(self, contours, median_area, scaler_up=1.2, scaler_down=0.8):
         found_polygons_early = list()
@@ -879,7 +858,7 @@ class eynollah:
         contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         contours_imgs = self.return_parent_contours(contours_imgs, hiearchy)
-        contours_imgs = self.filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=min_area)
+        contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=min_area)
 
         return contours_imgs
 
@@ -898,7 +877,7 @@ class eynollah:
         contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         contours_imgs = self.return_parent_contours(contours_imgs, hiearchy)
-        contours_imgs = self.filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=min_size)
+        contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=min_size)
 
         return contours_imgs
 
@@ -916,7 +895,7 @@ class eynollah:
         contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         contours_imgs = self.return_parent_contours(contours_imgs, hiearchy)
-        contours_imgs = self.filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.000000003)
+        contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.000000003)
         return contours_imgs
 
     def find_images_contours_and_replace_table_and_graphic_pixels_by_image(self, region_pre_p):
@@ -931,7 +910,7 @@ class eynollah:
 
         contours_imgs = self.return_parent_contours(contours_imgs, hiearchy)
         # print(len(contours_imgs),'contours_imgs')
-        contours_imgs = self.filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.0003)
+        contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.0003)
 
         # print(len(contours_imgs),'contours_imgs')
 
@@ -3131,7 +3110,7 @@ class eynollah:
         contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         contours_imgs = self.return_parent_contours(contours_imgs, hiearchy)
-        contours_imgs = self.filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=max_area, min_area=min_area)
+        contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=max_area, min_area=min_area)
 
         cont_final = []
         ###print(add_boxes_coor_into_textlines,'ikki')
@@ -3665,7 +3644,7 @@ class eynollah:
 
         contours, hirarchy = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        main_contours = self.filter_contours_area_of_image_tables(thresh, contours, hirarchy, max_area=1, min_area=0.003)
+        main_contours = filter_contours_area_of_image_tables(thresh, contours, hirarchy, max_area=1, min_area=0.003)
 
         textline_maskt = textline_mask[:, :, 0]
         textline_maskt[textline_maskt != 0] = 1
@@ -7907,7 +7886,7 @@ class eynollah:
 
             contours, hirarchy = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-            main_contours = self.filter_contours_area_of_image_tables(thresh, contours, hirarchy, max_area=1, min_area=0.0001)
+            main_contours = filter_contours_area_of_image_tables(thresh, contours, hirarchy, max_area=1, min_area=0.0001)
 
             img_comm = cv2.fillPoly(img_comm, pts=main_contours, color=(indiv, indiv, indiv))
             ###img_comm_in=cv2.fillPoly(img_comm, pts =interior_contours, color=(0,0,0))
@@ -7925,7 +7904,7 @@ class eynollah:
 
                 contours_tab, _ = self.return_contours_of_image(image_box_tabels_1)
 
-                contours_tab = self.filter_contours_area_of_image_tables(image_box_tabels_1, contours_tab, _, 1, 0.001)
+                contours_tab = filter_contours_area_of_image_tables(image_box_tabels_1, contours_tab, _, 1, 0.001)
 
                 image_box_tabels_1 = (image_box[:, :, 0] == 6) * 1
 
@@ -8389,7 +8368,7 @@ class eynollah:
         contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         contours_imgs = self.return_parent_contours(contours_imgs, hiearchy)
-        contours_imgs = self.filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.0003)
+        contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.0003)
 
         boxes = []
 
@@ -8758,7 +8737,7 @@ class eynollah:
         contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         contours_imgs = self.return_parent_contours(contours_imgs, hiearchy)
-        contours_imgs = self.filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=max_area, min_area=min_area)
+        contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=max_area, min_area=min_area)
 
         img_ret = np.zeros((region_pre_p.shape[0], region_pre_p.shape[1], 3))
         img_ret = cv2.fillPoly(img_ret, pts=contours_imgs, color=(1, 1, 1))
