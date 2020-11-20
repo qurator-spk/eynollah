@@ -10,18 +10,21 @@ import warnings
 from multiprocessing import Process, Queue, cpu_count
 from sys import getsizeof
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+stderr = sys.stderr
+sys.stderr = open(devnull, 'w')
 from keras import backend as K
 from keras.models import load_model
-from shapely import geometry
+sys.stderr = stderr
 import tensorflow as tf
 tf.get_logger().setLevel('ERROR')
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
+from shapely import geometry
 from lxml import etree as ET
 import click
 from matplotlib import pyplot, transforms
@@ -12976,9 +12979,7 @@ class eynollah:
 @click.option('--allow_scaling', '-as', help='if this parameter set to true, this tool would check the scale and if needed it will scale it to perform better layout detection')
 @click.option('--headers_off', '-ho', help='if this parameter set to true, this tool would ignore headers role in reading order')
 def main(image,out, model,save_images,save_layout,save_deskewed,save_all,allow_enhancement,curved_line,full_layout,allow_scaling,headers_off):
-    possibles = globals()  # XXX unused?
-    possibles.update(locals())
-    x = eynollah(image, None, out, model,save_images,save_layout,save_deskewed,save_all,allow_enhancement,curved_line,full_layout,allow_scaling,headers_off)
+    x = eynollah(image, None, out, model, save_images, save_layout, save_deskewed, save_all, allow_enhancement, curved_line, full_layout, allow_scaling, headers_off)
     x.run()
 
 
