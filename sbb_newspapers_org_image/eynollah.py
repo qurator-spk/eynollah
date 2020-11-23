@@ -40,8 +40,12 @@ from .utils import (
     filter_contours_area_of_image_tables,
     filter_contours_area_of_image_interiors,
     rotatedRectWithMaxArea,
+    rotate_image,
     rotate_max_area_new,
     rotation_image_new,
+    crop_image_inside_box,
+    otsu_copy,
+    otsu_copy_binary,
 )
 
 
@@ -100,87 +104,6 @@ class eynollah:
         self.model_region_dir_p_ens = dir_models + "/model_ensemble_s.h5"  # dir_models +'/model_main_covid_19_many_scalin_down_lr5-5_the_best.h5' #dir_models +'/model_ensemble_s.h5'
         ###self.model_region_dir_p = dir_models +'/model_layout_newspapers.h5'#'/model_ensemble_s.h5'#'/model_layout_newspapers.h5'#'/model_ensemble_s.h5'#'/model_main_home_5_soft_new.h5'#'/model_home_soft_5_all_data.h5' #'/model_main_office_long_soft.h5'#'/model_20_cat_main.h5'
         self.model_textline_dir = dir_models + "/model_textline_newspapers.h5"  #'/model_hor_ver_home_trextline_very_good.h5'# '/model_hor_ver_1_great.h5'#'/model_curved_office_works_great.h5'
-
-    def get_one_hot(self, seg, input_height, input_width, n_classes):
-        seg = seg[:, :, 0]
-        seg_f = np.zeros((input_height, input_width, n_classes))
-        for j in range(n_classes):
-            seg_f[:, :, j] = (seg == j).astype(int)
-        return seg_f
-
-    def color_images(self, seg, n_classes):
-        ann_u = range(n_classes)
-        if len(np.shape(seg)) == 3:
-            seg = seg[:, :, 0]
-
-        seg_img = np.zeros((np.shape(seg)[0], np.shape(seg)[1], 3)).astype(np.uint8)
-        colors = sns.color_palette("hls", n_classes)
-
-        for c in ann_u:
-            c = int(c)
-            segl = seg == c
-            seg_img[:, :, 0] = segl * c
-            seg_img[:, :, 1] = segl * c
-            seg_img[:, :, 2] = segl * c
-        return seg_img
-
-    def rotate_image(self, img_patch, slope):
-        (h, w) = img_patch.shape[:2]
-        center = (w // 2, h // 2)
-        M = cv2.getRotationMatrix2D(center, slope, 1.0)
-        return cv2.warpAffine(img_patch, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-
-    def rotyate_image_different(self, img, slope):
-        # img = cv2.imread('images/input.jpg')
-        num_rows, num_cols = img.shape[:2]
-
-        rotation_matrix = cv2.getRotationMatrix2D((num_cols / 2, num_rows / 2), slope, 1)
-        img_rotation = cv2.warpAffine(img, rotation_matrix, (num_cols, num_rows))
-        return img_rotation
-
-    def cleaning_probs(self, probs: np.ndarray, sigma: float) -> np.ndarray:
-        # Smooth
-        if sigma > 0.0:
-            return cv2.GaussianBlur(probs, (int(3 * sigma) * 2 + 1, int(3 * sigma) * 2 + 1), sigma)
-        elif sigma == 0.0:
-            return cv2.fastNlMeansDenoising((probs * 255).astype(np.uint8), h=20) / 255
-        else:  # Negative sigma, do not do anything
-            return probs
-
-    def crop_image_inside_box(self, box, img_org_copy):
-        image_box = img_org_copy[box[1] : box[1] + box[3], box[0] : box[0] + box[2]]
-        return image_box, [box[1], box[1] + box[3], box[0], box[0] + box[2]]
-
-    def otsu_copy(self, img):
-        img_r = np.zeros(img.shape)
-        img1 = img[:, :, 0]
-        img2 = img[:, :, 1]
-        img3 = img[:, :, 2]
-        # print(img.min())
-        # print(img[:,:,0].min())
-        # blur = cv2.GaussianBlur(img,(5,5))
-        # ret3,th3 = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        retval1, threshold1 = cv2.threshold(img1, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        retval2, threshold2 = cv2.threshold(img2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        retval3, threshold3 = cv2.threshold(img3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        img_r[:, :, 0] = threshold1
-        img_r[:, :, 1] = threshold1
-        img_r[:, :, 2] = threshold1
-        return img_r
-
-    def otsu_copy_binary(self, img):
-        img_r = np.zeros((img.shape[0], img.shape[1], 3))
-        img1 = img[:, :, 0]
-
-        retval1, threshold1 = cv2.threshold(img1, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        img_r[:, :, 0] = threshold1
-        img_r[:, :, 1] = threshold1
-        img_r[:, :, 2] = threshold1
-
-        img_r = img_r / float(np.max(img_r)) * 255
-        return img_r
 
     def predict_enhancement(self, img):
         model_enhancement, session_enhancemnet = self.start_new_session_and_model(self.model_dir_of_enhancemnet)
@@ -1036,7 +959,7 @@ class eynollah:
         img = img.astype(np.uint8)
         patches = False
         model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-        ###img = self.otsu_copy(self.image)
+        ###img = otsu_copy(self.image)
         for ii in range(1):
             img = cv2.GaussianBlur(img, (5, 5), 0)
 
@@ -1056,7 +979,7 @@ class eynollah:
 
         box = [x, y, w, h]
 
-        croped_page, page_coord = self.crop_image_inside_box(box, img)
+        croped_page, page_coord = crop_image_inside_box(box, img)
 
         session_page.close()
         del model_page
@@ -1080,7 +1003,7 @@ class eynollah:
     def extract_page(self):
         patches = False
         model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-        ###img = self.otsu_copy(self.image)
+        ###img = otsu_copy(self.image)
         for ii in range(1):
             img = cv2.GaussianBlur(self.image, (5, 5), 0)
 
@@ -1112,7 +1035,7 @@ class eynollah:
 
         box = [x, y, w, h]
 
-        croped_page, page_coord = self.crop_image_inside_box(box, self.image)
+        croped_page, page_coord = crop_image_inside_box(box, self.image)
 
         self.cont_page = []
         self.cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
@@ -1134,7 +1057,7 @@ class eynollah:
         img_width_h = img.shape[1]
         patches = False
 
-        img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+        img = otsu_copy_binary(img)  # otsu_copy(img)
         img = img.astype(np.uint16)
 
         model_region, session_region = self.start_new_session_and_model(self.model_region_dir_fully_np)
@@ -1143,17 +1066,17 @@ class eynollah:
         img_2 = img[int(img.shape[0] / 3.0) : int(2 * img.shape[0] / 3.0), :, :]
         img_3 = img[int(2 * img.shape[0] / 3.0) :, :, :]
 
-        # img_1 = self.otsu_copy_binary(img_1)#self.otsu_copy(img)
+        # img_1 = otsu_copy_binary(img_1)#otsu_copy(img)
         # img_1 = img_1.astype(np.uint16)
 
         plt.imshow(img_1)
         plt.show()
-        # img_2 = self.otsu_copy_binary(img_2)#self.otsu_copy(img)
+        # img_2 = otsu_copy_binary(img_2)#otsu_copy(img)
         # img_2 = img_2.astype(np.uint16)
 
         plt.imshow(img_2)
         plt.show()
-        # img_3 = self.otsu_copy_binary(img_3)#self.otsu_copy(img)
+        # img_3 = otsu_copy_binary(img_3)#otsu_copy(img)
         # img_3 = img_3.astype(np.uint16)
 
         plt.imshow(img_3)
@@ -1208,12 +1131,12 @@ class eynollah:
 
         ###if patches and cols>=2:
 
-        ###img = self.otsu_copy_binary(img)#self.otsu_copy(img)
+        ###img = otsu_copy_binary(img)#otsu_copy(img)
         ###img = img.astype(np.uint8)
 
         ###if patches and cols==1:
 
-        ###img = self.otsu_copy_binary(img)#self.otsu_copy(img)
+        ###img = otsu_copy_binary(img)#otsu_copy(img)
         ###img = img.astype(np.uint8)
         ###img= resize_image(img, int(img_height_h*1), int(img_width_h*1) )
 
@@ -1223,7 +1146,7 @@ class eynollah:
             model_region, session_region = self.start_new_session_and_model(self.model_region_dir_fully_np)
 
         if patches and cols == 1:
-            img2 = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img2 = otsu_copy_binary(img)  # otsu_copy(img)
             img2 = img2.astype(np.uint8)
             img2 = resize_image(img2, int(img_height_h * 0.7), int(img_width_h * 0.7))
 
@@ -1232,7 +1155,7 @@ class eynollah:
             prediction_regions2 = resize_image(prediction_regions2, img_height_h, img_width_h)
 
         if patches and cols == 2:
-            img2 = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img2 = otsu_copy_binary(img)  # otsu_copy(img)
             img2 = img2.astype(np.uint8)
             img2 = resize_image(img2, int(img_height_h * 0.4), int(img_width_h * 0.4))
 
@@ -1240,7 +1163,7 @@ class eynollah:
             prediction_regions2 = self.do_prediction(patches, img2, model_region, marginal_of_patch_percent)
             prediction_regions2 = resize_image(prediction_regions2, img_height_h, img_width_h)
         elif patches and cols > 2:
-            img2 = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img2 = otsu_copy_binary(img)  # otsu_copy(img)
             img2 = img2.astype(np.uint8)
             img2 = resize_image(img2, int(img_height_h * 0.3), int(img_width_h * 0.3))
 
@@ -1249,7 +1172,7 @@ class eynollah:
             prediction_regions2 = resize_image(prediction_regions2, img_height_h, img_width_h)
 
         if patches and cols == 2:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
 
             img = img.astype(np.uint8)
 
@@ -1260,7 +1183,7 @@ class eynollah:
             img = img.astype(np.uint8)
 
         if patches and cols == 1:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
 
             img = img.astype(np.uint8)
             img = resize_image(img, int(img_height_h * 0.5), int(img_width_h * 0.5))
@@ -1268,24 +1191,24 @@ class eynollah:
 
         if patches and cols == 3:
 
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint8)
             # img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
 
         if patches and cols == 4:
 
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint8)
             # img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
 
         if patches and cols >= 5:
 
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint8)
             # img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
 
         if not patches:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint8)
             prediction_regions2 = None
 
@@ -1303,7 +1226,7 @@ class eynollah:
     def extract_only_text_regions(self, img, patches):
 
         model_region, session_region = self.start_new_session_and_model(self.model_only_text)
-        img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+        img = otsu_copy_binary(img)  # otsu_copy(img)
         img = img.astype(np.uint8)
         img_org = np.copy(img)
 
@@ -1540,7 +1463,7 @@ class eynollah:
 
             index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
 
-            crop_img, crop_coor = self.crop_image_inside_box(boxes_text[mv], image_page_rotated)
+            crop_img, crop_coor = crop_image_inside_box(boxes_text[mv], image_page_rotated)
             if abs(slope_for_all) < 45:
 
                 # all_box_coord.append(crop_coor)
@@ -1632,7 +1555,7 @@ class eynollah:
 
         for mv in range(len(boxes_text)):
 
-            crop_img, crop_coor = self.crop_image_inside_box(boxes_text[mv], image_page_rotated)
+            crop_img, crop_coor = crop_image_inside_box(boxes_text[mv], image_page_rotated)
 
             # all_box_coord.append(crop_coor)
 
@@ -1768,7 +1691,7 @@ class eynollah:
     def get_all_image_patches_coordination(self, image_page):
         self.all_box_coord = []
         for jk in range(len(self.boxes)):
-            _, crop_coor = self.crop_image_inside_box(self.boxes[jk], image_page)
+            _, crop_coor = crop_image_inside_box(self.boxes[jk], image_page)
             self.all_box_coord.append(crop_coor)
 
     def textline_contours(self, img, patches, scaler_h, scaler_w):
@@ -1778,7 +1701,7 @@ class eynollah:
         if not patches:
             model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir_np)
 
-        ##img = self.otsu_copy(img)
+        ##img = otsu_copy(img)
         img = img.astype(np.uint8)
 
         img_org = np.copy(img)
@@ -1824,7 +1747,7 @@ class eynollah:
         self.area_of_cropped = []
         self.all_text_region_raw = []
         for jk in range(len(boxes)):
-            crop_img, crop_coor = self.crop_image_inside_box(boxes[jk], np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
+            crop_img, crop_coor = crop_image_inside_box(boxes[jk], np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
             crop_img = crop_img.astype(np.uint8)
             self.all_text_region_raw.append(crop_img[:, :, 0])
             self.area_of_cropped.append(crop_img.shape[0] * crop_img.shape[1])
@@ -2337,7 +2260,7 @@ class eynollah:
                 slope_xline = 0
             slopes_tile_wise.append(slope_xline)
             # print(slope_xline,'xlineeee')
-            img_line_rotated = self.rotate_image(img_xline, slope_xline)
+            img_line_rotated = rotate_image(img_xline, slope_xline)
             img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
 
         """
@@ -2359,7 +2282,7 @@ class eynollah:
                 slope_xline=0
             slopes_tile_wise.append(slope_xline)
             print(slope_xline,'xlineeee')
-            img_line_rotated=self.rotate_image(img_xline,slope_xline)
+            img_line_rotated=rotate_image(img_xline,slope_xline)
 
             ##plt.imshow(img_line_rotated)
             ##plt.show()
@@ -2394,14 +2317,14 @@ class eynollah:
             img_resized[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0], int(img_int.shape[1] * (1)) : int(img_int.shape[1] * (1)) + img_int.shape[1]] = img_int[:, :]
             ##plt.imshow(img_xline)
             ##plt.show()
-            img_line_rotated = self.rotate_image(img_resized, slopes_tile_wise[i])
+            img_line_rotated = rotate_image(img_resized, slopes_tile_wise[i])
             img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
 
             img_patch_seperated = self.seperate_lines_new_inside_teils(img_line_rotated, 0)
 
             ##plt.imshow(img_patch_seperated)
             ##plt.show()
-            img_patch_seperated_returned = self.rotate_image(img_patch_seperated, -slopes_tile_wise[i])
+            img_patch_seperated_returned = rotate_image(img_patch_seperated, -slopes_tile_wise[i])
             img_patch_seperated_returned[:, :][img_patch_seperated_returned[:, :] != 0] = 1
 
             img_patch_seperated_returned_true_size = img_patch_seperated_returned[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0], int(img_int.shape[1] * (1)) : int(img_int.shape[1] * (1)) + img_int.shape[1]]
@@ -2422,14 +2345,14 @@ class eynollah:
             img_resized[ int( img_int.shape[0]*(.1)):int( img_int.shape[0]*(.1))+img_int.shape[0] , int( img_int.shape[1]*(1)):int( img_int.shape[1]*(1))+img_int.shape[1] ]=img_int[:,:]
             ##plt.imshow(img_xline)
             ##plt.show()
-            img_line_rotated=self.rotate_image(img_resized,slopes_tile_wise[ui])
+            img_line_rotated=rotate_image(img_resized,slopes_tile_wise[ui])
 
 
             #img_patch_seperated=self.seperate_lines_new_inside_teils(img_line_rotated,0)
 
             img_patch_seperated=self.seperate_lines_new_inside_teils(img_line_rotated,0)
 
-            img_patch_seperated_returned=self.rotate_image(img_patch_seperated,-slopes_tile_wise[ui])
+            img_patch_seperated_returned=rotate_image(img_patch_seperated,-slopes_tile_wise[ui])
             ##plt.imshow(img_patch_seperated)
             ##plt.show()
             print(img_patch_seperated_returned.shape)
@@ -2507,7 +2430,7 @@ class eynollah:
             # slope_xline=[slope_region][0]
             slopes_tile_wise.append(slope_xline)
             # print(slope_xline,'xlineeee')
-            img_line_rotated = self.rotate_image(img_xline, slope_xline)
+            img_line_rotated = rotate_image(img_xline, slope_xline)
             img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
 
         # print(slopes_tile_wise,'slopes_tile_wise')
@@ -2537,12 +2460,12 @@ class eynollah:
             img_resized[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0], int(img_int.shape[1] * (1)) : int(img_int.shape[1] * (1)) + img_int.shape[1]] = img_int[:, :]
             # plt.imshow(img_xline)
             # plt.show()
-            img_line_rotated = self.rotate_image(img_resized, slopes_tile_wise[i])
+            img_line_rotated = rotate_image(img_resized, slopes_tile_wise[i])
             img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
 
             img_patch_seperated = self.seperate_lines_new_inside_teils2(img_line_rotated, 0)
 
-            img_patch_seperated_returned = self.rotate_image(img_patch_seperated, -slopes_tile_wise[i])
+            img_patch_seperated_returned = rotate_image(img_patch_seperated, -slopes_tile_wise[i])
             img_patch_seperated_returned[:, :][img_patch_seperated_returned[:, :] != 0] = 1
 
             img_patch_seperated_returned_true_size = img_patch_seperated_returned[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0], int(img_int.shape[1] * (1)) : int(img_int.shape[1] * (1)) + img_int.shape[1]]
@@ -3017,7 +2940,7 @@ class eynollah:
         return peaks, textline_boxes_rot
 
     def return_rotated_contours(self, slope, img_patch):
-        dst = self.rotate_image(img_patch, slope)
+        dst = rotate_image(img_patch, slope)
         dst = dst.astype(np.uint8)
         dst = dst[:, :, 0]
         dst[dst != 0] = 1
@@ -3501,7 +3424,7 @@ class eynollah:
             textline_mask_help = np.zeros((textline_mask.shape[0] + int(2 * y_help), textline_mask.shape[1] + int(2 * x_help), 3))
             textline_mask_help[y_help : y_help + textline_mask.shape[0], x_help : x_help + textline_mask.shape[1], :] = np.copy(textline_mask[:, :, :])
 
-            dst = self.rotate_image(textline_mask_help, slope)
+            dst = rotate_image(textline_mask_help, slope)
             dst = dst[:, :, 0]
             dst[dst != 0] = 1
 
@@ -3525,7 +3448,7 @@ class eynollah:
 
             img_contour_help[y_help : y_help + img_contour.shape[0], x_help : x_help + img_contour.shape[1], :] = np.copy(img_contour[:, :, :])
 
-            img_contour_rot = self.rotate_image(img_contour_help, slope)
+            img_contour_rot = rotate_image(img_contour_help, slope)
 
             # plt.imshow(img_contour_rot_help)
             # plt.show()
@@ -3867,7 +3790,7 @@ class eynollah:
 
             indexer = 0
             for rot in angels:
-                img_rot = self.rotate_image(img_resized, rot)
+                img_rot = rotate_image(img_resized, rot)
                 # plt.imshow(img_rot)
                 # plt.show()
                 img_rot[img_rot != 0] = 1
@@ -3914,7 +3837,7 @@ class eynollah:
 
             indexer = 0
             for rot in angels:
-                img_rot = self.rotate_image(img_resized, rot)
+                img_rot = rotate_image(img_resized, rot)
                 ##plt.imshow(img_rot)
                 ##plt.show()
                 img_rot[img_rot != 0] = 1
@@ -3962,7 +3885,7 @@ class eynollah:
 
             indexer = 0
             for rot in angels:
-                img_rot = self.rotate_image(img_resized, rot)
+                img_rot = rotate_image(img_resized, rot)
                 # plt.imshow(img_rot)
                 # plt.show()
                 img_rot[img_rot != 0] = 1
@@ -4024,7 +3947,7 @@ class eynollah:
 
                 indexer = 0
                 for rot in angels:
-                    img_rot = self.rotate_image(img_resized, rot)
+                    img_rot = rotate_image(img_resized, rot)
                     ##plt.imshow(img_rot)
                     ##plt.show()
                     img_rot[img_rot != 0] = 1
@@ -4070,7 +3993,7 @@ class eynollah:
 
                 indexer = 0
                 for rot in angels:
-                    img_rot = self.rotate_image(img_resized, rot)
+                    img_rot = rotate_image(img_resized, rot)
                     ##plt.imshow(img_rot)
                     ##plt.show()
                     img_rot[img_rot != 0] = 1
@@ -4115,7 +4038,7 @@ class eynollah:
 
             indexer = 0
             for rot in angels:
-                img_rot = self.rotate_image(img_resized, rot)
+                img_rot = rotate_image(img_resized, rot)
                 # plt.imshow(img_rot)
                 # plt.show()
                 img_rot[img_rot != 0] = 1
@@ -4167,7 +4090,7 @@ class eynollah:
 
                 indexer = 0
                 for rot in angels:
-                    img_rot = self.rotate_image(img_resized, rot)
+                    img_rot = rotate_image(img_resized, rot)
                     ##plt.imshow(img_rot)
                     ##plt.show()
                     img_rot[img_rot != 0] = 1
@@ -4213,7 +4136,7 @@ class eynollah:
 
                 indexer = 0
                 for rot in angels:
-                    img_rot = self.rotate_image(img_resized, rot)
+                    img_rot = rotate_image(img_resized, rot)
                     ##plt.imshow(img_rot)
                     ##plt.show()
                     img_rot[img_rot != 0] = 1
@@ -4278,7 +4201,7 @@ class eynollah:
         indexer = 0
         for rot in angles:
             # print(rot,'rot')
-            img_rotated = self.rotate_image(img_patch_padded, rot)
+            img_rotated = rotate_image(img_patch_padded, rot)
             img_rotated[img_rotated != 0] = 1
 
             # plt.imshow(img_rotated)
@@ -4326,7 +4249,7 @@ class eynollah:
             indexer = 0
             for rot in angles:
                 # print(rot,'rot')
-                img_rotated = self.rotate_image(img_patch_padded, rot)
+                img_rotated = rotate_image(img_patch_padded, rot)
                 img_rotated[img_rotated != 0] = 1
 
                 # plt.imshow(img_rotated)
@@ -4371,7 +4294,7 @@ class eynollah:
         poly_sub = []
         for mv in range(len(boxes_per_process)):
 
-            crop_img, _ = self.crop_image_inside_box(boxes_per_process[mv], np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
+            crop_img, _ = crop_image_inside_box(boxes_per_process[mv], np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
             crop_img = crop_img[:, :, 0]
             crop_img = cv2.erode(crop_img, self.kernel, iterations=2)
 
@@ -5636,7 +5559,7 @@ class eynollah:
         for ind in np.unique(regions_prediction[:, :]):
             interest_reg = (regions_prediction[:, :] == ind) * 1
             interest_reg = interest_reg.astype(np.uint8)
-            deskewed_new = self.rotate_image(interest_reg, slope)
+            deskewed_new = rotate_image(interest_reg, slope)
             deskewed_new = deskewed_new[:, :]
             deskewed_new[deskewed_new != 0] = ind
 
@@ -5734,14 +5657,14 @@ class eynollah:
             # if abs(slope)>=1:
             # slope=0
 
-            # dst=self.rotate_image(textline_mask,slope_true)
+            # dst=rotate_image(textline_mask,slope_true)
             # dst=dst[:,:,0]
             # dst[dst!=0]=1
         image_regions_deskewd = np.zeros(textline_mask_org[:, :].shape)
         for ind in np.unique(textline_mask_org[:, :]):
             interest_reg = (textline_mask_org[:, :] == ind) * 1
             interest_reg = interest_reg.astype(np.uint8)
-            deskewed_new = self.rotate_image(interest_reg, slope_true)
+            deskewed_new = rotate_image(interest_reg, slope_true)
             deskewed_new = deskewed_new[:, :]
             deskewed_new[deskewed_new != 0] = ind
 
@@ -8596,7 +8519,7 @@ class eynollah:
         regions_without_seperators = self.return_regions_without_seperators(region_pre_p)
 
         ##print(args_big_parts,'args_big_parts')
-        # image_page_otsu=self.otsu_copy(image_page_deskewd)
+        # image_page_otsu=otsu_copy(image_page_deskewd)
         # print(np.unique(image_page_otsu[:,:,0]))
         # image_page_background_zero=self.image_change_background_pixels_to_zero(image_page_otsu)
 
@@ -8698,7 +8621,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -8726,7 +8649,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -8775,7 +8698,7 @@ class eynollah:
         img = img[0:one_third_upper_ny, :, :]
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -8792,7 +8715,7 @@ class eynollah:
         img = img[one_third_upper_ny : int(2 * one_third_upper_ny), :, :]
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -8809,7 +8732,7 @@ class eynollah:
         img = img[int(2 * one_third_upper_ny) :, :, :]
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -8849,7 +8772,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -8871,7 +8794,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -8984,7 +8907,7 @@ class eynollah:
         median_blur = False
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -9012,7 +8935,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -9032,7 +8955,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -9146,7 +9069,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -9172,7 +9095,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -9220,7 +9143,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -9250,7 +9173,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -9287,7 +9210,7 @@ class eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
-            img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
+            img = otsu_copy_binary(img)  # otsu_copy(img)
             img = img.astype(np.uint16)
 
         if median_blur:
@@ -9352,7 +9275,7 @@ class eynollah:
         # img= resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
 
         # if binary:
-        # img = self.otsu_copy_binary(img)#self.otsu_copy(img)
+        # img = otsu_copy_binary(img)#otsu_copy(img)
         # img = img.astype(np.uint16)
 
         # if median_blur:
@@ -9486,7 +9409,7 @@ class eynollah:
 
             x, y, w, h = cv2.boundingRect(cont_ind)
             box = [x, y, w, h]
-            croped_page, page_coord = self.crop_image_inside_box(box, image_page)
+            croped_page, page_coord = crop_image_inside_box(box, image_page)
 
             croped_page = resize_image(croped_page, int(croped_page.shape[0] / self.scale_y), int(croped_page.shape[1] / self.scale_x))
 
@@ -9613,7 +9536,7 @@ class eynollah:
                 mask_marginals[:, :] = 1
 
             # print(mask_marginals.shape,point_left,point_right,'nadosh')
-            mask_marginals_rotated = self.rotate_image(mask_marginals, -slope_deskew)
+            mask_marginals_rotated = rotate_image(mask_marginals, -slope_deskew)
 
             # print(mask_marginals_rotated.shape,'nadosh')
             mask_marginals_rotated_sum = mask_marginals_rotated.sum(axis=0)
@@ -9715,7 +9638,7 @@ class eynollah:
         polygons_per_par_process_per_process = []
         textline_cnt_seperated = np.zeros(textline_mask_tot.shape)
         for iiii in range(len(polygons_per_process)):
-            # crop_img,crop_coor=self.crop_image_inside_box(boxes_text[mv],image_page_rotated)
+            # crop_img,crop_coor=crop_image_inside_box(boxes_text[mv],image_page_rotated)
             # arg_max=np.argmax(areas_cnt_only_text)
             textregions_cnt_tot_per_process.append(polygons_per_process[iiii] / scale_par)
             textline_region_in_image = np.zeros(textline_mask_tot.shape)
@@ -11051,7 +10974,7 @@ class eynollah:
                         regions_without_seperators = (text_regions_p[:, :] == 1) * 1
                         regions_without_seperators = regions_without_seperators.astype(np.uint8)
 
-                        text_regions_p = self.get_marginals(self.rotate_image(regions_without_seperators, slope_deskew), text_regions_p, num_col_classifier, slope_deskew)
+                        text_regions_p = self.get_marginals(rotate_image(regions_without_seperators, slope_deskew), text_regions_p, num_col_classifier, slope_deskew)
 
                     except:
                         pass

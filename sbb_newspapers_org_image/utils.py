@@ -1,6 +1,7 @@
 import numpy as np
 from shapely import geometry
 import cv2
+import imutils
 
 def filter_contours_area_of_image(image, contours, hirarchy, max_area, min_area):
     found_polygons_early = list()
@@ -91,4 +92,53 @@ def rotate_max_area_new(image, rotated, angle):
 def rotation_image_new(img, thetha):
     rotated = imutils.rotate(img, thetha)
     return rotate_max_area_new(img, rotated, thetha)
+
+def rotate_image(img_patch, slope):
+    (h, w) = img_patch.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, slope, 1.0)
+    return cv2.warpAffine(img_patch, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+
+def rotyate_image_different( img, slope):
+    # img = cv2.imread('images/input.jpg')
+    num_rows, num_cols = img.shape[:2]
+
+    rotation_matrix = cv2.getRotationMatrix2D((num_cols / 2, num_rows / 2), slope, 1)
+    img_rotation = cv2.warpAffine(img, rotation_matrix, (num_cols, num_rows))
+    return img_rotation
+
+def crop_image_inside_box(box, img_org_copy):
+    image_box = img_org_copy[box[1] : box[1] + box[3], box[0] : box[0] + box[2]]
+    return image_box, [box[1], box[1] + box[3], box[0], box[0] + box[2]]
+
+def otsu_copy(img):
+    img_r = np.zeros(img.shape)
+    img1 = img[:, :, 0]
+    img2 = img[:, :, 1]
+    img3 = img[:, :, 2]
+    # print(img.min())
+    # print(img[:,:,0].min())
+    # blur = cv2.GaussianBlur(img,(5,5))
+    # ret3,th3 = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    retval1, threshold1 = cv2.threshold(img1, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    retval2, threshold2 = cv2.threshold(img2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    retval3, threshold3 = cv2.threshold(img3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    img_r[:, :, 0] = threshold1
+    img_r[:, :, 1] = threshold1
+    img_r[:, :, 2] = threshold1
+    return img_r
+
+def otsu_copy_binary(img):
+    img_r = np.zeros((img.shape[0], img.shape[1], 3))
+    img1 = img[:, :, 0]
+
+    retval1, threshold1 = cv2.threshold(img1, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    img_r[:, :, 0] = threshold1
+    img_r[:, :, 1] = threshold1
+    img_r[:, :, 2] = threshold1
+
+    img_r = img_r / float(np.max(img_r)) * 255
+    return img_r
 
