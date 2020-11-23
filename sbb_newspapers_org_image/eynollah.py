@@ -37,6 +37,9 @@ import imutils
 
 from .utils import filter_contours_area_of_image_tables
 
+SLOPE_THRESHOLD = 0.13
+VERY_LARGE_NUMBER = 1000000000000000000000
+
 
 class eynollah:
     def __init__(
@@ -3959,13 +3962,13 @@ class eynollah:
                     # print(rot,var_spectrum,'var_spectrum')
                     res_me = np.mean(neg_peaks)
                     if res_me == 0:
-                        res_me = 1000000000000000000000
+                        res_me = VERY_LARGE_NUMBER
                     else:
                         pass
 
                     res_num = len(neg_peaks)
                 except:
-                    res_me = 1000000000000000000000
+                    res_me = VERY_LARGE_NUMBER
                     res_num = 0
                     var_spectrum = 0
                 if self.isNaN(res_me):
@@ -4003,13 +4006,13 @@ class eynollah:
                     # print(indexer,'indexer')
                     res_me = np.mean(neg_peaks)
                     if res_me == 0:
-                        res_me = 1000000000000000000000
+                        res_me = VERY_LARGE_NUMBER
                     else:
                         pass
 
                     res_num = len(neg_peaks)
                 except:
-                    res_me = 1000000000000000000000
+                    res_me = VERY_LARGE_NUMBER
                     res_num = 0
                     var_spectrum = 0
                 if self.isNaN(res_me):
@@ -4054,13 +4057,13 @@ class eynollah:
                     # print(rot,var_spectrum,'var_spectrum')
                     res_me = np.mean(neg_peaks)
                     if res_me == 0:
-                        res_me = 1000000000000000000000
+                        res_me = VERY_LARGE_NUMBER
                     else:
                         pass
 
                     res_num = len(neg_peaks)
                 except:
-                    res_me = 1000000000000000000000
+                    res_me = VERY_LARGE_NUMBER
                     res_num = 0
                     var_spectrum = 0
                 if self.isNaN(res_me):
@@ -4113,13 +4116,13 @@ class eynollah:
                         # print(indexer,'indexer')
                         res_me = np.mean(neg_peaks)
                         if res_me == 0:
-                            res_me = 1000000000000000000000
+                            res_me = VERY_LARGE_NUMBER
                         else:
                             pass
 
                         res_num = len(neg_peaks)
                     except:
-                        res_me = 1000000000000000000000
+                        res_me = VERY_LARGE_NUMBER
                         res_num = 0
                         var_spectrum = 0
                     if self.isNaN(res_me):
@@ -4159,13 +4162,13 @@ class eynollah:
                         # print(indexer,'indexer')
                         res_me = np.mean(neg_peaks)
                         if res_me == 0:
-                            res_me = 1000000000000000000000
+                            res_me = VERY_LARGE_NUMBER
                         else:
                             pass
 
                         res_num = len(neg_peaks)
                     except:
-                        res_me = 1000000000000000000000
+                        res_me = VERY_LARGE_NUMBER
                         res_num = 0
                         var_spectrum = 0
                     if self.isNaN(res_me):
@@ -4207,13 +4210,13 @@ class eynollah:
                     # print(rot,var_spectrum,'var_spectrum')
                     res_me = np.mean(neg_peaks)
                     if res_me == 0:
-                        res_me = 1000000000000000000000
+                        res_me = VERY_LARGE_NUMBER
                     else:
                         pass
 
                     res_num = len(neg_peaks)
                 except:
-                    res_me = 1000000000000000000000
+                    res_me = VERY_LARGE_NUMBER
                     res_num = 0
                     var_spectrum = 0
                 if self.isNaN(res_me):
@@ -4256,13 +4259,13 @@ class eynollah:
                         # print(indexer,'indexer')
                         res_me = np.mean(neg_peaks)
                         if res_me == 0:
-                            res_me = 1000000000000000000000
+                            res_me = VERY_LARGE_NUMBER
                         else:
                             pass
 
                         res_num = len(neg_peaks)
                     except:
-                        res_me = 1000000000000000000000
+                        res_me = VERY_LARGE_NUMBER
                         res_num = 0
                         var_spectrum = 0
                     if self.isNaN(res_me):
@@ -4302,13 +4305,13 @@ class eynollah:
                         # print(indexer,'indexer')
                         res_me = np.mean(neg_peaks)
                         if res_me == 0:
-                            res_me = 1000000000000000000000
+                            res_me = VERY_LARGE_NUMBER
                         else:
                             pass
 
                         res_num = len(neg_peaks)
                     except:
-                        res_me = 1000000000000000000000
+                        res_me = VERY_LARGE_NUMBER
                         res_num = 0
                         var_spectrum = 0
                     if self.isNaN(res_me):
@@ -4367,13 +4370,13 @@ class eynollah:
                 neg_peaks, var_spectrum = self.get_standard_deviation_of_summed_textline_patch_along_width(img_rotated, sigma_des, 20.3)
                 res_me = np.mean(neg_peaks)
                 if res_me == 0:
-                    res_me = 1000000000000000000000
+                    res_me = VERY_LARGE_NUMBER
                 else:
                     pass
 
                 res_num = len(neg_peaks)
             except:
-                res_me = 1000000000000000000000
+                res_me = VERY_LARGE_NUMBER
                 res_num = 0
                 var_spectrum = 0
             if self.isNaN(res_me):
@@ -4415,13 +4418,13 @@ class eynollah:
                     neg_peaks, var_spectrum = self.get_standard_deviation_of_summed_textline_patch_along_width(img_rotated, sigma_des, 20.3)
                     res_me = np.mean(neg_peaks)
                     if res_me == 0:
-                        res_me = 1000000000000000000000
+                        res_me = VERY_LARGE_NUMBER
                     else:
                         pass
 
                     res_num = len(neg_peaks)
                 except:
-                    res_me = 1000000000000000000000
+                    res_me = VERY_LARGE_NUMBER
                     res_num = 0
                     var_spectrum = 0
                 if self.isNaN(res_me):
@@ -11162,7 +11165,7 @@ class eynollah:
 
                 if not self.full_layout:
 
-                    if np.abs(slope_deskew) >= 0.13:
+                    if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                         image_page_rotated_n, textline_mask_tot_d, text_regions_p_1_n = self.rotation_not_90_func(image_page, textline_mask_tot, text_regions_p, slope_deskew)
 
                         text_regions_p_1_n = self.resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
@@ -11173,10 +11176,10 @@ class eynollah:
                     regions_without_seperators = (text_regions_p[:, :] == 1) * 1  # ( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_seperators_new(text_regions_p[:,:,0],img_only_regions)
 
                     pixel_lines = 3
-                    if np.abs(slope_deskew) < 0.13:
+                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         num_col, peaks_neg_fin, matrix_of_lines_ch, spliter_y_new, seperators_closeup_n = self.find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
 
-                    if np.abs(slope_deskew) >= 0.13:
+                    if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                         num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, spliter_y_new_d, seperators_closeup_n_d = self.find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
                     K.clear_session()
                     gc.collect()
@@ -11186,7 +11189,7 @@ class eynollah:
                     print(num_col_classifier, "num_col_classifier")
 
                     if num_col_classifier >= 3:
-                        if np.abs(slope_deskew) < 0.13:
+                        if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                             regions_without_seperators = regions_without_seperators.astype(np.uint8)
                             regions_without_seperators = cv2.erode(regions_without_seperators[:, :], self.kernel, iterations=6)
 
@@ -11196,7 +11199,7 @@ class eynollah:
 
                             regions_without_seperators[(random_pixels_for_image[:, :] == 1) & (text_regions_p[:, :] == 2)] = 1
 
-                        if np.abs(slope_deskew) >= 0.13:
+                        if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                             regions_without_seperators_d = regions_without_seperators_d.astype(np.uint8)
                             regions_without_seperators_d = cv2.erode(regions_without_seperators_d[:, :], self.kernel, iterations=6)
 
@@ -11208,7 +11211,7 @@ class eynollah:
                     else:
                         pass
 
-                    if np.abs(slope_deskew) < 0.13:
+                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         boxes = self.return_boxes_of_images_by_order_of_reading_new(spliter_y_new, regions_without_seperators, matrix_of_lines_ch)
                     else:
                         boxes_d = self.return_boxes_of_images_by_order_of_reading_new(spliter_y_new_d, regions_without_seperators_d, matrix_of_lines_ch_d)
@@ -11293,7 +11296,7 @@ class eynollah:
                     # plt.imshow(text_regions_p)
                     # plt.show()
 
-                    if np.abs(slope_deskew) >= 0.13:
+                    if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                         image_page_rotated_n, textline_mask_tot_d, text_regions_p_1_n, regions_fully_n = self.rotation_not_90_func_full_layout(image_page, textline_mask_tot, text_regions_p, regions_fully, slope_deskew)
 
                         text_regions_p_1_n = self.resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
@@ -11325,7 +11328,7 @@ class eynollah:
 
                 # print(np.unique(text_regions_p_1_n),'uni')
                 text_only = ((img_revised_tab[:, :] == 1)) * 1
-                if np.abs(slope_deskew) >= 0.13:
+                if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                     text_only_d = ((text_regions_p_1_n[:, :] == 1)) * 1
                 ##text_only_h=( (img_revised_tab[:,:,0]==2) )*1
 
@@ -11338,7 +11341,7 @@ class eynollah:
 
                 min_con_area = 0.000005
 
-                if np.abs(slope_deskew) >= 0.13:
+                if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
 
                     contours_only_text, hir_on_text = self.return_contours_of_image(text_only)
                     contours_only_text_parent = self.return_parent_contours(contours_only_text, hir_on_text)
@@ -11488,7 +11491,7 @@ class eynollah:
                     ##plt.imshow(img2[:,:,0])
                     ##plt.show()
 
-                    if np.abs(slope_deskew) >= 0.13:
+                    if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                         contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered)[index_by_text_par_con])
 
                         text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = self.check_any_text_region_in_model_one_is_main_or_header(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
@@ -11524,12 +11527,12 @@ class eynollah:
                     pixel_lines = 6
 
                     if not self.headers_off:
-                        if np.abs(slope_deskew) < 0.13:
+                        if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                             num_col, peaks_neg_fin, matrix_of_lines_ch, spliter_y_new, seperators_closeup_n = self.find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h)
                         else:
                             num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, spliter_y_new_d, seperators_closeup_n_d = self.find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h_d_ordered)
                     elif self.headers_off:
-                        if np.abs(slope_deskew) < 0.13:
+                        if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                             num_col, peaks_neg_fin, matrix_of_lines_ch, spliter_y_new, seperators_closeup_n = self.find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
                         else:
                             num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, spliter_y_new_d, seperators_closeup_n_d = self.find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
@@ -11542,7 +11545,7 @@ class eynollah:
 
                     if num_col_classifier >= 3:
 
-                        if np.abs(slope_deskew) < 0.13:
+                        if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                             regions_without_seperators = regions_without_seperators.astype(np.uint8)
                             regions_without_seperators = cv2.erode(regions_without_seperators[:, :], self.kernel, iterations=6)
 
@@ -11565,7 +11568,7 @@ class eynollah:
                     else:
                         pass
 
-                    if np.abs(slope_deskew) < 0.13:
+                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         boxes = self.return_boxes_of_images_by_order_of_reading_new(spliter_y_new, regions_without_seperators, matrix_of_lines_ch)
                     else:
                         boxes_d = self.return_boxes_of_images_by_order_of_reading_new(spliter_y_new_d, regions_without_seperators_d, matrix_of_lines_ch_d)
@@ -11575,7 +11578,7 @@ class eynollah:
                     self.write_images_into_directory(polygons_of_images, self.dir_of_cropped_images, image_page)
 
                 if self.full_layout:
-                    if np.abs(slope_deskew) < 0.13:
+                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
                     else:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
@@ -11584,7 +11587,7 @@ class eynollah:
                 else:
                     contours_only_text_parent_h = None
                     # print('bura galmir?')
-                    if np.abs(slope_deskew) < 0.13:
+                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         contours_only_text_parent = list(np.array(contours_only_text_parent)[index_by_text_par_con])
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
                     else:
