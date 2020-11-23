@@ -39,7 +39,22 @@ from .utils import filter_contours_area_of_image_tables
 
 
 class eynollah:
-    def __init__(self, image_dir, f_name, dir_out, dir_models, dir_of_cropped_images=None, dir_of_layout=None, dir_of_deskewed=None, dir_of_all=None, allow_enhancement="false", curved_line="false", full_layout="false", allow_scaling="false", headers_off="false"):
+    def __init__(
+        self,
+        image_dir,
+        f_name,
+        dir_out,
+        dir_models,
+        dir_of_cropped_images=None,
+        dir_of_layout=None,
+        dir_of_deskewed=None,
+        dir_of_all=None,
+        allow_enhancement="false",
+        curved_line="false",
+        full_layout="false",
+        allow_scaling="false",
+        headers_off="false"
+    ):
         self.image_dir = image_dir  # XXX This does not seem to be a directory as the name suggests, but a file
         self.dir_out = dir_out
         self.f_name = f_name
