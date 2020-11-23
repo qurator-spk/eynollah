@@ -49,11 +49,11 @@ class eynollah:
         dir_of_layout=None,
         dir_of_deskewed=None,
         dir_of_all=None,
-        allow_enhancement="false",
-        curved_line="false",
-        full_layout="false",
-        allow_scaling="false",
-        headers_off="false"
+        allow_enhancement=False,
+        curved_line=False,
+        full_layout=False,
+        allow_scaling=False,
+        headers_off=False
     ):
         self.image_dir = image_dir  # XXX This does not seem to be a directory as the name suggests, but a file
         self.dir_out = dir_out
@@ -4875,7 +4875,7 @@ class eynollah:
                     for l in range(len(all_found_texline_polygons[mm][j])):
                         # point = ET.SubElement(coord, 'Point')
 
-                        if curved_line is None or curved_line == "false" or curved_line == "False" or curved_line == "FALSE":
+                        if not self.curved_line:
                             # point.set('x',str(found_polygons[j][l][0]))
                             # point.set('y',str(found_polygons[j][l][1]))
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
@@ -4887,7 +4887,7 @@ class eynollah:
                                 points_co = points_co + ","
                                 points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0][1] + all_box_coord[mm][0] + page_coord[0]) / self.scale_y))
 
-                        if (curved_line == "true" or curved_line == "True" or curved_line == "TRUE") and np.abs(slopes[mm]) <= 45:
+                        if (self.curved_line) and np.abs(slopes[mm]) <= 45:
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
                                 points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0] + page_coord[2]) / self.scale_x))
                                 points_co = points_co + ","
@@ -4896,7 +4896,7 @@ class eynollah:
                                 points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0][0] + page_coord[2]) / self.scale_x))
                                 points_co = points_co + ","
                                 points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0][1] + page_coord[0]) / self.scale_y))
-                        elif (curved_line == "true" or curved_line == "True" or curved_line == "TRUE") and np.abs(slopes[mm]) > 45:
+                        elif (self.curved_line) and np.abs(slopes[mm]) > 45:
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
                                 points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0] + all_box_coord[mm][2] + page_coord[2]) / self.scale_x))
                                 points_co = points_co + ","
@@ -4974,7 +4974,7 @@ class eynollah:
                     for l in range(len(all_found_texline_polygons_h[mm][j])):
                         # point = ET.SubElement(coord, 'Point')
 
-                        if curved_line is None or curved_line == "false" or curved_line == "False" or curved_line == "FALSE":
+                        if not self.curved_line:
                             # point.set('x',str(found_polygons[j][l][0]))
                             # point.set('y',str(found_polygons[j][l][1]))
                             if len(all_found_texline_polygons_h[mm][j][l]) == 2:
@@ -4986,7 +4986,7 @@ class eynollah:
                                 points_co = points_co + ","
                                 points_co = points_co + str(int((all_found_texline_polygons_h[mm][j][l][0][1] + all_box_coord_h[mm][0] + page_coord[0]) / self.scale_y))
 
-                        if curved_line == "true" or curved_line == "True" or curved_line == "TRUE":
+                        if self.curved_line:
                             if len(all_found_texline_polygons_h[mm][j][l]) == 2:
                                 points_co = points_co + str(int((all_found_texline_polygons_h[mm][j][l][0] + page_coord[2]) / self.scale_x))
                                 points_co = points_co + ","
@@ -5061,7 +5061,7 @@ class eynollah:
                 ##for l in range(len(all_found_texline_polygons_h[mm][j])):
                 ###point = ET.SubElement(coord, 'Point')
 
-                ##if curved_line is None or curved_line=='false' or curved_line=='False' or curved_line=='FALSE' :
+                ##if not curved_line:
                 ###point.set('x',str(found_polygons[j][l][0]))
                 ###point.set('y',str(found_polygons[j][l][1]))
                 ##if len(all_found_texline_polygons_h[mm][j][l])==2:
@@ -5077,7 +5077,7 @@ class eynollah:
                 ##points_co=points_co+str( int( ( all_found_texline_polygons_h[mm][j][l][0][1]
                 ##+all_box_coord_h[mm][0]+page_coord[0])/self.scale_y) )
 
-                ##if curved_line=='true' or curved_line=='True' or curved_line=='TRUE' :
+                ##if curved_line:
                 ##if len(all_found_texline_polygons_h[mm][j][l])==2:
                 ##points_co=points_co+str( int( (all_found_texline_polygons_h[mm][j][l][0]
                 ##+page_coord[2])/self.scale_x) )
@@ -5158,7 +5158,7 @@ class eynollah:
                     for l in range(len(all_found_texline_polygons_marginals[mm][j])):
                         # point = ET.SubElement(coord, 'Point')
 
-                        if curved_line is None or curved_line == "false" or curved_line == "False" or curved_line == "FALSE":
+                        if not self.curved_line:
                             # point.set('x',str(found_polygons[j][l][0]))
                             # point.set('y',str(found_polygons[j][l][1]))
                             if len(all_found_texline_polygons_marginals[mm][j][l]) == 2:
@@ -5170,7 +5170,7 @@ class eynollah:
                                 points_co = points_co + ","
                                 points_co = points_co + str(int((all_found_texline_polygons_marginals[mm][j][l][0][1] + all_box_coord_marginals[mm][0] + page_coord[0]) / self.scale_y))
 
-                        if curved_line == "true" or curved_line == "True" or curved_line == "TRUE":
+                        if self.curved_line:
                             if len(all_found_texline_polygons_marginals[mm][j][l]) == 2:
                                 points_co = points_co + str(int((all_found_texline_polygons_marginals[mm][j][l][0] + page_coord[2]) / self.scale_x))
                                 points_co = points_co + ","
@@ -5384,7 +5384,7 @@ class eynollah:
                     for l in range(len(all_found_texline_polygons[mm][j])):
                         # point = ET.SubElement(coord, 'Point')
 
-                        if curved_line is None or curved_line == "false" or curved_line == "False" or curved_line == "FALSE":
+                        if not self.curved_line:
                             # point.set('x',str(found_polygons[j][l][0]))
                             # point.set('y',str(found_polygons[j][l][1]))
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
@@ -5396,7 +5396,7 @@ class eynollah:
                                 points_co = points_co + ","
                                 points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0][1] + all_box_coord[mm][0] + page_coord[0]) / self.scale_y))
 
-                        if (curved_line == "true" or curved_line == "True" or curved_line == "TRUE") and abs(slopes[mm]) <= 45:
+                        if (self.curved_line) and abs(slopes[mm]) <= 45:
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
                                 points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0] + page_coord[2]) / self.scale_x))
                                 points_co = points_co + ","
@@ -5406,7 +5406,7 @@ class eynollah:
                                 points_co = points_co + ","
                                 points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0][1] + page_coord[0]) / self.scale_y))
 
-                        elif (curved_line == "true" or curved_line == "True" or curved_line == "TRUE") and abs(slopes[mm]) > 45:
+                        elif (self.curved_line) and abs(slopes[mm]) > 45:
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
                                 points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0] + all_box_coord[mm][2] + page_coord[2]) / self.scale_x))
                                 points_co = points_co + ","
@@ -5567,7 +5567,7 @@ class eynollah:
                     for l in range(len(all_found_texline_polygons_marginals[mm][j])):
                         # point = ET.SubElement(coord, 'Point')
 
-                        if curved_line is None or curved_line == "false" or curved_line == "False" or curved_line == "FALSE":
+                        if not self.curved_line:
                             # point.set('x',str(found_polygons[j][l][0]))
                             # point.set('y',str(found_polygons[j][l][1]))
                             if len(all_found_texline_polygons_marginals[mm][j][l]) == 2:
@@ -5579,7 +5579,7 @@ class eynollah:
                                 points_co = points_co + ","
                                 points_co = points_co + str(int((all_found_texline_polygons_marginals[mm][j][l][0][1] + all_box_coord_marginals[mm][0] + page_coord[0]) / self.scale_y))
 
-                        if curved_line == "true" or curved_line == "True" or curved_line == "TRUE":
+                        if self.curved_line:
                             if len(all_found_texline_polygons_marginals[mm][j][l]) == 2:
                                 points_co = points_co + str(int((all_found_texline_polygons_marginals[mm][j][l][0] + page_coord[2]) / self.scale_x))
                                 points_co = points_co + ","
@@ -10161,7 +10161,7 @@ class eynollah:
 
     def do_order_of_regions(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
 
-        if self.full_layout == "true" or self.full_layout == "True" or self.full_layout == "TRUE":
+        if self.full_layout:
             cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = self.find_new_features_of_contoures(contours_only_text_parent)
             cx_text_only_h, cy_text_only_h, x_min_text_only_h, _, _, _, y_cor_x_min_main_h = self.find_new_features_of_contoures(contours_only_text_parent_h)
 
@@ -10501,7 +10501,7 @@ class eynollah:
                 # region_with_intersected_drop=region_with_intersected_drop/3
                 region_with_intersected_drop = region_with_intersected_drop.astype(np.uint8)
             # print(np.unique(img_con_all_copy[:,:,0]))
-            if self.curved_line == "True" or self.curved_line == "true":
+            if self.curved_line:
 
                 if len(region_with_intersected_drop) > 1:
                     sum_pixels_of_intersection = []
@@ -10981,21 +10981,21 @@ class eynollah:
         print(is_image_enhanced, "is_image_enhanced")
         K.clear_session()
         scale = 1
-        if (self.allow_enhancement == "true" or self.allow_enhancement == "True" or self.allow_enhancement == "TRUE") and is_image_enhanced:
+        if (self.allow_enhancement) and is_image_enhanced:
             cv2.imwrite(os.path.join(self.dir_out, self.f_name) + ".tif", img_res)
             img_res = img_res.astype(np.uint8)
             self.get_image_and_scales(img_org, img_res, scale)
 
-        if (self.allow_enhancement == "False" or self.allow_enhancement == "false" or self.allow_enhancement == "FALSE" or self.allow_enhancement == None) and is_image_enhanced:
+        if (not self.allow_enhancement) and is_image_enhanced:
             self.get_image_and_scales_after_enhancing(img_org, img_res)
 
-        if (self.allow_enhancement == "true" or self.allow_enhancement == "True" or self.allow_enhancement == "TRUE") and not is_image_enhanced:
+        if (self.allow_enhancement) and not is_image_enhanced:
             self.get_image_and_scales(img_org, img_res, scale)
 
-        if (self.allow_enhancement == "False" or self.allow_enhancement == "false" or self.allow_enhancement == "FALSE" or self.allow_enhancement == None) and not is_image_enhanced:
+        if (not self.allow_enhancement) and not is_image_enhanced:
             self.get_image_and_scales(img_org, img_res, scale)
 
-        if (self.allow_scaling == "true" or self.allow_scaling == "True" or self.allow_scaling == "TRUE") and not is_image_enhanced:
+        if (self.allow_scaling) and not is_image_enhanced:
             img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced)
             self.get_image_and_scales_after_enhancing(img_org, img_res)
 
@@ -11160,7 +11160,7 @@ class eynollah:
 
                 print("marginals: " + str(time.time() - t1))
 
-                if self.full_layout is None or self.full_layout == "False" or self.full_layout == "false" or self.full_layout == "FALSE":
+                if not self.full_layout:
 
                     if np.abs(slope_deskew) >= 0.13:
                         image_page_rotated_n, textline_mask_tot_d, text_regions_p_1_n = self.rotation_not_90_func(image_page, textline_mask_tot, text_regions_p, slope_deskew)
@@ -11228,7 +11228,7 @@ class eynollah:
                 min_area_mar = 0.00001
                 polygons_of_marginals = self.return_contours_of_interested_region(text_regions_p, pixel_img, min_area_mar)
 
-                if self.full_layout == "true" or self.full_layout == "True" or self.full_layout == "TRUE":
+                if self.full_layout:
                     # set first model with second model
                     text_regions_p[:, :][text_regions_p[:, :] == 2] = 5
                     text_regions_p[:, :][text_regions_p[:, :] == 3] = 6
@@ -11445,12 +11445,12 @@ class eynollah:
                 boxes_marginals, _ = self.get_text_region_boxes_by_given_contours(polygons_of_marginals)
                 ####boxes_text_h,_=self.get_text_region_boxes_by_given_contours(text_only_h,contours_only_text_parent_h,image_page)
 
-                if self.curved_line is None or self.curved_line == "false" or self.curved_line == "False" or self.curved_line == "FALSE":
+                if not self.curved_line:
                     slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
 
                     slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, index_by_text_par_con_marginal = self.get_slopes_and_deskew_new(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
 
-                if self.curved_line == "true" or self.curved_line == "True" or self.curved_line == "TRUE":
+                if self.curved_line:
                     scale_param = 1
                     all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_curved(txt_con_org, contours_only_text_parent, cv2.erode(textline_mask_tot_ea, kernel=self.kernel, iterations=1), image_page_rotated, boxes_text, text_only, num_col_classifier, scale_param, slope_deskew)
 
@@ -11474,7 +11474,7 @@ class eynollah:
                 # contours_only_text_parent_d_ordered=list(np.array(contours_only_text_parent_d_ordered)[index_by_text_par_con])
                 ###print(index_by_text_par_con,'index_by_text_par_con')
 
-                if self.full_layout == "true" or self.full_layout == "True" or self.full_layout == "TRUE":
+                if self.full_layout:
                     ##for iii in range(len(contours_only_text_parent)):
                     ##img1=np.zeros((text_only.shape[0],text_only.shape[1],3))
                     ##img1=cv2.fillPoly(img1,pts=[contours_only_text_parent[iii]] ,color=(1,1,1))
@@ -11523,12 +11523,12 @@ class eynollah:
                     # print(len(contours_only_text_parent_h),len(contours_only_text_parent_h_d_ordered),'contours_only_text_parent_h')
                     pixel_lines = 6
 
-                    if self.headers_off is None or self.headers_off == "false" or self.headers_off == "False" or self.headers_off == "FALSE":
+                    if not self.headers_off:
                         if np.abs(slope_deskew) < 0.13:
                             num_col, peaks_neg_fin, matrix_of_lines_ch, spliter_y_new, seperators_closeup_n = self.find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h)
                         else:
                             num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, spliter_y_new_d, seperators_closeup_n_d = self.find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h_d_ordered)
-                    elif self.headers_off == "true" or self.headers_off == "True" or self.headers_off == "TRUE":
+                    elif self.headers_off:
                         if np.abs(slope_deskew) < 0.13:
                             num_col, peaks_neg_fin, matrix_of_lines_ch, spliter_y_new, seperators_closeup_n = self.find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
                         else:
@@ -11574,7 +11574,7 @@ class eynollah:
                 if self.dir_of_cropped_images is not None:
                     self.write_images_into_directory(polygons_of_images, self.dir_of_cropped_images, image_page)
 
-                if self.full_layout == "true" or self.full_layout == "True" or self.full_layout == "TRUE":
+                if self.full_layout:
                     if np.abs(slope_deskew) < 0.13:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
                     else:

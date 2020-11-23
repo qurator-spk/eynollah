@@ -45,26 +45,31 @@ from sbb_newspapers_org_image.eynollah import eynollah
 @click.option(
     "--allow_enhancement",
     "-ae",
+    is_flag=True,
     help="if this parameter set to true, this tool would check that input image need resizing and enhancement or not. If so output of resized and enhanced image and corresponding layout data will be written in out directory",
 )
 @click.option(
     "--curved_line",
     "-cl",
+    is_flag=True,
     help="if this parameter set to true, this tool will try to return contoure of textlines instead of rectabgle bounding box of textline. This should be taken into account that with this option the tool need more time to do process.",
 )
 @click.option(
     "--full_layout",
     "-fl",
+    is_flag=True,
     help="if this parameter set to true, this tool will try to return all elements of layout.",
 )
 @click.option(
     "--allow_scaling",
     "-as",
+    is_flag=True,
     help="if this parameter set to true, this tool would check the scale and if needed it will scale it to perform better layout detection",
 )
 @click.option(
     "--headers_off",
     "-ho",
+    is_flag=True,
     help="if this parameter set to true, this tool would ignore headers role in reading order",
 )
 def main(
@@ -81,7 +86,7 @@ def main(
     allow_scaling,
     headers_off,
 ):
-    x = eynollah(
+    eynollah(
         image,
         None,
         out,
@@ -95,8 +100,7 @@ def main(
         full_layout,
         allow_scaling,
         headers_off,
-    )
-    x.run()
+    ).run()
 
 
 if __name__ == "__main__":
