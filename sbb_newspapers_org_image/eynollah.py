@@ -35,7 +35,15 @@ from matplotlib import pyplot, transforms
 import matplotlib.patches as mpatches
 import imutils
 
-from .utils import filter_contours_area_of_image_tables
+from .utils import (
+    resize_image,
+    filter_contours_area_of_image_tables,
+    filter_contours_area_of_image_interiors,
+    rotatedRectWithMaxArea,
+    rotate_max_area_new,
+    rotation_image_new,
+)
+
 
 SLOPE_THRESHOLD = 0.13
 VERY_LARGE_NUMBER = 1000000000000000000000
@@ -93,79 +101,6 @@ class eynollah:
         ###self.model_region_dir_p = dir_models +'/model_layout_newspapers.h5'#'/model_ensemble_s.h5'#'/model_layout_newspapers.h5'#'/model_ensemble_s.h5'#'/model_main_home_5_soft_new.h5'#'/model_home_soft_5_all_data.h5' #'/model_main_office_long_soft.h5'#'/model_20_cat_main.h5'
         self.model_textline_dir = dir_models + "/model_textline_newspapers.h5"  #'/model_hor_ver_home_trextline_very_good.h5'# '/model_hor_ver_1_great.h5'#'/model_curved_office_works_great.h5'
 
-    def find_polygons_size_filter(self, contours, median_area, scaler_up=1.2, scaler_down=0.8):
-        found_polygons_early = list()
-
-        for c in contours:
-            if len(c) < 3:  # A polygon cannot have less than 3 points
-                continue
-
-            polygon = geometry.Polygon([point[0] for point in c])
-            area = polygon.area
-            # Check that polygon has area greater than minimal area
-            if area >= median_area * scaler_down and area <= median_area * scaler_up:
-                found_polygons_early.append(np.array([point for point in polygon.exterior.coords], dtype=np.uint))
-        return found_polygons_early
-
-    def filter_contours_area_of_image(self, image, contours, hirarchy, max_area, min_area):
-        found_polygons_early = list()
-
-        jv = 0
-        for c in contours:
-            if len(c) < 3:  # A polygon cannot have less than 3 points
-                continue
-
-            polygon = geometry.Polygon([point[0] for point in c])
-            area = polygon.area
-            if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]) and hirarchy[0][jv][3] == -1:  # and hirarchy[0][jv][3]==-1 :
-                found_polygons_early.append(np.array([[point] for point in polygon.exterior.coords], dtype=np.uint))
-            jv += 1
-        return found_polygons_early
-
-    def filter_contours_area_of_image_interiors(self, image, contours, hirarchy, max_area, min_area):
-        found_polygons_early = list()
-
-        jv = 0
-        for c in contours:
-            if len(c) < 3:  # A polygon cannot have less than 3 points
-                continue
-
-            polygon = geometry.Polygon([point[0] for point in c])
-            area = polygon.area
-            if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]) and hirarchy[0][jv][3] != -1:
-                # print(c[0][0][1])
-                found_polygons_early.append(np.array([point for point in polygon.exterior.coords], dtype=np.uint))
-            jv += 1
-        return found_polygons_early
-
-    def resize_image(self, img_in, input_height, input_width):
-        return cv2.resize(img_in, (input_width, input_height), interpolation=cv2.INTER_NEAREST)
-
-    def resize_ann(self, seg_in, input_height, input_width):
-        return cv2.resize(seg_in, (input_width, input_height), interpolation=cv2.INTER_NEAREST)
-
-    def rotatedRectWithMaxArea(self, w, h, angle):
-        if w <= 0 or h <= 0:
-            return 0, 0
-
-        width_is_longer = w >= h
-        side_long, side_short = (w, h) if width_is_longer else (h, w)
-
-        # since the solutions for angle, -angle and 180-angle are all the same,
-        # if suffices to look at the first quadrant and the absolute values of sin,cos:
-        sin_a, cos_a = abs(math.sin(angle)), abs(math.cos(angle))
-        if side_short <= 2.0 * sin_a * cos_a * side_long or abs(sin_a - cos_a) < 1e-10:
-            # half constrained case: two crop corners touch the longer side,
-            #   the other two corners are on the mid-line parallel to the longer line
-            x = 0.5 * side_short
-            wr, hr = (x / sin_a, x / cos_a) if width_is_longer else (x / cos_a, x / sin_a)
-        else:
-            # fully constrained case: crop touches all 4 sides
-            cos_2a = cos_a * cos_a - sin_a * sin_a
-            wr, hr = (w * cos_a - h * sin_a) / cos_2a, (h * cos_a - w * sin_a) / cos_2a
-
-        return wr, hr
-
     def get_one_hot(self, seg, input_height, input_width, n_classes):
         seg = seg[:, :, 0]
         seg_f = np.zeros((input_height, input_width, n_classes))
@@ -187,23 +122,6 @@ class eynollah:
             seg_img[:, :, 0] = segl * c
             seg_img[:, :, 1] = segl * c
             seg_img[:, :, 2] = segl * c
-        return seg_img
-
-    def color_images_diva(self, seg, n_classes):
-        ann_u = range(n_classes)
-        if len(np.shape(seg)) == 3:
-            seg = seg[:, :, 0]
-
-        seg_img = np.zeros((np.shape(seg)[0], np.shape(seg)[1], 3)).astype(float)
-        # colors=sns.color_palette("hls", n_classes)
-        colors = [[1, 0, 0], [8, 0, 0], [2, 0, 0], [4, 0, 0]]
-
-        for c in ann_u:
-            c = int(c)
-            segl = seg == c
-            seg_img[:, :, 0][seg == c] = colors[c][0]  # segl*(colors[c][0])
-            seg_img[:, :, 1][seg == c] = colors[c][1]  # seg_img[:,:,1]=segl*(colors[c][1])
-            seg_img[:, :, 2][seg == c] = colors[c][2]  # seg_img[:,:,2]=segl*(colors[c][2])
         return seg_img
 
     def rotate_image(self, img_patch, slope):
@@ -499,7 +417,7 @@ class eynollah:
             img_new = np.copy(img)
             num_column_is_classified = False
         else:
-            img_new = self.resize_image(img, img_h_new, img_w_new)
+            img_new = resize_image(img, img_h_new, img_w_new)
             num_column_is_classified = True
 
         if img_new.shape[1] > img.shape[1]:
@@ -629,10 +547,10 @@ class eynollah:
                 img_new = np.copy(img)
                 num_column_is_classified = False
             else:
-                img_new = self.resize_image(img, img_h_new, img_w_new)
+                img_new = resize_image(img, img_h_new, img_w_new)
                 num_column_is_classified = True
 
-            # img_new=self.resize_image(img,img_h_new,img_w_new)
+            # img_new=resize_image(img,img_h_new,img_w_new)
             image_res = self.predict_enhancement(img_new)
             # cv2.imwrite(os.path.join(self.dir_out, self.f_name) + ".tif",self.image)
             # self.image=self.image.astype(np.uint16)
@@ -647,7 +565,7 @@ class eynollah:
             if img.shape[0]<=2530 and img.shape[0]>=img.shape[1]:
                 img_h_new=3000
                 img_w_new=int(img.shape[1]/float(img.shape[0]) * 3000)
-                img_new=self.resize_image(img,img_h_new,img_w_new)
+                img_new=resize_image(img,img_h_new,img_w_new)
                 image_res=self.predict_enhancement(img_new)
                 #cv2.imwrite(os.path.join(self.dir_out, self.f_name) + ".tif",self.image)
                 #self.image=self.image.astype(np.uint16)
@@ -691,7 +609,7 @@ class eynollah:
             else:
                 img_h_new = int(img.shape[0] * 1.5)
                 img_w_new = int(img.shape[1] * 1.5)
-            img_new = self.resize_image(img, img_h_new, img_w_new)
+            img_new = resize_image(img, img_h_new, img_w_new)
             image_res = self.predict_enhancement(img_new)
             # cv2.imwrite(os.path.join(self.dir_out, self.f_name) + ".tif",self.image)
             # self.image=self.image.astype(np.uint16)
@@ -728,7 +646,7 @@ class eynollah:
         self.scale_y = self.img_hight_int / float(self.image.shape[0])
         self.scale_x = self.img_width_int / float(self.image.shape[1])
 
-        self.image = self.resize_image(self.image, self.img_hight_int, self.img_width_int)
+        self.image = resize_image(self.image, self.img_hight_int, self.img_width_int)
         del img_res
         del img_org
 
@@ -760,7 +678,7 @@ class eynollah:
         self.scale_y = self.img_hight_int / float(self.image.shape[0])
         self.scale_x = self.img_width_int / float(self.image.shape[1])
 
-        self.image = self.resize_image(self.image, self.img_hight_int, self.img_width_int)
+        self.image = resize_image(self.image, self.img_hight_int, self.img_width_int)
 
     def start_new_session_and_model(self, model_dir):
         config = tf.ConfigProto()
@@ -951,10 +869,10 @@ class eynollah:
 
         if patches:
             if img.shape[0] < img_height_model:
-                img = self.resize_image(img, img_height_model, img.shape[1])
+                img = resize_image(img, img_height_model, img.shape[1])
 
             if img.shape[1] < img_width_model:
-                img = self.resize_image(img, img.shape[0], img_width_model)
+                img = resize_image(img, img.shape[0], img_width_model)
 
             # print(img_height_model,img_width_model)
             # margin = int(0.2 * img_width_model)
@@ -1095,13 +1013,13 @@ class eynollah:
             img_h_page = img.shape[0]
             img_w_page = img.shape[1]
             img = img / float(255.0)
-            img = self.resize_image(img, img_height_model, img_width_model)
+            img = resize_image(img, img_height_model, img_width_model)
 
             label_p_pred = model.predict(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]))
 
             seg = np.argmax(label_p_pred, axis=3)[0]
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
-            prediction_true = self.resize_image(seg_color, img_h_page, img_w_page)
+            prediction_true = resize_image(seg_color, img_h_page, img_w_page)
             prediction_true = prediction_true.astype(np.uint8)
 
             del img
@@ -1297,7 +1215,7 @@ class eynollah:
 
         ###img = self.otsu_copy_binary(img)#self.otsu_copy(img)
         ###img = img.astype(np.uint8)
-        ###img= self.resize_image(img, int(img_height_h*1), int(img_width_h*1) )
+        ###img= resize_image(img, int(img_height_h*1), int(img_width_h*1) )
 
         if patches:
             model_region, session_region = self.start_new_session_and_model(self.model_region_dir_fully)
@@ -1307,28 +1225,28 @@ class eynollah:
         if patches and cols == 1:
             img2 = self.otsu_copy_binary(img)  # self.otsu_copy(img)
             img2 = img2.astype(np.uint8)
-            img2 = self.resize_image(img2, int(img_height_h * 0.7), int(img_width_h * 0.7))
+            img2 = resize_image(img2, int(img_height_h * 0.7), int(img_width_h * 0.7))
 
             marginal_of_patch_percent = 0.1
             prediction_regions2 = self.do_prediction(patches, img2, model_region, marginal_of_patch_percent)
-            prediction_regions2 = self.resize_image(prediction_regions2, img_height_h, img_width_h)
+            prediction_regions2 = resize_image(prediction_regions2, img_height_h, img_width_h)
 
         if patches and cols == 2:
             img2 = self.otsu_copy_binary(img)  # self.otsu_copy(img)
             img2 = img2.astype(np.uint8)
-            img2 = self.resize_image(img2, int(img_height_h * 0.4), int(img_width_h * 0.4))
+            img2 = resize_image(img2, int(img_height_h * 0.4), int(img_width_h * 0.4))
 
             marginal_of_patch_percent = 0.1
             prediction_regions2 = self.do_prediction(patches, img2, model_region, marginal_of_patch_percent)
-            prediction_regions2 = self.resize_image(prediction_regions2, img_height_h, img_width_h)
+            prediction_regions2 = resize_image(prediction_regions2, img_height_h, img_width_h)
         elif patches and cols > 2:
             img2 = self.otsu_copy_binary(img)  # self.otsu_copy(img)
             img2 = img2.astype(np.uint8)
-            img2 = self.resize_image(img2, int(img_height_h * 0.3), int(img_width_h * 0.3))
+            img2 = resize_image(img2, int(img_height_h * 0.3), int(img_width_h * 0.3))
 
             marginal_of_patch_percent = 0.1
             prediction_regions2 = self.do_prediction(patches, img2, model_region, marginal_of_patch_percent)
-            prediction_regions2 = self.resize_image(prediction_regions2, img_height_h, img_width_h)
+            prediction_regions2 = resize_image(prediction_regions2, img_height_h, img_width_h)
 
         if patches and cols == 2:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -1336,35 +1254,35 @@ class eynollah:
             img = img.astype(np.uint8)
 
             if img_width_h >= 2000:
-                img = self.resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9))
+                img = resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9))
             else:
-                pass  # img= self.resize_image(img, int(img_height_h*1), int(img_width_h*1) )
+                pass  # img= resize_image(img, int(img_height_h*1), int(img_width_h*1) )
             img = img.astype(np.uint8)
 
         if patches and cols == 1:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
 
             img = img.astype(np.uint8)
-            img = self.resize_image(img, int(img_height_h * 0.5), int(img_width_h * 0.5))
+            img = resize_image(img, int(img_height_h * 0.5), int(img_width_h * 0.5))
             img = img.astype(np.uint8)
 
         if patches and cols == 3:
 
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
             img = img.astype(np.uint8)
-            # img= self.resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
+            # img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
 
         if patches and cols == 4:
 
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
             img = img.astype(np.uint8)
-            # img= self.resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
+            # img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
 
         if patches and cols >= 5:
 
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
             img = img.astype(np.uint8)
-            # img= self.resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
+            # img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
 
         if not patches:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -1373,7 +1291,7 @@ class eynollah:
 
         marginal_of_patch_percent = 0.1
         prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent)
-        prediction_regions = self.resize_image(prediction_regions, img_height_h, img_width_h)
+        prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
 
         session_region.close()
         del model_region
@@ -1392,21 +1310,21 @@ class eynollah:
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * 1), int(img_org.shape[1] * 1))
+        img = resize_image(img_org, int(img_org.shape[0] * 1), int(img_org.shape[1] * 1))
 
         prediction_regions1 = self.do_prediction(patches, img, model_region)
 
-        prediction_regions1 = self.resize_image(prediction_regions1, img_h, img_w)
+        prediction_regions1 = resize_image(prediction_regions1, img_h, img_w)
 
         # prediction_regions1 = cv2.dilate(prediction_regions1, self.kernel, iterations=4)
         # prediction_regions1 = cv2.erode(prediction_regions1, self.kernel, iterations=7)
         # prediction_regions1 = cv2.dilate(prediction_regions1, self.kernel, iterations=2)
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * 1), int(img_org.shape[1] * 1))
+        img = resize_image(img_org, int(img_org.shape[0] * 1), int(img_org.shape[1] * 1))
 
         prediction_regions2 = self.do_prediction(patches, img, model_region)
 
-        prediction_regions2 = self.resize_image(prediction_regions2, img_h, img_w)
+        prediction_regions2 = resize_image(prediction_regions2, img_h, img_w)
 
         # prediction_regions2 = cv2.dilate(prediction_regions2, self.kernel, iterations=2)
         prediction_regions2 = cv2.erode(prediction_regions2, self.kernel, iterations=2)
@@ -1428,7 +1346,7 @@ class eynollah:
         img_h = img.shape[0]
         img_w = img.shape[1]
 
-        img = self.resize_image(img, int(img.shape[0] * 1), int(img.shape[1] * 1))
+        img = resize_image(img, int(img.shape[0] * 1), int(img.shape[1] * 1))
 
         prediction_regions = self.do_prediction(patches, img, model_bin)
 
@@ -1589,7 +1507,7 @@ class eynollah:
 
                 try:
                     textline_con, hierachy = self.return_contours_of_image(img_int_p)
-                    textline_con_fil = self.filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.0008)
+                    textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.0008)
                     y_diff_mean = self.find_contours_mean_y_diff(textline_con_fil)
 
                     sigma_des = int(y_diff_mean * (4.0 / 40.0))
@@ -1671,7 +1589,7 @@ class eynollah:
 
                     pixel_img = 1
 
-                    mask_biggest2 = self.resize_image(mask_biggest2, int(mask_biggest2.shape[0] * scale_par), int(mask_biggest2.shape[1] * scale_par))
+                    mask_biggest2 = resize_image(mask_biggest2, int(mask_biggest2.shape[0] * scale_par), int(mask_biggest2.shape[1] * scale_par))
 
                     cnt_textlines_in_image_ind = self.return_contours_of_interested_textline(mask_biggest2, pixel_img)
 
@@ -1745,7 +1663,7 @@ class eynollah:
 
                 try:
                     textline_con, hierachy = self.return_contours_of_image(img_int_p)
-                    textline_con_fil = self.filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.00008)
+                    textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.00008)
 
                     y_diff_mean = self.find_contours_mean_y_diff(textline_con_fil)
 
@@ -1823,7 +1741,7 @@ class eynollah:
 
         contours, hirarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        main_contours = self.filter_contours_area_of_image(thresh, contours, hirarchy, max_area=1, min_area=0.00001)
+        main_contours = filter_contours_area_of_image(thresh, contours, hirarchy, max_area=1, min_area=0.00001)
         self.boxes = []
 
         for jj in range(len(main_contours)):
@@ -1867,25 +1785,25 @@ class eynollah:
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
+        img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
 
         prediction_textline = self.do_prediction(patches, img, model_textline)
 
-        prediction_textline = self.resize_image(prediction_textline, img_h, img_w)
+        prediction_textline = resize_image(prediction_textline, img_h, img_w)
 
         patches = False
         prediction_textline_longshot = self.do_prediction(patches, img, model_textline)
 
-        prediction_textline_longshot_true_size = self.resize_image(prediction_textline_longshot, img_h, img_w)
+        prediction_textline_longshot_true_size = resize_image(prediction_textline_longshot, img_h, img_w)
 
         # scaler_w=1.5
         # scaler_h=1.5
         # patches=True
-        # img= self.resize_image(img_org, int(img_org.shape[0]*scaler_h), int(img_org.shape[1]*scaler_w))
+        # img= resize_image(img_org, int(img_org.shape[0]*scaler_h), int(img_org.shape[1]*scaler_w))
 
         # prediction_textline_streched=self.do_prediction(patches,img,model_textline)
 
-        # prediction_textline_streched= self.resize_image(prediction_textline_streched, img_h, img_w)
+        # prediction_textline_streched= resize_image(prediction_textline_streched, img_h, img_w)
 
         ##plt.imshow(prediction_textline_streched[:,:,0])
         ##plt.show()
@@ -1998,7 +1916,7 @@ class eynollah:
                     peaks_new_tot = peaks_e[:]
 
                 textline_con, hierachy = self.return_contours_of_image(img_patch)
-                textline_con_fil = self.filter_contours_area_of_image(img_patch, textline_con, hierachy, max_area=1, min_area=0.0008)
+                textline_con_fil = filter_contours_area_of_image(img_patch, textline_con, hierachy, max_area=1, min_area=0.0008)
                 y_diff_mean = np.mean(np.diff(peaks_new_tot))  # self.find_contours_mean_y_diff(textline_con_fil)
 
                 sigma_gaus = int(y_diff_mean * (7.0 / 40.0))
@@ -2724,7 +2642,7 @@ class eynollah:
                     peaks_new_tot = peaks_e[:]
 
                 textline_con, hierachy = self.return_contours_of_image(img_patch)
-                textline_con_fil = self.filter_contours_area_of_image(img_patch, textline_con, hierachy, max_area=1, min_area=0.0008)
+                textline_con_fil = filter_contours_area_of_image(img_patch, textline_con, hierachy, max_area=1, min_area=0.0008)
                 y_diff_mean = np.mean(np.diff(peaks_new_tot))  # self.find_contours_mean_y_diff(textline_con_fil)
 
                 sigma_gaus = int(y_diff_mean * (7.0 / 40.0))
@@ -3244,7 +3162,7 @@ class eynollah:
                     peaks_new_tot = peaks_e[:]
 
                 textline_con, hierachy = self.return_contours_of_image(img_patch)
-                textline_con_fil = self.filter_contours_area_of_image(img_patch, textline_con, hierachy, max_area=1, min_area=0.0008)
+                textline_con_fil = filter_contours_area_of_image(img_patch, textline_con, hierachy, max_area=1, min_area=0.0008)
                 y_diff_mean = np.mean(np.diff(peaks_new_tot))  # self.find_contours_mean_y_diff(textline_con_fil)
 
                 sigma_gaus = int(y_diff_mean * (7.0 / 40.0))
@@ -3918,7 +3836,7 @@ class eynollah:
             plt.savefig(os.path.join(self.dir_of_all, self.f_name + "_density_of_textline.png"))
         # print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar')
 
-        # img_patch_org=self.resize_image(img_patch_org,int(img_patch_org.shape[0]*2.5),int(img_patch_org.shape[1]/2.5))
+        # img_patch_org=resize_image(img_patch_org,int(img_patch_org.shape[0]*2.5),int(img_patch_org.shape[1]/2.5))
 
         # print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar2')
 
@@ -4335,7 +4253,7 @@ class eynollah:
     def return_deskew_slope_new(self, img_patch, sigma_des):
         max_x_y = max(img_patch.shape[0], img_patch.shape[1])
 
-        ##img_patch=self.resize_image(img_patch,max_x_y,max_x_y)
+        ##img_patch=resize_image(img_patch,max_x_y,max_x_y)
 
         img_patch_copy = np.zeros((img_patch.shape[0], img_patch.shape[1]))
         img_patch_copy[:, :] = img_patch[:, :]  # img_patch_org[:,:,0]
@@ -4459,7 +4377,7 @@ class eynollah:
 
             try:
                 textline_con, hierachy = self.return_contours_of_image(crop_img)
-                textline_con_fil = self.filter_contours_area_of_image(crop_img, textline_con, hierachy, max_area=1, min_area=0.0008)
+                textline_con_fil = filter_contours_area_of_image(crop_img, textline_con, hierachy, max_area=1, min_area=0.0008)
                 y_diff_mean = self.find_contours_mean_y_diff(textline_con_fil)
 
                 sigma_des = int(y_diff_mean * (4.0 / 40.0))
@@ -5743,9 +5661,9 @@ class eynollah:
 
         # print(hirarchy)
 
-        commenst_contours = self.filter_contours_area_of_image(thresh, contours, hirarchy, max_area=0.01, min_area=0.003)
-        main_contours = self.filter_contours_area_of_image(thresh, contours, hirarchy, max_area=1, min_area=0.003)
-        interior_contours = self.filter_contours_area_of_image_interiors(thresh, contours, hirarchy, max_area=1, min_area=0)
+        commenst_contours = filter_contours_area_of_image(thresh, contours, hirarchy, max_area=0.01, min_area=0.003)
+        main_contours = filter_contours_area_of_image(thresh, contours, hirarchy, max_area=1, min_area=0.003)
+        interior_contours = filter_contours_area_of_image_interiors(thresh, contours, hirarchy, max_area=1, min_area=0)
 
         img_comm = np.zeros(thresh.shape)
         img_comm_in = cv2.fillPoly(img_comm, pts=main_contours, color=(255, 255, 255))
@@ -8777,7 +8695,7 @@ class eynollah:
         ratio_y = 1
         median_blur = False
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -8790,7 +8708,7 @@ class eynollah:
             img = img.astype(np.uint16)
         prediction_regions_org = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_org = self.resize_image(prediction_regions_org, img_height_h, img_width_h)
+        prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h)
 
         # plt.imshow(prediction_regions_org[:,:,0])
         # plt.show()
@@ -8805,7 +8723,7 @@ class eynollah:
         ratio_y = 1
         median_blur = False
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -8819,7 +8737,7 @@ class eynollah:
             img = img.astype(np.uint16)
         prediction_regions_orgt = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_orgt = self.resize_image(prediction_regions_orgt, img_height_h, img_width_h)
+        prediction_regions_orgt = resize_image(prediction_regions_orgt, img_height_h, img_width_h)
 
         # plt.imshow(prediction_regions_orgt[:,:,0])
         # plt.show()
@@ -8850,7 +8768,7 @@ class eynollah:
         ratio_y = 1
         median_blur = False
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         one_third_upper_ny = int(img.shape[0] / 3.0)
 
@@ -8868,9 +8786,9 @@ class eynollah:
             img = img.astype(np.uint16)
         prediction_regions_longshot_one_third = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_longshot_one_third = self.resize_image(prediction_regions_longshot_one_third, one_third_upper_ny, img_width_h)
+        prediction_regions_longshot_one_third = resize_image(prediction_regions_longshot_one_third, one_third_upper_ny, img_width_h)
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
         img = img[one_third_upper_ny : int(2 * one_third_upper_ny), :, :]
 
         if binary:
@@ -8885,9 +8803,9 @@ class eynollah:
             img = img.astype(np.uint16)
         prediction_regions_longshot_one_third_middle = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_longshot_one_third_middle = self.resize_image(prediction_regions_longshot_one_third_middle, one_third_upper_ny, img_width_h)
+        prediction_regions_longshot_one_third_middle = resize_image(prediction_regions_longshot_one_third_middle, one_third_upper_ny, img_width_h)
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
         img = img[int(2 * one_third_upper_ny) :, :, :]
 
         if binary:
@@ -8902,7 +8820,7 @@ class eynollah:
             img = img.astype(np.uint16)
         prediction_regions_longshot_one_third_down = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_longshot_one_third_down = self.resize_image(prediction_regions_longshot_one_third_down, img_height_h - int(2 * one_third_upper_ny), img_width_h)
+        prediction_regions_longshot_one_third_down = resize_image(prediction_regions_longshot_one_third_down, img_height_h - int(2 * one_third_upper_ny), img_width_h)
 
         # plt.imshow(prediction_regions_org[:,:,0])
         # plt.show()
@@ -8927,8 +8845,8 @@ class eynollah:
         ratio_y = 1
         median_blur = False
 
-        # img= self.resize_image(img_org, int(img_org.shape[0]*0.8), int(img_org.shape[1]*1.6))
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        # img= resize_image(img_org, int(img_org.shape[0]*0.8), int(img_org.shape[1]*1.6))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -8941,7 +8859,7 @@ class eynollah:
             img = img.astype(np.uint16)
 
         prediction_regions = self.do_prediction(patches, img, model_region)
-        text_region1 = self.resize_image(prediction_regions, img_height_h, img_width_h)
+        text_region1 = resize_image(prediction_regions, img_height_h, img_width_h)
 
         # plt.imshow(text_region1[:,:,0])
         # plt.show()
@@ -8950,7 +8868,7 @@ class eynollah:
         binary = False
         median_blur = False
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -8963,7 +8881,7 @@ class eynollah:
             img = img.astype(np.uint16)
 
         prediction_regions = self.do_prediction(patches, img, model_region)
-        text_region2 = self.resize_image(prediction_regions, img_height_h, img_width_h)
+        text_region2 = resize_image(prediction_regions, img_height_h, img_width_h)
 
         # plt.imshow(text_region2[:,:,0])
         # plt.show()
@@ -9090,8 +9008,8 @@ class eynollah:
         ratio_y = 1
         median_blur = False
 
-        # img= self.resize_image(img_org, int(img_org.shape[0]*0.8), int(img_org.shape[1]*1.6))
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        # img= resize_image(img_org, int(img_org.shape[0]*0.8), int(img_org.shape[1]*1.6))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -9104,14 +9022,14 @@ class eynollah:
             img = img.astype(np.uint16)
 
         prediction_regions = self.do_prediction(patches, img, model_region)
-        text_region1 = self.resize_image(prediction_regions, img_height_h, img_width_h)
+        text_region1 = resize_image(prediction_regions, img_height_h, img_width_h)
 
         ratio_x = 1
         ratio_y = 1.1
         binary = False
         median_blur = False
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -9124,7 +9042,7 @@ class eynollah:
             img = img.astype(np.uint16)
 
         prediction_regions = self.do_prediction(patches, img, model_region)
-        text_region2 = self.resize_image(prediction_regions, img_height_h, img_width_h)
+        text_region2 = resize_image(prediction_regions, img_height_h, img_width_h)
 
         session_region.close()
         del model_region
@@ -9166,19 +9084,6 @@ class eynollah:
         ##plt.show()
         return text_region2_1st_channel
 
-    def rotation_image_new(self, img, thetha):
-        rotated = imutils.rotate(img, thetha)
-        return self.rotate_max_area_new(img, rotated, thetha)
-
-    def rotate_max_area_new(self, image, rotated, angle):
-        wr, hr = self.rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
-        h, w, _ = rotated.shape
-        y1 = h // 2 - int(hr / 2)
-        y2 = y1 + int(hr)
-        x1 = w // 2 - int(wr / 2)
-        x2 = x1 + int(wr)
-        return rotated[y1:y2, x1:x2]
-
     def rotation_not_90_func(self, img, textline, text_regions_p_1, thetha):
         rotated = imutils.rotate(img, thetha)
         rotated_textline = imutils.rotate(textline, thetha)
@@ -9186,7 +9091,7 @@ class eynollah:
         return self.rotate_max_area(img, rotated, rotated_textline, rotated_layout, thetha)
 
     def rotate_max_area(self, image, rotated, rotated_textline, rotated_layout, angle):
-        wr, hr = self.rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
+        wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
         h, w, _ = rotated.shape
         y1 = h // 2 - int(hr / 2)
         y2 = y1 + int(hr)
@@ -9202,7 +9107,7 @@ class eynollah:
         return self.rotate_max_area_full_layout(img, rotated, rotated_textline, rotated_layout, rotated_layout_full, thetha)
 
     def rotate_max_area_full_layout(self, image, rotated, rotated_textline, rotated_layout, rotated_layout_full, angle):
-        wr, hr = self.rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
+        wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
         h, w, _ = rotated.shape
         y1 = h // 2 - int(hr / 2)
         y2 = y1 + int(hr)
@@ -9224,11 +9129,11 @@ class eynollah:
 
         ratio_x = 1
         ratio_y = 1
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         prediction_regions_long = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_long = self.resize_image(prediction_regions_long, img_height_h, img_width_h)
+        prediction_regions_long = resize_image(prediction_regions_long, img_height_h, img_width_h)
 
         gaussian_filter = False
         patches = True
@@ -9238,7 +9143,7 @@ class eynollah:
         ratio_y = 1.2
         median_blur = False
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -9251,7 +9156,7 @@ class eynollah:
             img = img.astype(np.uint16)
         prediction_regions_org_y = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_org_y = self.resize_image(prediction_regions_org_y, img_height_h, img_width_h)
+        prediction_regions_org_y = resize_image(prediction_regions_org_y, img_height_h, img_width_h)
 
         # plt.imshow(prediction_regions_org[:,:,0])
         # plt.show()
@@ -9264,7 +9169,7 @@ class eynollah:
         ratio_y = 1
         median_blur = False
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -9277,7 +9182,7 @@ class eynollah:
             img = img.astype(np.uint16)
         prediction_regions_org = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_org = self.resize_image(prediction_regions_org, img_height_h, img_width_h)
+        prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h)
 
         # plt.imshow(prediction_regions_org[:,:,0])
         # plt.show()
@@ -9312,7 +9217,7 @@ class eynollah:
 
         median_blur = False
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -9325,7 +9230,7 @@ class eynollah:
             img = img.astype(np.uint16)
         prediction_regions_org_y = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_org_y = self.resize_image(prediction_regions_org_y, img_height_h, img_width_h)
+        prediction_regions_org_y = resize_image(prediction_regions_org_y, img_height_h, img_width_h)
 
         # plt.imshow(prediction_regions_org_y[:,:,0])
         # plt.show()
@@ -9342,7 +9247,7 @@ class eynollah:
         ratio_y = 1
         median_blur = False
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -9355,7 +9260,7 @@ class eynollah:
             img = img.astype(np.uint16)
         prediction_regions_org = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_org = self.resize_image(prediction_regions_org, img_height_h, img_width_h)
+        prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h)
 
         ##plt.imshow(prediction_regions_org[:,:,0])
         ##plt.show()
@@ -9379,7 +9284,7 @@ class eynollah:
         ratio_y = 1
         median_blur = False
 
-        img = self.resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
         if binary:
             img = self.otsu_copy_binary(img)  # self.otsu_copy(img)
@@ -9392,7 +9297,7 @@ class eynollah:
             img = img.astype(np.uint16)
         prediction_regions_org2 = self.do_prediction(patches, img, model_region)
 
-        prediction_regions_org2 = self.resize_image(prediction_regions_org2, img_height_h, img_width_h)
+        prediction_regions_org2 = resize_image(prediction_regions_org2, img_height_h, img_width_h)
 
         # plt.imshow(prediction_regions_org2[:,:,0])
         # plt.show()
@@ -9444,7 +9349,7 @@ class eynollah:
         # ratio_y=1
         # median_blur=False
 
-        # img= self.resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
+        # img= resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
 
         # if binary:
         # img = self.otsu_copy_binary(img)#self.otsu_copy(img)
@@ -9457,7 +9362,7 @@ class eynollah:
         # img = img.astype(np.uint16)
         # prediction_regions_org2=self.do_prediction(patches,img,model_region)
 
-        # prediction_regions_org2=self.resize_image(prediction_regions_org2, img_height_h, img_width_h )
+        # prediction_regions_org2=resize_image(prediction_regions_org2, img_height_h, img_width_h )
 
         ##plt.imshow(prediction_regions_org2[:,:,0])
         ##plt.show()
@@ -9550,7 +9455,7 @@ class eynollah:
             # plt.show()
 
             # print(img.shape,'img')
-            img_copy = self.rotation_image_new(img_copy, -slope_first)
+            img_copy = rotation_image_new(img_copy, -slope_first)
             ##print(img_copy.shape,'img_copy')
             # plt.imshow(img_copy)
             # plt.show()
@@ -9583,7 +9488,7 @@ class eynollah:
             box = [x, y, w, h]
             croped_page, page_coord = self.crop_image_inside_box(box, image_page)
 
-            croped_page = self.resize_image(croped_page, int(croped_page.shape[0] / self.scale_y), int(croped_page.shape[1] / self.scale_x))
+            croped_page = resize_image(croped_page, int(croped_page.shape[0] / self.scale_y), int(croped_page.shape[1] / self.scale_x))
 
             path = os.path.join(dir_of_cropped_imgs, self.f_name + "_" + str(index) + ".jpg")
             cv2.imwrite(path, croped_page)
@@ -9601,13 +9506,13 @@ class eynollah:
         if text_with_lines.shape[0] <= 1500:
             pass
         elif text_with_lines.shape[0] > 1500 and text_with_lines.shape[0] <= 1800:
-            text_with_lines = self.resize_image(text_with_lines, int(text_with_lines.shape[0] * 1.5), text_with_lines.shape[1])
+            text_with_lines = resize_image(text_with_lines, int(text_with_lines.shape[0] * 1.5), text_with_lines.shape[1])
             text_with_lines = cv2.erode(text_with_lines, self.kernel, iterations=5)
-            text_with_lines = self.resize_image(text_with_lines, text_with_lines_eroded.shape[0], text_with_lines_eroded.shape[1])
+            text_with_lines = resize_image(text_with_lines, text_with_lines_eroded.shape[0], text_with_lines_eroded.shape[1])
         else:
-            text_with_lines = self.resize_image(text_with_lines, int(text_with_lines.shape[0] * 1.8), text_with_lines.shape[1])
+            text_with_lines = resize_image(text_with_lines, int(text_with_lines.shape[0] * 1.8), text_with_lines.shape[1])
             text_with_lines = cv2.erode(text_with_lines, self.kernel, iterations=7)
-            text_with_lines = self.resize_image(text_with_lines, text_with_lines_eroded.shape[0], text_with_lines_eroded.shape[1])
+            text_with_lines = resize_image(text_with_lines, text_with_lines_eroded.shape[0], text_with_lines_eroded.shape[1])
 
         text_with_lines_y = text_with_lines.sum(axis=0)
         text_with_lines_y_eroded = text_with_lines_eroded.sum(axis=0)
@@ -11168,8 +11073,8 @@ class eynollah:
                     if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                         image_page_rotated_n, textline_mask_tot_d, text_regions_p_1_n = self.rotation_not_90_func(image_page, textline_mask_tot, text_regions_p, slope_deskew)
 
-                        text_regions_p_1_n = self.resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
-                        textline_mask_tot_d = self.resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
+                        text_regions_p_1_n = resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
+                        textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
 
                         regions_without_seperators_d = (text_regions_p_1_n[:, :] == 1) * 1
 
@@ -11299,9 +11204,9 @@ class eynollah:
                     if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                         image_page_rotated_n, textline_mask_tot_d, text_regions_p_1_n, regions_fully_n = self.rotation_not_90_func_full_layout(image_page, textline_mask_tot, text_regions_p, regions_fully, slope_deskew)
 
-                        text_regions_p_1_n = self.resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
-                        textline_mask_tot_d = self.resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
-                        regions_fully_n = self.resize_image(regions_fully_n, text_regions_p.shape[0], text_regions_p.shape[1])
+                        text_regions_p_1_n = resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
+                        textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
+                        regions_fully_n = resize_image(regions_fully_n, text_regions_p.shape[0], text_regions_p.shape[1])
 
                         regions_without_seperators_d = (text_regions_p_1_n[:, :] == 1) * 1
 
@@ -11324,7 +11229,7 @@ class eynollah:
 
                 # print(img_revised_tab.shape,text_regions_p_1_n.shape)
 
-                # text_regions_p_1_n=self.resize_image(text_regions_p_1_n,img_revised_tab.shape[0],img_revised_tab.shape[1])
+                # text_regions_p_1_n=resize_image(text_regions_p_1_n,img_revised_tab.shape[0],img_revised_tab.shape[1])
 
                 # print(np.unique(text_regions_p_1_n),'uni')
                 text_only = ((img_revised_tab[:, :] == 1)) * 1
