@@ -2117,3 +2117,17 @@ def find_contours_mean_y_diff(contours_main):
     cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
     return np.mean(np.diff(np.sort(np.array(cy_main))))
 
+def find_features_of_contours(contours_main):
+
+    areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
+    M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
+    cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+    cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+    x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+    x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+
+    y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+    y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+
+    return y_min_main, y_max_main, areas_main
+

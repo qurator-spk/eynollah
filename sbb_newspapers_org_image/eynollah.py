@@ -71,6 +71,7 @@ from .utils import (
     find_num_col_by_vertical_lines,
     find_contours_mean_y_diff,
     contours_in_same_horizon,
+    find_features_of_contours,
 )
 
 
@@ -5582,34 +5583,6 @@ class eynollah:
                     image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])] == 7] = 0
         return image_by_region
 
-    def find_features_of_contoures(self, contours_main):
-
-        areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
-        M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-        cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-        cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-        x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-        x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-
-        y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-        y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-
-        return y_min_main, y_max_main
-
-    def find_features_of_contours(self, contours_main):
-
-        areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
-        M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-        cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-        cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-        x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-        x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-
-        y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-        y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-
-        return y_min_main, y_max_main, areas_main
-
 
     def add_tables_heuristic_to_layout(self, image_regions_eraly_p, boxes, slope_mean_hor, spliter_y, peaks_neg_tot, image_revised):
 
@@ -5668,9 +5641,9 @@ class eynollah:
 
                 contours_line, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-                y_min_main_line, y_max_main_line = self.find_features_of_contoures(contours_line)
+                y_min_main_line, y_max_main_line, _ = find_features_of_contours(contours_line)
                 # _,_,y_min_main_line ,y_max_main_line,x_min_main_line,x_max_main_line=find_new_features_of_contoures(contours_line)
-                y_min_main_tab, y_max_main_tab = self.find_features_of_contoures(contours_tab)
+                y_min_main_tab, y_max_main_tab, _ = find_features_of_contours(contours_tab)
 
                 cx_tab_m_text, cy_tab_m_text, x_min_tab_m_text, x_max_tab_m_text, y_min_tab_m_text, y_max_tab_m_text = find_new_features_of_contoures(contours_table_m_text)
                 cx_tabl, cy_tabl, x_min_tabl, x_max_tabl, y_min_tabl, y_max_tabl, _ = find_new_features_of_contoures(contours_tab)
@@ -5752,8 +5725,8 @@ class eynollah:
             contours_main_patch_con, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             contours_main_patch_con = return_parent_contours(contours_main_patch_con, hiearchy)
 
-            y_patch_head_min, y_patch_head_max, _ = self.find_features_of_contours(contours_head_patch_con)
-            y_patch_main_min, y_patch_main_max, _ = self.find_features_of_contours(contours_main_patch_con)
+            y_patch_head_min, y_patch_head_max, _ = find_features_of_contours(contours_head_patch_con)
+            y_patch_main_min, y_patch_main_max, _ = find_features_of_contours(contours_main_patch_con)
 
             for i in range(len(y_patch_head_min)):
                 for j in range(len(y_patch_main_min)):
@@ -5784,8 +5757,8 @@ class eynollah:
                         contours_main_patch_con, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
                         contours_main_patch_con = return_parent_contours(contours_main_patch_con, hiearchy)
 
-                        _, _, areas_head = self.find_features_of_contours(contours_head_patch_con)
-                        _, _, areas_main = self.find_features_of_contours(contours_main_patch_con)
+                        _, _, areas_head = find_features_of_contours(contours_head_patch_con)
+                        _, _, areas_main = find_features_of_contours(contours_main_patch_con)
 
                         if np.sum(areas_head) > np.sum(areas_main):
                             img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0][img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0] == 1] = 2
@@ -5819,8 +5792,8 @@ class eynollah:
                         contours_main_patch_con, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
                         contours_main_patch_con = return_parent_contours(contours_main_patch_con, hiearchy)
 
-                        _, _, areas_head = self.find_features_of_contours(contours_head_patch_con)
-                        _, _, areas_main = self.find_features_of_contours(contours_main_patch_con)
+                        _, _, areas_head = find_features_of_contours(contours_head_patch_con)
+                        _, _, areas_main = find_features_of_contours(contours_main_patch_con)
 
                         if np.sum(areas_head) > np.sum(areas_main):
                             img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0][img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0] == 1] = 2
