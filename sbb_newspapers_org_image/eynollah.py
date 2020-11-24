@@ -76,6 +76,7 @@ from .utils import (
     seperate_lines_new_inside_teils2,
     seperate_lines_vertical_cont,
     delete_seperator_around,
+    return_regions_without_seperators,
 )
 
 
@@ -3827,18 +3828,6 @@ class eynollah:
         # cv2.imwrite(os.path.join(dir_of_image, self.f_name) + ".tif",self.image_org)
 
 
-    def return_regions_without_seperators(self, regions_pre):
-        kernel = np.ones((5, 5), np.uint8)
-        regions_without_seperators = ((regions_pre[:, :] != 6) & (regions_pre[:, :] != 0)) * 1
-        # regions_without_seperators=( (image_regions_eraly_p[:,:,:]!=6) & (image_regions_eraly_p[:,:,:]!=0) & (image_regions_eraly_p[:,:,:]!=5) & (image_regions_eraly_p[:,:,:]!=8) & (image_regions_eraly_p[:,:,:]!=7))*1
-
-        regions_without_seperators = regions_without_seperators.astype(np.uint8)
-
-        regions_without_seperators = cv2.erode(regions_without_seperators, kernel, iterations=6)
-
-        return regions_without_seperators
-
-
     def image_change_background_pixels_to_zero(self, image_page):
         image_back_zero = np.zeros((image_page.shape[0], image_page.shape[1]))
         image_back_zero[:, :] = image_page[:, :, 0]
@@ -6048,7 +6037,7 @@ class eynollah:
 
         args_big_parts = np.array(range(len(spliter_y_new_diff)))[spliter_y_new_diff > 22]
 
-        regions_without_seperators = self.return_regions_without_seperators(region_pre_p)
+        regions_without_seperators = return_regions_without_seperators(region_pre_p)
 
         ##print(args_big_parts,'args_big_parts')
         # image_page_otsu=otsu_copy(image_page_deskewd)

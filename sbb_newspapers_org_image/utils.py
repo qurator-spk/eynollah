@@ -2329,3 +2329,15 @@ def delete_seperator_around(spliter_y, peaks_neg, image_by_region):
                 image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])] == 7] = 0
     return image_by_region
 
+def return_regions_without_seperators(regions_pre):
+    kernel = np.ones((5, 5), np.uint8)
+    regions_without_seperators = ((regions_pre[:, :] != 6) & (regions_pre[:, :] != 0)) * 1
+    # regions_without_seperators=( (image_regions_eraly_p[:,:,:]!=6) & (image_regions_eraly_p[:,:,:]!=0) & (image_regions_eraly_p[:,:,:]!=5) & (image_regions_eraly_p[:,:,:]!=8) & (image_regions_eraly_p[:,:,:]!=7))*1
+
+    regions_without_seperators = regions_without_seperators.astype(np.uint8)
+
+    regions_without_seperators = cv2.erode(regions_without_seperators, kernel, iterations=6)
+
+    return regions_without_seperators
+
+
