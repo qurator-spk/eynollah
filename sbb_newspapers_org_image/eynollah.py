@@ -41,6 +41,9 @@ from .utils import (
     filter_contours_area_of_image_interiors,
     rotatedRectWithMaxArea,
     rotate_image,
+    rotate_max_area,
+    rotation_not_90_func,
+    rotation_not_90_func_full_layout,
     rotate_max_area_new,
     rotation_image_new,
     crop_image_inside_box,
@@ -60,9 +63,14 @@ from .utils import (
     seperate_lines,
     seperate_lines_new_inside_teils2,
     filter_small_drop_capitals_from_no_patch_layout,
-    find_num_col_deskew,
     return_hor_spliter_by_index_for_without_verticals,
     find_new_features_of_contoures,
+    find_num_col,
+    find_num_col_deskew,
+    find_num_col_only_image,
+    find_num_col_by_vertical_lines,
+    find_contours_mean_y_diff,
+    contours_in_same_horizon,
 )
 
 
@@ -1303,7 +1311,7 @@ class eynollah:
                 try:
                     textline_con, hierachy = return_contours_of_image(img_int_p)
                     textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.0008)
-                    y_diff_mean = self.find_contours_mean_y_diff(textline_con_fil)
+                    y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
 
                     sigma_des = int(y_diff_mean * (4.0 / 40.0))
 
@@ -1460,7 +1468,7 @@ class eynollah:
                     textline_con, hierachy = return_contours_of_image(img_int_p)
                     textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.00008)
 
-                    y_diff_mean = self.find_contours_mean_y_diff(textline_con_fil)
+                    y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
 
                     sigma_des = int(y_diff_mean * (4.0 / 40.0))
 
@@ -2260,11 +2268,6 @@ class eynollah:
 
         return slope
 
-    def find_contours_mean_y_diff(self, contours_main):
-        M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-        cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-        return np.mean(np.diff(np.sort(np.array(cy_main))))
-
 
     def return_deskew_slop(self, img_patch_org, sigma_des, main_page=False):
 
@@ -2826,7 +2829,7 @@ class eynollah:
             try:
                 textline_con, hierachy = return_contours_of_image(crop_img)
                 textline_con_fil = filter_contours_area_of_image(crop_img, textline_con, hierachy, max_area=1, min_area=0.0008)
-                y_diff_mean = self.find_contours_mean_y_diff(textline_con_fil)
+                y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
 
                 sigma_des = int(y_diff_mean * (4.0 / 40.0))
 
@@ -4100,400 +4103,6 @@ class eynollah:
         image_back_zero[:, :][image_back_zero[:, :] == -255] = 255
         return image_back_zero
 
-    def find_num_col_only_image(self, regions_without_seperators, multiplier=3.8):
-        regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=0)
-
-        ##plt.plot(regions_without_seperators_0)
-        ##plt.show()
-
-        sigma_ = 15
-
-        meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
-
-        first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
-        last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
-
-        last_nonzero = len(regions_without_seperators_0) - last_nonzero
-
-        y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
-
-        y_help = np.zeros(len(y) + 20)
-
-        y_help[10 : len(y) + 10] = y
-
-        x = np.array(range(len(y)))
-
-        zneg_rev = -y_help + np.max(y_help)
-
-        zneg = np.zeros(len(zneg_rev) + 20)
-
-        zneg[10 : len(zneg_rev) + 10] = zneg_rev
-
-        z = gaussian_filter1d(y, sigma_)
-        zneg = gaussian_filter1d(zneg, sigma_)
-
-        peaks_neg, _ = find_peaks(zneg, height=0)
-        peaks, _ = find_peaks(z, height=0)
-
-        peaks_neg = peaks_neg - 10 - 10
-
-        peaks_neg_org = np.copy(peaks_neg)
-
-        peaks_neg = peaks_neg[(peaks_neg > first_nonzero) & (peaks_neg < last_nonzero)]
-
-        peaks = peaks[(peaks > 0.09 * regions_without_seperators.shape[1]) & (peaks < 0.91 * regions_without_seperators.shape[1])]
-
-        peaks_neg = peaks_neg[(peaks_neg > 500) & (peaks_neg < (regions_without_seperators.shape[1] - 500))]
-        # print(peaks)
-        interest_pos = z[peaks]
-
-        interest_pos = interest_pos[interest_pos > 10]
-
-        interest_neg = z[peaks_neg]
-        min_peaks_pos = np.mean(interest_pos)  # np.min(interest_pos)
-        min_peaks_neg = 0  # np.min(interest_neg)
-
-        # $print(min_peaks_pos)
-        dis_talaei = (min_peaks_pos - min_peaks_neg) / multiplier
-        # print(interest_pos)
-        grenze = min_peaks_pos - dis_talaei  # np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
-
-        interest_neg_fin = interest_neg[(interest_neg < grenze)]
-        peaks_neg_fin = peaks_neg[(interest_neg < grenze)]
-
-        num_col = (len(interest_neg_fin)) + 1
-
-        p_l = 0
-        p_u = len(y) - 1
-        p_m = int(len(y) / 2.0)
-        p_g_l = int(len(y) / 3.0)
-        p_g_u = len(y) - int(len(y) / 3.0)
-
-        if num_col == 3:
-            if (peaks_neg_fin[0] > p_g_u and peaks_neg_fin[1] > p_g_u) or (peaks_neg_fin[0] < p_g_l and peaks_neg_fin[1] < p_g_l) or (peaks_neg_fin[0] < p_m and peaks_neg_fin[1] < p_m) or (peaks_neg_fin[0] > p_m and peaks_neg_fin[1] > p_m):
-                num_col = 1
-            else:
-                pass
-
-        if num_col == 2:
-            if (peaks_neg_fin[0] > p_g_u) or (peaks_neg_fin[0] < p_g_l):
-                num_col = 1
-            else:
-                pass
-
-        diff_peaks = np.abs(np.diff(peaks_neg_fin))
-
-        cut_off = 400
-        peaks_neg_true = []
-        forest = []
-
-        for i in range(len(peaks_neg_fin)):
-            if i == 0:
-                forest.append(peaks_neg_fin[i])
-            if i < (len(peaks_neg_fin) - 1):
-                if diff_peaks[i] <= cut_off:
-                    forest.append(peaks_neg_fin[i + 1])
-                if diff_peaks[i] > cut_off:
-                    # print(forest[np.argmin(z[forest]) ] )
-                    if not isNaN(forest[np.argmin(z[forest])]):
-                        peaks_neg_true.append(forest[np.argmin(z[forest])])
-                    forest = []
-                    forest.append(peaks_neg_fin[i + 1])
-            if i == (len(peaks_neg_fin) - 1):
-                # print(print(forest[np.argmin(z[forest]) ] ))
-                if not isNaN(forest[np.argmin(z[forest])]):
-                    peaks_neg_true.append(forest[np.argmin(z[forest])])
-
-        num_col = (len(peaks_neg_true)) + 1
-        p_l = 0
-        p_u = len(y) - 1
-        p_m = int(len(y) / 2.0)
-        p_quarter = int(len(y) / 4.0)
-        p_g_l = int(len(y) / 3.0)
-        p_g_u = len(y) - int(len(y) / 3.0)
-
-        p_u_quarter = len(y) - p_quarter
-
-        if num_col == 3:
-            if (peaks_neg_true[0] > p_g_u and peaks_neg_true[1] > p_g_u) or (peaks_neg_true[0] < p_g_l and peaks_neg_true[1] < p_g_l) or (peaks_neg_true[0] < p_m and peaks_neg_true[1] < p_m) or (peaks_neg_true[0] > p_m and peaks_neg_true[1] > p_m):
-                num_col = 1
-                peaks_neg_true = []
-            elif (peaks_neg_true[0] < p_g_u and peaks_neg_true[0] > p_g_l) and (peaks_neg_true[1] > p_u_quarter):
-                peaks_neg_true = [peaks_neg_true[0]]
-            elif (peaks_neg_true[1] < p_g_u and peaks_neg_true[1] > p_g_l) and (peaks_neg_true[0] < p_quarter):
-                peaks_neg_true = [peaks_neg_true[1]]
-            else:
-                pass
-
-        if num_col == 2:
-            if (peaks_neg_true[0] > p_g_u) or (peaks_neg_true[0] < p_g_l):
-                num_col = 1
-                peaks_neg_true = []
-
-        if num_col == 4:
-            if len(np.array(peaks_neg_true)[np.array(peaks_neg_true) < p_g_l]) == 2 or len(np.array(peaks_neg_true)[np.array(peaks_neg_true) > (len(y) - p_g_l)]) == 2:
-                num_col = 1
-                peaks_neg_true = []
-            else:
-                pass
-
-        # no deeper hill around found hills
-
-        peaks_fin_true = []
-        for i in range(len(peaks_neg_true)):
-            hill_main = peaks_neg_true[i]
-            # deep_depth=z[peaks_neg]
-            hills_around = peaks_neg_org[((peaks_neg_org > hill_main) & (peaks_neg_org <= hill_main + 400)) | ((peaks_neg_org < hill_main) & (peaks_neg_org >= hill_main - 400))]
-            deep_depth_around = z[hills_around]
-
-            # print(hill_main,z[hill_main],hills_around,deep_depth_around,'manoooo')
-            try:
-                if np.min(deep_depth_around) < z[hill_main]:
-                    pass
-                else:
-                    peaks_fin_true.append(hill_main)
-            except:
-                pass
-
-        diff_peaks_annormal = diff_peaks[diff_peaks < 360]
-
-        if len(diff_peaks_annormal) > 0:
-            arg_help = np.array(range(len(diff_peaks)))
-            arg_help_ann = arg_help[diff_peaks < 360]
-
-            peaks_neg_fin_new = []
-
-            for ii in range(len(peaks_neg_fin)):
-                if ii in arg_help_ann:
-                    arg_min = np.argmin([interest_neg_fin[ii], interest_neg_fin[ii + 1]])
-                    if arg_min == 0:
-                        peaks_neg_fin_new.append(peaks_neg_fin[ii])
-                    else:
-                        peaks_neg_fin_new.append(peaks_neg_fin[ii + 1])
-
-                elif (ii - 1) in arg_help_ann:
-                    pass
-                else:
-                    peaks_neg_fin_new.append(peaks_neg_fin[ii])
-        else:
-            peaks_neg_fin_new = peaks_neg_fin
-
-        # sometime pages with one columns gives also some negative peaks. delete those peaks
-        param = z[peaks_neg_true] / float(min_peaks_pos) * 100
-
-        if len(param[param <= 41]) == 0:
-            peaks_neg_true = []
-
-        return len(peaks_fin_true), peaks_fin_true
-
-    def find_num_col_by_vertical_lines(self, regions_without_seperators, multiplier=3.8):
-        regions_without_seperators_0 = regions_without_seperators[:, :, 0].sum(axis=0)
-
-        ##plt.plot(regions_without_seperators_0)
-        ##plt.show()
-
-        sigma_ = 35  # 70#35
-
-        z = gaussian_filter1d(regions_without_seperators_0, sigma_)
-
-        peaks, _ = find_peaks(z, height=0)
-
-        # print(peaks,'peaksnew')
-        return peaks
-
-    def find_num_col(self, regions_without_seperators, multiplier=3.8):
-        regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=0)
-
-        ##plt.plot(regions_without_seperators_0)
-        ##plt.show()
-
-        sigma_ = 35  # 70#35
-
-        meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
-
-        first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
-        last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
-
-        # print(last_nonzero)
-        # print(isNaN(last_nonzero))
-        # last_nonzero=0#halalikh
-        last_nonzero = len(regions_without_seperators_0) - last_nonzero
-
-        y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
-
-        y_help = np.zeros(len(y) + 20)
-
-        y_help[10 : len(y) + 10] = y
-
-        x = np.array(range(len(y)))
-
-        zneg_rev = -y_help + np.max(y_help)
-
-        zneg = np.zeros(len(zneg_rev) + 20)
-
-        zneg[10 : len(zneg_rev) + 10] = zneg_rev
-
-        z = gaussian_filter1d(y, sigma_)
-        zneg = gaussian_filter1d(zneg, sigma_)
-
-        peaks_neg, _ = find_peaks(zneg, height=0)
-        peaks, _ = find_peaks(z, height=0)
-
-        peaks_neg = peaks_neg - 10 - 10
-
-        last_nonzero = last_nonzero - 100
-        first_nonzero = first_nonzero + 200
-
-        peaks_neg = peaks_neg[(peaks_neg > first_nonzero) & (peaks_neg < last_nonzero)]
-
-        peaks = peaks[(peaks > 0.06 * regions_without_seperators.shape[1]) & (peaks < 0.94 * regions_without_seperators.shape[1])]
-        peaks_neg = peaks_neg[(peaks_neg > 370) & (peaks_neg < (regions_without_seperators.shape[1] - 370))]
-
-        # print(peaks)
-        interest_pos = z[peaks]
-
-        interest_pos = interest_pos[interest_pos > 10]
-
-        # plt.plot(z)
-        # plt.show()
-        interest_neg = z[peaks_neg]
-
-        min_peaks_pos = np.min(interest_pos)
-        max_peaks_pos = np.max(interest_pos)
-
-        if max_peaks_pos / min_peaks_pos >= 35:
-            min_peaks_pos = np.mean(interest_pos)
-
-        min_peaks_neg = 0  # np.min(interest_neg)
-
-        # print(np.min(interest_pos),np.max(interest_pos),np.max(interest_pos)/np.min(interest_pos),'minmax')
-        # $print(min_peaks_pos)
-        dis_talaei = (min_peaks_pos - min_peaks_neg) / multiplier
-        # print(interest_pos)
-        grenze = min_peaks_pos - dis_talaei  # np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
-
-        # print(interest_neg,'interest_neg')
-        # print(grenze,'grenze')
-        # print(min_peaks_pos,'min_peaks_pos')
-        # print(dis_talaei,'dis_talaei')
-        # print(peaks_neg,'peaks_neg')
-
-        interest_neg_fin = interest_neg[(interest_neg < grenze)]
-        peaks_neg_fin = peaks_neg[(interest_neg < grenze)]
-        # interest_neg_fin=interest_neg[(interest_neg<grenze)]
-
-        num_col = (len(interest_neg_fin)) + 1
-
-        # print(peaks_neg_fin,'peaks_neg_fin')
-        # print(num_col,'diz')
-        p_l = 0
-        p_u = len(y) - 1
-        p_m = int(len(y) / 2.0)
-        p_g_l = int(len(y) / 4.0)
-        p_g_u = len(y) - int(len(y) / 4.0)
-
-        if num_col == 3:
-            if (peaks_neg_fin[0] > p_g_u and peaks_neg_fin[1] > p_g_u) or (peaks_neg_fin[0] < p_g_l and peaks_neg_fin[1] < p_g_l) or ((peaks_neg_fin[0] + 200) < p_m and peaks_neg_fin[1] < p_m) or ((peaks_neg_fin[0] - 200) > p_m and peaks_neg_fin[1] > p_m):
-                num_col = 1
-                peaks_neg_fin = []
-            else:
-                pass
-
-        if num_col == 2:
-            if (peaks_neg_fin[0] > p_g_u) or (peaks_neg_fin[0] < p_g_l):
-                num_col = 1
-                peaks_neg_fin = []
-            else:
-                pass
-
-        ##print(len(peaks_neg_fin))
-
-        diff_peaks = np.abs(np.diff(peaks_neg_fin))
-
-        cut_off = 400
-        peaks_neg_true = []
-        forest = []
-
-        # print(len(peaks_neg_fin),'len_')
-
-        for i in range(len(peaks_neg_fin)):
-            if i == 0:
-                forest.append(peaks_neg_fin[i])
-            if i < (len(peaks_neg_fin) - 1):
-                if diff_peaks[i] <= cut_off:
-                    forest.append(peaks_neg_fin[i + 1])
-                if diff_peaks[i] > cut_off:
-                    # print(forest[np.argmin(z[forest]) ] )
-                    if not isNaN(forest[np.argmin(z[forest])]):
-                        peaks_neg_true.append(forest[np.argmin(z[forest])])
-                    forest = []
-                    forest.append(peaks_neg_fin[i + 1])
-            if i == (len(peaks_neg_fin) - 1):
-                # print(print(forest[np.argmin(z[forest]) ] ))
-                if not isNaN(forest[np.argmin(z[forest])]):
-                    peaks_neg_true.append(forest[np.argmin(z[forest])])
-
-        num_col = (len(peaks_neg_true)) + 1
-        p_l = 0
-        p_u = len(y) - 1
-        p_m = int(len(y) / 2.0)
-        p_quarter = int(len(y) / 5.0)
-        p_g_l = int(len(y) / 4.0)
-        p_g_u = len(y) - int(len(y) / 4.0)
-
-        p_u_quarter = len(y) - p_quarter
-
-        ##print(num_col,'early')
-        if num_col == 3:
-            if (peaks_neg_true[0] > p_g_u and peaks_neg_true[1] > p_g_u) or (peaks_neg_true[0] < p_g_l and peaks_neg_true[1] < p_g_l) or (peaks_neg_true[0] < p_m and (peaks_neg_true[1] + 200) < p_m) or ((peaks_neg_true[0] - 200) > p_m and peaks_neg_true[1] > p_m):
-                num_col = 1
-                peaks_neg_true = []
-            elif (peaks_neg_true[0] < p_g_u and peaks_neg_true[0] > p_g_l) and (peaks_neg_true[1] > p_u_quarter):
-                peaks_neg_true = [peaks_neg_true[0]]
-            elif (peaks_neg_true[1] < p_g_u and peaks_neg_true[1] > p_g_l) and (peaks_neg_true[0] < p_quarter):
-                peaks_neg_true = [peaks_neg_true[1]]
-            else:
-                pass
-
-        if num_col == 2:
-            if (peaks_neg_true[0] > p_g_u) or (peaks_neg_true[0] < p_g_l):
-                num_col = 1
-                peaks_neg_true = []
-            else:
-                pass
-
-        diff_peaks_annormal = diff_peaks[diff_peaks < 360]
-
-        if len(diff_peaks_annormal) > 0:
-            arg_help = np.array(range(len(diff_peaks)))
-            arg_help_ann = arg_help[diff_peaks < 360]
-
-            peaks_neg_fin_new = []
-
-            for ii in range(len(peaks_neg_fin)):
-                if ii in arg_help_ann:
-                    arg_min = np.argmin([interest_neg_fin[ii], interest_neg_fin[ii + 1]])
-                    if arg_min == 0:
-                        peaks_neg_fin_new.append(peaks_neg_fin[ii])
-                    else:
-                        peaks_neg_fin_new.append(peaks_neg_fin[ii + 1])
-
-                elif (ii - 1) in arg_help_ann:
-                    pass
-                else:
-                    peaks_neg_fin_new.append(peaks_neg_fin[ii])
-        else:
-            peaks_neg_fin_new = peaks_neg_fin
-
-        # plt.plot(gaussian_filter1d(y, sigma_))
-        # plt.plot(peaks_neg_true,z[peaks_neg_true],'*')
-        # plt.plot([0,len(y)], [grenze,grenze])
-        # plt.show()
-
-        ##print(len(peaks_neg_true))
-        return len(peaks_neg_true), peaks_neg_true
-
-
     def return_points_with_boundies(self, peaks_neg_fin, first_point, last_point):
         peaks_neg_tot = []
         peaks_neg_tot.append(first_point)
@@ -4501,23 +4110,6 @@ class eynollah:
             peaks_neg_tot.append(peaks_neg_fin[ii])
         peaks_neg_tot.append(last_point)
         return peaks_neg_tot
-
-    def contours_in_same_horizon(self, cy_main_hor):
-        X1 = np.zeros((len(cy_main_hor), len(cy_main_hor)))
-        X2 = np.zeros((len(cy_main_hor), len(cy_main_hor)))
-
-        X1[0::1, :] = cy_main_hor[:]
-        X2 = X1.T
-
-        X_dif = np.abs(X2 - X1)
-        args_help = np.array(range(len(cy_main_hor)))
-        all_args = []
-        for i in range(len(cy_main_hor)):
-            list_h = list(args_help[X_dif[i, :] <= 20])
-            list_h.append(i)
-            if len(list_h) > 1:
-                all_args.append(list(set(list_h)))
-        return np.unique(all_args)
 
     def return_boxes_of_images_by_order_of_reading_without_seperators(self, spliter_y_new, image_p_rev, regions_without_seperators, matrix_of_lines_ch, seperators_closeup_n):
 
@@ -4542,7 +4134,7 @@ class eynollah:
                 ##plt.show()
                 ###find_num_col_both_layout_and_org(regions_without_seperators,image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,:],7.)
 
-                num_col, peaks_neg_fin = self.find_num_col_only_image(image_p_rev[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=2.4)
+                num_col, peaks_neg_fin = find_num_col_only_image(image_p_rev[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=2.4)
 
                 # num_col, peaks_neg_fin=find_num_col(regions_without_seperators[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:],multiplier=7.0)
                 x_min_hor_some = matrix_new[:, 2][(matrix_new[:, 9] == 0)]
@@ -4664,7 +4256,7 @@ class eynollah:
                             # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
                             if 1 > 0:  # len( matrix_new_new[:,9][matrix_new_new[:,9]==1] )>0 and np.max(matrix_new_new[:,8][matrix_new_new[:,9]==1])>=0.2*(np.abs(newest_y_spliter[n+1]-newest_y_spliter[n] )):
                                 # num_col_sub, peaks_neg_fin_sub=find_num_col(regions_without_seperators[int(newest_y_spliter[n]):int(newest_y_spliter[n+1]),newest_peaks[j]:newest_peaks[j+1]],multiplier=2.3)
-                                num_col_sub, peaks_neg_fin_sub = self.find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.4)
+                                num_col_sub, peaks_neg_fin_sub = find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.4)
                             else:
                                 peaks_neg_fin_sub = []
 
@@ -4699,7 +4291,7 @@ class eynollah:
                                 if len(cy_child_in) > 0:
                                     ###num_col_ch, peaks_neg_ch=find_num_col( regions_without_seperators[int(newest_y_spliter[n]):int(newest_y_spliter[n+1]),newest_peaks[j]:newest_peaks[j+1]],multiplier=2.3)
 
-                                    num_col_ch, peaks_neg_ch = self.find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.3)
+                                    num_col_ch, peaks_neg_ch = find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.3)
 
                                     peaks_neg_ch = peaks_neg_ch[:] + newest_peaks[j]
 
@@ -4731,7 +4323,7 @@ class eynollah:
                                             if 1 > 0:  # len( matrix_new_new2[:,9][matrix_new_new2[:,9]==1] )>0 and np.max(matrix_new_new2[:,8][matrix_new_new2[:,9]==1])>=0.2*(np.abs(newest_y_spliter_h[nd+1]-newest_y_spliter_h[nd] )):
                                                 # num_col_sub_ch, peaks_neg_fin_sub_ch=find_num_col(regions_without_seperators[int(newest_y_spliter_h[nd]):int(newest_y_spliter_h[nd+1]),nst_p_ch[jn]:nst_p_ch[jn+1]],multiplier=2.3)
 
-                                                num_col_sub_ch, peaks_neg_fin_sub_ch = self.find_num_col_only_image(image_p_rev[int(newest_y_spliter_h[nd]) : int(newest_y_spliter_h[nd + 1]), nst_p_ch[jn] : nst_p_ch[jn + 1]], multiplier=2.3)
+                                                num_col_sub_ch, peaks_neg_fin_sub_ch = find_num_col_only_image(image_p_rev[int(newest_y_spliter_h[nd]) : int(newest_y_spliter_h[nd + 1]), nst_p_ch[jn] : nst_p_ch[jn + 1]], multiplier=2.3)
                                                 # print(peaks_neg_fin_sub_ch,'gada kutullllllll')
                                             else:
                                                 peaks_neg_fin_sub_ch = []
@@ -4755,7 +4347,7 @@ class eynollah:
                                     # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
                                     if 1 > 0:  # len( matrix_new_new[:,9][matrix_new_new[:,9]==1] )>0 and np.max(matrix_new_new[:,8][matrix_new_new[:,9]==1])>=0.2*(np.abs(newest_y_spliter[n+1]-newest_y_spliter[n] )):
                                         ###num_col_sub, peaks_neg_fin_sub=find_num_col(regions_without_seperators[int(newest_y_spliter[n]):int(newest_y_spliter[n+1]),newest_peaks[j]:newest_peaks[j+1]],multiplier=2.3)
-                                        num_col_sub, peaks_neg_fin_sub = self.find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.3)
+                                        num_col_sub, peaks_neg_fin_sub = find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.3)
                                     else:
                                         peaks_neg_fin_sub = []
 
@@ -4784,7 +4376,7 @@ class eynollah:
                                 # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
                                 if 1 > 0:  # len( matrix_new_new[:,9][matrix_new_new[:,9]==1] )>0 and np.max(matrix_new_new[:,8][matrix_new_new[:,9]==1])>=0.2*(np.abs(newest_y_spliter[n+1]-newest_y_spliter[n] )):
                                     ###num_col_sub, peaks_neg_fin_sub=find_num_col(regions_without_seperators[int(newest_y_spliter[n]):int(newest_y_spliter[n+1]),newest_peaks[j]:newest_peaks[j+1]],multiplier=5.0)
-                                    num_col_sub, peaks_neg_fin_sub = self.find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.3)
+                                    num_col_sub, peaks_neg_fin_sub = find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.3)
                                 else:
                                     peaks_neg_fin_sub = []
 
@@ -4829,7 +4421,7 @@ class eynollah:
                 ###find_num_col_both_layout_and_org(regions_without_seperators,image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,:],7.)
 
                 try:
-                    num_col, peaks_neg_fin = self.find_num_col_only_image(image_p_rev[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=2.4)
+                    num_col, peaks_neg_fin = find_num_col_only_image(image_p_rev[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=2.4)
                 except:
                     peaks_neg_fin = []
                     num_col = 0
@@ -4921,7 +4513,7 @@ class eynollah:
         for jv in range(len(args_hor)):
             img_p_in_hor = cv2.fillPoly(img_in_hor, pts=[contours_lines[args_hor[jv]]], color=(1, 1, 1))
 
-        all_args_uniq = self.contours_in_same_horizon(cy_main_hor)
+        all_args_uniq = contours_in_same_horizon(cy_main_hor)
         # print(all_args_uniq,'all_args_uniq')
         if len(all_args_uniq) > 0:
             if type(all_args_uniq[0]) is list:
@@ -5083,7 +4675,7 @@ class eynollah:
         slope_lines_hor, dist_x_hor, x_min_main_hor, x_max_main_hor, cy_main_hor, slope_lines_org_hor, y_min_main_hor, y_max_main_hor, cx_main_hor = find_features_of_lines(contours_lines_hor)
 
         args_hor = np.array(range(len(slope_lines_hor)))
-        all_args_uniq = self.contours_in_same_horizon(cy_main_hor)
+        all_args_uniq = contours_in_same_horizon(cy_main_hor)
         # print(all_args_uniq,'all_args_uniq')
         if len(all_args_uniq) > 0:
             if type(all_args_uniq[0]) is list:
@@ -5173,7 +4765,7 @@ class eynollah:
                 ##plt.show()
                 ###find_num_col_both_layout_and_org(regions_without_seperators,image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,:],7.)
 
-                num_col, peaks_neg_fin = self.find_num_col(regions_without_seperators[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=7.0)
+                num_col, peaks_neg_fin = find_num_col(regions_without_seperators[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=7.0)
 
                 # num_col, peaks_neg_fin=find_num_col(regions_without_seperators[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:],multiplier=7.0)
                 x_min_hor_some = matrix_new[:, 2][(matrix_new[:, 9] == 0)]
@@ -5302,7 +4894,7 @@ class eynollah:
                             matrix_new_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter[n]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter[n + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < newest_peaks[j + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > newest_peaks[j])]
                             # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
                             if len(matrix_new_new[:, 9][matrix_new_new[:, 9] == 1]) > 0 and np.max(matrix_new_new[:, 8][matrix_new_new[:, 9] == 1]) >= 0.2 * (np.abs(newest_y_spliter[n + 1] - newest_y_spliter[n])):
-                                num_col_sub, peaks_neg_fin_sub = self.find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
+                                num_col_sub, peaks_neg_fin_sub = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
                             else:
                                 peaks_neg_fin_sub = []
 
@@ -5337,7 +4929,7 @@ class eynollah:
                                 cy_child_in = cy_hor_some_sort_child[(cy_hor_some_sort_child > newest_y_spliter[n]) & (cy_hor_some_sort_child < newest_y_spliter[n + 1])]
 
                                 if len(cy_child_in) > 0:
-                                    num_col_ch, peaks_neg_ch = self.find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
+                                    num_col_ch, peaks_neg_ch = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
                                     # print(peaks_neg_ch,'mizzzz')
                                     # peaks_neg_ch=[]
                                     # for djh in range(len(peaks_neg_ch)):
@@ -5369,7 +4961,7 @@ class eynollah:
                                             matrix_new_new2 = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter_h[nd]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter_h[nd + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < nst_p_ch[jn + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > nst_p_ch[jn])]
                                             # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
                                             if len(matrix_new_new2[:, 9][matrix_new_new2[:, 9] == 1]) > 0 and np.max(matrix_new_new2[:, 8][matrix_new_new2[:, 9] == 1]) >= 0.2 * (np.abs(newest_y_spliter_h[nd + 1] - newest_y_spliter_h[nd])):
-                                                num_col_sub_ch, peaks_neg_fin_sub_ch = self.find_num_col(regions_without_seperators[int(newest_y_spliter_h[nd]) : int(newest_y_spliter_h[nd + 1]), nst_p_ch[jn] : nst_p_ch[jn + 1]], multiplier=5.0)
+                                                num_col_sub_ch, peaks_neg_fin_sub_ch = find_num_col(regions_without_seperators[int(newest_y_spliter_h[nd]) : int(newest_y_spliter_h[nd + 1]), nst_p_ch[jn] : nst_p_ch[jn + 1]], multiplier=5.0)
 
                                             else:
                                                 peaks_neg_fin_sub_ch = []
@@ -5392,7 +4984,7 @@ class eynollah:
                                     matrix_new_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter[n]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter[n + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < newest_peaks[j + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > newest_peaks[j])]
                                     # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
                                     if len(matrix_new_new[:, 9][matrix_new_new[:, 9] == 1]) > 0 and np.max(matrix_new_new[:, 8][matrix_new_new[:, 9] == 1]) >= 0.2 * (np.abs(newest_y_spliter[n + 1] - newest_y_spliter[n])):
-                                        num_col_sub, peaks_neg_fin_sub = self.find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
+                                        num_col_sub, peaks_neg_fin_sub = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
                                     else:
                                         peaks_neg_fin_sub = []
 
@@ -5417,7 +5009,7 @@ class eynollah:
                                 matrix_new_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter[n]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter[n + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < newest_peaks[j + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > newest_peaks[j])]
                                 # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
                                 if len(matrix_new_new[:, 9][matrix_new_new[:, 9] == 1]) > 0 and np.max(matrix_new_new[:, 8][matrix_new_new[:, 9] == 1]) >= 0.2 * (np.abs(newest_y_spliter[n + 1] - newest_y_spliter[n])):
-                                    num_col_sub, peaks_neg_fin_sub = self.find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
+                                    num_col_sub, peaks_neg_fin_sub = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
                                 else:
                                     peaks_neg_fin_sub = []
 
@@ -5466,7 +5058,7 @@ class eynollah:
                 # plt.imshow(regions_without_seperators[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:])
                 # plt.show()
                 try:
-                    num_col, peaks_neg_fin = self.find_num_col(regions_without_seperators[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=7.0)
+                    num_col, peaks_neg_fin = find_num_col(regions_without_seperators[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=7.0)
                 except:
                     peaks_neg_fin = []
 
@@ -5597,7 +5189,7 @@ class eynollah:
                             if 1 > 0:  # len( matrix_new_new[:,9][matrix_new_new[:,9]==1] )>0 and np.max(matrix_new_new[:,8][matrix_new_new[:,9]==1])>=0.2*(np.abs(newest_y_spliter[n+1]-newest_y_spliter[n] )):
                                 # print( int(newest_y_spliter[n]),int(newest_y_spliter[n+1]),newest_peaks[j],newest_peaks[j+1] )
                                 try:
-                                    num_col_sub, peaks_neg_fin_sub = self.find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=7.0)
+                                    num_col_sub, peaks_neg_fin_sub = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=7.0)
                                 except:
                                     peaks_neg_fin_sub = []
                             else:
@@ -5634,7 +5226,7 @@ class eynollah:
 
                                 if len(cy_child_in) > 0:
                                     try:
-                                        num_col_ch, peaks_neg_ch = self.find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=7.0)
+                                        num_col_ch, peaks_neg_ch = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=7.0)
                                     except:
                                         peaks_neg_ch = []
                                     # print(peaks_neg_ch,'mizzzz')
@@ -5669,7 +5261,7 @@ class eynollah:
                                             # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
                                             if 1 > 0:  # len( matrix_new_new2[:,9][matrix_new_new2[:,9]==1] )>0 and np.max(matrix_new_new2[:,8][matrix_new_new2[:,9]==1])>=0.2*(np.abs(newest_y_spliter_h[nd+1]-newest_y_spliter_h[nd] )):
                                                 try:
-                                                    num_col_sub_ch, peaks_neg_fin_sub_ch = self.find_num_col(regions_without_seperators[int(newest_y_spliter_h[nd]) : int(newest_y_spliter_h[nd + 1]), nst_p_ch[jn] : nst_p_ch[jn + 1]], multiplier=7.0)
+                                                    num_col_sub_ch, peaks_neg_fin_sub_ch = find_num_col(regions_without_seperators[int(newest_y_spliter_h[nd]) : int(newest_y_spliter_h[nd + 1]), nst_p_ch[jn] : nst_p_ch[jn + 1]], multiplier=7.0)
                                                 except:
                                                     peaks_neg_fin_sub_ch = []
 
@@ -5695,7 +5287,7 @@ class eynollah:
                                     # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
                                     if 1 > 0:  # len( matrix_new_new[:,9][matrix_new_new[:,9]==1] )>0 and np.max(matrix_new_new[:,8][matrix_new_new[:,9]==1])>=0.2*(np.abs(newest_y_spliter[n+1]-newest_y_spliter[n] )):
                                         try:
-                                            num_col_sub, peaks_neg_fin_sub = self.find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=7.0)
+                                            num_col_sub, peaks_neg_fin_sub = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=7.0)
                                         except:
                                             peaks_neg_fin_sub = []
                                     else:
@@ -5723,7 +5315,7 @@ class eynollah:
                                 # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
                                 if 1 > 0:  # len( matrix_new_new[:,9][matrix_new_new[:,9]==1] )>0 and np.max(matrix_new_new[:,8][matrix_new_new[:,9]==1])>=0.2*(np.abs(newest_y_spliter[n+1]-newest_y_spliter[n] )):
                                     try:
-                                        num_col_sub, peaks_neg_fin_sub = self.find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
+                                        num_col_sub, peaks_neg_fin_sub = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
                                     except:
                                         peaks_neg_fin_sub = []
                                 else:
@@ -5770,7 +5362,7 @@ class eynollah:
                 ###find_num_col_both_layout_and_org(regions_without_seperators,image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,:],7.)
 
                 try:
-                    num_col, peaks_neg_fin = self.find_num_col(regions_without_seperators[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=7.0)
+                    num_col, peaks_neg_fin = find_num_col(regions_without_seperators[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=7.0)
 
                 except:
                     peaks_neg_fin = []
@@ -6004,6 +5596,21 @@ class eynollah:
 
         return y_min_main, y_max_main
 
+    def find_features_of_contours(self, contours_main):
+
+        areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
+        M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
+        cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+        cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+        x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+        x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+
+        y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+        y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+
+        return y_min_main, y_max_main, areas_main
+
+
     def add_tables_heuristic_to_layout(self, image_regions_eraly_p, boxes, slope_mean_hor, spliter_y, peaks_neg_tot, image_revised):
 
         image_revised_1 = self.delete_seperator_around(spliter_y, peaks_neg_tot, image_revised)
@@ -6118,20 +5725,6 @@ class eynollah:
                 ##plt.imshow(image_box[:,:,0])
                 ##plt.show()
         return image_revised_last
-
-    def find_features_of_contours(self, contours_main):
-
-        areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
-        M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-        cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-        cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-        x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-        x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-
-        y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-        y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-
-        return y_min_main, y_max_main, areas_main
 
     def remove_headers_and_mains_intersection(self, seperators_closeup_n, img_revised_tab, boxes):
         for ind in range(len(boxes)):
@@ -6815,11 +6408,11 @@ class eynollah:
             ##plt.imshow(regions_without_seperators_teil)
             ##plt.show()
 
-            # num_col, peaks_neg_fin=self.find_num_col(regions_without_seperators_teil,multiplier=6.0)
+            # num_col, peaks_neg_fin=find_num_col(regions_without_seperators_teil,multiplier=6.0)
 
             # regions_without_seperators_teil=cv2.erode(regions_without_seperators_teil,kernel,iterations = 3)
             #
-            num_col, peaks_neg_fin = self.find_num_col(regions_without_seperators_teil, multiplier=7.0)
+            num_col, peaks_neg_fin = find_num_col(regions_without_seperators_teil, multiplier=7.0)
 
             if num_col > num_col_fin:
                 num_col_fin = num_col
@@ -6827,19 +6420,19 @@ class eynollah:
             """
             #print(length_y_vertical_lines,length_y_threshold,'x_center_of_ver_linesx_center_of_ver_linesx_center_of_ver_lines')
             if len(cx_main_ver)>0 and len( dist_y_ver[dist_y_ver>=length_y_threshold] ) >=1:
-                num_col, peaks_neg_fin=self.find_num_col(regions_without_seperators_teil,multiplier=6.0)
+                num_col, peaks_neg_fin=find_num_col(regions_without_seperators_teil,multiplier=6.0)
             else:
                 #plt.imshow(image_page_background_zero_teil)
                 #plt.show()
-                #num_col, peaks_neg_fin=self.find_num_col_only_image(image_page_background_zero,multiplier=2.4)#2.3)
-                num_col, peaks_neg_fin=self.find_num_col_only_image(image_page_background_zero_teil,multiplier=3.4)#2.3)
+                #num_col, peaks_neg_fin=find_num_col_only_image(image_page_background_zero,multiplier=2.4)#2.3)
+                num_col, peaks_neg_fin=find_num_col_only_image(image_page_background_zero_teil,multiplier=3.4)#2.3)
 
                 print(num_col,'birda')
                 if num_col>0:
                     pass
                 elif num_col==0:
                     print(num_col,'birda2222')
-                    num_col_regions, peaks_neg_fin_regions=self.find_num_col(regions_without_seperators_teil,multiplier=10.0)
+                    num_col_regions, peaks_neg_fin_regions=find_num_col(regions_without_seperators_teil,multiplier=10.0)
                     if num_col_regions==0:
                         pass
                     else:
@@ -6851,7 +6444,7 @@ class eynollah:
             # print(num_col+1,'num colmsssssssss')
 
         if len(args_big_parts) == 1 and (len(peaks_neg_fin_fin) + 1) < num_col_classifier:
-            peaks_neg_fin = self.find_num_col_by_vertical_lines(vertical)
+            peaks_neg_fin = find_num_col_by_vertical_lines(vertical)
             peaks_neg_fin = peaks_neg_fin[peaks_neg_fin >= 500]
             peaks_neg_fin = peaks_neg_fin[peaks_neg_fin <= (vertical.shape[1] - 500)]
             peaks_neg_fin_fin = peaks_neg_fin[:]
@@ -7284,37 +6877,6 @@ class eynollah:
         ##plt.imshow(text_region2_1st_channel)
         ##plt.show()
         return text_region2_1st_channel
-
-    def rotation_not_90_func(self, img, textline, text_regions_p_1, thetha):
-        rotated = imutils.rotate(img, thetha)
-        rotated_textline = imutils.rotate(textline, thetha)
-        rotated_layout = imutils.rotate(text_regions_p_1, thetha)
-        return self.rotate_max_area(img, rotated, rotated_textline, rotated_layout, thetha)
-
-    def rotate_max_area(self, image, rotated, rotated_textline, rotated_layout, angle):
-        wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
-        h, w, _ = rotated.shape
-        y1 = h // 2 - int(hr / 2)
-        y2 = y1 + int(hr)
-        x1 = w // 2 - int(wr / 2)
-        x2 = x1 + int(wr)
-        return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2]
-
-    def rotation_not_90_func_full_layout(self, img, textline, text_regions_p_1, text_regions_p_fully, thetha):
-        rotated = imutils.rotate(img, thetha)
-        rotated_textline = imutils.rotate(textline, thetha)
-        rotated_layout = imutils.rotate(text_regions_p_1, thetha)
-        rotated_layout_full = imutils.rotate(text_regions_p_fully, thetha)
-        return self.rotate_max_area_full_layout(img, rotated, rotated_textline, rotated_layout, rotated_layout_full, thetha)
-
-    def rotate_max_area_full_layout(self, image, rotated, rotated_textline, rotated_layout, rotated_layout_full, angle):
-        wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
-        h, w, _ = rotated.shape
-        y1 = h // 2 - int(hr / 2)
-        y2 = y1 + int(hr)
-        x1 = w // 2 - int(wr / 2)
-        x2 = x1 + int(wr)
-        return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2], rotated_layout_full[y1:y2, x1:x2]
 
     def get_regions_from_xy_2models_ens(self, img):
         img_org = np.copy(img)
@@ -9087,7 +8649,7 @@ class eynollah:
         img_only_regions = cv2.erode(img_only_regions_with_sep[:, :], self.kernel, iterations=6)
 
         try:
-            num_col, peaks_neg_fin = self.find_num_col(img_only_regions, multiplier=6.0)
+            num_col, peaks_neg_fin = find_num_col(img_only_regions, multiplier=6.0)
             if not num_column_is_classified:
                 num_col_classifier = num_col + 1
         except:
@@ -9157,7 +8719,7 @@ class eynollah:
                 ##sys.exit()
                 print("deskewing: " + str(time.time() - t1))
 
-                image_page_rotated, textline_mask_tot = image_page[:, :], textline_mask_tot_ea[:, :]  # self.rotation_not_90_func(image_page,textline_mask_tot_ea,slope_first)
+                image_page_rotated, textline_mask_tot = image_page[:, :], textline_mask_tot_ea[:, :]  # rotation_not_90_func(image_page,textline_mask_tot_ea,slope_first)
                 textline_mask_tot[mask_images[:, :] == 1] = 0
 
                 pixel_img = 1
@@ -9201,7 +8763,7 @@ class eynollah:
                 if not self.full_layout:
 
                     if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                        image_page_rotated_n, textline_mask_tot_d, text_regions_p_1_n = self.rotation_not_90_func(image_page, textline_mask_tot, text_regions_p, slope_deskew)
+                        image_page_rotated_n, textline_mask_tot_d, text_regions_p_1_n = rotation_not_90_func(image_page, textline_mask_tot, text_regions_p, slope_deskew)
 
                         text_regions_p_1_n = resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
                         textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
@@ -9332,7 +8894,7 @@ class eynollah:
                     # plt.show()
 
                     if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                        image_page_rotated_n, textline_mask_tot_d, text_regions_p_1_n, regions_fully_n = self.rotation_not_90_func_full_layout(image_page, textline_mask_tot, text_regions_p, regions_fully, slope_deskew)
+                        image_page_rotated_n, textline_mask_tot_d, text_regions_p_1_n, regions_fully_n = rotation_not_90_func_full_layout(image_page, textline_mask_tot, text_regions_p, regions_fully, slope_deskew)
 
                         text_regions_p_1_n = resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
                         textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])

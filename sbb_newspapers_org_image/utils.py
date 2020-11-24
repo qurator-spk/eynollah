@@ -107,6 +107,38 @@ def rotyate_image_different( img, slope):
     img_rotation = cv2.warpAffine(img, rotation_matrix, (num_cols, num_rows))
     return img_rotation
 
+def rotate_max_area(image, rotated, rotated_textline, rotated_layout, angle):
+    wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
+    h, w, _ = rotated.shape
+    y1 = h // 2 - int(hr / 2)
+    y2 = y1 + int(hr)
+    x1 = w // 2 - int(wr / 2)
+    x2 = x1 + int(wr)
+    return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2]
+
+def rotation_not_90_func(img, textline, text_regions_p_1, thetha):
+    rotated = imutils.rotate(img, thetha)
+    rotated_textline = imutils.rotate(textline, thetha)
+    rotated_layout = imutils.rotate(text_regions_p_1, thetha)
+    return rotate_max_area(img, rotated, rotated_textline, rotated_layout, thetha)
+
+def rotation_not_90_func_full_layout(img, textline, text_regions_p_1, text_regions_p_fully, thetha):
+    rotated = imutils.rotate(img, thetha)
+    rotated_textline = imutils.rotate(textline, thetha)
+    rotated_layout = imutils.rotate(text_regions_p_1, thetha)
+    rotated_layout_full = imutils.rotate(text_regions_p_fully, thetha)
+    return rotate_max_area_full_layout(img, rotated, rotated_textline, rotated_layout, rotated_layout_full, thetha)
+
+def rotate_max_area_full_layout(image, rotated, rotated_textline, rotated_layout, rotated_layout_full, angle):
+    wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
+    h, w, _ = rotated.shape
+    y1 = h // 2 - int(hr / 2)
+    y2 = y1 + int(hr)
+    x1 = w // 2 - int(wr / 2)
+    x2 = x1 + int(wr)
+    return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2], rotated_layout_full[y1:y2, x1:x2]
+
+
 def crop_image_inside_box(box, img_org_copy):
     image_box = img_org_copy[box[1] : box[1] + box[3], box[0] : box[0] + box[2]]
     return image_box, [box[1], box[1] + box[3], box[0], box[0] + box[2]]
@@ -1669,3 +1701,419 @@ def find_new_features_of_contoures(contours_main):
     # dis_x=np.abs(x_max_main-x_min_main)
 
     return cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin
+
+def find_num_col(regions_without_seperators, multiplier=3.8):
+    regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=0)
+
+    ##plt.plot(regions_without_seperators_0)
+    ##plt.show()
+
+    sigma_ = 35  # 70#35
+
+    meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
+
+    first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
+    last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
+
+    # print(last_nonzero)
+    # print(isNaN(last_nonzero))
+    # last_nonzero=0#halalikh
+    last_nonzero = len(regions_without_seperators_0) - last_nonzero
+
+    y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
+
+    y_help = np.zeros(len(y) + 20)
+
+    y_help[10 : len(y) + 10] = y
+
+    x = np.array(range(len(y)))
+
+    zneg_rev = -y_help + np.max(y_help)
+
+    zneg = np.zeros(len(zneg_rev) + 20)
+
+    zneg[10 : len(zneg_rev) + 10] = zneg_rev
+
+    z = gaussian_filter1d(y, sigma_)
+    zneg = gaussian_filter1d(zneg, sigma_)
+
+    peaks_neg, _ = find_peaks(zneg, height=0)
+    peaks, _ = find_peaks(z, height=0)
+
+    peaks_neg = peaks_neg - 10 - 10
+
+    last_nonzero = last_nonzero - 100
+    first_nonzero = first_nonzero + 200
+
+    peaks_neg = peaks_neg[(peaks_neg > first_nonzero) & (peaks_neg < last_nonzero)]
+
+    peaks = peaks[(peaks > 0.06 * regions_without_seperators.shape[1]) & (peaks < 0.94 * regions_without_seperators.shape[1])]
+    peaks_neg = peaks_neg[(peaks_neg > 370) & (peaks_neg < (regions_without_seperators.shape[1] - 370))]
+
+    # print(peaks)
+    interest_pos = z[peaks]
+
+    interest_pos = interest_pos[interest_pos > 10]
+
+    # plt.plot(z)
+    # plt.show()
+    interest_neg = z[peaks_neg]
+
+    min_peaks_pos = np.min(interest_pos)
+    max_peaks_pos = np.max(interest_pos)
+
+    if max_peaks_pos / min_peaks_pos >= 35:
+        min_peaks_pos = np.mean(interest_pos)
+
+    min_peaks_neg = 0  # np.min(interest_neg)
+
+    # print(np.min(interest_pos),np.max(interest_pos),np.max(interest_pos)/np.min(interest_pos),'minmax')
+    # $print(min_peaks_pos)
+    dis_talaei = (min_peaks_pos - min_peaks_neg) / multiplier
+    # print(interest_pos)
+    grenze = min_peaks_pos - dis_talaei  # np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
+
+    # print(interest_neg,'interest_neg')
+    # print(grenze,'grenze')
+    # print(min_peaks_pos,'min_peaks_pos')
+    # print(dis_talaei,'dis_talaei')
+    # print(peaks_neg,'peaks_neg')
+
+    interest_neg_fin = interest_neg[(interest_neg < grenze)]
+    peaks_neg_fin = peaks_neg[(interest_neg < grenze)]
+    # interest_neg_fin=interest_neg[(interest_neg<grenze)]
+
+    num_col = (len(interest_neg_fin)) + 1
+
+    # print(peaks_neg_fin,'peaks_neg_fin')
+    # print(num_col,'diz')
+    p_l = 0
+    p_u = len(y) - 1
+    p_m = int(len(y) / 2.0)
+    p_g_l = int(len(y) / 4.0)
+    p_g_u = len(y) - int(len(y) / 4.0)
+
+    if num_col == 3:
+        if (peaks_neg_fin[0] > p_g_u and peaks_neg_fin[1] > p_g_u) or (peaks_neg_fin[0] < p_g_l and peaks_neg_fin[1] < p_g_l) or ((peaks_neg_fin[0] + 200) < p_m and peaks_neg_fin[1] < p_m) or ((peaks_neg_fin[0] - 200) > p_m and peaks_neg_fin[1] > p_m):
+            num_col = 1
+            peaks_neg_fin = []
+        else:
+            pass
+
+    if num_col == 2:
+        if (peaks_neg_fin[0] > p_g_u) or (peaks_neg_fin[0] < p_g_l):
+            num_col = 1
+            peaks_neg_fin = []
+        else:
+            pass
+
+    ##print(len(peaks_neg_fin))
+
+    diff_peaks = np.abs(np.diff(peaks_neg_fin))
+
+    cut_off = 400
+    peaks_neg_true = []
+    forest = []
+
+    # print(len(peaks_neg_fin),'len_')
+
+    for i in range(len(peaks_neg_fin)):
+        if i == 0:
+            forest.append(peaks_neg_fin[i])
+        if i < (len(peaks_neg_fin) - 1):
+            if diff_peaks[i] <= cut_off:
+                forest.append(peaks_neg_fin[i + 1])
+            if diff_peaks[i] > cut_off:
+                # print(forest[np.argmin(z[forest]) ] )
+                if not isNaN(forest[np.argmin(z[forest])]):
+                    peaks_neg_true.append(forest[np.argmin(z[forest])])
+                forest = []
+                forest.append(peaks_neg_fin[i + 1])
+        if i == (len(peaks_neg_fin) - 1):
+            # print(print(forest[np.argmin(z[forest]) ] ))
+            if not isNaN(forest[np.argmin(z[forest])]):
+                peaks_neg_true.append(forest[np.argmin(z[forest])])
+
+    num_col = (len(peaks_neg_true)) + 1
+    p_l = 0
+    p_u = len(y) - 1
+    p_m = int(len(y) / 2.0)
+    p_quarter = int(len(y) / 5.0)
+    p_g_l = int(len(y) / 4.0)
+    p_g_u = len(y) - int(len(y) / 4.0)
+
+    p_u_quarter = len(y) - p_quarter
+
+    ##print(num_col,'early')
+    if num_col == 3:
+        if (peaks_neg_true[0] > p_g_u and peaks_neg_true[1] > p_g_u) or (peaks_neg_true[0] < p_g_l and peaks_neg_true[1] < p_g_l) or (peaks_neg_true[0] < p_m and (peaks_neg_true[1] + 200) < p_m) or ((peaks_neg_true[0] - 200) > p_m and peaks_neg_true[1] > p_m):
+            num_col = 1
+            peaks_neg_true = []
+        elif (peaks_neg_true[0] < p_g_u and peaks_neg_true[0] > p_g_l) and (peaks_neg_true[1] > p_u_quarter):
+            peaks_neg_true = [peaks_neg_true[0]]
+        elif (peaks_neg_true[1] < p_g_u and peaks_neg_true[1] > p_g_l) and (peaks_neg_true[0] < p_quarter):
+            peaks_neg_true = [peaks_neg_true[1]]
+        else:
+            pass
+
+    if num_col == 2:
+        if (peaks_neg_true[0] > p_g_u) or (peaks_neg_true[0] < p_g_l):
+            num_col = 1
+            peaks_neg_true = []
+        else:
+            pass
+
+    diff_peaks_annormal = diff_peaks[diff_peaks < 360]
+
+    if len(diff_peaks_annormal) > 0:
+        arg_help = np.array(range(len(diff_peaks)))
+        arg_help_ann = arg_help[diff_peaks < 360]
+
+        peaks_neg_fin_new = []
+
+        for ii in range(len(peaks_neg_fin)):
+            if ii in arg_help_ann:
+                arg_min = np.argmin([interest_neg_fin[ii], interest_neg_fin[ii + 1]])
+                if arg_min == 0:
+                    peaks_neg_fin_new.append(peaks_neg_fin[ii])
+                else:
+                    peaks_neg_fin_new.append(peaks_neg_fin[ii + 1])
+
+            elif (ii - 1) in arg_help_ann:
+                pass
+            else:
+                peaks_neg_fin_new.append(peaks_neg_fin[ii])
+    else:
+        peaks_neg_fin_new = peaks_neg_fin
+
+    # plt.plot(gaussian_filter1d(y, sigma_))
+    # plt.plot(peaks_neg_true,z[peaks_neg_true],'*')
+    # plt.plot([0,len(y)], [grenze,grenze])
+    # plt.show()
+
+    ##print(len(peaks_neg_true))
+    return len(peaks_neg_true), peaks_neg_true
+
+def find_num_col_only_image(regions_without_seperators, multiplier=3.8):
+    regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=0)
+
+    ##plt.plot(regions_without_seperators_0)
+    ##plt.show()
+
+    sigma_ = 15
+
+    meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
+
+    first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
+    last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
+
+    last_nonzero = len(regions_without_seperators_0) - last_nonzero
+
+    y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
+
+    y_help = np.zeros(len(y) + 20)
+
+    y_help[10 : len(y) + 10] = y
+
+    x = np.array(range(len(y)))
+
+    zneg_rev = -y_help + np.max(y_help)
+
+    zneg = np.zeros(len(zneg_rev) + 20)
+
+    zneg[10 : len(zneg_rev) + 10] = zneg_rev
+
+    z = gaussian_filter1d(y, sigma_)
+    zneg = gaussian_filter1d(zneg, sigma_)
+
+    peaks_neg, _ = find_peaks(zneg, height=0)
+    peaks, _ = find_peaks(z, height=0)
+
+    peaks_neg = peaks_neg - 10 - 10
+
+    peaks_neg_org = np.copy(peaks_neg)
+
+    peaks_neg = peaks_neg[(peaks_neg > first_nonzero) & (peaks_neg < last_nonzero)]
+
+    peaks = peaks[(peaks > 0.09 * regions_without_seperators.shape[1]) & (peaks < 0.91 * regions_without_seperators.shape[1])]
+
+    peaks_neg = peaks_neg[(peaks_neg > 500) & (peaks_neg < (regions_without_seperators.shape[1] - 500))]
+    # print(peaks)
+    interest_pos = z[peaks]
+
+    interest_pos = interest_pos[interest_pos > 10]
+
+    interest_neg = z[peaks_neg]
+    min_peaks_pos = np.mean(interest_pos)  # np.min(interest_pos)
+    min_peaks_neg = 0  # np.min(interest_neg)
+
+    # $print(min_peaks_pos)
+    dis_talaei = (min_peaks_pos - min_peaks_neg) / multiplier
+    # print(interest_pos)
+    grenze = min_peaks_pos - dis_talaei  # np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
+
+    interest_neg_fin = interest_neg[(interest_neg < grenze)]
+    peaks_neg_fin = peaks_neg[(interest_neg < grenze)]
+
+    num_col = (len(interest_neg_fin)) + 1
+
+    p_l = 0
+    p_u = len(y) - 1
+    p_m = int(len(y) / 2.0)
+    p_g_l = int(len(y) / 3.0)
+    p_g_u = len(y) - int(len(y) / 3.0)
+
+    if num_col == 3:
+        if (peaks_neg_fin[0] > p_g_u and peaks_neg_fin[1] > p_g_u) or (peaks_neg_fin[0] < p_g_l and peaks_neg_fin[1] < p_g_l) or (peaks_neg_fin[0] < p_m and peaks_neg_fin[1] < p_m) or (peaks_neg_fin[0] > p_m and peaks_neg_fin[1] > p_m):
+            num_col = 1
+        else:
+            pass
+
+    if num_col == 2:
+        if (peaks_neg_fin[0] > p_g_u) or (peaks_neg_fin[0] < p_g_l):
+            num_col = 1
+        else:
+            pass
+
+    diff_peaks = np.abs(np.diff(peaks_neg_fin))
+
+    cut_off = 400
+    peaks_neg_true = []
+    forest = []
+
+    for i in range(len(peaks_neg_fin)):
+        if i == 0:
+            forest.append(peaks_neg_fin[i])
+        if i < (len(peaks_neg_fin) - 1):
+            if diff_peaks[i] <= cut_off:
+                forest.append(peaks_neg_fin[i + 1])
+            if diff_peaks[i] > cut_off:
+                # print(forest[np.argmin(z[forest]) ] )
+                if not isNaN(forest[np.argmin(z[forest])]):
+                    peaks_neg_true.append(forest[np.argmin(z[forest])])
+                forest = []
+                forest.append(peaks_neg_fin[i + 1])
+        if i == (len(peaks_neg_fin) - 1):
+            # print(print(forest[np.argmin(z[forest]) ] ))
+            if not isNaN(forest[np.argmin(z[forest])]):
+                peaks_neg_true.append(forest[np.argmin(z[forest])])
+
+    num_col = (len(peaks_neg_true)) + 1
+    p_l = 0
+    p_u = len(y) - 1
+    p_m = int(len(y) / 2.0)
+    p_quarter = int(len(y) / 4.0)
+    p_g_l = int(len(y) / 3.0)
+    p_g_u = len(y) - int(len(y) / 3.0)
+
+    p_u_quarter = len(y) - p_quarter
+
+    if num_col == 3:
+        if (peaks_neg_true[0] > p_g_u and peaks_neg_true[1] > p_g_u) or (peaks_neg_true[0] < p_g_l and peaks_neg_true[1] < p_g_l) or (peaks_neg_true[0] < p_m and peaks_neg_true[1] < p_m) or (peaks_neg_true[0] > p_m and peaks_neg_true[1] > p_m):
+            num_col = 1
+            peaks_neg_true = []
+        elif (peaks_neg_true[0] < p_g_u and peaks_neg_true[0] > p_g_l) and (peaks_neg_true[1] > p_u_quarter):
+            peaks_neg_true = [peaks_neg_true[0]]
+        elif (peaks_neg_true[1] < p_g_u and peaks_neg_true[1] > p_g_l) and (peaks_neg_true[0] < p_quarter):
+            peaks_neg_true = [peaks_neg_true[1]]
+        else:
+            pass
+
+    if num_col == 2:
+        if (peaks_neg_true[0] > p_g_u) or (peaks_neg_true[0] < p_g_l):
+            num_col = 1
+            peaks_neg_true = []
+
+    if num_col == 4:
+        if len(np.array(peaks_neg_true)[np.array(peaks_neg_true) < p_g_l]) == 2 or len(np.array(peaks_neg_true)[np.array(peaks_neg_true) > (len(y) - p_g_l)]) == 2:
+            num_col = 1
+            peaks_neg_true = []
+        else:
+            pass
+
+    # no deeper hill around found hills
+
+    peaks_fin_true = []
+    for i in range(len(peaks_neg_true)):
+        hill_main = peaks_neg_true[i]
+        # deep_depth=z[peaks_neg]
+        hills_around = peaks_neg_org[((peaks_neg_org > hill_main) & (peaks_neg_org <= hill_main + 400)) | ((peaks_neg_org < hill_main) & (peaks_neg_org >= hill_main - 400))]
+        deep_depth_around = z[hills_around]
+
+        # print(hill_main,z[hill_main],hills_around,deep_depth_around,'manoooo')
+        try:
+            if np.min(deep_depth_around) < z[hill_main]:
+                pass
+            else:
+                peaks_fin_true.append(hill_main)
+        except:
+            pass
+
+    diff_peaks_annormal = diff_peaks[diff_peaks < 360]
+
+    if len(diff_peaks_annormal) > 0:
+        arg_help = np.array(range(len(diff_peaks)))
+        arg_help_ann = arg_help[diff_peaks < 360]
+
+        peaks_neg_fin_new = []
+
+        for ii in range(len(peaks_neg_fin)):
+            if ii in arg_help_ann:
+                arg_min = np.argmin([interest_neg_fin[ii], interest_neg_fin[ii + 1]])
+                if arg_min == 0:
+                    peaks_neg_fin_new.append(peaks_neg_fin[ii])
+                else:
+                    peaks_neg_fin_new.append(peaks_neg_fin[ii + 1])
+
+            elif (ii - 1) in arg_help_ann:
+                pass
+            else:
+                peaks_neg_fin_new.append(peaks_neg_fin[ii])
+    else:
+        peaks_neg_fin_new = peaks_neg_fin
+
+    # sometime pages with one columns gives also some negative peaks. delete those peaks
+    param = z[peaks_neg_true] / float(min_peaks_pos) * 100
+
+    if len(param[param <= 41]) == 0:
+        peaks_neg_true = []
+
+    return len(peaks_fin_true), peaks_fin_true
+
+def find_num_col_by_vertical_lines(regions_without_seperators, multiplier=3.8):
+    regions_without_seperators_0 = regions_without_seperators[:, :, 0].sum(axis=0)
+
+    ##plt.plot(regions_without_seperators_0)
+    ##plt.show()
+
+    sigma_ = 35  # 70#35
+
+    z = gaussian_filter1d(regions_without_seperators_0, sigma_)
+
+    peaks, _ = find_peaks(z, height=0)
+
+    # print(peaks,'peaksnew')
+    return peaks
+
+def contours_in_same_horizon(cy_main_hor):
+    X1 = np.zeros((len(cy_main_hor), len(cy_main_hor)))
+    X2 = np.zeros((len(cy_main_hor), len(cy_main_hor)))
+
+    X1[0::1, :] = cy_main_hor[:]
+    X2 = X1.T
+
+    X_dif = np.abs(X2 - X1)
+    args_help = np.array(range(len(cy_main_hor)))
+    all_args = []
+    for i in range(len(cy_main_hor)):
+        list_h = list(args_help[X_dif[i, :] <= 20])
+        list_h.append(i)
+        if len(list_h) > 1:
+            all_args.append(list(set(list_h)))
+    return np.unique(all_args)
+
+def find_contours_mean_y_diff(contours_main):
+    M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
+    cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+    return np.mean(np.diff(np.sort(np.array(cy_main))))
+
