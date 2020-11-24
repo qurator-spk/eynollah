@@ -61,6 +61,8 @@ from .utils import (
     seperate_lines_new_inside_teils2,
     filter_small_drop_capitals_from_no_patch_layout,
     find_num_col_deskew,
+    return_hor_spliter_by_index_for_without_verticals,
+    find_new_features_of_contoures,
 )
 
 
@@ -2263,78 +2265,6 @@ class eynollah:
         cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
         return np.mean(np.diff(np.sort(np.array(cy_main))))
 
-    def find_num_col_olddd(self, regions_without_seperators, sigma_, multiplier=3.8):
-        regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=1)
-
-        meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
-
-        first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
-        last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
-
-        last_nonzero = len(regions_without_seperators_0) - last_nonzero
-
-        y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
-
-        y_help = np.zeros(len(y) + 20)
-
-        y_help[10 : len(y) + 10] = y
-
-        x = np.array(range(len(y)))
-
-        zneg_rev = -y_help + np.max(y_help)
-
-        zneg = np.zeros(len(zneg_rev) + 20)
-
-        zneg[10 : len(zneg_rev) + 10] = zneg_rev
-
-        z = gaussian_filter1d(y, sigma_)
-        zneg = gaussian_filter1d(zneg, sigma_)
-
-        peaks_neg, _ = find_peaks(zneg, height=0)
-        peaks, _ = find_peaks(z, height=0)
-
-        peaks_neg = peaks_neg - 10 - 10
-
-        last_nonzero = last_nonzero - 0  # 100
-        first_nonzero = first_nonzero + 0  # +100
-
-        peaks_neg = peaks_neg[(peaks_neg > first_nonzero) & (peaks_neg < last_nonzero)]
-
-        peaks = peaks[(peaks > 0.06 * regions_without_seperators.shape[1]) & (peaks < 0.94 * regions_without_seperators.shape[1])]
-
-        interest_pos = z[peaks]
-
-        interest_pos = interest_pos[interest_pos > 10]
-
-        interest_neg = z[peaks_neg]
-
-        if interest_neg[0] < 0.1:
-            interest_neg = interest_neg[1:]
-        if interest_neg[len(interest_neg) - 1] < 0.1:
-            interest_neg = interest_neg[: len(interest_neg) - 1]
-
-        min_peaks_pos = np.min(interest_pos)
-        min_peaks_neg = 0  # np.min(interest_neg)
-
-        dis_talaei = (min_peaks_pos - min_peaks_neg) / multiplier
-        grenze = min_peaks_pos - dis_talaei  # np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
-
-        interest_neg_fin = interest_neg  # [(interest_neg<grenze)]
-        peaks_neg_fin = peaks_neg  # [(interest_neg<grenze)]
-        interest_neg_fin = interest_neg  # [(interest_neg<grenze)]
-
-        num_col = (len(interest_neg_fin)) + 1
-
-        p_l = 0
-        p_u = len(y) - 1
-        p_m = int(len(y) / 2.0)
-        p_g_l = int(len(y) / 3.0)
-        p_g_u = len(y) - int(len(y) / 3.0)
-
-        diff_peaks = np.abs(np.diff(peaks_neg_fin))
-        diff_peaks_annormal = diff_peaks[diff_peaks < 30]
-
-        return interest_neg_fin
 
     def return_deskew_slop(self, img_patch_org, sigma_des, main_page=False):
 
@@ -4161,23 +4091,6 @@ class eynollah:
 
         return regions_without_seperators
 
-    def return_regions_without_seperators_new(self, regions_pre, regions_only_text):
-        kernel = np.ones((5, 5), np.uint8)
-
-        regions_without_seperators = ((regions_pre[:, :] != 6) & (regions_pre[:, :] != 0) & (regions_pre[:, :] != 1) & (regions_pre[:, :] != 2)) * 1
-
-        # plt.imshow(regions_without_seperators)
-        # plt.show()
-
-        regions_without_seperators_n = ((regions_without_seperators[:, :] == 1) | (regions_only_text[:, :] == 1)) * 1
-
-        # regions_without_seperators=( (image_regions_eraly_p[:,:,:]!=6) & (image_regions_eraly_p[:,:,:]!=0) & (image_regions_eraly_p[:,:,:]!=5) & (image_regions_eraly_p[:,:,:]!=8) & (image_regions_eraly_p[:,:,:]!=7))*1
-
-        regions_without_seperators_n = regions_without_seperators_n.astype(np.uint8)
-
-        regions_without_seperators_n = cv2.erode(regions_without_seperators_n, kernel, iterations=6)
-
-        return regions_without_seperators_n
 
     def image_change_background_pixels_to_zero(self, image_page):
         image_back_zero = np.zeros((image_page.shape[0], image_page.shape[1]))
@@ -4372,86 +4285,6 @@ class eynollah:
             peaks_neg_true = []
 
         return len(peaks_fin_true), peaks_fin_true
-
-    def return_hor_spliter_by_index_for_without_verticals(self, peaks_neg_fin_t, x_min_hor_some, x_max_hor_some):
-        # print(peaks_neg_fin_t,x_min_hor_some,x_max_hor_some)
-        arg_min_hor_sort = np.argsort(x_min_hor_some)
-        x_min_hor_some_sort = np.sort(x_min_hor_some)
-        x_max_hor_some_sort = x_max_hor_some[arg_min_hor_sort]
-
-        arg_minmax = np.array(range(len(peaks_neg_fin_t)))
-        indexer_lines = []
-        indexes_to_delete = []
-        indexer_lines_deletions_len = []
-        indexr_uniq_ind = []
-        for i in range(len(x_min_hor_some_sort)):
-            min_h = peaks_neg_fin_t - x_min_hor_some_sort[i]
-
-            max_h = peaks_neg_fin_t - x_max_hor_some_sort[i]
-
-            min_h[0] = min_h[0]  # +20
-            max_h[len(max_h) - 1] = max_h[len(max_h) - 1] - 20
-
-            min_h_neg = arg_minmax[(min_h < 0)]
-            min_h_neg_n = min_h[min_h < 0]
-
-            try:
-                min_h_neg = [min_h_neg[np.argmax(min_h_neg_n)]]
-            except:
-                min_h_neg = []
-
-            max_h_neg = arg_minmax[(max_h > 0)]
-            max_h_neg_n = max_h[max_h > 0]
-
-            if len(max_h_neg_n) > 0:
-                max_h_neg = [max_h_neg[np.argmin(max_h_neg_n)]]
-            else:
-                max_h_neg = []
-
-            if len(min_h_neg) > 0 and len(max_h_neg) > 0:
-                deletions = list(range(min_h_neg[0] + 1, max_h_neg[0]))
-                unique_delets_int = []
-                # print(deletions,len(deletions),'delii')
-                if len(deletions) > 0:
-
-                    for j in range(len(deletions)):
-                        indexes_to_delete.append(deletions[j])
-                        # print(deletions,indexes_to_delete,'badiii')
-                        unique_delets = np.unique(indexes_to_delete)
-                        # print(min_h_neg[0],unique_delets)
-                        unique_delets_int = unique_delets[unique_delets < min_h_neg[0]]
-
-                    indexer_lines_deletions_len.append(len(deletions))
-                    indexr_uniq_ind.append([deletions])
-
-                else:
-                    indexer_lines_deletions_len.append(0)
-                    indexr_uniq_ind.append(-999)
-
-                index_line_true = min_h_neg[0] - len(unique_delets_int)
-                # print(index_line_true)
-                if index_line_true > 0 and min_h_neg[0] >= 2:
-                    index_line_true = index_line_true
-                else:
-                    index_line_true = min_h_neg[0]
-
-                indexer_lines.append(index_line_true)
-
-                if len(unique_delets_int) > 0:
-                    for dd in range(len(unique_delets_int)):
-                        indexes_to_delete.append(unique_delets_int[dd])
-            else:
-                indexer_lines.append(-999)
-                indexer_lines_deletions_len.append(-999)
-                indexr_uniq_ind.append(-999)
-
-        peaks_true = []
-        for m in range(len(peaks_neg_fin_t)):
-            if m in indexes_to_delete:
-                pass
-            else:
-                peaks_true.append(peaks_neg_fin_t[m])
-        return indexer_lines, peaks_true, arg_min_hor_sort, indexer_lines_deletions_len, indexr_uniq_ind
 
     def find_num_col_by_vertical_lines(self, regions_without_seperators, multiplier=3.8):
         regions_without_seperators_0 = regions_without_seperators[:, :, 0].sum(axis=0)
@@ -4660,40 +4493,6 @@ class eynollah:
         ##print(len(peaks_neg_true))
         return len(peaks_neg_true), peaks_neg_true
 
-    def find_new_features_of_contoures(self, contours_main):
-
-        areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
-        M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-        cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-        cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-        try:
-            x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-
-            argmin_x_main = np.array([np.argmin(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-
-            x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0, 0] for j in range(len(contours_main))])
-            y_corr_x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0, 1] for j in range(len(contours_main))])
-
-            x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-
-            y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-            y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-        except:
-            x_min_main = np.array([np.min(contours_main[j][:, 0]) for j in range(len(contours_main))])
-
-            argmin_x_main = np.array([np.argmin(contours_main[j][:, 0]) for j in range(len(contours_main))])
-
-            x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0] for j in range(len(contours_main))])
-            y_corr_x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 1] for j in range(len(contours_main))])
-
-            x_max_main = np.array([np.max(contours_main[j][:, 0]) for j in range(len(contours_main))])
-
-            y_min_main = np.array([np.min(contours_main[j][:, 1]) for j in range(len(contours_main))])
-            y_max_main = np.array([np.max(contours_main[j][:, 1]) for j in range(len(contours_main))])
-
-        # dis_x=np.abs(x_max_main-x_min_main)
-
-        return cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin
 
     def return_points_with_boundies(self, peaks_neg_fin, first_point, last_point):
         peaks_neg_tot = []
@@ -4753,7 +4552,7 @@ class eynollah:
 
                 peaks_neg_tot = self.return_points_with_boundies(peaks_neg_fin, 0, seperators_closeup_n[:, :, 0].shape[1])
 
-                start_index_of_hor, newest_peaks, arg_min_hor_sort, lines_length_dels, lines_indexes_deleted = self.return_hor_spliter_by_index_for_without_verticals(peaks_neg_tot, x_min_hor_some, x_max_hor_some)
+                start_index_of_hor, newest_peaks, arg_min_hor_sort, lines_length_dels, lines_indexes_deleted = return_hor_spliter_by_index_for_without_verticals(peaks_neg_tot, x_min_hor_some, x_max_hor_some)
 
                 arg_org_hor_some_sort = arg_org_hor_some[arg_min_hor_sort]
 
@@ -4906,7 +4705,7 @@ class eynollah:
 
                                     peaks_neg_ch_tot = self.return_points_with_boundies(peaks_neg_ch, newest_peaks[j], newest_peaks[j + 1])
 
-                                    ss_in_ch, nst_p_ch, arg_n_ch, lines_l_del_ch, lines_in_del_ch = self.return_hor_spliter_by_index_for_without_verticals(peaks_neg_ch_tot, x_min_ch, x_max_ch)
+                                    ss_in_ch, nst_p_ch, arg_n_ch, lines_l_del_ch, lines_in_del_ch = return_hor_spliter_by_index_for_without_verticals(peaks_neg_ch_tot, x_min_ch, x_max_ch)
 
                                     newest_y_spliter_ch_tot = []
 
@@ -5154,7 +4953,7 @@ class eynollah:
         ret, thresh = cv2.threshold(imgray, 0, 255, 0)
         contours_cross, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        cx_cross, cy_cross, _, _, _, _, _ = self.find_new_features_of_contoures(contours_cross)
+        cx_cross, cy_cross, _, _, _, _, _ = find_new_features_of_contoures(contours_cross)
 
         for ii in range(len(cx_cross)):
             sep_ver_hor[int(cy_cross[ii]) - 15 : int(cy_cross[ii]) + 15, int(cx_cross[ii]) + 5 : int(cx_cross[ii]) + 40] = 0
@@ -5341,7 +5140,7 @@ class eynollah:
         ret, thresh = cv2.threshold(imgray, 0, 255, 0)
         contours_cross, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        cx_cross, cy_cross, _, _, _, _, _ = self.find_new_features_of_contoures(contours_cross)
+        cx_cross, cy_cross, _, _, _, _, _ = find_new_features_of_contoures(contours_cross)
 
         for ii in range(len(cx_cross)):
             img_p_in[int(cy_cross[ii]) - 30 : int(cy_cross[ii]) + 30, int(cx_cross[ii]) + 5 : int(cx_cross[ii]) + 40, 0] = 0
@@ -5680,7 +5479,7 @@ class eynollah:
 
                 peaks_neg_tot = self.return_points_with_boundies(peaks_neg_fin, 0, regions_without_seperators[:, :].shape[1])
 
-                start_index_of_hor, newest_peaks, arg_min_hor_sort, lines_length_dels, lines_indexes_deleted = self.return_hor_spliter_by_index_for_without_verticals(peaks_neg_tot, x_min_hor_some, x_max_hor_some)
+                start_index_of_hor, newest_peaks, arg_min_hor_sort, lines_length_dels, lines_indexes_deleted = return_hor_spliter_by_index_for_without_verticals(peaks_neg_tot, x_min_hor_some, x_max_hor_some)
 
                 arg_org_hor_some_sort = arg_org_hor_some[arg_min_hor_sort]
 
@@ -5845,7 +5644,7 @@ class eynollah:
 
                                     peaks_neg_ch_tot = self.return_points_with_boundies(peaks_neg_ch, newest_peaks[j], newest_peaks[j + 1])
 
-                                    ss_in_ch, nst_p_ch, arg_n_ch, lines_l_del_ch, lines_in_del_ch = self.return_hor_spliter_by_index_for_without_verticals(peaks_neg_ch_tot, x_min_ch, x_max_ch)
+                                    ss_in_ch, nst_p_ch, arg_n_ch, lines_l_del_ch, lines_in_del_ch = return_hor_spliter_by_index_for_without_verticals(peaks_neg_ch_tot, x_min_ch, x_max_ch)
 
                                     newest_y_spliter_ch_tot = []
 
@@ -6266,8 +6065,8 @@ class eynollah:
                 # _,_,y_min_main_line ,y_max_main_line,x_min_main_line,x_max_main_line=find_new_features_of_contoures(contours_line)
                 y_min_main_tab, y_max_main_tab = self.find_features_of_contoures(contours_tab)
 
-                cx_tab_m_text, cy_tab_m_text, x_min_tab_m_text, x_max_tab_m_text, y_min_tab_m_text, y_max_tab_m_text = self.find_new_features_of_contoures(contours_table_m_text)
-                cx_tabl, cy_tabl, x_min_tabl, x_max_tabl, y_min_tabl, y_max_tabl, _ = self.find_new_features_of_contoures(contours_tab)
+                cx_tab_m_text, cy_tab_m_text, x_min_tab_m_text, x_max_tab_m_text, y_min_tab_m_text, y_max_tab_m_text = find_new_features_of_contoures(contours_table_m_text)
+                cx_tabl, cy_tabl, x_min_tabl, x_max_tabl, y_min_tabl, y_max_tabl, _ = find_new_features_of_contoures(contours_tab)
 
                 if len(y_min_main_tab) > 0:
                     y_down_tabs = []
@@ -8012,7 +7811,7 @@ class eynollah:
             min_area_text = 0.00001
             polygons_of_marginals = return_contours_of_interested_region(text_regions, pixel_img, min_area_text)
 
-            cx_text_only, cy_text_only, x_min_text_only, x_max_text_only, y_min_text_only, y_max_text_only, y_cor_x_min_main = self.find_new_features_of_contoures(polygons_of_marginals)
+            cx_text_only, cy_text_only, x_min_text_only, x_max_text_only, y_min_text_only, y_max_text_only, y_cor_x_min_main = find_new_features_of_contoures(polygons_of_marginals)
 
             text_regions[(text_regions[:, :] == 4)] = 1
 
@@ -8293,7 +8092,7 @@ class eynollah:
         contours_only_text_parent=[contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz]>0.00001]
         """
 
-        cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin = self.find_new_features_of_contoures(contours_only_text_parent)
+        cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin = find_new_features_of_contoures(contours_only_text_parent)
 
         length_con = x_max_main - x_min_main
         height_con = y_max_main - y_min_main
@@ -8401,8 +8200,8 @@ class eynollah:
     def do_order_of_regions(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
 
         if self.full_layout:
-            cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = self.find_new_features_of_contoures(contours_only_text_parent)
-            cx_text_only_h, cy_text_only_h, x_min_text_only_h, _, _, _, y_cor_x_min_main_h = self.find_new_features_of_contoures(contours_only_text_parent_h)
+            cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = find_new_features_of_contoures(contours_only_text_parent)
+            cx_text_only_h, cy_text_only_h, x_min_text_only_h, _, _, _, y_cor_x_min_main_h = find_new_features_of_contoures(contours_only_text_parent_h)
 
             try:
                 arg_text_con = []
@@ -8568,7 +8367,7 @@ class eynollah:
             return order_text_new, id_of_texts_tot
 
         else:
-            cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = self.find_new_features_of_contoures(contours_only_text_parent)
+            cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = find_new_features_of_contoures(contours_only_text_parent)
 
             try:
                 arg_text_con = []
@@ -8684,9 +8483,9 @@ class eynollah:
     def adhere_drop_capital_region_into_cprresponding_textline(self, text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h):
         # print(np.shape(all_found_texline_polygons),np.shape(all_found_texline_polygons[3]),'all_found_texline_polygonsshape')
         # print(all_found_texline_polygons[3])
-        cx_m, cy_m, _, _, _, _, _ = self.find_new_features_of_contoures(contours_only_text_parent)
-        cx_h, cy_h, _, _, _, _, _ = self.find_new_features_of_contoures(contours_only_text_parent_h)
-        cx_d, cy_d, _, _, y_min_d, y_max_d, _ = self.find_new_features_of_contoures(polygons_of_drop_capitals)
+        cx_m, cy_m, _, _, _, _, _ = find_new_features_of_contoures(contours_only_text_parent)
+        cx_h, cy_h, _, _, _, _, _ = find_new_features_of_contoures(contours_only_text_parent_h)
+        cx_d, cy_d, _, _, y_min_d, y_max_d, _ = find_new_features_of_contoures(polygons_of_drop_capitals)
 
         img_con_all = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1], 3))
         for j_cont in range(len(contours_only_text_parent)):
@@ -8751,9 +8550,9 @@ class eynollah:
                     region_final = region_with_intersected_drop[np.argmax(sum_pixels_of_intersection)] - 1
 
                     # print(region_final,'region_final')
-                    # cx_t,cy_t ,_, _, _ ,_,_=self.find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
+                    # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
                     try:
-                        cx_t, cy_t, _, _, _, _, _ = self.find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
+                        cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
                         # print(all_box_coord[j_cont])
                         # print(cx_t)
                         # print(cy_t)
@@ -8805,9 +8604,9 @@ class eynollah:
 
                     # areas_main=np.array([cv2.contourArea(all_found_texline_polygons[int(region_final)][0][j] ) for j in range(len(all_found_texline_polygons[int(region_final)]))])
 
-                    # cx_t,cy_t ,_, _, _ ,_,_=self.find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
+                    # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
 
-                    cx_t, cy_t, _, _, _, _, _ = self.find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
+                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -8855,7 +8654,7 @@ class eynollah:
                     # print(cx_t,'print')
                     try:
                         # print(all_found_texline_polygons[j_cont][0])
-                        cx_t, cy_t, _, _, _, _, _ = self.find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
+                        cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
                         # print(all_box_coord[j_cont])
                         # print(cx_t)
                         # print(cy_t)
@@ -8902,7 +8701,7 @@ class eynollah:
                 else:
                     pass
 
-                ##cx_t,cy_t ,_, _, _ ,_,_=self.find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
+                ##cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
                 ###print(all_box_coord[j_cont])
                 ###print(cx_t)
                 ###print(cy_t)
@@ -8956,9 +8755,9 @@ class eynollah:
                     region_final = region_with_intersected_drop[np.argmax(sum_pixels_of_intersection)] - 1
 
                     # print(region_final,'region_final')
-                    # cx_t,cy_t ,_, _, _ ,_,_=self.find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
+                    # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
                     try:
-                        cx_t, cy_t, _, _, _, _, _ = self.find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
+                        cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
                         # print(all_box_coord[j_cont])
                         # print(cx_t)
                         # print(cy_t)
@@ -9010,12 +8809,12 @@ class eynollah:
 
                     # areas_main=np.array([cv2.contourArea(all_found_texline_polygons[int(region_final)][0][j] ) for j in range(len(all_found_texline_polygons[int(region_final)]))])
 
-                    # cx_t,cy_t ,_, _, _ ,_,_=self.find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
+                    # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
 
                     # print(cx_t,'print')
                     try:
                         # print(all_found_texline_polygons[j_cont][0])
-                        cx_t, cy_t, _, _, _, _, _ = self.find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
+                        cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contoures(all_found_texline_polygons[int(region_final)])
                         # print(all_box_coord[j_cont])
                         # print(cx_t)
                         # print(cy_t)
@@ -9081,7 +8880,7 @@ class eynollah:
         #####try:
         #####if len(contours_new_parent)==1:
         ######print(all_found_texline_polygons[j_cont][0])
-        #####cx_t,cy_t ,_, _, _ ,_,_=self.find_new_features_of_contoures(all_found_texline_polygons[j_cont])
+        #####cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contoures(all_found_texline_polygons[j_cont])
         ######print(all_box_coord[j_cont])
         ######print(cx_t)
         ######print(cy_t)
@@ -9594,8 +9393,8 @@ class eynollah:
                     contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
                     areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
 
-                    cx_bigest_big, cy_biggest_big, _, _, _, _, _ = self.find_new_features_of_contoures([contours_biggest])
-                    cx_bigest, cy_biggest, _, _, _, _, _ = self.find_new_features_of_contoures(contours_only_text_parent)
+                    cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contoures([contours_biggest])
+                    cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contoures(contours_only_text_parent)
 
                     contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
                     contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
@@ -9606,8 +9405,8 @@ class eynollah:
 
                     contours_biggest_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
 
-                    cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = self.find_new_features_of_contoures([contours_biggest_d])
-                    cx_bigest_d, cy_biggest_d, _, _, _, _, _ = self.find_new_features_of_contoures(contours_only_text_parent_d)
+                    cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contoures([contours_biggest_d])
+                    cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contoures(contours_only_text_parent_d)
 
                     (h, w) = text_only.shape[:2]
                     center = (w // 2.0, h // 2.0)
@@ -9665,8 +9464,8 @@ class eynollah:
                     contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
                     areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
 
-                    cx_bigest_big, cy_biggest_big, _, _, _, _, _ = self.find_new_features_of_contoures([contours_biggest])
-                    cx_bigest, cy_biggest, _, _, _, _, _ = self.find_new_features_of_contoures(contours_only_text_parent)
+                    cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contoures([contours_biggest])
+                    cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contoures(contours_only_text_parent)
                     # print(areas_cnt_text_parent,'areas_cnt_text_parent')
 
                     ###index_con_parents_d=np.argsort(areas_cnt_text_parent_d)

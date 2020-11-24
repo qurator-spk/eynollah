@@ -1554,3 +1554,118 @@ def find_num_col_deskew(regions_without_seperators, sigma_, multiplier=3.8):
 
     # print(len(interest_neg_fin),np.mean(interest_neg_fin))
     return interest_neg_fin, np.std(z)
+
+def return_hor_spliter_by_index_for_without_verticals(peaks_neg_fin_t, x_min_hor_some, x_max_hor_some):
+    # print(peaks_neg_fin_t,x_min_hor_some,x_max_hor_some)
+    arg_min_hor_sort = np.argsort(x_min_hor_some)
+    x_min_hor_some_sort = np.sort(x_min_hor_some)
+    x_max_hor_some_sort = x_max_hor_some[arg_min_hor_sort]
+
+    arg_minmax = np.array(range(len(peaks_neg_fin_t)))
+    indexer_lines = []
+    indexes_to_delete = []
+    indexer_lines_deletions_len = []
+    indexr_uniq_ind = []
+    for i in range(len(x_min_hor_some_sort)):
+        min_h = peaks_neg_fin_t - x_min_hor_some_sort[i]
+
+        max_h = peaks_neg_fin_t - x_max_hor_some_sort[i]
+
+        min_h[0] = min_h[0]  # +20
+        max_h[len(max_h) - 1] = max_h[len(max_h) - 1] - 20
+
+        min_h_neg = arg_minmax[(min_h < 0)]
+        min_h_neg_n = min_h[min_h < 0]
+
+        try:
+            min_h_neg = [min_h_neg[np.argmax(min_h_neg_n)]]
+        except:
+            min_h_neg = []
+
+        max_h_neg = arg_minmax[(max_h > 0)]
+        max_h_neg_n = max_h[max_h > 0]
+
+        if len(max_h_neg_n) > 0:
+            max_h_neg = [max_h_neg[np.argmin(max_h_neg_n)]]
+        else:
+            max_h_neg = []
+
+        if len(min_h_neg) > 0 and len(max_h_neg) > 0:
+            deletions = list(range(min_h_neg[0] + 1, max_h_neg[0]))
+            unique_delets_int = []
+            # print(deletions,len(deletions),'delii')
+            if len(deletions) > 0:
+
+                for j in range(len(deletions)):
+                    indexes_to_delete.append(deletions[j])
+                    # print(deletions,indexes_to_delete,'badiii')
+                    unique_delets = np.unique(indexes_to_delete)
+                    # print(min_h_neg[0],unique_delets)
+                    unique_delets_int = unique_delets[unique_delets < min_h_neg[0]]
+
+                indexer_lines_deletions_len.append(len(deletions))
+                indexr_uniq_ind.append([deletions])
+
+            else:
+                indexer_lines_deletions_len.append(0)
+                indexr_uniq_ind.append(-999)
+
+            index_line_true = min_h_neg[0] - len(unique_delets_int)
+            # print(index_line_true)
+            if index_line_true > 0 and min_h_neg[0] >= 2:
+                index_line_true = index_line_true
+            else:
+                index_line_true = min_h_neg[0]
+
+            indexer_lines.append(index_line_true)
+
+            if len(unique_delets_int) > 0:
+                for dd in range(len(unique_delets_int)):
+                    indexes_to_delete.append(unique_delets_int[dd])
+        else:
+            indexer_lines.append(-999)
+            indexer_lines_deletions_len.append(-999)
+            indexr_uniq_ind.append(-999)
+
+    peaks_true = []
+    for m in range(len(peaks_neg_fin_t)):
+        if m in indexes_to_delete:
+            pass
+        else:
+            peaks_true.append(peaks_neg_fin_t[m])
+    return indexer_lines, peaks_true, arg_min_hor_sort, indexer_lines_deletions_len, indexr_uniq_ind
+
+def find_new_features_of_contoures(contours_main):
+
+    areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
+    M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
+    cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+    cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+    try:
+        x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+
+        argmin_x_main = np.array([np.argmin(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+
+        x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0, 0] for j in range(len(contours_main))])
+        y_corr_x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0, 1] for j in range(len(contours_main))])
+
+        x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+
+        y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+        y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+    except:
+        x_min_main = np.array([np.min(contours_main[j][:, 0]) for j in range(len(contours_main))])
+
+        argmin_x_main = np.array([np.argmin(contours_main[j][:, 0]) for j in range(len(contours_main))])
+
+        x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0] for j in range(len(contours_main))])
+        y_corr_x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 1] for j in range(len(contours_main))])
+
+        x_max_main = np.array([np.max(contours_main[j][:, 0]) for j in range(len(contours_main))])
+
+        y_min_main = np.array([np.min(contours_main[j][:, 1]) for j in range(len(contours_main))])
+        y_max_main = np.array([np.max(contours_main[j][:, 1]) for j in range(len(contours_main))])
+
+    # dis_x=np.abs(x_max_main-x_min_main)
+
+    return cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin

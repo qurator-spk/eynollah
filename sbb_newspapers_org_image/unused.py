@@ -278,3 +278,93 @@ def get_all_image_patches_coordination(self, image_page):
         _, crop_coor = crop_image_inside_box(self.boxes[jk], image_page)
         self.all_box_coord.append(crop_coor)
 
+def find_num_col_olddd(self, regions_without_seperators, sigma_, multiplier=3.8):
+    regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=1)
+
+    meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
+
+    first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
+    last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
+
+    last_nonzero = len(regions_without_seperators_0) - last_nonzero
+
+    y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
+
+    y_help = np.zeros(len(y) + 20)
+
+    y_help[10 : len(y) + 10] = y
+
+    x = np.array(range(len(y)))
+
+    zneg_rev = -y_help + np.max(y_help)
+
+    zneg = np.zeros(len(zneg_rev) + 20)
+
+    zneg[10 : len(zneg_rev) + 10] = zneg_rev
+
+    z = gaussian_filter1d(y, sigma_)
+    zneg = gaussian_filter1d(zneg, sigma_)
+
+    peaks_neg, _ = find_peaks(zneg, height=0)
+    peaks, _ = find_peaks(z, height=0)
+
+    peaks_neg = peaks_neg - 10 - 10
+
+    last_nonzero = last_nonzero - 0  # 100
+    first_nonzero = first_nonzero + 0  # +100
+
+    peaks_neg = peaks_neg[(peaks_neg > first_nonzero) & (peaks_neg < last_nonzero)]
+
+    peaks = peaks[(peaks > 0.06 * regions_without_seperators.shape[1]) & (peaks < 0.94 * regions_without_seperators.shape[1])]
+
+    interest_pos = z[peaks]
+
+    interest_pos = interest_pos[interest_pos > 10]
+
+    interest_neg = z[peaks_neg]
+
+    if interest_neg[0] < 0.1:
+        interest_neg = interest_neg[1:]
+    if interest_neg[len(interest_neg) - 1] < 0.1:
+        interest_neg = interest_neg[: len(interest_neg) - 1]
+
+    min_peaks_pos = np.min(interest_pos)
+    min_peaks_neg = 0  # np.min(interest_neg)
+
+    dis_talaei = (min_peaks_pos - min_peaks_neg) / multiplier
+    grenze = min_peaks_pos - dis_talaei  # np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
+
+    interest_neg_fin = interest_neg  # [(interest_neg<grenze)]
+    peaks_neg_fin = peaks_neg  # [(interest_neg<grenze)]
+    interest_neg_fin = interest_neg  # [(interest_neg<grenze)]
+
+    num_col = (len(interest_neg_fin)) + 1
+
+    p_l = 0
+    p_u = len(y) - 1
+    p_m = int(len(y) / 2.0)
+    p_g_l = int(len(y) / 3.0)
+    p_g_u = len(y) - int(len(y) / 3.0)
+
+    diff_peaks = np.abs(np.diff(peaks_neg_fin))
+    diff_peaks_annormal = diff_peaks[diff_peaks < 30]
+
+    return interest_neg_fin
+
+def return_regions_without_seperators_new(self, regions_pre, regions_only_text):
+    kernel = np.ones((5, 5), np.uint8)
+
+    regions_without_seperators = ((regions_pre[:, :] != 6) & (regions_pre[:, :] != 0) & (regions_pre[:, :] != 1) & (regions_pre[:, :] != 2)) * 1
+
+    # plt.imshow(regions_without_seperators)
+    # plt.show()
+
+    regions_without_seperators_n = ((regions_without_seperators[:, :] == 1) | (regions_only_text[:, :] == 1)) * 1
+
+    # regions_without_seperators=( (image_regions_eraly_p[:,:,:]!=6) & (image_regions_eraly_p[:,:,:]!=0) & (image_regions_eraly_p[:,:,:]!=5) & (image_regions_eraly_p[:,:,:]!=8) & (image_regions_eraly_p[:,:,:]!=7))*1
+
+    regions_without_seperators_n = regions_without_seperators_n.astype(np.uint8)
+
+    regions_without_seperators_n = cv2.erode(regions_without_seperators_n, kernel, iterations=6)
+
+    return regions_without_seperators_n
