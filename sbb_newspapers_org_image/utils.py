@@ -1457,3 +1457,100 @@ def filter_small_drop_capitals_from_no_patch_layout(layout_no_patch, layout1):
 
     return layout_no_patch
 
+
+def find_num_col_deskew(regions_without_seperators, sigma_, multiplier=3.8):
+    regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=1)
+
+    meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
+
+    first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
+    last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
+
+    last_nonzero = len(regions_without_seperators_0) - last_nonzero
+
+    y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
+
+    y_help = np.zeros(len(y) + 20)
+
+    y_help[10 : len(y) + 10] = y
+
+    x = np.array(range(len(y)))
+
+    zneg_rev = -y_help + np.max(y_help)
+
+    zneg = np.zeros(len(zneg_rev) + 20)
+
+    zneg[10 : len(zneg_rev) + 10] = zneg_rev
+
+    z = gaussian_filter1d(y, sigma_)
+    zneg = gaussian_filter1d(zneg, sigma_)
+
+    peaks_neg, _ = find_peaks(zneg, height=0)
+    peaks, _ = find_peaks(z, height=0)
+
+    peaks_neg = peaks_neg - 10 - 10
+
+    # print(np.std(z),'np.std(z)np.std(z)np.std(z)')
+
+    ##plt.plot(z)
+    ##plt.show()
+
+    ##plt.imshow(regions_without_seperators)
+    ##plt.show()
+    """
+    last_nonzero=last_nonzero-0#100
+    first_nonzero=first_nonzero+0#+100
+
+    peaks_neg=peaks_neg[(peaks_neg>first_nonzero) & (peaks_neg<last_nonzero)]
+
+    peaks=peaks[(peaks>.06*regions_without_seperators.shape[1]) & (peaks<0.94*regions_without_seperators.shape[1])]
+    """
+    interest_pos = z[peaks]
+
+    interest_pos = interest_pos[interest_pos > 10]
+
+    interest_neg = z[peaks_neg]
+
+    min_peaks_pos = np.mean(interest_pos)
+    min_peaks_neg = 0  # np.min(interest_neg)
+
+    dis_talaei = (min_peaks_pos - min_peaks_neg) / multiplier
+    # print(interest_pos)
+    grenze = min_peaks_pos - dis_talaei  # np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
+
+    interest_neg_fin = interest_neg[(interest_neg < grenze)]
+    peaks_neg_fin = peaks_neg[(interest_neg < grenze)]
+    interest_neg_fin = interest_neg[(interest_neg < grenze)]
+
+    """
+    if interest_neg[0]<0.1:
+        interest_neg=interest_neg[1:]
+    if interest_neg[len(interest_neg)-1]<0.1:
+        interest_neg=interest_neg[:len(interest_neg)-1]
+
+
+
+    min_peaks_pos=np.min(interest_pos)
+    min_peaks_neg=0#np.min(interest_neg)
+
+
+    dis_talaei=(min_peaks_pos-min_peaks_neg)/multiplier
+    grenze=min_peaks_pos-dis_talaei#np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
+    """
+    # interest_neg_fin=interest_neg#[(interest_neg<grenze)]
+    # peaks_neg_fin=peaks_neg#[(interest_neg<grenze)]
+    # interest_neg_fin=interest_neg#[(interest_neg<grenze)]
+
+    num_col = (len(interest_neg_fin)) + 1
+
+    p_l = 0
+    p_u = len(y) - 1
+    p_m = int(len(y) / 2.0)
+    p_g_l = int(len(y) / 3.0)
+    p_g_u = len(y) - int(len(y) / 3.0)
+
+    diff_peaks = np.abs(np.diff(peaks_neg_fin))
+    diff_peaks_annormal = diff_peaks[diff_peaks < 30]
+
+    # print(len(interest_neg_fin),np.mean(interest_neg_fin))
+    return interest_neg_fin, np.std(z)

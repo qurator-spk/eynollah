@@ -272,3 +272,9 @@ def deskew_erarly(textline_mask):
         image_regions_deskewd = image_regions_deskewd + deskewed_new
     return image_regions_deskewd, slope_true
 
+def get_all_image_patches_coordination(self, image_page):
+    self.all_box_coord = []
+    for jk in range(len(self.boxes)):
+        _, crop_coor = crop_image_inside_box(self.boxes[jk], image_page)
+        self.all_box_coord.append(crop_coor)
+
