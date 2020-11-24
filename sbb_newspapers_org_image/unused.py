@@ -488,3 +488,338 @@ def order_of_regions_old(textline_mask, contours_main):
             final_indexers_sorted.append(int(ind_in_int[j]))
 
     return final_indexers_sorted, matrix_of_orders
+
+def remove_headers_and_mains_intersection(seperators_closeup_n, img_revised_tab, boxes):
+    for ind in range(len(boxes)):
+        asp = np.zeros((img_revised_tab[:, :, 0].shape[0], seperators_closeup_n[:, :, 0].shape[1]))
+        asp[int(boxes[ind][2]) : int(boxes[ind][3]), int(boxes[ind][0]) : int(boxes[ind][1])] = img_revised_tab[int(boxes[ind][2]) : int(boxes[ind][3]), int(boxes[ind][0]) : int(boxes[ind][1]), 0]
+
+        head_patch_con = (asp[:, :] == 2) * 1
+        main_patch_con = (asp[:, :] == 1) * 1
+        # print(head_patch_con)
+        head_patch_con = head_patch_con.astype(np.uint8)
+        main_patch_con = main_patch_con.astype(np.uint8)
+
+        head_patch_con = np.repeat(head_patch_con[:, :, np.newaxis], 3, axis=2)
+        main_patch_con = np.repeat(main_patch_con[:, :, np.newaxis], 3, axis=2)
+
+        imgray = cv2.cvtColor(head_patch_con, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+        contours_head_patch_con, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours_head_patch_con = return_parent_contours(contours_head_patch_con, hiearchy)
+
+        imgray = cv2.cvtColor(main_patch_con, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+        contours_main_patch_con, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours_main_patch_con = return_parent_contours(contours_main_patch_con, hiearchy)
+
+        y_patch_head_min, y_patch_head_max, _ = find_features_of_contours(contours_head_patch_con)
+        y_patch_main_min, y_patch_main_max, _ = find_features_of_contours(contours_main_patch_con)
+
+        for i in range(len(y_patch_head_min)):
+            for j in range(len(y_patch_main_min)):
+                if y_patch_head_max[i] > y_patch_main_min[j] and y_patch_head_min[i] < y_patch_main_min[j]:
+                    y_down = y_patch_head_max[i]
+                    y_up = y_patch_main_min[j]
+
+                    patch_intersection = np.zeros(asp.shape)
+                    patch_intersection[y_up:y_down, :] = asp[y_up:y_down, :]
+
+                    head_patch_con = (patch_intersection[:, :] == 2) * 1
+                    main_patch_con = (patch_intersection[:, :] == 1) * 1
+                    head_patch_con = head_patch_con.astype(np.uint8)
+                    main_patch_con = main_patch_con.astype(np.uint8)
+
+                    head_patch_con = np.repeat(head_patch_con[:, :, np.newaxis], 3, axis=2)
+                    main_patch_con = np.repeat(main_patch_con[:, :, np.newaxis], 3, axis=2)
+
+                    imgray = cv2.cvtColor(head_patch_con, cv2.COLOR_BGR2GRAY)
+                    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+                    contours_head_patch_con, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    contours_head_patch_con = return_parent_contours(contours_head_patch_con, hiearchy)
+
+                    imgray = cv2.cvtColor(main_patch_con, cv2.COLOR_BGR2GRAY)
+                    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+                    contours_main_patch_con, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    contours_main_patch_con = return_parent_contours(contours_main_patch_con, hiearchy)
+
+                    _, _, areas_head = find_features_of_contours(contours_head_patch_con)
+                    _, _, areas_main = find_features_of_contours(contours_main_patch_con)
+
+                    if np.sum(areas_head) > np.sum(areas_main):
+                        img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0][img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0] == 1] = 2
+                    else:
+                        img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0][img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0] == 2] = 1
+
+                elif y_patch_head_min[i] < y_patch_main_max[j] and y_patch_head_max[i] > y_patch_main_max[j]:
+                    y_down = y_patch_main_max[j]
+                    y_up = y_patch_head_min[i]
+
+                    patch_intersection = np.zeros(asp.shape)
+                    patch_intersection[y_up:y_down, :] = asp[y_up:y_down, :]
+
+                    head_patch_con = (patch_intersection[:, :] == 2) * 1
+                    main_patch_con = (patch_intersection[:, :] == 1) * 1
+                    head_patch_con = head_patch_con.astype(np.uint8)
+                    main_patch_con = main_patch_con.astype(np.uint8)
+
+                    head_patch_con = np.repeat(head_patch_con[:, :, np.newaxis], 3, axis=2)
+                    main_patch_con = np.repeat(main_patch_con[:, :, np.newaxis], 3, axis=2)
+
+                    imgray = cv2.cvtColor(head_patch_con, cv2.COLOR_BGR2GRAY)
+                    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+                    contours_head_patch_con, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    contours_head_patch_con = return_parent_contours(contours_head_patch_con, hiearchy)
+
+                    imgray = cv2.cvtColor(main_patch_con, cv2.COLOR_BGR2GRAY)
+                    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+                    contours_main_patch_con, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    contours_main_patch_con = return_parent_contours(contours_main_patch_con, hiearchy)
+
+                    _, _, areas_head = find_features_of_contours(contours_head_patch_con)
+                    _, _, areas_main = find_features_of_contours(contours_main_patch_con)
+
+                    if np.sum(areas_head) > np.sum(areas_main):
+                        img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0][img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0] == 1] = 2
+                    else:
+                        img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0][img_revised_tab[y_up:y_down, int(boxes[ind][0]) : int(boxes[ind][1]), 0] == 2] = 1
+
+                    # print(np.unique(patch_intersection) )
+                    ##plt.figure(figsize=(20,20))
+                    ##plt.imshow(patch_intersection)
+                    ##plt.show()
+                else:
+                    pass
+
+    return img_revised_tab
+
+def tear_main_texts_on_the_boundaries_of_boxes(img_revised_tab, boxes):
+    for i in range(len(boxes)):
+        img_revised_tab[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][1] - 10) : int(boxes[i][1]), 0][img_revised_tab[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][1] - 10) : int(boxes[i][1]), 0] == 1] = 0
+        img_revised_tab[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][1] - 10) : int(boxes[i][1]), 1][img_revised_tab[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][1] - 10) : int(boxes[i][1]), 1] == 1] = 0
+        img_revised_tab[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][1] - 10) : int(boxes[i][1]), 2][img_revised_tab[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][1] - 10) : int(boxes[i][1]), 2] == 1] = 0
+    return img_revised_tab
+
+def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back(self, regions_pre_p):
+    seperators_closeup = ((regions_pre_p[:, :] == 6)) * 1
+
+    seperators_closeup = seperators_closeup.astype(np.uint8)
+    kernel = np.ones((5, 5), np.uint8)
+
+    seperators_closeup = cv2.dilate(seperators_closeup, kernel, iterations=1)
+    seperators_closeup = cv2.erode(seperators_closeup, kernel, iterations=1)
+
+    seperators_closeup = cv2.erode(seperators_closeup, kernel, iterations=1)
+    seperators_closeup = cv2.dilate(seperators_closeup, kernel, iterations=1)
+
+    if len(seperators_closeup.shape) == 2:
+        seperators_closeup_n = np.zeros((seperators_closeup.shape[0], seperators_closeup.shape[1], 3))
+        seperators_closeup_n[:, :, 0] = seperators_closeup
+        seperators_closeup_n[:, :, 1] = seperators_closeup
+        seperators_closeup_n[:, :, 2] = seperators_closeup
+    else:
+        seperators_closeup_n = seperators_closeup[:, :, :]
+    # seperators_closeup=seperators_closeup.astype(np.uint8)
+    seperators_closeup_n = seperators_closeup_n.astype(np.uint8)
+    imgray = cv2.cvtColor(seperators_closeup_n, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    contours_lines, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    slope_lines, dist_x, x_min_main, x_max_main, cy_main, slope_lines_org, y_min_main, y_max_main, cx_main = find_features_of_lines(contours_lines)
+
+    dist_y = np.abs(y_max_main - y_min_main)
+
+    slope_lines_org_hor = slope_lines_org[slope_lines == 0]
+    args = np.array(range(len(slope_lines)))
+    len_x = seperators_closeup.shape[1] * 0
+    len_y = seperators_closeup.shape[0] * 0.01
+
+    args_hor = args[slope_lines == 0]
+    dist_x_hor = dist_x[slope_lines == 0]
+    dist_y_hor = dist_y[slope_lines == 0]
+    x_min_main_hor = x_min_main[slope_lines == 0]
+    x_max_main_hor = x_max_main[slope_lines == 0]
+    cy_main_hor = cy_main[slope_lines == 0]
+    y_min_main_hor = y_min_main[slope_lines == 0]
+    y_max_main_hor = y_max_main[slope_lines == 0]
+
+    args_hor = args_hor[dist_x_hor >= len_x]
+    x_max_main_hor = x_max_main_hor[dist_x_hor >= len_x]
+    x_min_main_hor = x_min_main_hor[dist_x_hor >= len_x]
+    cy_main_hor = cy_main_hor[dist_x_hor >= len_x]
+    y_min_main_hor = y_min_main_hor[dist_x_hor >= len_x]
+    y_max_main_hor = y_max_main_hor[dist_x_hor >= len_x]
+    slope_lines_org_hor = slope_lines_org_hor[dist_x_hor >= len_x]
+    dist_y_hor = dist_y_hor[dist_x_hor >= len_x]
+    dist_x_hor = dist_x_hor[dist_x_hor >= len_x]
+
+    args_ver = args[slope_lines == 1]
+    dist_y_ver = dist_y[slope_lines == 1]
+    dist_x_ver = dist_x[slope_lines == 1]
+    x_min_main_ver = x_min_main[slope_lines == 1]
+    x_max_main_ver = x_max_main[slope_lines == 1]
+    y_min_main_ver = y_min_main[slope_lines == 1]
+    y_max_main_ver = y_max_main[slope_lines == 1]
+    cx_main_ver = cx_main[slope_lines == 1]
+
+    args_ver = args_ver[dist_y_ver >= len_y]
+    x_max_main_ver = x_max_main_ver[dist_y_ver >= len_y]
+    x_min_main_ver = x_min_main_ver[dist_y_ver >= len_y]
+    cx_main_ver = cx_main_ver[dist_y_ver >= len_y]
+    y_min_main_ver = y_min_main_ver[dist_y_ver >= len_y]
+    y_max_main_ver = y_max_main_ver[dist_y_ver >= len_y]
+    dist_x_ver = dist_x_ver[dist_y_ver >= len_y]
+    dist_y_ver = dist_y_ver[dist_y_ver >= len_y]
+
+    img_p_in_ver = np.zeros(seperators_closeup_n[:, :, 2].shape)
+    for jv in range(len(args_ver)):
+        img_p_in_ver = cv2.fillPoly(img_p_in_ver, pts=[contours_lines[args_ver[jv]]], color=(1, 1, 1))
+
+    img_in_hor = np.zeros(seperators_closeup_n[:, :, 2].shape)
+    for jv in range(len(args_hor)):
+        img_p_in_hor = cv2.fillPoly(img_in_hor, pts=[contours_lines[args_hor[jv]]], color=(1, 1, 1))
+
+    all_args_uniq = contours_in_same_horizon(cy_main_hor)
+    # print(all_args_uniq,'all_args_uniq')
+    if len(all_args_uniq) > 0:
+        if type(all_args_uniq[0]) is list:
+            contours_new = []
+            for dd in range(len(all_args_uniq)):
+                merged_all = None
+                some_args = args_hor[all_args_uniq[dd]]
+                some_cy = cy_main_hor[all_args_uniq[dd]]
+                some_x_min = x_min_main_hor[all_args_uniq[dd]]
+                some_x_max = x_max_main_hor[all_args_uniq[dd]]
+
+                img_in = np.zeros(seperators_closeup_n[:, :, 2].shape)
+                for jv in range(len(some_args)):
+
+                    img_p_in = cv2.fillPoly(img_p_in_hor, pts=[contours_lines[some_args[jv]]], color=(1, 1, 1))
+                    img_p_in[int(np.mean(some_cy)) - 5 : int(np.mean(some_cy)) + 5, int(np.min(some_x_min)) : int(np.max(some_x_max))] = 1
+
+        else:
+            img_p_in = seperators_closeup
+    else:
+        img_p_in = seperators_closeup
+
+    sep_ver_hor = img_p_in + img_p_in_ver
+    sep_ver_hor_cross = (sep_ver_hor == 2) * 1
+
+    sep_ver_hor_cross = np.repeat(sep_ver_hor_cross[:, :, np.newaxis], 3, axis=2)
+    sep_ver_hor_cross = sep_ver_hor_cross.astype(np.uint8)
+    imgray = cv2.cvtColor(sep_ver_hor_cross, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    contours_cross, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    cx_cross, cy_cross, _, _, _, _, _ = find_new_features_of_contoures(contours_cross)
+
+    for ii in range(len(cx_cross)):
+        sep_ver_hor[int(cy_cross[ii]) - 15 : int(cy_cross[ii]) + 15, int(cx_cross[ii]) + 5 : int(cx_cross[ii]) + 40] = 0
+        sep_ver_hor[int(cy_cross[ii]) - 15 : int(cy_cross[ii]) + 15, int(cx_cross[ii]) - 40 : int(cx_cross[ii]) - 4] = 0
+
+    img_p_in[:, :] = sep_ver_hor[:, :]
+
+    if len(img_p_in.shape) == 2:
+        seperators_closeup_n = np.zeros((img_p_in.shape[0], img_p_in.shape[1], 3))
+        seperators_closeup_n[:, :, 0] = img_p_in
+        seperators_closeup_n[:, :, 1] = img_p_in
+        seperators_closeup_n[:, :, 2] = img_p_in
+    else:
+        seperators_closeup_n = img_p_in[:, :, :]
+    # seperators_closeup=seperators_closeup.astype(np.uint8)
+    seperators_closeup_n = seperators_closeup_n.astype(np.uint8)
+    imgray = cv2.cvtColor(seperators_closeup_n, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+    contours_lines, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    slope_lines, dist_x, x_min_main, x_max_main, cy_main, slope_lines_org, y_min_main, y_max_main, cx_main = find_features_of_lines(contours_lines)
+
+    dist_y = np.abs(y_max_main - y_min_main)
+
+    slope_lines_org_hor = slope_lines_org[slope_lines == 0]
+    args = np.array(range(len(slope_lines)))
+    len_x = seperators_closeup.shape[1] * 0.04
+    len_y = seperators_closeup.shape[0] * 0.08
+
+    args_hor = args[slope_lines == 0]
+    dist_x_hor = dist_x[slope_lines == 0]
+    dist_y_hor = dist_y[slope_lines == 0]
+    x_min_main_hor = x_min_main[slope_lines == 0]
+    x_max_main_hor = x_max_main[slope_lines == 0]
+    cy_main_hor = cy_main[slope_lines == 0]
+    y_min_main_hor = y_min_main[slope_lines == 0]
+    y_max_main_hor = y_max_main[slope_lines == 0]
+
+    args_hor = args_hor[dist_x_hor >= len_x]
+    x_max_main_hor = x_max_main_hor[dist_x_hor >= len_x]
+    x_min_main_hor = x_min_main_hor[dist_x_hor >= len_x]
+    cy_main_hor = cy_main_hor[dist_x_hor >= len_x]
+    y_min_main_hor = y_min_main_hor[dist_x_hor >= len_x]
+    y_max_main_hor = y_max_main_hor[dist_x_hor >= len_x]
+    slope_lines_org_hor = slope_lines_org_hor[dist_x_hor >= len_x]
+    dist_y_hor = dist_y_hor[dist_x_hor >= len_x]
+    dist_x_hor = dist_x_hor[dist_x_hor >= len_x]
+
+    args_ver = args[slope_lines == 1]
+    dist_y_ver = dist_y[slope_lines == 1]
+    dist_x_ver = dist_x[slope_lines == 1]
+    x_min_main_ver = x_min_main[slope_lines == 1]
+    x_max_main_ver = x_max_main[slope_lines == 1]
+    y_min_main_ver = y_min_main[slope_lines == 1]
+    y_max_main_ver = y_max_main[slope_lines == 1]
+    cx_main_ver = cx_main[slope_lines == 1]
+
+    args_ver = args_ver[dist_y_ver >= len_y]
+    x_max_main_ver = x_max_main_ver[dist_y_ver >= len_y]
+    x_min_main_ver = x_min_main_ver[dist_y_ver >= len_y]
+    cx_main_ver = cx_main_ver[dist_y_ver >= len_y]
+    y_min_main_ver = y_min_main_ver[dist_y_ver >= len_y]
+    y_max_main_ver = y_max_main_ver[dist_y_ver >= len_y]
+    dist_x_ver = dist_x_ver[dist_y_ver >= len_y]
+    dist_y_ver = dist_y_ver[dist_y_ver >= len_y]
+
+    matrix_of_lines_ch = np.zeros((len(cy_main_hor) + len(cx_main_ver), 10))
+
+    matrix_of_lines_ch[: len(cy_main_hor), 0] = args_hor
+    matrix_of_lines_ch[len(cy_main_hor) :, 0] = args_ver
+
+    matrix_of_lines_ch[len(cy_main_hor) :, 1] = cx_main_ver
+
+    matrix_of_lines_ch[: len(cy_main_hor), 2] = x_min_main_hor
+    matrix_of_lines_ch[len(cy_main_hor) :, 2] = x_min_main_ver
+
+    matrix_of_lines_ch[: len(cy_main_hor), 3] = x_max_main_hor
+    matrix_of_lines_ch[len(cy_main_hor) :, 3] = x_max_main_ver
+
+    matrix_of_lines_ch[: len(cy_main_hor), 4] = dist_x_hor
+    matrix_of_lines_ch[len(cy_main_hor) :, 4] = dist_x_ver
+
+    matrix_of_lines_ch[: len(cy_main_hor), 5] = cy_main_hor
+
+    matrix_of_lines_ch[: len(cy_main_hor), 6] = y_min_main_hor
+    matrix_of_lines_ch[len(cy_main_hor) :, 6] = y_min_main_ver
+
+    matrix_of_lines_ch[: len(cy_main_hor), 7] = y_max_main_hor
+    matrix_of_lines_ch[len(cy_main_hor) :, 7] = y_max_main_ver
+
+    matrix_of_lines_ch[: len(cy_main_hor), 8] = dist_y_hor
+    matrix_of_lines_ch[len(cy_main_hor) :, 8] = dist_y_ver
+
+    matrix_of_lines_ch[len(cy_main_hor) :, 9] = 1
+
+    return matrix_of_lines_ch, seperators_closeup_n
+
+def image_change_background_pixels_to_zero(self, image_page):
+    image_back_zero = np.zeros((image_page.shape[0], image_page.shape[1]))
+    image_back_zero[:, :] = image_page[:, :, 0]
+    image_back_zero[:, :][image_back_zero[:, :] == 0] = -255
+    image_back_zero[:, :][image_back_zero[:, :] == 255] = 0
+    image_back_zero[:, :][image_back_zero[:, :] == -255] = 255
+    return image_back_zero
+

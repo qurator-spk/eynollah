@@ -2773,3 +2773,749 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
     return ang_int
 
+def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
+
+    drop_only = (layout_no_patch[:, :, 0] == 4) * 1
+    contours_drop, hir_on_drop = return_contours_of_image(drop_only)
+    contours_drop_parent = return_parent_contours(contours_drop, hir_on_drop)
+
+    areas_cnt_text = np.array([cv2.contourArea(contours_drop_parent[j]) for j in range(len(contours_drop_parent))])
+    areas_cnt_text = areas_cnt_text / float(drop_only.shape[0] * drop_only.shape[1])
+
+    contours_drop_parent = [contours_drop_parent[jz] for jz in range(len(contours_drop_parent)) if areas_cnt_text[jz] > 0.00001]
+
+    areas_cnt_text = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > 0.00001]
+
+    contours_drop_parent_final = []
+
+    for jj in range(len(contours_drop_parent)):
+        x, y, w, h = cv2.boundingRect(contours_drop_parent[jj])
+        # boxes.append([int(x), int(y), int(w), int(h)])
+
+        map_of_drop_contour_bb = np.zeros((layout1.shape[0], layout1.shape[1]))
+        map_of_drop_contour_bb[y : y + h, x : x + w] = layout1[y : y + h, x : x + w]
+
+        if (((map_of_drop_contour_bb == 1) * 1).sum() / float(((map_of_drop_contour_bb == 5) * 1).sum()) * 100) >= 15:
+            contours_drop_parent_final.append(contours_drop_parent[jj])
+
+    layout_no_patch[:, :, 0][layout_no_patch[:, :, 0] == 4] = 0
+
+    layout_no_patch = cv2.fillPoly(layout_no_patch, pts=contours_drop_parent_final, color=(4, 4, 4))
+
+    return layout_no_patch
+
+def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch):
+
+    drop_only = (layout_in_patch[:, :, 0] == 4) * 1
+    contours_drop, hir_on_drop = return_contours_of_image(drop_only)
+    contours_drop_parent = return_parent_contours(contours_drop, hir_on_drop)
+
+    areas_cnt_text = np.array([cv2.contourArea(contours_drop_parent[j]) for j in range(len(contours_drop_parent))])
+    areas_cnt_text = areas_cnt_text / float(drop_only.shape[0] * drop_only.shape[1])
+
+    contours_drop_parent = [contours_drop_parent[jz] for jz in range(len(contours_drop_parent)) if areas_cnt_text[jz] > 0.00001]
+
+    areas_cnt_text = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > 0.001]
+
+    contours_drop_parent_final = []
+
+    for jj in range(len(contours_drop_parent)):
+        x, y, w, h = cv2.boundingRect(contours_drop_parent[jj])
+        layout_in_patch[y : y + h, x : x + w, 0] = 4
+
+    return layout_in_patch
+
+def check_any_text_region_in_model_one_is_main_or_header(regions_model_1, regions_model_full, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered):
+    text_only = (regions_model_1[:, :] == 1) * 1
+    contours_only_text, hir_on_text = return_contours_of_image(text_only)
+
+    """
+    contours_only_text_parent=return_parent_contours( contours_only_text,hir_on_text)
+
+    areas_cnt_text=np.array([cv2.contourArea(contours_only_text_parent[j]) for j in range(len(contours_only_text_parent))])
+    areas_cnt_text=areas_cnt_text/float(text_only.shape[0]*text_only.shape[1])
+
+    ###areas_cnt_text_h=np.array([cv2.contourArea(contours_only_text_parent_h[j]) for j in range(len(contours_only_text_parent_h))])
+    ###areas_cnt_text_h=areas_cnt_text_h/float(text_only_h.shape[0]*text_only_h.shape[1])
+
+    ###contours_only_text_parent=[contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz]>0.0002]
+    contours_only_text_parent=[contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz]>0.00001]
+    """
+
+    cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin = find_new_features_of_contoures(contours_only_text_parent)
+
+    length_con = x_max_main - x_min_main
+    height_con = y_max_main - y_min_main
+
+    all_found_texline_polygons_main = []
+    all_found_texline_polygons_head = []
+
+    all_box_coord_main = []
+    all_box_coord_head = []
+
+    slopes_main = []
+    slopes_head = []
+
+    contours_only_text_parent_main = []
+    contours_only_text_parent_head = []
+
+    contours_only_text_parent_main_d = []
+    contours_only_text_parent_head_d = []
+
+    for ii in range(len(contours_only_text_parent)):
+        con = contours_only_text_parent[ii]
+        img = np.zeros((regions_model_1.shape[0], regions_model_1.shape[1], 3))
+        img = cv2.fillPoly(img, pts=[con], color=(255, 255, 255))
+
+        all_pixels = ((img[:, :, 0] == 255) * 1).sum()
+
+        pixels_header = (((img[:, :, 0] == 255) & (regions_model_full[:, :, 0] == 2)) * 1).sum()
+        pixels_main = all_pixels - pixels_header
+
+        if (pixels_header >= pixels_main) and ((length_con[ii] / float(height_con[ii])) >= 1.3):
+            regions_model_1[:, :][(regions_model_1[:, :] == 1) & (img[:, :, 0] == 255)] = 2
+            contours_only_text_parent_head.append(con)
+            if contours_only_text_parent_d_ordered is not None:
+                contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
+            all_box_coord_head.append(all_box_coord[ii])
+            slopes_head.append(slopes[ii])
+            all_found_texline_polygons_head.append(all_found_texline_polygons[ii])
+        else:
+            regions_model_1[:, :][(regions_model_1[:, :] == 1) & (img[:, :, 0] == 255)] = 1
+            contours_only_text_parent_main.append(con)
+            if contours_only_text_parent_d_ordered is not None:
+                contours_only_text_parent_main_d.append(contours_only_text_parent_d_ordered[ii])
+            all_box_coord_main.append(all_box_coord[ii])
+            slopes_main.append(slopes[ii])
+            all_found_texline_polygons_main.append(all_found_texline_polygons[ii])
+
+        # print(all_pixels,pixels_main,pixels_header)
+
+        # plt.imshow(img[:,:,0])
+        # plt.show()
+    return regions_model_1, contours_only_text_parent_main, contours_only_text_parent_head, all_box_coord_main, all_box_coord_head, all_found_texline_polygons_main, all_found_texline_polygons_head, slopes_main, slopes_head, contours_only_text_parent_main_d, contours_only_text_parent_head_d
+
+def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col):
+    # print(textlines_con)
+    # textlines_con=textlines_con.astype(np.uint32)
+
+    textlines_con_changed = []
+    for m1 in range(len(textlines_con)):
+
+        # textlines_tot=textlines_con[m1]
+        # textlines_tot=textlines_tot.astype()
+        textlines_tot = []
+        textlines_tot_org_form = []
+        # print(textlines_tot)
+
+        for nn in range(len(textlines_con[m1])):
+            textlines_tot.append(np.array(textlines_con[m1][nn], dtype=np.int32))
+            textlines_tot_org_form.append(textlines_con[m1][nn])
+
+        ##img_text_all=np.zeros((textline_iamge.shape[0],textline_iamge.shape[1]))
+        ##img_text_all=cv2.fillPoly(img_text_all, pts =textlines_tot , color=(1,1,1))
+
+        ##plt.imshow(img_text_all)
+        ##plt.show()
+        areas_cnt_text = np.array([cv2.contourArea(textlines_tot[j]) for j in range(len(textlines_tot))])
+        areas_cnt_text = areas_cnt_text / float(textline_iamge.shape[0] * textline_iamge.shape[1])
+        indexes_textlines = np.array(range(len(textlines_tot)))
+
+        # print(areas_cnt_text,np.min(areas_cnt_text),np.max(areas_cnt_text))
+        if num_col == 0:
+            min_area = 0.0004
+        elif num_col == 1:
+            min_area = 0.0003
+        else:
+            min_area = 0.0001
+        indexes_textlines_small = indexes_textlines[areas_cnt_text < min_area]
+
+        # print(indexes_textlines)
+
+        textlines_small = []
+        textlines_small_org_form = []
+        for i in indexes_textlines_small:
+            textlines_small.append(textlines_tot[i])
+            textlines_small_org_form.append(textlines_tot_org_form[i])
+
+        textlines_big = []
+        textlines_big_org_form = []
+        for i in list(set(indexes_textlines) - set(indexes_textlines_small)):
+            textlines_big.append(textlines_tot[i])
+            textlines_big_org_form.append(textlines_tot_org_form[i])
+
+        img_textline_s = np.zeros((textline_iamge.shape[0], textline_iamge.shape[1]))
+        img_textline_s = cv2.fillPoly(img_textline_s, pts=textlines_small, color=(1, 1, 1))
+
+        img_textline_b = np.zeros((textline_iamge.shape[0], textline_iamge.shape[1]))
+        img_textline_b = cv2.fillPoly(img_textline_b, pts=textlines_big, color=(1, 1, 1))
+
+        sum_small_big_all = img_textline_s + img_textline_b
+        sum_small_big_all2 = (sum_small_big_all[:, :] == 2) * 1
+
+        sum_intersection_sb = sum_small_big_all2.sum(axis=1).sum()
+
+        if sum_intersection_sb > 0:
+
+            dis_small_from_bigs_tot = []
+            for z1 in range(len(textlines_small)):
+                # print(len(textlines_small),'small')
+                intersections = []
+                for z2 in range(len(textlines_big)):
+                    img_text = np.zeros((textline_iamge.shape[0], textline_iamge.shape[1]))
+                    img_text = cv2.fillPoly(img_text, pts=[textlines_small[z1]], color=(1, 1, 1))
+
+                    img_text2 = np.zeros((textline_iamge.shape[0], textline_iamge.shape[1]))
+                    img_text2 = cv2.fillPoly(img_text2, pts=[textlines_big[z2]], color=(1, 1, 1))
+
+                    sum_small_big = img_text2 + img_text
+                    sum_small_big_2 = (sum_small_big[:, :] == 2) * 1
+
+                    sum_intersection = sum_small_big_2.sum(axis=1).sum()
+
+                    # print(sum_intersection)
+
+                    intersections.append(sum_intersection)
+
+                if len(np.array(intersections)[np.array(intersections) > 0]) == 0:
+                    intersections = []
+
+                try:
+                    dis_small_from_bigs_tot.append(np.argmax(intersections))
+                except:
+                    dis_small_from_bigs_tot.append(-1)
+
+            smalls_list = np.array(dis_small_from_bigs_tot)[np.array(dis_small_from_bigs_tot) >= 0]
+
+            # index_small_textlines_rest=list( set(indexes_textlines_small)-set(smalls_list) )
+
+            textlines_big_with_change = []
+            textlines_big_with_change_con = []
+            textlines_small_with_change = []
+
+            for z in list(set(smalls_list)):
+                index_small_textlines = list(np.where(np.array(dis_small_from_bigs_tot) == z)[0])
+                # print(z,index_small_textlines)
+
+                img_text2 = np.zeros((textline_iamge.shape[0], textline_iamge.shape[1], 3))
+                img_text2 = cv2.fillPoly(img_text2, pts=[textlines_big[z]], color=(255, 255, 255))
+
+                textlines_big_with_change.append(z)
+
+                for k in index_small_textlines:
+                    img_text2 = cv2.fillPoly(img_text2, pts=[textlines_small[k]], color=(255, 255, 255))
+                    textlines_small_with_change.append(k)
+
+                img_text2 = img_text2.astype(np.uint8)
+                imgray = cv2.cvtColor(img_text2, cv2.COLOR_BGR2GRAY)
+                ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+                cont, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+                # print(cont[0],type(cont))
+
+                textlines_big_with_change_con.append(cont)
+                textlines_big_org_form[z] = cont[0]
+
+                # plt.imshow(img_text2)
+                # plt.show()
+
+            # print(textlines_big_with_change,'textlines_big_with_change')
+            # print(textlines_small_with_change,'textlines_small_with_change')
+            # print(textlines_big)
+            textlines_con_changed.append(textlines_big_org_form)
+
+        else:
+            textlines_con_changed.append(textlines_big_org_form)
+    return textlines_con_changed
+
+def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, max_area):
+
+    # pixels of images are identified by 5
+    if len(region_pre_p.shape) == 3:
+        cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
+    else:
+        cnts_images = (region_pre_p[:, :] == pixel) * 1
+    cnts_images = cnts_images.astype(np.uint8)
+    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
+    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    contours_imgs = return_parent_contours(contours_imgs, hiearchy)
+    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=max_area, min_area=min_area)
+
+    img_ret = np.zeros((region_pre_p.shape[0], region_pre_p.shape[1], 3))
+    img_ret = cv2.fillPoly(img_ret, pts=contours_imgs, color=(1, 1, 1))
+    return img_ret[:, :, 0]
+
+def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region_h, matrix_of_orders, indexes_sorted, index_of_types, kind_of_texts, ref_point):
+    indexes_sorted = np.array(indexes_sorted)
+    index_of_types = np.array(index_of_types)
+    kind_of_texts = np.array(kind_of_texts)
+
+    id_of_texts = []
+    order_of_texts = []
+
+    index_of_types_1 = index_of_types[kind_of_texts == 1]
+    indexes_sorted_1 = indexes_sorted[kind_of_texts == 1]
+
+    index_of_types_2 = index_of_types[kind_of_texts == 2]
+    indexes_sorted_2 = indexes_sorted[kind_of_texts == 2]
+
+    ##print(index_of_types,'index_of_types')
+    ##print(kind_of_texts,'kind_of_texts')
+    ##print(len(found_polygons_text_region),'found_polygons_text_region')
+    ##print(index_of_types_1,'index_of_types_1')
+    ##print(indexes_sorted_1,'indexes_sorted_1')
+    index_b = 0 + ref_point
+    for mm in range(len(found_polygons_text_region)):
+
+        id_of_texts.append("r" + str(index_b))
+        interest = indexes_sorted_1[indexes_sorted_1 == index_of_types_1[mm]]
+
+        if len(interest) > 0:
+            order_of_texts.append(interest[0])
+            index_b += 1
+        else:
+            pass
+
+    for mm in range(len(found_polygons_text_region_h)):
+        id_of_texts.append("r" + str(index_b))
+        interest = indexes_sorted_2[index_of_types_2[mm]]
+        order_of_texts.append(interest)
+        index_b += 1
+
+    return order_of_texts, id_of_texts
+
+def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
+
+    ##plt.imshow(textline_mask)
+    ##plt.show()
+    """
+    print(len(contours_main),'contours_main')
+    mada_n=textline_mask.sum(axis=1)
+    y=mada_n[:]
+
+    y_help=np.zeros(len(y)+40)
+    y_help[20:len(y)+20]=y
+    x=np.array( range(len(y)) )
+
+
+    peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
+
+    ##plt.imshow(textline_mask[:,:])
+    ##plt.show()
+
+
+    sigma_gaus=8
+
+    z= gaussian_filter1d(y_help, sigma_gaus)
+    zneg_rev=-y_help+np.max(y_help)
+
+    zneg=np.zeros(len(zneg_rev)+40)
+    zneg[20:len(zneg_rev)+20]=zneg_rev
+    zneg= gaussian_filter1d(zneg, sigma_gaus)
+
+
+    peaks, _ = find_peaks(z, height=0)
+    peaks_neg, _ = find_peaks(zneg, height=0)
+
+    peaks_neg=peaks_neg-20-20
+    peaks=peaks-20
+    """
+
+    textline_sum_along_width = textline_mask.sum(axis=1)
+
+    y = textline_sum_along_width[:]
+    y_padded = np.zeros(len(y) + 40)
+    y_padded[20 : len(y) + 20] = y
+    x = np.array(range(len(y)))
+
+    peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
+
+    sigma_gaus = 8
+
+    z = gaussian_filter1d(y_padded, sigma_gaus)
+    zneg_rev = -y_padded + np.max(y_padded)
+
+    zneg = np.zeros(len(zneg_rev) + 40)
+    zneg[20 : len(zneg_rev) + 20] = zneg_rev
+    zneg = gaussian_filter1d(zneg, sigma_gaus)
+
+    peaks, _ = find_peaks(z, height=0)
+    peaks_neg, _ = find_peaks(zneg, height=0)
+
+    peaks_neg = peaks_neg - 20 - 20
+    peaks = peaks - 20
+
+    ##plt.plot(z)
+    ##plt.show()
+
+    if contours_main != None:
+        areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
+        M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
+        cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+        cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+        x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+        x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+
+        y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+        y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+
+    if len(contours_header) != None:
+        areas_header = np.array([cv2.contourArea(contours_header[j]) for j in range(len(contours_header))])
+        M_header = [cv2.moments(contours_header[j]) for j in range(len(contours_header))]
+        cx_header = [(M_header[j]["m10"] / (M_header[j]["m00"] + 1e-32)) for j in range(len(M_header))]
+        cy_header = [(M_header[j]["m01"] / (M_header[j]["m00"] + 1e-32)) for j in range(len(M_header))]
+
+        x_min_header = np.array([np.min(contours_header[j][:, 0, 0]) for j in range(len(contours_header))])
+        x_max_header = np.array([np.max(contours_header[j][:, 0, 0]) for j in range(len(contours_header))])
+
+        y_min_header = np.array([np.min(contours_header[j][:, 0, 1]) for j in range(len(contours_header))])
+        y_max_header = np.array([np.max(contours_header[j][:, 0, 1]) for j in range(len(contours_header))])
+        # print(cy_main,'mainy')
+
+    peaks_neg_new = []
+
+    peaks_neg_new.append(0 + y_ref)
+    for iii in range(len(peaks_neg)):
+        peaks_neg_new.append(peaks_neg[iii] + y_ref)
+
+    peaks_neg_new.append(textline_mask.shape[0] + y_ref)
+
+    if len(cy_main) > 0 and np.max(cy_main) > np.max(peaks_neg_new):
+        cy_main = np.array(cy_main) * (np.max(peaks_neg_new) / np.max(cy_main)) - 10
+
+    if contours_main != None:
+        indexer_main = np.array(range(len(contours_main)))
+
+    if contours_main != None:
+        len_main = len(contours_main)
+    else:
+        len_main = 0
+
+    matrix_of_orders = np.zeros((len(contours_main) + len(contours_header), 5))
+
+    matrix_of_orders[:, 0] = np.array(range(len(contours_main) + len(contours_header)))
+
+    matrix_of_orders[: len(contours_main), 1] = 1
+    matrix_of_orders[len(contours_main) :, 1] = 2
+
+    matrix_of_orders[: len(contours_main), 2] = cx_main
+    matrix_of_orders[len(contours_main) :, 2] = cx_header
+
+    matrix_of_orders[: len(contours_main), 3] = cy_main
+    matrix_of_orders[len(contours_main) :, 3] = cy_header
+
+    matrix_of_orders[: len(contours_main), 4] = np.array(range(len(contours_main)))
+    matrix_of_orders[len(contours_main) :, 4] = np.array(range(len(contours_header)))
+
+    # print(peaks_neg_new,'peaks_neg_new')
+
+    # print(matrix_of_orders,'matrix_of_orders')
+    # print(peaks_neg_new,np.max(peaks_neg_new))
+    final_indexers_sorted = []
+    final_types = []
+    final_index_type = []
+    for i in range(len(peaks_neg_new) - 1):
+        top = peaks_neg_new[i]
+        down = peaks_neg_new[i + 1]
+
+        # print(top,down,'topdown')
+
+        indexes_in = matrix_of_orders[:, 0][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
+        cxs_in = matrix_of_orders[:, 2][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
+        cys_in = matrix_of_orders[:, 3][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
+        types_of_text = matrix_of_orders[:, 1][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
+        index_types_of_text = matrix_of_orders[:, 4][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
+
+        # print(top,down)
+        # print(cys_in,'cyyyins')
+        # print(indexes_in,'indexes')
+        sorted_inside = np.argsort(cxs_in)
+
+        ind_in_int = indexes_in[sorted_inside]
+        ind_in_type = types_of_text[sorted_inside]
+        ind_ind_type = index_types_of_text[sorted_inside]
+
+        for j in range(len(ind_in_int)):
+            final_indexers_sorted.append(int(ind_in_int[j]))
+            final_types.append(int(ind_in_type[j]))
+            final_index_type.append(int(ind_ind_type[j]))
+
+    ##matrix_of_orders[:len_main,4]=final_indexers_sorted[:]
+
+    # print(peaks_neg_new,'peaks')
+    # print(final_indexers_sorted,'indexsorted')
+    # print(final_types,'types')
+    # print(final_index_type,'final_index_type')
+
+    return final_indexers_sorted, matrix_of_orders, final_types, final_index_type
+
+def implent_law_head_main_not_parallel(text_regions):
+    # print(text_regions.shape)
+    text_indexes = [1, 2]  # 1: main text , 2: header , 3: comments
+
+    for t_i in text_indexes:
+        textline_mask = text_regions[:, :] == t_i
+        textline_mask = textline_mask * 255.0
+
+        textline_mask = textline_mask.astype(np.uint8)
+        textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2)
+        kernel = np.ones((5, 5), np.uint8)
+
+        # print(type(textline_mask),np.unique(textline_mask),textline_mask.shape)
+        imgray = cv2.cvtColor(textline_mask, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+        if t_i == 1:
+            contours_main, hirarchy = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            # print(type(contours_main))
+            areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
+            M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
+            cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+            cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+            x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+            x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+
+            y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+            y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+            # print(contours_main[0],np.shape(contours_main[0]),contours_main[0][:,0,0])
+        elif t_i == 2:
+            contours_header, hirarchy = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            # print(type(contours_header))
+            areas_header = np.array([cv2.contourArea(contours_header[j]) for j in range(len(contours_header))])
+            M_header = [cv2.moments(contours_header[j]) for j in range(len(contours_header))]
+            cx_header = [(M_header[j]["m10"] / (M_header[j]["m00"] + 1e-32)) for j in range(len(M_header))]
+            cy_header = [(M_header[j]["m01"] / (M_header[j]["m00"] + 1e-32)) for j in range(len(M_header))]
+
+            x_min_header = np.array([np.min(contours_header[j][:, 0, 0]) for j in range(len(contours_header))])
+            x_max_header = np.array([np.max(contours_header[j][:, 0, 0]) for j in range(len(contours_header))])
+
+            y_min_header = np.array([np.min(contours_header[j][:, 0, 1]) for j in range(len(contours_header))])
+            y_max_header = np.array([np.max(contours_header[j][:, 0, 1]) for j in range(len(contours_header))])
+
+    args = np.array(range(1, len(cy_header) + 1))
+    args_main = np.array(range(1, len(cy_main) + 1))
+    for jj in range(len(contours_main)):
+        headers_in_main = [(cy_header > y_min_main[jj]) & ((cy_header < y_max_main[jj]))]
+        mains_in_main = [(cy_main > y_min_main[jj]) & ((cy_main < y_max_main[jj]))]
+        args_log = args * headers_in_main
+        res = args_log[args_log > 0]
+        res_true = res - 1
+
+        args_log_main = args_main * mains_in_main
+        res_main = args_log_main[args_log_main > 0]
+        res_true_main = res_main - 1
+
+        if len(res_true) > 0:
+            sum_header = np.sum(areas_header[res_true])
+            sum_main = np.sum(areas_main[res_true_main])
+            if sum_main > sum_header:
+                cnt_int = [contours_header[j] for j in res_true]
+                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(1, 1, 1))
+            else:
+                cnt_int = [contours_main[j] for j in res_true_main]
+                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(2, 2, 2))
+
+    for jj in range(len(contours_header)):
+        main_in_header = [(cy_main > y_min_header[jj]) & ((cy_main < y_max_header[jj]))]
+        header_in_header = [(cy_header > y_min_header[jj]) & ((cy_header < y_max_header[jj]))]
+        args_log = args_main * main_in_header
+        res = args_log[args_log > 0]
+        res_true = res - 1
+
+        args_log_header = args * header_in_header
+        res_header = args_log_header[args_log_header > 0]
+        res_true_header = res_header - 1
+
+        if len(res_true) > 0:
+
+            sum_header = np.sum(areas_header[res_true_header])
+            sum_main = np.sum(areas_main[res_true])
+
+            if sum_main > sum_header:
+
+                cnt_int = [contours_header[j] for j in res_true_header]
+                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(1, 1, 1))
+            else:
+                cnt_int = [contours_main[j] for j in res_true]
+                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(2, 2, 2))
+
+    return text_regions
+
+
+def return_hor_spliter_by_index(peaks_neg_fin_t, x_min_hor_some, x_max_hor_some):
+
+    arg_min_hor_sort = np.argsort(x_min_hor_some)
+    x_min_hor_some_sort = np.sort(x_min_hor_some)
+    x_max_hor_some_sort = x_max_hor_some[arg_min_hor_sort]
+
+    arg_minmax = np.array(range(len(peaks_neg_fin_t)))
+    indexer_lines = []
+    indexes_to_delete = []
+    indexer_lines_deletions_len = []
+    indexr_uniq_ind = []
+    for i in range(len(x_min_hor_some_sort)):
+        min_h = peaks_neg_fin_t - x_min_hor_some_sort[i]
+        max_h = peaks_neg_fin_t - x_max_hor_some_sort[i]
+
+        min_h[0] = min_h[0]  # +20
+        max_h[len(max_h) - 1] = max_h[len(max_h) - 1]  ##-20
+
+        min_h_neg = arg_minmax[(min_h < 0) & (np.abs(min_h) < 360)]
+        max_h_neg = arg_minmax[(max_h >= 0) & (np.abs(max_h) < 360)]
+
+        if len(min_h_neg) > 0 and len(max_h_neg) > 0:
+            deletions = list(range(min_h_neg[0] + 1, max_h_neg[0]))
+            unique_delets_int = []
+            # print(deletions,len(deletions),'delii')
+            if len(deletions) > 0:
+                # print(deletions,len(deletions),'delii2')
+
+                for j in range(len(deletions)):
+                    indexes_to_delete.append(deletions[j])
+                    # print(deletions,indexes_to_delete,'badiii')
+                    unique_delets = np.unique(indexes_to_delete)
+                    # print(min_h_neg[0],unique_delets)
+                    unique_delets_int = unique_delets[unique_delets < min_h_neg[0]]
+
+                indexer_lines_deletions_len.append(len(deletions))
+                indexr_uniq_ind.append([deletions])
+
+            else:
+                indexer_lines_deletions_len.append(0)
+                indexr_uniq_ind.append(-999)
+
+            index_line_true = min_h_neg[0] - len(unique_delets_int)
+            # print(index_line_true)
+            if index_line_true > 0 and min_h_neg[0] >= 2:
+                index_line_true = index_line_true
+            else:
+                index_line_true = min_h_neg[0]
+
+            indexer_lines.append(index_line_true)
+
+            if len(unique_delets_int) > 0:
+                for dd in range(len(unique_delets_int)):
+                    indexes_to_delete.append(unique_delets_int[dd])
+        else:
+            indexer_lines.append(-999)
+            indexer_lines_deletions_len.append(-999)
+            indexr_uniq_ind.append(-999)
+
+    peaks_true = []
+    for m in range(len(peaks_neg_fin_t)):
+        if m in indexes_to_delete:
+            pass
+        else:
+            peaks_true.append(peaks_neg_fin_t[m])
+    return indexer_lines, peaks_true, arg_min_hor_sort, indexer_lines_deletions_len, indexr_uniq_ind
+
+def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(img_p_in_ver, img_in_hor):
+
+    # plt.imshow(img_in_hor)
+    # plt.show()
+
+    # img_p_in_ver = cv2.erode(img_p_in_ver, self.kernel, iterations=2)
+    img_p_in_ver = img_p_in_ver.astype(np.uint8)
+    img_p_in_ver = np.repeat(img_p_in_ver[:, :, np.newaxis], 3, axis=2)
+    imgray = cv2.cvtColor(img_p_in_ver, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+    contours_lines_ver, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    slope_lines_ver, dist_x_ver, x_min_main_ver, x_max_main_ver, cy_main_ver, slope_lines_org_ver, y_min_main_ver, y_max_main_ver, cx_main_ver = find_features_of_lines(contours_lines_ver)
+
+    for i in range(len(x_min_main_ver)):
+        img_p_in_ver[int(y_min_main_ver[i]) : int(y_min_main_ver[i]) + 30, int(cx_main_ver[i]) - 25 : int(cx_main_ver[i]) + 25, 0] = 0
+        img_p_in_ver[int(y_max_main_ver[i]) - 30 : int(y_max_main_ver[i]), int(cx_main_ver[i]) - 25 : int(cx_main_ver[i]) + 25, 0] = 0
+
+    # plt.imshow(img_p_in_ver[:,:,0])
+    # plt.show()
+    img_in_hor = img_in_hor.astype(np.uint8)
+    img_in_hor = np.repeat(img_in_hor[:, :, np.newaxis], 3, axis=2)
+    imgray = cv2.cvtColor(img_in_hor, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+    contours_lines_hor, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    slope_lines_hor, dist_x_hor, x_min_main_hor, x_max_main_hor, cy_main_hor, slope_lines_org_hor, y_min_main_hor, y_max_main_hor, cx_main_hor = find_features_of_lines(contours_lines_hor)
+
+    args_hor = np.array(range(len(slope_lines_hor)))
+    all_args_uniq = contours_in_same_horizon(cy_main_hor)
+    # print(all_args_uniq,'all_args_uniq')
+    if len(all_args_uniq) > 0:
+        if type(all_args_uniq[0]) is list:
+            special_seperators = []
+            contours_new = []
+            for dd in range(len(all_args_uniq)):
+                merged_all = None
+                some_args = args_hor[all_args_uniq[dd]]
+                some_cy = cy_main_hor[all_args_uniq[dd]]
+                some_x_min = x_min_main_hor[all_args_uniq[dd]]
+                some_x_max = x_max_main_hor[all_args_uniq[dd]]
+
+                # img_in=np.zeros(seperators_closeup_n[:,:,2].shape)
+                for jv in range(len(some_args)):
+
+                    img_p_in = cv2.fillPoly(img_in_hor, pts=[contours_lines_hor[some_args[jv]]], color=(1, 1, 1))
+                    img_p_in[int(np.mean(some_cy)) - 5 : int(np.mean(some_cy)) + 5, int(np.min(some_x_min)) : int(np.max(some_x_max))] = 1
+
+                sum_dis = dist_x_hor[some_args].sum()
+                diff_max_min_uniques = np.max(x_max_main_hor[some_args]) - np.min(x_min_main_hor[some_args])
+
+                # print( sum_dis/float(diff_max_min_uniques) ,diff_max_min_uniques/float(img_p_in_ver.shape[1]),dist_x_hor[some_args].sum(),diff_max_min_uniques,np.mean( dist_x_hor[some_args]),np.std( dist_x_hor[some_args]) )
+
+                if diff_max_min_uniques > sum_dis and ((sum_dis / float(diff_max_min_uniques)) > 0.85) and ((diff_max_min_uniques / float(img_p_in_ver.shape[1])) > 0.85) and np.std(dist_x_hor[some_args]) < (0.55 * np.mean(dist_x_hor[some_args])):
+                    # print(dist_x_hor[some_args],dist_x_hor[some_args].sum(),np.min(x_min_main_hor[some_args]) ,np.max(x_max_main_hor[some_args]),'jalibdi')
+                    # print(np.mean( dist_x_hor[some_args] ),np.std( dist_x_hor[some_args] ),np.var( dist_x_hor[some_args] ),'jalibdiha')
+                    special_seperators.append(np.mean(cy_main_hor[some_args]))
+
+        else:
+            img_p_in = img_in_hor
+            special_seperators = []
+    else:
+        img_p_in = img_in_hor
+        special_seperators = []
+
+    img_p_in_ver[:, :, 0][img_p_in_ver[:, :, 0] == 255] = 1
+    # print(img_p_in_ver.shape,np.unique(img_p_in_ver[:,:,0]))
+
+    # plt.imshow(img_p_in[:,:,0])
+    # plt.show()
+
+    # plt.imshow(img_p_in_ver[:,:,0])
+    # plt.show()
+    sep_ver_hor = img_p_in + img_p_in_ver
+    # print(sep_ver_hor.shape,np.unique(sep_ver_hor[:,:,0]),'sep_ver_horsep_ver_horsep_ver_hor')
+    # plt.imshow(sep_ver_hor[:,:,0])
+    # plt.show()
+
+    sep_ver_hor_cross = (sep_ver_hor[:, :, 0] == 2) * 1
+
+    sep_ver_hor_cross = np.repeat(sep_ver_hor_cross[:, :, np.newaxis], 3, axis=2)
+    sep_ver_hor_cross = sep_ver_hor_cross.astype(np.uint8)
+    imgray = cv2.cvtColor(sep_ver_hor_cross, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    contours_cross, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    cx_cross, cy_cross, _, _, _, _, _ = find_new_features_of_contoures(contours_cross)
+
+    for ii in range(len(cx_cross)):
+        img_p_in[int(cy_cross[ii]) - 30 : int(cy_cross[ii]) + 30, int(cx_cross[ii]) + 5 : int(cx_cross[ii]) + 40, 0] = 0
+        img_p_in[int(cy_cross[ii]) - 30 : int(cy_cross[ii]) + 30, int(cx_cross[ii]) - 40 : int(cx_cross[ii]) - 4, 0] = 0
+
+    # plt.imshow(img_p_in[:,:,0])
+    # plt.show()
+
+    return img_p_in[:, :, 0], special_seperators
+
+def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
+    peaks_neg_tot = []
+    peaks_neg_tot.append(first_point)
+    for ii in range(len(peaks_neg_fin)):
+        peaks_neg_tot.append(peaks_neg_fin[ii])
+    peaks_neg_tot.append(last_point)
+    return peaks_neg_tot
+
