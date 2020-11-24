@@ -2131,3 +2131,201 @@ def find_features_of_contours(contours_main):
 
     return y_min_main, y_max_main, areas_main
 
+def return_contours_of_interested_region_and_bounding_box(region_pre_p, pixel):
+
+    # pixels of images are identified by 5
+    cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
+    cnts_images = cnts_images.astype(np.uint8)
+    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
+    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    contours_imgs = return_parent_contours(contours_imgs, hiearchy)
+    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.0003)
+
+    boxes = []
+
+    for jj in range(len(contours_imgs)):
+        x, y, w, h = cv2.boundingRect(contours_imgs[jj])
+        boxes.append([int(x), int(y), int(w), int(h)])
+    return contours_imgs, boxes
+
+def get_text_region_boxes_by_given_contours(contours):
+
+    kernel = np.ones((5, 5), np.uint8)
+    boxes = []
+    contours_new = []
+    for jj in range(len(contours)):
+        x, y, w, h = cv2.boundingRect(contours[jj])
+
+        boxes.append([x, y, w, h])
+        contours_new.append(contours[jj])
+
+    del contours
+    return boxes, contours_new
+
+def seperate_lines_new_inside_teils(img_path, thetha):
+    (h, w) = img_path.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
+    x_d = M[0, 2]
+    y_d = M[1, 2]
+
+    thetha = thetha / 180.0 * np.pi
+    rotation_matrix = np.array([[np.cos(thetha), -np.sin(thetha)], [np.sin(thetha), np.cos(thetha)]])
+
+    x_min_cont = 0
+    x_max_cont = img_path.shape[1]
+    y_min_cont = 0
+    y_max_cont = img_path.shape[0]
+
+    xv = np.linspace(x_min_cont, x_max_cont, 1000)
+
+    mada_n = img_path.sum(axis=1)
+
+    ##plt.plot(mada_n)
+    ##plt.show()
+
+    first_nonzero = 0  # (next((i for i, x in enumerate(mada_n) if x), None))
+
+    y = mada_n[:]  # [first_nonzero:last_nonzero]
+    y_help = np.zeros(len(y) + 40)
+    y_help[20 : len(y) + 20] = y
+    x = np.array(range(len(y)))
+
+    peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
+    if len(peaks_real) <= 2 and len(peaks_real) > 1:
+        sigma_gaus = 10
+    else:
+        sigma_gaus = 5
+
+    z = gaussian_filter1d(y_help, sigma_gaus)
+    zneg_rev = -y_help + np.max(y_help)
+    zneg = np.zeros(len(zneg_rev) + 40)
+    zneg[20 : len(zneg_rev) + 20] = zneg_rev
+    zneg = gaussian_filter1d(zneg, sigma_gaus)
+
+    peaks, _ = find_peaks(z, height=0)
+    peaks_neg, _ = find_peaks(zneg, height=0)
+
+    for nn in range(len(peaks_neg)):
+        if peaks_neg[nn] > len(z) - 1:
+            peaks_neg[nn] = len(z) - 1
+        if peaks_neg[nn] < 0:
+            peaks_neg[nn] = 0
+
+    diff_peaks = np.abs(np.diff(peaks_neg))
+
+    cut_off = 20
+    peaks_neg_true = []
+    forest = []
+
+    for i in range(len(peaks_neg)):
+        if i == 0:
+            forest.append(peaks_neg[i])
+        if i < (len(peaks_neg) - 1):
+            if diff_peaks[i] <= cut_off:
+                forest.append(peaks_neg[i + 1])
+            if diff_peaks[i] > cut_off:
+                # print(forest[np.argmin(z[forest]) ] )
+                if not isNaN(forest[np.argmin(z[forest])]):
+                    peaks_neg_true.append(forest[np.argmin(z[forest])])
+                forest = []
+                forest.append(peaks_neg[i + 1])
+        if i == (len(peaks_neg) - 1):
+            # print(print(forest[np.argmin(z[forest]) ] ))
+            if not isNaN(forest[np.argmin(z[forest])]):
+                peaks_neg_true.append(forest[np.argmin(z[forest])])
+
+    diff_peaks_pos = np.abs(np.diff(peaks))
+
+    cut_off = 20
+    peaks_pos_true = []
+    forest = []
+
+    for i in range(len(peaks)):
+        if i == 0:
+            forest.append(peaks[i])
+        if i < (len(peaks) - 1):
+            if diff_peaks_pos[i] <= cut_off:
+                forest.append(peaks[i + 1])
+            if diff_peaks_pos[i] > cut_off:
+                # print(forest[np.argmin(z[forest]) ] )
+                if not isNaN(forest[np.argmax(z[forest])]):
+                    peaks_pos_true.append(forest[np.argmax(z[forest])])
+                forest = []
+                forest.append(peaks[i + 1])
+        if i == (len(peaks) - 1):
+            # print(print(forest[np.argmin(z[forest]) ] ))
+            if not isNaN(forest[np.argmax(z[forest])]):
+                peaks_pos_true.append(forest[np.argmax(z[forest])])
+
+    # print(len(peaks_neg_true) ,len(peaks_pos_true) ,'lensss')
+
+    if len(peaks_neg_true) > 0:
+        peaks_neg_true = np.array(peaks_neg_true)
+        """
+        #plt.figure(figsize=(40,40))
+        #plt.subplot(1,2,1)
+        #plt.title('Textline segmentation von Textregion')
+        #plt.imshow(img_path)
+        #plt.xlabel('X')
+        #plt.ylabel('Y')
+        #plt.subplot(1,2,2)
+        #plt.title('Dichte entlang X')
+        #base = pyplot.gca().transData
+        #rot = transforms.Affine2D().rotate_deg(90)
+        #plt.plot(zneg,np.array(range(len(zneg))))
+        #plt.plot(zneg[peaks_neg_true],peaks_neg_true,'*')
+        #plt.gca().invert_yaxis()
+
+        #plt.xlabel('Dichte')
+        #plt.ylabel('Y')
+        ##plt.plot([0,len(y)], [grenze,grenze])
+        #plt.show()
+        """
+        peaks_neg_true = peaks_neg_true - 20 - 20
+
+        # print(peaks_neg_true)
+        for i in range(len(peaks_neg_true)):
+            img_path[peaks_neg_true[i] - 6 : peaks_neg_true[i] + 6, :] = 0
+
+    else:
+        pass
+
+    if len(peaks_pos_true) > 0:
+        peaks_pos_true = np.array(peaks_pos_true)
+        peaks_pos_true = peaks_pos_true - 20
+
+        for i in range(len(peaks_pos_true)):
+            img_path[peaks_pos_true[i] - 8 : peaks_pos_true[i] + 8, :] = 1
+    else:
+        pass
+    kernel = np.ones((5, 5), np.uint8)
+
+    # img_path = cv2.erode(img_path,kernel,iterations = 3)
+    img_path = cv2.erode(img_path, kernel, iterations=2)
+    return img_path
+
+def delete_seperator_around(spliter_y, peaks_neg, image_by_region):
+    # format of subboxes box=[x1, x2 , y1, y2]
+
+    if len(image_by_region.shape) == 3:
+        for i in range(len(spliter_y) - 1):
+            for j in range(1, len(peaks_neg[i]) - 1):
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0] == 6] = 0
+                image_by_region[spliter_y[i] : spliter_y[i + 1], peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 1] == 6] = 0
+                image_by_region[spliter_y[i] : spliter_y[i + 1], peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 2] == 6] = 0
+
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0] == 7] = 0
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 1] == 7] = 0
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 2] == 7] = 0
+    else:
+        for i in range(len(spliter_y) - 1):
+            for j in range(1, len(peaks_neg[i]) - 1):
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])] == 6] = 0
+
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])] == 7] = 0
+    return image_by_region
+

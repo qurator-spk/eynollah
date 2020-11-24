@@ -368,3 +368,123 @@ def return_regions_without_seperators_new(self, regions_pre, regions_only_text):
     regions_without_seperators_n = cv2.erode(regions_without_seperators_n, kernel, iterations=6)
 
     return regions_without_seperators_n
+
+def find_images_contours_and_replace_table_and_graphic_pixels_by_image(region_pre_p):
+
+    # pixels of images are identified by 5
+    cnts_images = (region_pre_p[:, :, 0] == 5) * 1
+    cnts_images = cnts_images.astype(np.uint8)
+    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
+    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    contours_imgs = return_parent_contours(contours_imgs, hiearchy)
+    # print(len(contours_imgs),'contours_imgs')
+    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.0003)
+
+    # print(len(contours_imgs),'contours_imgs')
+
+    boxes_imgs = return_bonding_box_of_contours(contours_imgs)
+
+    for i in range(len(boxes_imgs)):
+        x1 = int(boxes_imgs[i][0])
+        x2 = int(boxes_imgs[i][0] + boxes_imgs[i][2])
+        y1 = int(boxes_imgs[i][1])
+        y2 = int(boxes_imgs[i][1] + boxes_imgs[i][3])
+        region_pre_p[y1:y2, x1:x2, 0][region_pre_p[y1:y2, x1:x2, 0] == 8] = 5
+        region_pre_p[y1:y2, x1:x2, 0][region_pre_p[y1:y2, x1:x2, 0] == 7] = 5
+    return region_pre_p
+
+def order_and_id_of_texts_old(found_polygons_text_region, matrix_of_orders, indexes_sorted):
+    id_of_texts = []
+    order_of_texts = []
+    index_b = 0
+    for mm in range(len(found_polygons_text_region)):
+        id_of_texts.append("r" + str(index_b))
+        index_matrix = matrix_of_orders[:, 0][(matrix_of_orders[:, 1] == 1) & (matrix_of_orders[:, 4] == mm)]
+        order_of_texts.append(np.where(indexes_sorted == index_matrix)[0][0])
+
+        index_b += 1
+
+    order_of_texts
+    return order_of_texts, id_of_texts
+
+def order_of_regions_old(textline_mask, contours_main):
+    mada_n = textline_mask.sum(axis=1)
+    y = mada_n[:]
+
+    y_help = np.zeros(len(y) + 40)
+    y_help[20 : len(y) + 20] = y
+    x = np.array(range(len(y)))
+
+    peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
+
+    sigma_gaus = 8
+
+    z = gaussian_filter1d(y_help, sigma_gaus)
+    zneg_rev = -y_help + np.max(y_help)
+
+    zneg = np.zeros(len(zneg_rev) + 40)
+    zneg[20 : len(zneg_rev) + 20] = zneg_rev
+    zneg = gaussian_filter1d(zneg, sigma_gaus)
+
+    peaks, _ = find_peaks(z, height=0)
+    peaks_neg, _ = find_peaks(zneg, height=0)
+
+    peaks_neg = peaks_neg - 20 - 20
+    peaks = peaks - 20
+
+    if contours_main != None:
+        areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
+        M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
+        cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+        cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+        x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+        x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+
+        y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+        y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+
+    if contours_main != None:
+        indexer_main = np.array(range(len(contours_main)))
+
+    if contours_main != None:
+        len_main = len(contours_main)
+    else:
+        len_main = 0
+
+    matrix_of_orders = np.zeros((len_main, 5))
+
+    matrix_of_orders[:, 0] = np.array(range(len_main))
+
+    matrix_of_orders[:len_main, 1] = 1
+    matrix_of_orders[len_main:, 1] = 2
+
+    matrix_of_orders[:len_main, 2] = cx_main
+    matrix_of_orders[:len_main, 3] = cy_main
+
+    matrix_of_orders[:len_main, 4] = np.array(range(len_main))
+
+    peaks_neg_new = []
+    peaks_neg_new.append(0)
+    for iii in range(len(peaks_neg)):
+        peaks_neg_new.append(peaks_neg[iii])
+    peaks_neg_new.append(textline_mask.shape[0])
+
+    final_indexers_sorted = []
+    for i in range(len(peaks_neg_new) - 1):
+        top = peaks_neg_new[i]
+        down = peaks_neg_new[i + 1]
+
+        indexes_in = matrix_of_orders[:, 0][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
+        cxs_in = matrix_of_orders[:, 2][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
+
+        sorted_inside = np.argsort(cxs_in)
+
+        ind_in_int = indexes_in[sorted_inside]
+
+        for j in range(len(ind_in_int)):
+            final_indexers_sorted.append(int(ind_in_int[j]))
+
+    return final_indexers_sorted, matrix_of_orders

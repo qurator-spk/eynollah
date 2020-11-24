@@ -36,42 +36,46 @@ import matplotlib.patches as mpatches
 import imutils
 
 from .utils import (
-    resize_image,
-    filter_contours_area_of_image_tables,
-    filter_contours_area_of_image_interiors,
-    rotatedRectWithMaxArea,
-    rotate_image,
-    rotate_max_area,
-    rotation_not_90_func,
-    rotation_not_90_func_full_layout,
-    rotate_max_area_new,
-    rotation_image_new,
-    crop_image_inside_box,
-    otsu_copy,
-    otsu_copy_binary,
-    return_bonding_box_of_contours,
-    find_features_of_lines,
-    isNaN,
-    return_parent_contours,
-    return_contours_of_interested_region,
-    return_contours_of_interested_region_by_min_size,
-    return_contours_of_interested_textline,
     boosting_headers_by_longshot_region_segmentation,
-    return_contours_of_image,
-    get_textregion_contours_in_org_image,
-    seperate_lines_vertical_cont,
-    seperate_lines,
-    seperate_lines_new_inside_teils2,
+    contours_in_same_horizon,
+    crop_image_inside_box,
+    filter_contours_area_of_image_interiors,
+    filter_contours_area_of_image_tables,
     filter_small_drop_capitals_from_no_patch_layout,
-    return_hor_spliter_by_index_for_without_verticals,
+    find_contours_mean_y_diff,
+    find_features_of_contours,
+    find_features_of_lines,
     find_new_features_of_contoures,
     find_num_col,
+    find_num_col_by_vertical_lines,
     find_num_col_deskew,
     find_num_col_only_image,
-    find_num_col_by_vertical_lines,
-    find_contours_mean_y_diff,
-    contours_in_same_horizon,
-    find_features_of_contours,
+    get_text_region_boxes_by_given_contours,
+    get_textregion_contours_in_org_image,
+    isNaN,
+    otsu_copy,
+    otsu_copy_binary,
+    resize_image,
+    return_bonding_box_of_contours,
+    return_contours_of_image,
+    return_contours_of_interested_region,
+    return_contours_of_interested_region_and_bounding_box,
+    return_contours_of_interested_region_by_min_size,
+    return_contours_of_interested_textline,
+    return_hor_spliter_by_index_for_without_verticals,
+    return_parent_contours,
+    rotate_image,
+    rotate_max_area,
+    rotate_max_area_new,
+    rotatedRectWithMaxArea,
+    rotation_image_new,
+    rotation_not_90_func,
+    rotation_not_90_func_full_layout,
+    seperate_lines,
+    seperate_lines_new_inside_teils,
+    seperate_lines_new_inside_teils2,
+    seperate_lines_vertical_cont,
+    delete_seperator_around,
 )
 
 
@@ -638,32 +642,6 @@ class eynollah:
 
         return model, session
 
-    def find_images_contours_and_replace_table_and_graphic_pixels_by_image(self, region_pre_p):
-
-        # pixels of images are identified by 5
-        cnts_images = (region_pre_p[:, :, 0] == 5) * 1
-        cnts_images = cnts_images.astype(np.uint8)
-        cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-        imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-        contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-        contours_imgs = return_parent_contours(contours_imgs, hiearchy)
-        # print(len(contours_imgs),'contours_imgs')
-        contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.0003)
-
-        # print(len(contours_imgs),'contours_imgs')
-
-        boxes_imgs = return_bonding_box_of_contours(contours_imgs)
-
-        for i in range(len(boxes_imgs)):
-            x1 = int(boxes_imgs[i][0])
-            x2 = int(boxes_imgs[i][0] + boxes_imgs[i][2])
-            y1 = int(boxes_imgs[i][1])
-            y2 = int(boxes_imgs[i][1] + boxes_imgs[i][3])
-            region_pre_p[y1:y2, x1:x2, 0][region_pre_p[y1:y2, x1:x2, 0] == 8] = 5
-            region_pre_p[y1:y2, x1:x2, 0][region_pre_p[y1:y2, x1:x2, 0] == 7] = 5
-        return region_pre_p
 
     def do_prediction(self, patches, img, model, marginal_of_patch_percent=0.1):
 
@@ -1602,149 +1580,6 @@ class eynollah:
         gc.collect()
         return prediction_textline[:, :, 0], prediction_textline_longshot_true_size[:, :, 0]
 
-    def seperate_lines_new_inside_teils(self, img_path, thetha):
-        (h, w) = img_path.shape[:2]
-        center = (w // 2, h // 2)
-        M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
-        x_d = M[0, 2]
-        y_d = M[1, 2]
-
-        thetha = thetha / 180.0 * np.pi
-        rotation_matrix = np.array([[np.cos(thetha), -np.sin(thetha)], [np.sin(thetha), np.cos(thetha)]])
-
-        x_min_cont = 0
-        x_max_cont = img_path.shape[1]
-        y_min_cont = 0
-        y_max_cont = img_path.shape[0]
-
-        xv = np.linspace(x_min_cont, x_max_cont, 1000)
-
-        mada_n = img_path.sum(axis=1)
-
-        ##plt.plot(mada_n)
-        ##plt.show()
-
-        first_nonzero = 0  # (next((i for i, x in enumerate(mada_n) if x), None))
-
-        y = mada_n[:]  # [first_nonzero:last_nonzero]
-        y_help = np.zeros(len(y) + 40)
-        y_help[20 : len(y) + 20] = y
-        x = np.array(range(len(y)))
-
-        peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
-        if len(peaks_real) <= 2 and len(peaks_real) > 1:
-            sigma_gaus = 10
-        else:
-            sigma_gaus = 5
-
-        z = gaussian_filter1d(y_help, sigma_gaus)
-        zneg_rev = -y_help + np.max(y_help)
-        zneg = np.zeros(len(zneg_rev) + 40)
-        zneg[20 : len(zneg_rev) + 20] = zneg_rev
-        zneg = gaussian_filter1d(zneg, sigma_gaus)
-
-        peaks, _ = find_peaks(z, height=0)
-        peaks_neg, _ = find_peaks(zneg, height=0)
-
-        for nn in range(len(peaks_neg)):
-            if peaks_neg[nn] > len(z) - 1:
-                peaks_neg[nn] = len(z) - 1
-            if peaks_neg[nn] < 0:
-                peaks_neg[nn] = 0
-
-        diff_peaks = np.abs(np.diff(peaks_neg))
-
-        cut_off = 20
-        peaks_neg_true = []
-        forest = []
-
-        for i in range(len(peaks_neg)):
-            if i == 0:
-                forest.append(peaks_neg[i])
-            if i < (len(peaks_neg) - 1):
-                if diff_peaks[i] <= cut_off:
-                    forest.append(peaks_neg[i + 1])
-                if diff_peaks[i] > cut_off:
-                    # print(forest[np.argmin(z[forest]) ] )
-                    if not isNaN(forest[np.argmin(z[forest])]):
-                        peaks_neg_true.append(forest[np.argmin(z[forest])])
-                    forest = []
-                    forest.append(peaks_neg[i + 1])
-            if i == (len(peaks_neg) - 1):
-                # print(print(forest[np.argmin(z[forest]) ] ))
-                if not isNaN(forest[np.argmin(z[forest])]):
-                    peaks_neg_true.append(forest[np.argmin(z[forest])])
-
-        diff_peaks_pos = np.abs(np.diff(peaks))
-
-        cut_off = 20
-        peaks_pos_true = []
-        forest = []
-
-        for i in range(len(peaks)):
-            if i == 0:
-                forest.append(peaks[i])
-            if i < (len(peaks) - 1):
-                if diff_peaks_pos[i] <= cut_off:
-                    forest.append(peaks[i + 1])
-                if diff_peaks_pos[i] > cut_off:
-                    # print(forest[np.argmin(z[forest]) ] )
-                    if not isNaN(forest[np.argmax(z[forest])]):
-                        peaks_pos_true.append(forest[np.argmax(z[forest])])
-                    forest = []
-                    forest.append(peaks[i + 1])
-            if i == (len(peaks) - 1):
-                # print(print(forest[np.argmin(z[forest]) ] ))
-                if not isNaN(forest[np.argmax(z[forest])]):
-                    peaks_pos_true.append(forest[np.argmax(z[forest])])
-
-        # print(len(peaks_neg_true) ,len(peaks_pos_true) ,'lensss')
-
-        if len(peaks_neg_true) > 0:
-            peaks_neg_true = np.array(peaks_neg_true)
-            """
-            #plt.figure(figsize=(40,40))
-            #plt.subplot(1,2,1)
-            #plt.title('Textline segmentation von Textregion')
-            #plt.imshow(img_path)
-            #plt.xlabel('X')
-            #plt.ylabel('Y')
-            #plt.subplot(1,2,2)
-            #plt.title('Dichte entlang X')
-            #base = pyplot.gca().transData
-            #rot = transforms.Affine2D().rotate_deg(90)
-            #plt.plot(zneg,np.array(range(len(zneg))))
-            #plt.plot(zneg[peaks_neg_true],peaks_neg_true,'*')
-            #plt.gca().invert_yaxis()
-
-            #plt.xlabel('Dichte')
-            #plt.ylabel('Y')
-            ##plt.plot([0,len(y)], [grenze,grenze])
-            #plt.show()
-            """
-            peaks_neg_true = peaks_neg_true - 20 - 20
-
-            # print(peaks_neg_true)
-            for i in range(len(peaks_neg_true)):
-                img_path[peaks_neg_true[i] - 6 : peaks_neg_true[i] + 6, :] = 0
-
-        else:
-            pass
-
-        if len(peaks_pos_true) > 0:
-            peaks_pos_true = np.array(peaks_pos_true)
-            peaks_pos_true = peaks_pos_true - 20
-
-            for i in range(len(peaks_pos_true)):
-                img_path[peaks_pos_true[i] - 8 : peaks_pos_true[i] + 8, :] = 1
-        else:
-            pass
-        kernel = np.ones((5, 5), np.uint8)
-
-        # img_path = cv2.erode(img_path,kernel,iterations = 3)
-        img_path = cv2.erode(img_path, kernel, iterations=2)
-        return img_path
-
     def seperate_lines_new(self, img_path, thetha, num_col):
 
         if num_col == 1:
@@ -1955,7 +1790,7 @@ class eynollah:
             img_line_rotated = rotate_image(img_resized, slopes_tile_wise[i])
             img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
 
-            img_patch_seperated = self.seperate_lines_new_inside_teils(img_line_rotated, 0)
+            img_patch_seperated = seperate_lines_new_inside_teils(img_line_rotated, 0)
 
             ##plt.imshow(img_patch_seperated)
             ##plt.show()
@@ -1983,9 +1818,9 @@ class eynollah:
             img_line_rotated=rotate_image(img_resized,slopes_tile_wise[ui])
 
 
-            #img_patch_seperated=self.seperate_lines_new_inside_teils(img_line_rotated,0)
+            #img_patch_seperated = seperate_lines_new_inside_teils(img_line_rotated,0)
 
-            img_patch_seperated=self.seperate_lines_new_inside_teils(img_line_rotated,0)
+            img_patch_seperated = seperate_lines_new_inside_teils(img_line_rotated,0)
 
             img_patch_seperated_returned=rotate_image(img_patch_seperated,-slopes_tile_wise[ui])
             ##plt.imshow(img_patch_seperated)
@@ -2897,98 +2732,6 @@ class eynollah:
         for i in range(num_cores):
             processes[i].join()
 
-    def order_of_regions_old(self, textline_mask, contours_main):
-        mada_n = textline_mask.sum(axis=1)
-        y = mada_n[:]
-
-        y_help = np.zeros(len(y) + 40)
-        y_help[20 : len(y) + 20] = y
-        x = np.array(range(len(y)))
-
-        peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
-
-        sigma_gaus = 8
-
-        z = gaussian_filter1d(y_help, sigma_gaus)
-        zneg_rev = -y_help + np.max(y_help)
-
-        zneg = np.zeros(len(zneg_rev) + 40)
-        zneg[20 : len(zneg_rev) + 20] = zneg_rev
-        zneg = gaussian_filter1d(zneg, sigma_gaus)
-
-        peaks, _ = find_peaks(z, height=0)
-        peaks_neg, _ = find_peaks(zneg, height=0)
-
-        peaks_neg = peaks_neg - 20 - 20
-        peaks = peaks - 20
-
-        if contours_main != None:
-            areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
-            M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-            cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-            cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-            x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-            x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-
-            y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-            y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-
-        if contours_main != None:
-            indexer_main = np.array(range(len(contours_main)))
-
-        if contours_main != None:
-            len_main = len(contours_main)
-        else:
-            len_main = 0
-
-        matrix_of_orders = np.zeros((len_main, 5))
-
-        matrix_of_orders[:, 0] = np.array(range(len_main))
-
-        matrix_of_orders[:len_main, 1] = 1
-        matrix_of_orders[len_main:, 1] = 2
-
-        matrix_of_orders[:len_main, 2] = cx_main
-        matrix_of_orders[:len_main, 3] = cy_main
-
-        matrix_of_orders[:len_main, 4] = np.array(range(len_main))
-
-        peaks_neg_new = []
-        peaks_neg_new.append(0)
-        for iii in range(len(peaks_neg)):
-            peaks_neg_new.append(peaks_neg[iii])
-        peaks_neg_new.append(textline_mask.shape[0])
-
-        final_indexers_sorted = []
-        for i in range(len(peaks_neg_new) - 1):
-            top = peaks_neg_new[i]
-            down = peaks_neg_new[i + 1]
-
-            indexes_in = matrix_of_orders[:, 0][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
-            cxs_in = matrix_of_orders[:, 2][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
-
-            sorted_inside = np.argsort(cxs_in)
-
-            ind_in_int = indexes_in[sorted_inside]
-
-            for j in range(len(ind_in_int)):
-                final_indexers_sorted.append(int(ind_in_int[j]))
-
-        return final_indexers_sorted, matrix_of_orders
-
-    def order_and_id_of_texts_old(self, found_polygons_text_region, matrix_of_orders, indexes_sorted):
-        id_of_texts = []
-        order_of_texts = []
-        index_b = 0
-        for mm in range(len(found_polygons_text_region)):
-            id_of_texts.append("r" + str(index_b))
-            index_matrix = matrix_of_orders[:, 0][(matrix_of_orders[:, 1] == 1) & (matrix_of_orders[:, 4] == mm)]
-            order_of_texts.append(np.where(indexes_sorted == index_matrix)[0][0])
-
-            index_b += 1
-
-        order_of_texts
-        return order_of_texts, id_of_texts
 
     def write_into_page_xml_only_textlines(self, contours, page_coord, all_found_texline_polygons, all_box_coord, dir_of_image):
 
@@ -5562,31 +5305,10 @@ class eynollah:
 
         return text_regions
 
-    def delete_seperator_around(self, spliter_y, peaks_neg, image_by_region):
-        # format of subboxes box=[x1, x2 , y1, y2]
-
-        if len(image_by_region.shape) == 3:
-            for i in range(len(spliter_y) - 1):
-                for j in range(1, len(peaks_neg[i]) - 1):
-                    image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0] == 6] = 0
-                    image_by_region[spliter_y[i] : spliter_y[i + 1], peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 1] == 6] = 0
-                    image_by_region[spliter_y[i] : spliter_y[i + 1], peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 2] == 6] = 0
-
-                    image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0] == 7] = 0
-                    image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 1] == 7] = 0
-                    image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 2] == 7] = 0
-        else:
-            for i in range(len(spliter_y) - 1):
-                for j in range(1, len(peaks_neg[i]) - 1):
-                    image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])] == 6] = 0
-
-                    image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])] == 7] = 0
-        return image_by_region
-
 
     def add_tables_heuristic_to_layout(self, image_regions_eraly_p, boxes, slope_mean_hor, spliter_y, peaks_neg_tot, image_revised):
 
-        image_revised_1 = self.delete_seperator_around(spliter_y, peaks_neg_tot, image_revised)
+        image_revised_1 = delete_seperator_around(spliter_y, peaks_neg_tot, image_revised)
         img_comm_e = np.zeros(image_revised_1.shape)
         img_comm = np.repeat(img_comm_e[:, :, np.newaxis], 3, axis=2)
 
@@ -6013,20 +5735,6 @@ class eynollah:
 
         return order_of_texts, id_of_texts
 
-    def get_text_region_boxes_by_given_contours(self, contours):
-
-        kernel = np.ones((5, 5), np.uint8)
-        boxes = []
-        contours_new = []
-        for jj in range(len(contours)):
-            x, y, w, h = cv2.boundingRect(contours[jj])
-
-            boxes.append([x, y, w, h])
-            contours_new.append(contours[jj])
-
-        del contours
-        return boxes, contours_new
-
     def return_teilwiese_deskewed_lines(self, text_regions_p, textline_rotated):
 
         kernel = np.ones((5, 5), np.uint8)
@@ -6036,8 +5744,8 @@ class eynollah:
         rgb_m = 1
         rgb_h = 2
 
-        cnt_m, boxes_m = self.return_contours_of_interested_region_and_bounding_box(text_regions_p, rgb_m)
-        cnt_h, boxes_h = self.return_contours_of_interested_region_and_bounding_box(text_regions_p, rgb_h)
+        cnt_m, boxes_m = return_contours_of_interested_region_and_bounding_box(text_regions_p, rgb_m)
+        cnt_h, boxes_h = return_contours_of_interested_region_and_bounding_box(text_regions_p, rgb_h)
 
         areas_cnt_m = np.array([cv2.contourArea(cnt_m[j]) for j in range(len(cnt_m))])
 
@@ -6059,26 +5767,6 @@ class eynollah:
         # textline_rotated_new[textline_rotated_new<0]=0
         # plt.imshow(textline_rotated_new)
         # plt.show()
-
-    def return_contours_of_interested_region_and_bounding_box(self, region_pre_p, pixel):
-
-        # pixels of images are identified by 5
-        cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
-        cnts_images = cnts_images.astype(np.uint8)
-        cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-        imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-        contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-        contours_imgs = return_parent_contours(contours_imgs, hiearchy)
-        contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.0003)
-
-        boxes = []
-
-        for jj in range(len(contours_imgs)):
-            x, y, w, h = cv2.boundingRect(contours_imgs[jj])
-            boxes.append([int(x), int(y), int(w), int(h)])
-        return contours_imgs, boxes
 
     def find_number_of_columns_in_document(self, region_pre_p, num_col_classifier, pixel_lines, contours_h=None):
 
@@ -9013,10 +8701,10 @@ class eynollah:
 
                 txt_con_org = get_textregion_contours_in_org_image(contours_only_text_parent, self.image, slope_first)
 
-                ###boxes_text,_=self.get_text_region_boxes_by_given_contours(contours_only_text_parent)
-                boxes_text, _ = self.get_text_region_boxes_by_given_contours(contours_only_text_parent)
-                boxes_marginals, _ = self.get_text_region_boxes_by_given_contours(polygons_of_marginals)
-                ####boxes_text_h,_=self.get_text_region_boxes_by_given_contours(text_only_h,contours_only_text_parent_h,image_page)
+                ###boxes_text,_= get_text_region_boxes_by_given_contours(contours_only_text_parent)
+                boxes_text, _ = get_text_region_boxes_by_given_contours(contours_only_text_parent)
+                boxes_marginals, _ = get_text_region_boxes_by_given_contours(polygons_of_marginals)
+                ####boxes_text_h,_= get_text_region_boxes_by_given_contours(text_only_h,contours_only_text_parent_h,image_page)
 
                 if not self.curved_line:
                     slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
