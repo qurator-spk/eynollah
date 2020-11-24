@@ -1300,7 +1300,7 @@ class eynollah:
 
                     img_int_p[img_int_p > 0] = 1
                     # slope_for_all=self.return_deskew_slope_new(img_int_p,sigma_des)
-                    slope_for_all = self.return_deskew_slop(img_int_p, sigma_des)
+                    slope_for_all = self.return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
                     if abs(slope_for_all) < 0.5:
                         slope_for_all = [slope_deskew][0]
@@ -1311,7 +1311,7 @@ class eynollah:
                 except:
                     slope_for_all = 999
 
-                ##slope_for_all=self.return_deskew_slop(img_int_p,sigma_des)
+                ##slope_for_all=self.return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
                 if slope_for_all == 999:
                     slope_for_all = [slope_deskew][0]
@@ -1457,7 +1457,7 @@ class eynollah:
 
                     img_int_p[img_int_p > 0] = 1
                     # slope_for_all=self.return_deskew_slope_new(img_int_p,sigma_des)
-                    slope_for_all = self.return_deskew_slop(img_int_p, sigma_des)
+                    slope_for_all = self.return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
                     if abs(slope_for_all) <= 0.5:
                         slope_for_all = [slope_deskew][0]
@@ -1465,7 +1465,7 @@ class eynollah:
                 except:
                     slope_for_all = 999
 
-                ##slope_for_all=self.return_deskew_slop(img_int_p,sigma_des)
+                ##slope_for_all=self.return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
                 if slope_for_all == 999:
                     slope_for_all = [slope_deskew][0]
@@ -1726,7 +1726,7 @@ class eynollah:
 
             sigma = 2
             try:
-                slope_xline = self.return_deskew_slop(img_xline, sigma)
+                slope_xline = self.return_deskew_slop(img_xline, sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
             except:
                 slope_xline = 0
             slopes_tile_wise.append(slope_xline)
@@ -1748,7 +1748,7 @@ class eynollah:
 
             sigma=3
             try:
-                slope_xline=self.return_deskew_slop(img_xline,sigma)
+                slope_xline=self.return_deskew_slop(img_xline,sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
             except:
                 slope_xline=0
             slopes_tile_wise.append(slope_xline)
@@ -1891,7 +1891,7 @@ class eynollah:
 
             sigma = 2
             try:
-                slope_xline = self.return_deskew_slop(img_xline, sigma)
+                slope_xline = self.return_deskew_slop(img_xline, sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
             except:
                 slope_xline = 0
 
@@ -2106,9 +2106,9 @@ class eynollah:
         return slope
 
 
-    def return_deskew_slop(self, img_patch_org, sigma_des, main_page=False):
+    def return_deskew_slop(self, img_patch_org, sigma_des, main_page=False, dir_of_all=None, f_name=None):
 
-        if main_page and self.dir_of_all is not None:
+        if main_page and dir_of_all is not None:
 
             plt.figure(figsize=(70, 40))
             plt.rcParams["font.size"] = "50"
@@ -2121,7 +2121,7 @@ class eynollah:
             plt.yticks([0, len(gaussian_filter1d(img_patch_org.sum(axis=1), 3))])
             plt.gca().invert_yaxis()
 
-            plt.savefig(os.path.join(self.dir_of_all, self.f_name + "_density_of_textline.png"))
+            plt.savefig(os.path.join(dir_of_all, f_name + "_density_of_textline.png"))
         # print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar')
 
         # img_patch_org=resize_image(img_patch_org,int(img_patch_org.shape[0]*2.5),int(img_patch_org.shape[1]/2.5))
@@ -2281,7 +2281,7 @@ class eynollah:
                     index_cor.append(indexer)
                 indexer = indexer + 1
 
-            if self.dir_of_all is not None:
+            if dir_of_all is not None:
                 print("galdi?")
                 plt.figure(figsize=(60, 30))
                 plt.rcParams["font.size"] = "50"
@@ -2291,7 +2291,7 @@ class eynollah:
 
                 plt.plot(angels[np.argmax(var_res)], var_res[np.argmax(np.array(var_res))], "*", markersize=50, label="Angle of deskewing=" + str("{:.2f}".format(angels[np.argmax(var_res)])) + r"$\degree$")
                 plt.legend(loc="best")
-                plt.savefig(os.path.join(self.dir_of_all, self.f_name + "_rotation_angle.png"))
+                plt.savefig(os.path.join(dir_of_all, f_name + "_rotation_angle.png"))
 
             try:
                 var_res = np.array(var_res)
@@ -2674,7 +2674,7 @@ class eynollah:
                     sigma_des = 1
 
                 crop_img[crop_img > 0] = 1
-                slope_corresponding_textregion = self.return_deskew_slop(crop_img, sigma_des)
+                slope_corresponding_textregion = self.return_deskew_slop(crop_img, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
             except:
                 slope_corresponding_textregion = 999
@@ -2698,7 +2698,7 @@ class eynollah:
 
     def get_slopes_and_deskew(self, contours, textline_mask_tot):
 
-        slope_biggest = 0  # self.return_deskew_slop(img_int_p,sigma_des)
+        slope_biggest = 0  # self.return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
         num_cores = cpu_count()
         q = Queue()
@@ -8356,8 +8356,8 @@ class eynollah:
 
                 sigma = 2
                 main_page_deskew = True
-                slope_deskew = self.return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2), sigma, main_page_deskew)
-                slope_first = 0  # self.return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2),sigma)
+                slope_deskew = self.return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2), sigma, main_page_deskew, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                slope_first = 0  # self.return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2),sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
                 if self.dir_of_deskewed is not None:
                     self.save_deskewed_image(slope_deskew)
