@@ -77,6 +77,7 @@ from .utils import (
     seperate_lines_vertical_cont,
     delete_seperator_around,
     return_regions_without_seperators,
+    return_deskew_slop,
 )
 
 
@@ -1300,7 +1301,7 @@ class eynollah:
 
                     img_int_p[img_int_p > 0] = 1
                     # slope_for_all=self.return_deskew_slope_new(img_int_p,sigma_des)
-                    slope_for_all = self.return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                    slope_for_all = return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
                     if abs(slope_for_all) < 0.5:
                         slope_for_all = [slope_deskew][0]
@@ -1311,7 +1312,7 @@ class eynollah:
                 except:
                     slope_for_all = 999
 
-                ##slope_for_all=self.return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                ##slope_for_all=return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
                 if slope_for_all == 999:
                     slope_for_all = [slope_deskew][0]
@@ -1457,7 +1458,7 @@ class eynollah:
 
                     img_int_p[img_int_p > 0] = 1
                     # slope_for_all=self.return_deskew_slope_new(img_int_p,sigma_des)
-                    slope_for_all = self.return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                    slope_for_all = return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
                     if abs(slope_for_all) <= 0.5:
                         slope_for_all = [slope_deskew][0]
@@ -1465,7 +1466,7 @@ class eynollah:
                 except:
                     slope_for_all = 999
 
-                ##slope_for_all=self.return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                ##slope_for_all=return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
                 if slope_for_all == 999:
                     slope_for_all = [slope_deskew][0]
@@ -1726,7 +1727,7 @@ class eynollah:
 
             sigma = 2
             try:
-                slope_xline = self.return_deskew_slop(img_xline, sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                slope_xline = return_deskew_slop(img_xline, sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
             except:
                 slope_xline = 0
             slopes_tile_wise.append(slope_xline)
@@ -1748,7 +1749,7 @@ class eynollah:
 
             sigma=3
             try:
-                slope_xline=self.return_deskew_slop(img_xline,sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                slope_xline=return_deskew_slop(img_xline,sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
             except:
                 slope_xline=0
             slopes_tile_wise.append(slope_xline)
@@ -1891,7 +1892,7 @@ class eynollah:
 
             sigma = 2
             try:
-                slope_xline = self.return_deskew_slop(img_xline, sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                slope_xline = return_deskew_slop(img_xline, sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
             except:
                 slope_xline = 0
 
@@ -2106,438 +2107,6 @@ class eynollah:
         return slope
 
 
-    def return_deskew_slop(self, img_patch_org, sigma_des, main_page=False, dir_of_all=None, f_name=None):
-
-        if main_page and dir_of_all is not None:
-
-            plt.figure(figsize=(70, 40))
-            plt.rcParams["font.size"] = "50"
-            plt.subplot(1, 2, 1)
-            plt.imshow(img_patch_org)
-            plt.subplot(1, 2, 2)
-            plt.plot(gaussian_filter1d(img_patch_org.sum(axis=1), 3), np.array(range(len(gaussian_filter1d(img_patch_org.sum(axis=1), 3)))), linewidth=8)
-            plt.xlabel("Density of textline prediction in direction of X axis", fontsize=60)
-            plt.ylabel("Height", fontsize=60)
-            plt.yticks([0, len(gaussian_filter1d(img_patch_org.sum(axis=1), 3))])
-            plt.gca().invert_yaxis()
-
-            plt.savefig(os.path.join(dir_of_all, f_name + "_density_of_textline.png"))
-        # print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar')
-
-        # img_patch_org=resize_image(img_patch_org,int(img_patch_org.shape[0]*2.5),int(img_patch_org.shape[1]/2.5))
-
-        # print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar2')
-
-        img_int = np.zeros((img_patch_org.shape[0], img_patch_org.shape[1]))
-        img_int[:, :] = img_patch_org[:, :]  # img_patch_org[:,:,0]
-
-        img_resized = np.zeros((int(img_int.shape[0] * (1.8)), int(img_int.shape[1] * (2.6))))
-
-        img_resized[int(img_int.shape[0] * (0.4)) : int(img_int.shape[0] * (0.4)) + img_int.shape[0], int(img_int.shape[1] * (0.8)) : int(img_int.shape[1] * (0.8)) + img_int.shape[1]] = img_int[:, :]
-
-        if main_page and img_patch_org.shape[1] > img_patch_org.shape[0]:
-
-            # plt.imshow(img_resized)
-            # plt.show()
-            angels = np.array(
-                [
-                    -45,
-                    0,
-                    45,
-                    90,
-                ]
-            )  # np.linspace(-12,12,100)#np.array([0 , 45 , 90 , -45])
-
-            res = []
-            num_of_peaks = []
-            index_cor = []
-            var_res = []
-
-            indexer = 0
-            for rot in angels:
-                img_rot = rotate_image(img_resized, rot)
-                # plt.imshow(img_rot)
-                # plt.show()
-                img_rot[img_rot != 0] = 1
-                # res_me=np.mean(find_num_col_deskew(img_rot,sigma_des,2.0  ))
-
-                # neg_peaks,var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-                # print(var_spectrum,'var_spectrum')
-                try:
-                    neg_peaks, var_spectrum = find_num_col_deskew(img_rot, sigma_des, 20.3)
-                    # print(rot,var_spectrum,'var_spectrum')
-                    res_me = np.mean(neg_peaks)
-                    if res_me == 0:
-                        res_me = VERY_LARGE_NUMBER
-                    else:
-                        pass
-
-                    res_num = len(neg_peaks)
-                except:
-                    res_me = VERY_LARGE_NUMBER
-                    res_num = 0
-                    var_spectrum = 0
-                if isNaN(res_me):
-                    pass
-                else:
-                    res.append(res_me)
-                    var_res.append(var_spectrum)
-                    num_of_peaks.append(res_num)
-                    index_cor.append(indexer)
-                indexer = indexer + 1
-
-            try:
-                var_res = np.array(var_res)
-
-                ang_int = angels[np.argmax(var_res)]  # angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
-            except:
-                ang_int = 0
-
-            angels = np.linspace(ang_int - 22.5, ang_int + 22.5, 100)
-
-            res = []
-            num_of_peaks = []
-            index_cor = []
-            var_res = []
-
-            indexer = 0
-            for rot in angels:
-                img_rot = rotate_image(img_resized, rot)
-                ##plt.imshow(img_rot)
-                ##plt.show()
-                img_rot[img_rot != 0] = 1
-                # res_me=np.mean(find_num_col_deskew(img_rot,sigma_des,2.0  ))
-                try:
-                    neg_peaks, var_spectrum = find_num_col_deskew(img_rot, sigma_des, 20.3)
-                    # print(indexer,'indexer')
-                    res_me = np.mean(neg_peaks)
-                    if res_me == 0:
-                        res_me = VERY_LARGE_NUMBER
-                    else:
-                        pass
-
-                    res_num = len(neg_peaks)
-                except:
-                    res_me = VERY_LARGE_NUMBER
-                    res_num = 0
-                    var_spectrum = 0
-                if isNaN(res_me):
-                    pass
-                else:
-                    res.append(res_me)
-                    var_res.append(var_spectrum)
-                    num_of_peaks.append(res_num)
-                    index_cor.append(indexer)
-                indexer = indexer + 1
-
-            try:
-                var_res = np.array(var_res)
-
-                ang_int = angels[np.argmax(var_res)]  # angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
-            except:
-                ang_int = 0
-
-        elif main_page and img_patch_org.shape[1] <= img_patch_org.shape[0]:
-
-            # plt.imshow(img_resized)
-            # plt.show()
-            angels = np.linspace(-12, 12, 100)  # np.array([0 , 45 , 90 , -45])
-
-            res = []
-            num_of_peaks = []
-            index_cor = []
-            var_res = []
-
-            indexer = 0
-            for rot in angels:
-                img_rot = rotate_image(img_resized, rot)
-                # plt.imshow(img_rot)
-                # plt.show()
-                img_rot[img_rot != 0] = 1
-                # res_me=np.mean(find_num_col_deskew(img_rot,sigma_des,2.0  ))
-
-                # neg_peaks,var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-                # print(var_spectrum,'var_spectrum')
-                try:
-                    neg_peaks, var_spectrum = find_num_col_deskew(img_rot, sigma_des, 20.3)
-                    # print(rot,var_spectrum,'var_spectrum')
-                    res_me = np.mean(neg_peaks)
-                    if res_me == 0:
-                        res_me = VERY_LARGE_NUMBER
-                    else:
-                        pass
-
-                    res_num = len(neg_peaks)
-                except:
-                    res_me = VERY_LARGE_NUMBER
-                    res_num = 0
-                    var_spectrum = 0
-                if isNaN(res_me):
-                    pass
-                else:
-                    res.append(res_me)
-                    var_res.append(var_spectrum)
-                    num_of_peaks.append(res_num)
-                    index_cor.append(indexer)
-                indexer = indexer + 1
-
-            if dir_of_all is not None:
-                print("galdi?")
-                plt.figure(figsize=(60, 30))
-                plt.rcParams["font.size"] = "50"
-                plt.plot(angels, np.array(var_res), "-o", markersize=25, linewidth=4)
-                plt.xlabel("angle", fontsize=50)
-                plt.ylabel("variance of sum of rotated textline in direction of x axis", fontsize=50)
-
-                plt.plot(angels[np.argmax(var_res)], var_res[np.argmax(np.array(var_res))], "*", markersize=50, label="Angle of deskewing=" + str("{:.2f}".format(angels[np.argmax(var_res)])) + r"$\degree$")
-                plt.legend(loc="best")
-                plt.savefig(os.path.join(dir_of_all, f_name + "_rotation_angle.png"))
-
-            try:
-                var_res = np.array(var_res)
-
-                ang_int = angels[np.argmax(var_res)]  # angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
-            except:
-                ang_int = 0
-
-            early_slope_edge = 11
-            if abs(ang_int) > early_slope_edge and ang_int < 0:
-
-                angels = np.linspace(-90, -12, 100)
-
-                res = []
-                num_of_peaks = []
-                index_cor = []
-                var_res = []
-
-                indexer = 0
-                for rot in angels:
-                    img_rot = rotate_image(img_resized, rot)
-                    ##plt.imshow(img_rot)
-                    ##plt.show()
-                    img_rot[img_rot != 0] = 1
-                    # res_me=np.mean(find_num_col_deskew(img_rot,sigma_des,2.0  ))
-                    try:
-                        neg_peaks, var_spectrum = find_num_col_deskew(img_rot, sigma_des, 20.3)
-                        # print(indexer,'indexer')
-                        res_me = np.mean(neg_peaks)
-                        if res_me == 0:
-                            res_me = VERY_LARGE_NUMBER
-                        else:
-                            pass
-
-                        res_num = len(neg_peaks)
-                    except:
-                        res_me = VERY_LARGE_NUMBER
-                        res_num = 0
-                        var_spectrum = 0
-                    if isNaN(res_me):
-                        pass
-                    else:
-                        res.append(res_me)
-                        var_res.append(var_spectrum)
-                        num_of_peaks.append(res_num)
-                        index_cor.append(indexer)
-                    indexer = indexer + 1
-
-                try:
-                    var_res = np.array(var_res)
-
-                    ang_int = angels[np.argmax(var_res)]  # angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
-                except:
-                    ang_int = 0
-
-            elif abs(ang_int) > early_slope_edge and ang_int > 0:
-
-                angels = np.linspace(90, 12, 100)
-
-                res = []
-                num_of_peaks = []
-                index_cor = []
-                var_res = []
-
-                indexer = 0
-                for rot in angels:
-                    img_rot = rotate_image(img_resized, rot)
-                    ##plt.imshow(img_rot)
-                    ##plt.show()
-                    img_rot[img_rot != 0] = 1
-                    # res_me=np.mean(find_num_col_deskew(img_rot,sigma_des,2.0  ))
-                    try:
-                        neg_peaks, var_spectrum = find_num_col_deskew(img_rot, sigma_des, 20.3)
-                        # print(indexer,'indexer')
-                        res_me = np.mean(neg_peaks)
-                        if res_me == 0:
-                            res_me = VERY_LARGE_NUMBER
-                        else:
-                            pass
-
-                        res_num = len(neg_peaks)
-                    except:
-                        res_me = VERY_LARGE_NUMBER
-                        res_num = 0
-                        var_spectrum = 0
-                    if isNaN(res_me):
-                        pass
-                    else:
-                        res.append(res_me)
-                        var_res.append(var_spectrum)
-                        num_of_peaks.append(res_num)
-                        index_cor.append(indexer)
-                    indexer = indexer + 1
-
-                try:
-                    var_res = np.array(var_res)
-
-                    ang_int = angels[np.argmax(var_res)]  # angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
-                except:
-                    ang_int = 0
-        else:
-
-            angels = np.linspace(-25, 25, 60)
-
-            res = []
-            num_of_peaks = []
-            index_cor = []
-            var_res = []
-
-            indexer = 0
-            for rot in angels:
-                img_rot = rotate_image(img_resized, rot)
-                # plt.imshow(img_rot)
-                # plt.show()
-                img_rot[img_rot != 0] = 1
-                # res_me=np.mean(find_num_col_deskew(img_rot,sigma_des,2.0  ))
-
-                # neg_peaks,var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-                # print(var_spectrum,'var_spectrum')
-                try:
-                    neg_peaks, var_spectrum = find_num_col_deskew(img_rot, sigma_des, 20.3)
-                    # print(rot,var_spectrum,'var_spectrum')
-                    res_me = np.mean(neg_peaks)
-                    if res_me == 0:
-                        res_me = VERY_LARGE_NUMBER
-                    else:
-                        pass
-
-                    res_num = len(neg_peaks)
-                except:
-                    res_me = VERY_LARGE_NUMBER
-                    res_num = 0
-                    var_spectrum = 0
-                if isNaN(res_me):
-                    pass
-                else:
-                    res.append(res_me)
-                    var_res.append(var_spectrum)
-                    num_of_peaks.append(res_num)
-                    index_cor.append(indexer)
-                indexer = indexer + 1
-
-            try:
-                var_res = np.array(var_res)
-
-                ang_int = angels[np.argmax(var_res)]  # angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
-            except:
-                ang_int = 0
-
-            # print(ang_int,'ang_int')
-
-            early_slope_edge = 22
-            if abs(ang_int) > early_slope_edge and ang_int < 0:
-
-                angels = np.linspace(-90, -25, 60)
-
-                res = []
-                num_of_peaks = []
-                index_cor = []
-                var_res = []
-
-                indexer = 0
-                for rot in angels:
-                    img_rot = rotate_image(img_resized, rot)
-                    ##plt.imshow(img_rot)
-                    ##plt.show()
-                    img_rot[img_rot != 0] = 1
-                    # res_me=np.mean(find_num_col_deskew(img_rot,sigma_des,2.0  ))
-                    try:
-                        neg_peaks, var_spectrum = find_num_col_deskew(img_rot, sigma_des, 20.3)
-                        # print(indexer,'indexer')
-                        res_me = np.mean(neg_peaks)
-                        if res_me == 0:
-                            res_me = VERY_LARGE_NUMBER
-                        else:
-                            pass
-
-                        res_num = len(neg_peaks)
-                    except:
-                        res_me = VERY_LARGE_NUMBER
-                        res_num = 0
-                        var_spectrum = 0
-                    if isNaN(res_me):
-                        pass
-                    else:
-                        res.append(res_me)
-                        var_res.append(var_spectrum)
-                        num_of_peaks.append(res_num)
-                        index_cor.append(indexer)
-                    indexer = indexer + 1
-
-                try:
-                    var_res = np.array(var_res)
-
-                    ang_int = angels[np.argmax(var_res)]  # angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
-                except:
-                    ang_int = 0
-
-            elif abs(ang_int) > early_slope_edge and ang_int > 0:
-
-                angels = np.linspace(90, 25, 60)
-
-                res = []
-                num_of_peaks = []
-                index_cor = []
-                var_res = []
-
-                indexer = 0
-                for rot in angels:
-                    img_rot = rotate_image(img_resized, rot)
-                    ##plt.imshow(img_rot)
-                    ##plt.show()
-                    img_rot[img_rot != 0] = 1
-                    # res_me=np.mean(find_num_col_deskew(img_rot,sigma_des,2.0  ))
-                    try:
-                        neg_peaks, var_spectrum = find_num_col_deskew(img_rot, sigma_des, 20.3)
-                        # print(indexer,'indexer')
-                        res_me = np.mean(neg_peaks)
-                        if res_me == 0:
-                            res_me = VERY_LARGE_NUMBER
-                        else:
-                            pass
-
-                        res_num = len(neg_peaks)
-                    except:
-                        res_me = VERY_LARGE_NUMBER
-                        res_num = 0
-                        var_spectrum = 0
-                    if isNaN(res_me):
-                        pass
-                    else:
-                        res.append(res_me)
-                        var_res.append(var_spectrum)
-                        num_of_peaks.append(res_num)
-                        index_cor.append(indexer)
-                    indexer = indexer + 1
-
-                try:
-                    var_res = np.array(var_res)
-
-                    ang_int = angels[np.argmax(var_res)]  # angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
-                except:
-                    ang_int = 0
-
-        return ang_int
-
     def return_deskew_slope_new(self, img_patch, sigma_des):
         max_x_y = max(img_patch.shape[0], img_patch.shape[1])
 
@@ -2674,7 +2243,7 @@ class eynollah:
                     sigma_des = 1
 
                 crop_img[crop_img > 0] = 1
-                slope_corresponding_textregion = self.return_deskew_slop(crop_img, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
             except:
                 slope_corresponding_textregion = 999
@@ -2698,7 +2267,7 @@ class eynollah:
 
     def get_slopes_and_deskew(self, contours, textline_mask_tot):
 
-        slope_biggest = 0  # self.return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+        slope_biggest = 0  # return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
         num_cores = cpu_count()
         q = Queue()
@@ -8356,8 +7925,8 @@ class eynollah:
 
                 sigma = 2
                 main_page_deskew = True
-                slope_deskew = self.return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2), sigma, main_page_deskew, dir_of_all=self.dir_of_all, f_name=self.f_name)
-                slope_first = 0  # self.return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2),sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2), sigma, main_page_deskew, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                slope_first = 0  # return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2),sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
 
                 if self.dir_of_deskewed is not None:
                     self.save_deskewed_image(slope_deskew)
