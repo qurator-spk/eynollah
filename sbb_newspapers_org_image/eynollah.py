@@ -243,11 +243,11 @@ class eynollah:
             return prediction_true
 
     def check_dpi(self):
-        self.dpi = os.popen('identify -format "%x " ' + self.image_dir).read()
-        self.dpi = int(float(self.dpi))
+        dpi = os.popen('identify -format "%x " ' + self.image_dir).read()
+        return int(float(dpi))
 
     def resize_image_with_column_classifier(self, is_image_enhanced):
-        self.check_dpi()
+        dpi = self.check_dpi()
         img = cv2.imread(self.image_dir)
         img = img.astype(np.uint8)
 
@@ -365,7 +365,7 @@ class eynollah:
         return img, img_new, is_image_enhanced
 
     def resize_and_enhance_image_with_column_classifier(self, is_image_enhanced):
-        self.check_dpi()
+        dpi = self.check_dpi()
         img = cv2.imread(self.image_dir)
 
         img = img.astype(np.uint8)
@@ -409,9 +409,9 @@ class eynollah:
         K.clear_session()
         gc.collect()
 
-        print(self.dpi)
+        print(dpi)
 
-        if self.dpi < 298:
+        if dpi < 298:
 
             # sys.exit()
             if num_col == 1 and width_early < 1100:
@@ -524,14 +524,14 @@ class eynollah:
         return is_image_enhanced, img, image_res, num_col, num_column_is_classified
 
     def resize_and_enhance_image(self, is_image_enhanced):
-        self.check_dpi()
+        dpi = self.check_dpi()
         img = cv2.imread(self.image_dir)
         img = img.astype(np.uint8)
         # sys.exit()
 
-        print(self.dpi)
+        print(dpi)
 
-        if self.dpi < 298:
+        if dpi < 298:
             if img.shape[0] < 1000:
                 img_h_new = int(img.shape[0] * 3)
                 img_w_new = int(img.shape[1] * 3)
