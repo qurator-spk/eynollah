@@ -823,3 +823,671 @@ def image_change_background_pixels_to_zero(self, image_page):
     image_back_zero[:, :][image_back_zero[:, :] == -255] = 255
     return image_back_zero
 
+def return_boxes_of_images_by_order_of_reading_without_seperator(spliter_y_new, image_p_rev, regions_without_seperators, matrix_of_lines_ch, seperators_closeup_n):
+
+    boxes = []
+
+    # here I go through main spliters and i do check whether a vertical seperator there is. If so i am searching for \
+    # holes in the text and also finding spliter which covers more than one columns.
+    for i in range(len(spliter_y_new) - 1):
+        # print(spliter_y_new[i],spliter_y_new[i+1])
+        matrix_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 6] > spliter_y_new[i]) & (matrix_of_lines_ch[:, 7] < spliter_y_new[i + 1])]
+        # print(len( matrix_new[:,9][matrix_new[:,9]==1] ))
+
+        # print(matrix_new[:,8][matrix_new[:,9]==1],'gaddaaa')
+
+        # check to see is there any vertical seperator to find holes.
+        if np.abs(spliter_y_new[i + 1] - spliter_y_new[i]) > 1.0 / 3.0 * regions_without_seperators.shape[0]:  # len( matrix_new[:,9][matrix_new[:,9]==1] )>0 and np.max(matrix_new[:,8][matrix_new[:,9]==1])>=0.1*(np.abs(spliter_y_new[i+1]-spliter_y_new[i] )):
+
+            # org_img_dichte=-gaussian_filter1d(( image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,0]/255.).sum(axis=0) ,30)
+            # org_img_dichte=org_img_dichte-np.min(org_img_dichte)
+            ##plt.figure(figsize=(20,20))
+            ##plt.plot(org_img_dichte)
+            ##plt.show()
+            ###find_num_col_both_layout_and_org(regions_without_seperators,image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,:],7.)
+
+            num_col, peaks_neg_fin = find_num_col_only_image(image_p_rev[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=2.4)
+
+            # num_col, peaks_neg_fin=find_num_col(regions_without_seperators[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:],multiplier=7.0)
+            x_min_hor_some = matrix_new[:, 2][(matrix_new[:, 9] == 0)]
+            x_max_hor_some = matrix_new[:, 3][(matrix_new[:, 9] == 0)]
+            cy_hor_some = matrix_new[:, 5][(matrix_new[:, 9] == 0)]
+            arg_org_hor_some = matrix_new[:, 0][(matrix_new[:, 9] == 0)]
+
+            peaks_neg_tot = return_points_with_boundies(peaks_neg_fin, 0, seperators_closeup_n[:, :, 0].shape[1])
+
+            start_index_of_hor, newest_peaks, arg_min_hor_sort, lines_length_dels, lines_indexes_deleted = return_hor_spliter_by_index_for_without_verticals(peaks_neg_tot, x_min_hor_some, x_max_hor_some)
+
+            arg_org_hor_some_sort = arg_org_hor_some[arg_min_hor_sort]
+
+            start_index_of_hor_with_subset = [start_index_of_hor[vij] for vij in range(len(start_index_of_hor)) if lines_length_dels[vij] > 0]  # start_index_of_hor[lines_length_dels>0]
+            arg_min_hor_sort_with_subset = [arg_min_hor_sort[vij] for vij in range(len(start_index_of_hor)) if lines_length_dels[vij] > 0]
+            lines_indexes_deleted_with_subset = [lines_indexes_deleted[vij] for vij in range(len(start_index_of_hor)) if lines_length_dels[vij] > 0]
+            lines_length_dels_with_subset = [lines_length_dels[vij] for vij in range(len(start_index_of_hor)) if lines_length_dels[vij] > 0]
+
+            arg_org_hor_some_sort_subset = [arg_org_hor_some_sort[vij] for vij in range(len(start_index_of_hor)) if lines_length_dels[vij] > 0]
+
+            # arg_min_hor_sort_with_subset=arg_min_hor_sort[lines_length_dels>0]
+            # lines_indexes_deleted_with_subset=lines_indexes_deleted[lines_length_dels>0]
+            # lines_length_dels_with_subset=lines_length_dels[lines_length_dels>0]
+
+            # print(len(arg_min_hor_sort),len(arg_org_hor_some_sort),'vizzzzzz')
+
+            vahid_subset = np.zeros((len(start_index_of_hor_with_subset), len(start_index_of_hor_with_subset))) - 1
+            for kkk1 in range(len(start_index_of_hor_with_subset)):
+
+                # print(lines_indexes_deleted,'hiii')
+                index_del_sub = np.unique(lines_indexes_deleted_with_subset[kkk1])
+
+                for kkk2 in range(len(start_index_of_hor_with_subset)):
+
+                    if set(lines_indexes_deleted_with_subset[kkk2][0]) < set(lines_indexes_deleted_with_subset[kkk1][0]):
+                        vahid_subset[kkk1, kkk2] = kkk1
+                    else:
+                        pass
+                # print(set(lines_indexes_deleted[kkk2][0]), set(lines_indexes_deleted[kkk1][0]))
+
+            # check the len of matrix if it has no length means that there is no spliter at all
+
+            if len(vahid_subset > 0):
+                # print('hihoo')
+
+                # find parenets args
+                line_int = np.zeros(vahid_subset.shape[0])
+
+                childs_id = []
+                arg_child = []
+                for li in range(vahid_subset.shape[0]):
+                    if np.all(vahid_subset[:, li] == -1):
+                        line_int[li] = -1
+                    else:
+                        line_int[li] = 1
+
+                        # childs_args_in=[ idd for idd in range(vahid_subset.shape[0]) if vahid_subset[idd,li]!=-1]
+                        # helpi=[]
+                        # for nad in range(len(childs_args_in)):
+                        #    helpi.append(arg_min_hor_sort_with_subset[childs_args_in[nad]])
+
+                        arg_child.append(arg_min_hor_sort_with_subset[li])
+
+                arg_parent = [arg_min_hor_sort_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij] == -1]
+                start_index_of_hor_parent = [start_index_of_hor_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij] == -1]
+                # arg_parent=[lines_indexes_deleted_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij]==-1]
+                # arg_parent=[lines_length_dels_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij]==-1]
+
+                # arg_child=[arg_min_hor_sort_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij]!=-1]
+                start_index_of_hor_child = [start_index_of_hor_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij] != -1]
+
+                cy_hor_some_sort = cy_hor_some[arg_parent]
+
+                newest_y_spliter_tot = []
+
+                for tj in range(len(newest_peaks) - 1):
+                    newest_y_spliter = []
+                    newest_y_spliter.append(spliter_y_new[i])
+                    if tj in np.unique(start_index_of_hor_parent):
+                        cy_help = np.array(cy_hor_some_sort)[np.array(start_index_of_hor_parent) == tj]
+                        cy_help_sort = np.sort(cy_help)
+
+                        # print(tj,cy_hor_some_sort,start_index_of_hor,cy_help,'maashhaha')
+                        for mj in range(len(cy_help_sort)):
+                            newest_y_spliter.append(cy_help_sort[mj])
+                    newest_y_spliter.append(spliter_y_new[i + 1])
+
+                    newest_y_spliter_tot.append(newest_y_spliter)
+
+            else:
+                line_int = []
+                newest_y_spliter_tot = []
+
+                for tj in range(len(newest_peaks) - 1):
+                    newest_y_spliter = []
+                    newest_y_spliter.append(spliter_y_new[i])
+
+                    newest_y_spliter.append(spliter_y_new[i + 1])
+
+                    newest_y_spliter_tot.append(newest_y_spliter)
+
+            # if line_int is all -1 means that big spliters have no child and we can easily go through
+            if np.all(np.array(line_int) == -1):
+                for j in range(len(newest_peaks) - 1):
+                    newest_y_spliter = newest_y_spliter_tot[j]
+
+                    for n in range(len(newest_y_spliter) - 1):
+                        # print(j,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'maaaa')
+                        ##plt.imshow(regions_without_seperators[int(newest_y_spliter[n]):int(newest_y_spliter[n+1]),newest_peaks[j]:newest_peaks[j+1]])
+                        ##plt.show()
+
+                        # print(matrix_new[:,0][ (matrix_new[:,9]==1 )])
+                        for jvt in matrix_new[:, 0][(matrix_new[:, 9] == 1) & (matrix_new[:, 6] > newest_y_spliter[n]) & (matrix_new[:, 7] < newest_y_spliter[n + 1]) & ((matrix_new[:, 1]) < newest_peaks[j + 1]) & ((matrix_new[:, 1]) > newest_peaks[j])]:
+                            pass
+
+                            ###plot_contour(regions_without_seperators.shape[0],regions_without_seperators.shape[1], contours_lines[int(jvt)])
+                        # print(matrix_of_lines_ch[matrix_of_lines_ch[:,9]==1])
+                        matrix_new_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter[n]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter[n + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < newest_peaks[j + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > newest_peaks[j])]
+                        # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
+                        if 1 > 0:  # len( matrix_new_new[:,9][matrix_new_new[:,9]==1] )>0 and np.max(matrix_new_new[:,8][matrix_new_new[:,9]==1])>=0.2*(np.abs(newest_y_spliter[n+1]-newest_y_spliter[n] )):
+                            # num_col_sub, peaks_neg_fin_sub=find_num_col(regions_without_seperators[int(newest_y_spliter[n]):int(newest_y_spliter[n+1]),newest_peaks[j]:newest_peaks[j+1]],multiplier=2.3)
+                            num_col_sub, peaks_neg_fin_sub = find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.4)
+                        else:
+                            peaks_neg_fin_sub = []
+
+                        peaks_sub = []
+                        peaks_sub.append(newest_peaks[j])
+
+                        for kj in range(len(peaks_neg_fin_sub)):
+                            peaks_sub.append(peaks_neg_fin_sub[kj] + newest_peaks[j])
+
+                        peaks_sub.append(newest_peaks[j + 1])
+
+                        # peaks_sub=return_points_with_boundies(peaks_neg_fin_sub+newest_peaks[j],newest_peaks[j], newest_peaks[j+1])
+
+                        for kh in range(len(peaks_sub) - 1):
+                            boxes.append([peaks_sub[kh], peaks_sub[kh + 1], newest_y_spliter[n], newest_y_spliter[n + 1]])
+
+            else:
+                for j in range(len(newest_peaks) - 1):
+                    newest_y_spliter = newest_y_spliter_tot[j]
+
+                    if j in start_index_of_hor_parent:
+
+                        x_min_ch = x_min_hor_some[arg_child]
+                        x_max_ch = x_max_hor_some[arg_child]
+                        cy_hor_some_sort_child = cy_hor_some[arg_child]
+                        cy_hor_some_sort_child = np.sort(cy_hor_some_sort_child)
+
+                        for n in range(len(newest_y_spliter) - 1):
+
+                            cy_child_in = cy_hor_some_sort_child[(cy_hor_some_sort_child > newest_y_spliter[n]) & (cy_hor_some_sort_child < newest_y_spliter[n + 1])]
+
+                            if len(cy_child_in) > 0:
+                                ###num_col_ch, peaks_neg_ch=find_num_col( regions_without_seperators[int(newest_y_spliter[n]):int(newest_y_spliter[n+1]),newest_peaks[j]:newest_peaks[j+1]],multiplier=2.3)
+
+                                num_col_ch, peaks_neg_ch = find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.3)
+
+                                peaks_neg_ch = peaks_neg_ch[:] + newest_peaks[j]
+
+                                peaks_neg_ch_tot = return_points_with_boundies(peaks_neg_ch, newest_peaks[j], newest_peaks[j + 1])
+
+                                ss_in_ch, nst_p_ch, arg_n_ch, lines_l_del_ch, lines_in_del_ch = return_hor_spliter_by_index_for_without_verticals(peaks_neg_ch_tot, x_min_ch, x_max_ch)
+
+                                newest_y_spliter_ch_tot = []
+
+                                for tjj in range(len(nst_p_ch) - 1):
+                                    newest_y_spliter_new = []
+                                    newest_y_spliter_new.append(newest_y_spliter[n])
+                                    if tjj in np.unique(ss_in_ch):
+
+                                        # print(tj,cy_hor_some_sort,start_index_of_hor,cy_help,'maashhaha')
+                                        for mjj in range(len(cy_child_in)):
+                                            newest_y_spliter_new.append(cy_child_in[mjj])
+                                    newest_y_spliter_new.append(newest_y_spliter[n + 1])
+
+                                    newest_y_spliter_ch_tot.append(newest_y_spliter_new)
+
+                                for jn in range(len(nst_p_ch) - 1):
+                                    newest_y_spliter_h = newest_y_spliter_ch_tot[jn]
+
+                                    for nd in range(len(newest_y_spliter_h) - 1):
+
+                                        matrix_new_new2 = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter_h[nd]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter_h[nd + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < nst_p_ch[jn + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > nst_p_ch[jn])]
+                                        # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
+                                        if 1 > 0:  # len( matrix_new_new2[:,9][matrix_new_new2[:,9]==1] )>0 and np.max(matrix_new_new2[:,8][matrix_new_new2[:,9]==1])>=0.2*(np.abs(newest_y_spliter_h[nd+1]-newest_y_spliter_h[nd] )):
+                                            # num_col_sub_ch, peaks_neg_fin_sub_ch=find_num_col(regions_without_seperators[int(newest_y_spliter_h[nd]):int(newest_y_spliter_h[nd+1]),nst_p_ch[jn]:nst_p_ch[jn+1]],multiplier=2.3)
+
+                                            num_col_sub_ch, peaks_neg_fin_sub_ch = find_num_col_only_image(image_p_rev[int(newest_y_spliter_h[nd]) : int(newest_y_spliter_h[nd + 1]), nst_p_ch[jn] : nst_p_ch[jn + 1]], multiplier=2.3)
+                                            # print(peaks_neg_fin_sub_ch,'gada kutullllllll')
+                                        else:
+                                            peaks_neg_fin_sub_ch = []
+
+                                        peaks_sub_ch = []
+                                        peaks_sub_ch.append(nst_p_ch[jn])
+
+                                        for kjj in range(len(peaks_neg_fin_sub_ch)):
+                                            peaks_sub_ch.append(peaks_neg_fin_sub_ch[kjj] + nst_p_ch[jn])
+
+                                        peaks_sub_ch.append(nst_p_ch[jn + 1])
+
+                                        # peaks_sub=return_points_with_boundies(peaks_neg_fin_sub+newest_peaks[j],newest_peaks[j], newest_peaks[j+1])
+
+                                        for khh in range(len(peaks_sub_ch) - 1):
+                                            boxes.append([peaks_sub_ch[khh], peaks_sub_ch[khh + 1], newest_y_spliter_h[nd], newest_y_spliter_h[nd + 1]])
+
+                            else:
+
+                                matrix_new_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter[n]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter[n + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < newest_peaks[j + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > newest_peaks[j])]
+                                # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
+                                if 1 > 0:  # len( matrix_new_new[:,9][matrix_new_new[:,9]==1] )>0 and np.max(matrix_new_new[:,8][matrix_new_new[:,9]==1])>=0.2*(np.abs(newest_y_spliter[n+1]-newest_y_spliter[n] )):
+                                    ###num_col_sub, peaks_neg_fin_sub=find_num_col(regions_without_seperators[int(newest_y_spliter[n]):int(newest_y_spliter[n+1]),newest_peaks[j]:newest_peaks[j+1]],multiplier=2.3)
+                                    num_col_sub, peaks_neg_fin_sub = find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.3)
+                                else:
+                                    peaks_neg_fin_sub = []
+
+                                peaks_sub = []
+                                peaks_sub.append(newest_peaks[j])
+
+                                for kj in range(len(peaks_neg_fin_sub)):
+                                    peaks_sub.append(peaks_neg_fin_sub[kj] + newest_peaks[j])
+
+                                peaks_sub.append(newest_peaks[j + 1])
+
+                                # peaks_sub=return_points_with_boundies(peaks_neg_fin_sub+newest_peaks[j],newest_peaks[j], newest_peaks[j+1])
+
+                                for kh in range(len(peaks_sub) - 1):
+                                    boxes.append([peaks_sub[kh], peaks_sub[kh + 1], newest_y_spliter[n], newest_y_spliter[n + 1]])
+
+                    else:
+                        for n in range(len(newest_y_spliter) - 1):
+
+                            for jvt in matrix_new[:, 0][(matrix_new[:, 9] == 1) & (matrix_new[:, 6] > newest_y_spliter[n]) & (matrix_new[:, 7] < newest_y_spliter[n + 1]) & ((matrix_new[:, 1]) < newest_peaks[j + 1]) & ((matrix_new[:, 1]) > newest_peaks[j])]:
+                                pass
+
+                                # plot_contour(regions_without_seperators.shape[0],regions_without_seperators.shape[1], contours_lines[int(jvt)])
+                            # print(matrix_of_lines_ch[matrix_of_lines_ch[:,9]==1])
+                            matrix_new_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter[n]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter[n + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < newest_peaks[j + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > newest_peaks[j])]
+                            # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
+                            if 1 > 0:  # len( matrix_new_new[:,9][matrix_new_new[:,9]==1] )>0 and np.max(matrix_new_new[:,8][matrix_new_new[:,9]==1])>=0.2*(np.abs(newest_y_spliter[n+1]-newest_y_spliter[n] )):
+                                ###num_col_sub, peaks_neg_fin_sub=find_num_col(regions_without_seperators[int(newest_y_spliter[n]):int(newest_y_spliter[n+1]),newest_peaks[j]:newest_peaks[j+1]],multiplier=5.0)
+                                num_col_sub, peaks_neg_fin_sub = find_num_col_only_image(image_p_rev[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=2.3)
+                            else:
+                                peaks_neg_fin_sub = []
+
+                            peaks_sub = []
+                            peaks_sub.append(newest_peaks[j])
+
+                            for kj in range(len(peaks_neg_fin_sub)):
+                                peaks_sub.append(peaks_neg_fin_sub[kj] + newest_peaks[j])
+
+                            peaks_sub.append(newest_peaks[j + 1])
+
+                            # peaks_sub=return_points_with_boundies(peaks_neg_fin_sub+newest_peaks[j],newest_peaks[j], newest_peaks[j+1])
+
+                            for kh in range(len(peaks_sub) - 1):
+                                boxes.append([peaks_sub[kh], peaks_sub[kh + 1], newest_y_spliter[n], newest_y_spliter[n + 1]])
+
+        else:
+            boxes.append([0, seperators_closeup_n[:, :, 0].shape[1], spliter_y_new[i], spliter_y_new[i + 1]])
+    return boxes
+
+def return_region_segmentation_after_implementing_not_head_maintext_parallel(image_regions_eraly_p, boxes):
+    image_revised = np.zeros((image_regions_eraly_p.shape[0], image_regions_eraly_p.shape[1]))
+    for i in range(len(boxes)):
+
+        image_box = image_regions_eraly_p[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][0]) : int(boxes[i][1])]
+        image_box = np.array(image_box)
+        # plt.imshow(image_box)
+        # plt.show()
+
+        # print(int(boxes[i][2]),int(boxes[i][3]),int(boxes[i][0]),int(boxes[i][1]),'addaa')
+        image_box = implent_law_head_main_not_parallel(image_box)
+        image_box = implent_law_head_main_not_parallel(image_box)
+        image_box = implent_law_head_main_not_parallel(image_box)
+
+        image_revised[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][0]) : int(boxes[i][1])] = image_box[:, :]
+    return image_revised
+
+def return_boxes_of_images_by_order_of_reading_2cols(spliter_y_new, regions_without_seperators, matrix_of_lines_ch, seperators_closeup_n):
+    boxes = []
+
+    # here I go through main spliters and i do check whether a vertical seperator there is. If so i am searching for \
+    # holes in the text and also finding spliter which covers more than one columns.
+    for i in range(len(spliter_y_new) - 1):
+        # print(spliter_y_new[i],spliter_y_new[i+1])
+        matrix_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 6] > spliter_y_new[i]) & (matrix_of_lines_ch[:, 7] < spliter_y_new[i + 1])]
+        # print(len( matrix_new[:,9][matrix_new[:,9]==1] ))
+
+        # print(matrix_new[:,8][matrix_new[:,9]==1],'gaddaaa')
+
+        # check to see is there any vertical seperator to find holes.
+        if 1 > 0:  # len( matrix_new[:,9][matrix_new[:,9]==1] )>0 and np.max(matrix_new[:,8][matrix_new[:,9]==1])>=0.1*(np.abs(spliter_y_new[i+1]-spliter_y_new[i] )):
+            # print(int(spliter_y_new[i]),int(spliter_y_new[i+1]),'burayaaaa galimiirrrrrrrrrrrrrrrrrrrrrrrrrrr')
+            # org_img_dichte=-gaussian_filter1d(( image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,0]/255.).sum(axis=0) ,30)
+            # org_img_dichte=org_img_dichte-np.min(org_img_dichte)
+            ##plt.figure(figsize=(20,20))
+            ##plt.plot(org_img_dichte)
+            ##plt.show()
+            ###find_num_col_both_layout_and_org(regions_without_seperators,image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,:],7.)
+
+            try:
+                num_col, peaks_neg_fin = find_num_col(regions_without_seperators[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=7.0)
+
+            except:
+                peaks_neg_fin = []
+                num_col = 0
+
+            peaks_neg_tot = return_points_with_boundies(peaks_neg_fin, 0, seperators_closeup_n[:, :, 0].shape[1])
+
+            for kh in range(len(peaks_neg_tot) - 1):
+                boxes.append([peaks_neg_tot[kh], peaks_neg_tot[kh + 1], spliter_y_new[i], spliter_y_new[i + 1]])
+
+        else:
+            boxes.append([0, seperators_closeup_n[:, :, 0].shape[1], spliter_y_new[i], spliter_y_new[i + 1]])
+
+    return boxes
+
+def return_boxes_of_images_by_order_of_reading(spliter_y_new, regions_without_seperators, matrix_of_lines_ch, seperators_closeup_n):
+    boxes = []
+
+    # here I go through main spliters and i do check whether a vertical seperator there is. If so i am searching for \
+    # holes in the text and also finding spliter which covers more than one columns.
+    for i in range(len(spliter_y_new) - 1):
+        # print(spliter_y_new[i],spliter_y_new[i+1])
+        matrix_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 6] > spliter_y_new[i]) & (matrix_of_lines_ch[:, 7] < spliter_y_new[i + 1])]
+        # print(len( matrix_new[:,9][matrix_new[:,9]==1] ))
+
+        # print(matrix_new[:,8][matrix_new[:,9]==1],'gaddaaa')
+
+        # check to see is there any vertical seperator to find holes.
+        if len(matrix_new[:, 9][matrix_new[:, 9] == 1]) > 0 and np.max(matrix_new[:, 8][matrix_new[:, 9] == 1]) >= 0.1 * (np.abs(spliter_y_new[i + 1] - spliter_y_new[i])):
+
+            # org_img_dichte=-gaussian_filter1d(( image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,0]/255.).sum(axis=0) ,30)
+            # org_img_dichte=org_img_dichte-np.min(org_img_dichte)
+            ##plt.figure(figsize=(20,20))
+            ##plt.plot(org_img_dichte)
+            ##plt.show()
+            ###find_num_col_both_layout_and_org(regions_without_seperators,image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,:],7.)
+
+            num_col, peaks_neg_fin = find_num_col(regions_without_seperators[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=7.0)
+
+            # num_col, peaks_neg_fin=find_num_col(regions_without_seperators[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:],multiplier=7.0)
+            x_min_hor_some = matrix_new[:, 2][(matrix_new[:, 9] == 0)]
+            x_max_hor_some = matrix_new[:, 3][(matrix_new[:, 9] == 0)]
+            cy_hor_some = matrix_new[:, 5][(matrix_new[:, 9] == 0)]
+            arg_org_hor_some = matrix_new[:, 0][(matrix_new[:, 9] == 0)]
+
+            peaks_neg_tot = return_points_with_boundies(peaks_neg_fin, 0, seperators_closeup_n[:, :, 0].shape[1])
+
+            start_index_of_hor, newest_peaks, arg_min_hor_sort, lines_length_dels, lines_indexes_deleted = return_hor_spliter_by_index(peaks_neg_tot, x_min_hor_some, x_max_hor_some)
+
+            arg_org_hor_some_sort = arg_org_hor_some[arg_min_hor_sort]
+
+            start_index_of_hor_with_subset = [start_index_of_hor[vij] for vij in range(len(start_index_of_hor)) if lines_length_dels[vij] > 0]  # start_index_of_hor[lines_length_dels>0]
+            arg_min_hor_sort_with_subset = [arg_min_hor_sort[vij] for vij in range(len(start_index_of_hor)) if lines_length_dels[vij] > 0]
+            lines_indexes_deleted_with_subset = [lines_indexes_deleted[vij] for vij in range(len(start_index_of_hor)) if lines_length_dels[vij] > 0]
+            lines_length_dels_with_subset = [lines_length_dels[vij] for vij in range(len(start_index_of_hor)) if lines_length_dels[vij] > 0]
+
+            arg_org_hor_some_sort_subset = [arg_org_hor_some_sort[vij] for vij in range(len(start_index_of_hor)) if lines_length_dels[vij] > 0]
+
+            # arg_min_hor_sort_with_subset=arg_min_hor_sort[lines_length_dels>0]
+            # lines_indexes_deleted_with_subset=lines_indexes_deleted[lines_length_dels>0]
+            # lines_length_dels_with_subset=lines_length_dels[lines_length_dels>0]
+
+            vahid_subset = np.zeros((len(start_index_of_hor_with_subset), len(start_index_of_hor_with_subset))) - 1
+            for kkk1 in range(len(start_index_of_hor_with_subset)):
+
+                index_del_sub = np.unique(lines_indexes_deleted_with_subset[kkk1])
+
+                for kkk2 in range(len(start_index_of_hor_with_subset)):
+
+                    if set(lines_indexes_deleted_with_subset[kkk2][0]) < set(lines_indexes_deleted_with_subset[kkk1][0]):
+                        vahid_subset[kkk1, kkk2] = kkk1
+                    else:
+                        pass
+                # print(set(lines_indexes_deleted[kkk2][0]), set(lines_indexes_deleted[kkk1][0]))
+
+            # print(vahid_subset,'zartt222')
+
+            # check the len of matrix if it has no length means that there is no spliter at all
+
+            if len(vahid_subset > 0):
+                # print('hihoo')
+
+                # find parenets args
+                line_int = np.zeros(vahid_subset.shape[0])
+
+                childs_id = []
+                arg_child = []
+                for li in range(vahid_subset.shape[0]):
+                    # print(vahid_subset[:,li])
+                    if np.all(vahid_subset[:, li] == -1):
+                        line_int[li] = -1
+                    else:
+                        line_int[li] = 1
+
+                        # childs_args_in=[ idd for idd in range(vahid_subset.shape[0]) if vahid_subset[idd,li]!=-1]
+                        # helpi=[]
+                        # for nad in range(len(childs_args_in)):
+                        #    helpi.append(arg_min_hor_sort_with_subset[childs_args_in[nad]])
+
+                        arg_child.append(arg_min_hor_sort_with_subset[li])
+
+                # line_int=vahid_subset[0,:]
+
+                # print(arg_child,line_int[0],'zartt33333')
+                arg_parent = [arg_min_hor_sort_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij] == -1]
+                start_index_of_hor_parent = [start_index_of_hor_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij] == -1]
+                # arg_parent=[lines_indexes_deleted_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij]==-1]
+                # arg_parent=[lines_length_dels_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij]==-1]
+
+                # arg_child=[arg_min_hor_sort_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij]!=-1]
+                start_index_of_hor_child = [start_index_of_hor_with_subset[vij] for vij in range(len(arg_min_hor_sort_with_subset)) if line_int[vij] != -1]
+
+                cy_hor_some_sort = cy_hor_some[arg_parent]
+
+                # print(start_index_of_hor, lines_length_dels ,lines_indexes_deleted,'zartt')
+
+                # args_indexes=np.array(range(len(start_index_of_hor) ))
+
+                newest_y_spliter_tot = []
+
+                for tj in range(len(newest_peaks) - 1):
+                    newest_y_spliter = []
+                    newest_y_spliter.append(spliter_y_new[i])
+                    if tj in np.unique(start_index_of_hor_parent):
+                        ##print(cy_hor_some_sort)
+                        cy_help = np.array(cy_hor_some_sort)[np.array(start_index_of_hor_parent) == tj]
+                        cy_help_sort = np.sort(cy_help)
+
+                        # print(tj,cy_hor_some_sort,start_index_of_hor,cy_help,'maashhaha')
+                        for mj in range(len(cy_help_sort)):
+                            newest_y_spliter.append(cy_help_sort[mj])
+                    newest_y_spliter.append(spliter_y_new[i + 1])
+
+                    newest_y_spliter_tot.append(newest_y_spliter)
+
+            else:
+                line_int = []
+                newest_y_spliter_tot = []
+
+                for tj in range(len(newest_peaks) - 1):
+                    newest_y_spliter = []
+                    newest_y_spliter.append(spliter_y_new[i])
+
+                    newest_y_spliter.append(spliter_y_new[i + 1])
+
+                    newest_y_spliter_tot.append(newest_y_spliter)
+
+            # if line_int is all -1 means that big spliters have no child and we can easily go through
+            if np.all(np.array(line_int) == -1):
+                for j in range(len(newest_peaks) - 1):
+                    newest_y_spliter = newest_y_spliter_tot[j]
+
+                    for n in range(len(newest_y_spliter) - 1):
+                        # print(j,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'maaaa')
+                        ##plt.imshow(regions_without_seperators[int(newest_y_spliter[n]):int(newest_y_spliter[n+1]),newest_peaks[j]:newest_peaks[j+1]])
+                        ##plt.show()
+
+                        # print(matrix_new[:,0][ (matrix_new[:,9]==1 )])
+                        for jvt in matrix_new[:, 0][(matrix_new[:, 9] == 1) & (matrix_new[:, 6] > newest_y_spliter[n]) & (matrix_new[:, 7] < newest_y_spliter[n + 1]) & ((matrix_new[:, 1]) < newest_peaks[j + 1]) & ((matrix_new[:, 1]) > newest_peaks[j])]:
+                            pass
+
+                            ###plot_contour(regions_without_seperators.shape[0],regions_without_seperators.shape[1], contours_lines[int(jvt)])
+                        # print(matrix_of_lines_ch[matrix_of_lines_ch[:,9]==1])
+                        matrix_new_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter[n]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter[n + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < newest_peaks[j + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > newest_peaks[j])]
+                        # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
+                        if len(matrix_new_new[:, 9][matrix_new_new[:, 9] == 1]) > 0 and np.max(matrix_new_new[:, 8][matrix_new_new[:, 9] == 1]) >= 0.2 * (np.abs(newest_y_spliter[n + 1] - newest_y_spliter[n])):
+                            num_col_sub, peaks_neg_fin_sub = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
+                        else:
+                            peaks_neg_fin_sub = []
+
+                        peaks_sub = []
+                        peaks_sub.append(newest_peaks[j])
+
+                        for kj in range(len(peaks_neg_fin_sub)):
+                            peaks_sub.append(peaks_neg_fin_sub[kj] + newest_peaks[j])
+
+                        peaks_sub.append(newest_peaks[j + 1])
+
+                        # peaks_sub=return_points_with_boundies(peaks_neg_fin_sub+newest_peaks[j],newest_peaks[j], newest_peaks[j+1])
+
+                        for kh in range(len(peaks_sub) - 1):
+                            boxes.append([peaks_sub[kh], peaks_sub[kh + 1], newest_y_spliter[n], newest_y_spliter[n + 1]])
+
+            else:
+                for j in range(len(newest_peaks) - 1):
+                    newest_y_spliter = newest_y_spliter_tot[j]
+
+                    if j in start_index_of_hor_parent:
+
+                        x_min_ch = x_min_hor_some[arg_child]
+                        x_max_ch = x_max_hor_some[arg_child]
+                        cy_hor_some_sort_child = cy_hor_some[arg_child]
+                        cy_hor_some_sort_child = np.sort(cy_hor_some_sort_child)
+
+                        # print(cy_hor_some_sort_child,'ychilds')
+
+                        for n in range(len(newest_y_spliter) - 1):
+
+                            cy_child_in = cy_hor_some_sort_child[(cy_hor_some_sort_child > newest_y_spliter[n]) & (cy_hor_some_sort_child < newest_y_spliter[n + 1])]
+
+                            if len(cy_child_in) > 0:
+                                num_col_ch, peaks_neg_ch = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
+                                # print(peaks_neg_ch,'mizzzz')
+                                # peaks_neg_ch=[]
+                                # for djh in range(len(peaks_neg_ch)):
+                                #    peaks_neg_ch.append( peaks_neg_ch[djh]+newest_peaks[j] )
+
+                                peaks_neg_ch_tot = return_points_with_boundies(peaks_neg_ch, newest_peaks[j], newest_peaks[j + 1])
+
+                                ss_in_ch, nst_p_ch, arg_n_ch, lines_l_del_ch, lines_in_del_ch = return_hor_spliter_by_index(peaks_neg_ch_tot, x_min_ch, x_max_ch)
+
+                                newest_y_spliter_ch_tot = []
+
+                                for tjj in range(len(nst_p_ch) - 1):
+                                    newest_y_spliter_new = []
+                                    newest_y_spliter_new.append(newest_y_spliter[n])
+                                    if tjj in np.unique(ss_in_ch):
+
+                                        # print(tj,cy_hor_some_sort,start_index_of_hor,cy_help,'maashhaha')
+                                        for mjj in range(len(cy_child_in)):
+                                            newest_y_spliter_new.append(cy_child_in[mjj])
+                                    newest_y_spliter_new.append(newest_y_spliter[n + 1])
+
+                                    newest_y_spliter_ch_tot.append(newest_y_spliter_new)
+
+                                for jn in range(len(nst_p_ch) - 1):
+                                    newest_y_spliter_h = newest_y_spliter_ch_tot[jn]
+
+                                    for nd in range(len(newest_y_spliter_h) - 1):
+
+                                        matrix_new_new2 = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter_h[nd]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter_h[nd + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < nst_p_ch[jn + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > nst_p_ch[jn])]
+                                        # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
+                                        if len(matrix_new_new2[:, 9][matrix_new_new2[:, 9] == 1]) > 0 and np.max(matrix_new_new2[:, 8][matrix_new_new2[:, 9] == 1]) >= 0.2 * (np.abs(newest_y_spliter_h[nd + 1] - newest_y_spliter_h[nd])):
+                                            num_col_sub_ch, peaks_neg_fin_sub_ch = find_num_col(regions_without_seperators[int(newest_y_spliter_h[nd]) : int(newest_y_spliter_h[nd + 1]), nst_p_ch[jn] : nst_p_ch[jn + 1]], multiplier=5.0)
+
+                                        else:
+                                            peaks_neg_fin_sub_ch = []
+
+                                        peaks_sub_ch = []
+                                        peaks_sub_ch.append(nst_p_ch[jn])
+
+                                        for kjj in range(len(peaks_neg_fin_sub_ch)):
+                                            peaks_sub_ch.append(peaks_neg_fin_sub_ch[kjj] + nst_p_ch[jn])
+
+                                        peaks_sub_ch.append(nst_p_ch[jn + 1])
+
+                                        # peaks_sub=return_points_with_boundies(peaks_neg_fin_sub+newest_peaks[j],newest_peaks[j], newest_peaks[j+1])
+
+                                        for khh in range(len(peaks_sub_ch) - 1):
+                                            boxes.append([peaks_sub_ch[khh], peaks_sub_ch[khh + 1], newest_y_spliter_h[nd], newest_y_spliter_h[nd + 1]])
+
+                            else:
+
+                                matrix_new_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter[n]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter[n + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < newest_peaks[j + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > newest_peaks[j])]
+                                # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
+                                if len(matrix_new_new[:, 9][matrix_new_new[:, 9] == 1]) > 0 and np.max(matrix_new_new[:, 8][matrix_new_new[:, 9] == 1]) >= 0.2 * (np.abs(newest_y_spliter[n + 1] - newest_y_spliter[n])):
+                                    num_col_sub, peaks_neg_fin_sub = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
+                                else:
+                                    peaks_neg_fin_sub = []
+
+                                peaks_sub = []
+                                peaks_sub.append(newest_peaks[j])
+
+                                for kj in range(len(peaks_neg_fin_sub)):
+                                    peaks_sub.append(peaks_neg_fin_sub[kj] + newest_peaks[j])
+
+                                peaks_sub.append(newest_peaks[j + 1])
+
+                                # peaks_sub=return_points_with_boundies(peaks_neg_fin_sub+newest_peaks[j],newest_peaks[j], newest_peaks[j+1])
+
+                                for kh in range(len(peaks_sub) - 1):
+                                    boxes.append([peaks_sub[kh], peaks_sub[kh + 1], newest_y_spliter[n], newest_y_spliter[n + 1]])
+
+                    else:
+                        for n in range(len(newest_y_spliter) - 1):
+
+                            # plot_contour(regions_without_seperators.shape[0],regions_without_seperators.shape[1], contours_lines[int(jvt)])
+                            # print(matrix_of_lines_ch[matrix_of_lines_ch[:,9]==1])
+                            matrix_new_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 9] == 1) & (matrix_of_lines_ch[:, 6] > newest_y_spliter[n]) & (matrix_of_lines_ch[:, 7] < newest_y_spliter[n + 1]) & ((matrix_of_lines_ch[:, 1] + 500) < newest_peaks[j + 1]) & ((matrix_of_lines_ch[:, 1] - 500) > newest_peaks[j])]
+                            # print(matrix_new_new,newest_y_spliter[n],newest_y_spliter[n+1],newest_peaks[j],newest_peaks[j+1],'gada')
+                            if len(matrix_new_new[:, 9][matrix_new_new[:, 9] == 1]) > 0 and np.max(matrix_new_new[:, 8][matrix_new_new[:, 9] == 1]) >= 0.2 * (np.abs(newest_y_spliter[n + 1] - newest_y_spliter[n])):
+                                num_col_sub, peaks_neg_fin_sub = find_num_col(regions_without_seperators[int(newest_y_spliter[n]) : int(newest_y_spliter[n + 1]), newest_peaks[j] : newest_peaks[j + 1]], multiplier=5.0)
+                            else:
+                                peaks_neg_fin_sub = []
+
+                            peaks_sub = []
+                            peaks_sub.append(newest_peaks[j])
+
+                            for kj in range(len(peaks_neg_fin_sub)):
+                                peaks_sub.append(peaks_neg_fin_sub[kj] + newest_peaks[j])
+
+                            peaks_sub.append(newest_peaks[j + 1])
+
+                            # peaks_sub=return_points_with_boundies(peaks_neg_fin_sub+newest_peaks[j],newest_peaks[j], newest_peaks[j+1])
+
+                            for kh in range(len(peaks_sub) - 1):
+                                boxes.append([peaks_sub[kh], peaks_sub[kh + 1], newest_y_spliter[n], newest_y_spliter[n + 1]])
+
+        else:
+            boxes.append([0, seperators_closeup_n[:, :, 0].shape[1], spliter_y_new[i], spliter_y_new[i + 1]])
+
+    return boxes
+
+def return_boxes_of_images_by_order_of_reading_without_seperators_2cols(spliter_y_new, image_p_rev, regions_without_seperators, matrix_of_lines_ch, seperators_closeup_n):
+
+    boxes = []
+
+    # here I go through main spliters and i do check whether a vertical seperator there is. If so i am searching for \
+    # holes in the text and also finding spliter which covers more than one columns.
+    for i in range(len(spliter_y_new) - 1):
+        # print(spliter_y_new[i],spliter_y_new[i+1])
+        matrix_new = matrix_of_lines_ch[:, :][(matrix_of_lines_ch[:, 6] > spliter_y_new[i]) & (matrix_of_lines_ch[:, 7] < spliter_y_new[i + 1])]
+        # print(len( matrix_new[:,9][matrix_new[:,9]==1] ))
+
+        # print(matrix_new[:,8][matrix_new[:,9]==1],'gaddaaa')
+
+        # check to see is there any vertical seperator to find holes.
+        if np.abs(spliter_y_new[i + 1] - spliter_y_new[i]) > 1.0 / 3.0 * regions_without_seperators.shape[0]:  # len( matrix_new[:,9][matrix_new[:,9]==1] )>0 and np.max(matrix_new[:,8][matrix_new[:,9]==1])>=0.1*(np.abs(spliter_y_new[i+1]-spliter_y_new[i] )):
+
+            # org_img_dichte=-gaussian_filter1d(( image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,0]/255.).sum(axis=0) ,30)
+            # org_img_dichte=org_img_dichte-np.min(org_img_dichte)
+            ##plt.figure(figsize=(20,20))
+            ##plt.plot(org_img_dichte)
+            ##plt.show()
+            ###find_num_col_both_layout_and_org(regions_without_seperators,image_page[int(spliter_y_new[i]):int(spliter_y_new[i+1]),:,:],7.)
+
+            try:
+                num_col, peaks_neg_fin = find_num_col_only_image(image_p_rev[int(spliter_y_new[i]) : int(spliter_y_new[i + 1]), :], multiplier=2.4)
+            except:
+                peaks_neg_fin = []
+                num_col = 0
+
+            peaks_neg_tot = return_points_with_boundies(peaks_neg_fin, 0, seperators_closeup_n[:, :, 0].shape[1])
+
+            for kh in range(len(peaks_neg_tot) - 1):
+                boxes.append([peaks_neg_tot[kh], peaks_neg_tot[kh + 1], spliter_y_new[i], spliter_y_new[i + 1]])
+        else:
+            boxes.append([0, seperators_closeup_n[:, :, 0].shape[1], spliter_y_new[i], spliter_y_new[i + 1]])
+
+    return boxes
+
