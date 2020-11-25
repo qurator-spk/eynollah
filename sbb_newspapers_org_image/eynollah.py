@@ -1238,9 +1238,15 @@ class eynollah:
             crop_img, crop_coor = crop_image_inside_box(boxes_text[mv], image_page_rotated)
 
             # all_box_coord.append(crop_coor)
+            
+            mask_textline=np.zeros((textline_mask_tot_ea.shape))
+            
+            mask_textline=cv2.fillPoly(mask_textline,pts=[contours_per_process[mv]],color=(1,1,1))
+            
+            
 
             denoised = None
-            all_text_region_raw = textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
+            all_text_region_raw=(textline_mask_tot_ea*mask_textline[:,:])[boxes_text[mv][1]:boxes_text[mv][1]+boxes_text[mv][3] , boxes_text[mv][0]:boxes_text[mv][0]+boxes_text[mv][2] ]
             all_text_region_raw = all_text_region_raw.astype(np.uint8)
 
             img_int_p = all_text_region_raw[:, :]  # self.all_text_region_raw[mv]
@@ -2750,235 +2756,260 @@ class eynollah:
         tree.write(os.path.join(dir_of_image, self.f_name) + ".xml")
         # cv2.imwrite(os.path.join(dir_of_image, self.f_name) + ".tif",self.image_org)
 
-    def get_regions_from_xy_2models(self, img, is_image_enhanced):
-        img_org = np.copy(img)
-
-        img_height_h = img_org.shape[0]
-        img_width_h = img_org.shape[1]
-
+    def get_regions_from_xy_2models(self,img,is_image_enhanced):
+        img_org=np.copy(img)
+        
+        img_height_h=img_org.shape[0]
+        img_width_h=img_org.shape[1]
+        
         model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+        
+        gaussian_filter=False
+        patches=True
+        binary=False
+        
+        
+        
+        
 
-        gaussian_filter = False
-        patches = True
-        binary = False
-
-        ratio_y = 1.3
-        ratio_x = 1
-
-        median_blur = False
-
-        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
-
+        ratio_y=1.3
+        ratio_x=1
+        
+        median_blur=False
+        
+        img= self.resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
+        
         if binary:
-            img = otsu_copy_binary(img)  # otsu_copy(img)
+            img = self.otsu_copy_binary(img)#self.otsu_copy(img)
             img = img.astype(np.uint16)
-
+            
         if median_blur:
-            img = cv2.medianBlur(img, 5)
+            img=cv2.medianBlur(img,5)
         if gaussian_filter:
-            img = cv2.GaussianBlur(img, (5, 5), 0)
+            img= cv2.GaussianBlur(img,(5,5),0)
             img = img.astype(np.uint16)
-        prediction_regions_org_y = self.do_prediction(patches, img, model_region)
-
-        prediction_regions_org_y = resize_image(prediction_regions_org_y, img_height_h, img_width_h)
-
-        # plt.imshow(prediction_regions_org_y[:,:,0])
-        # plt.show()
-        # sys.exit()
-        prediction_regions_org_y = prediction_regions_org_y[:, :, 0]
-
-        mask_zeros_y = (prediction_regions_org_y[:, :] == 0) * 1
-
+        prediction_regions_org_y=self.do_prediction(patches,img,model_region)
+        
+        prediction_regions_org_y=self.resize_image(prediction_regions_org_y, img_height_h, img_width_h )
+        
+        #plt.imshow(prediction_regions_org_y[:,:,0])
+        #plt.show()
+        #sys.exit()
+        prediction_regions_org_y=prediction_regions_org_y[:,:,0]
+        
+        
+        mask_zeros_y=(prediction_regions_org_y[:,:]==0)*1
+        
+        
+        
+        
+        
         if is_image_enhanced:
-            ratio_x = 1.2
+            ratio_x=1.2
         else:
-            ratio_x = 1
-
-        ratio_y = 1
-        median_blur = False
-
-        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
-
+            ratio_x=1
+            
+        ratio_y=1
+        median_blur=False
+        
+        img= self.resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
+        
         if binary:
-            img = otsu_copy_binary(img)  # otsu_copy(img)
+            img = self.otsu_copy_binary(img)#self.otsu_copy(img)
             img = img.astype(np.uint16)
-
+            
         if median_blur:
-            img = cv2.medianBlur(img, 5)
+            img=cv2.medianBlur(img,5)
         if gaussian_filter:
-            img = cv2.GaussianBlur(img, (5, 5), 0)
+            img= cv2.GaussianBlur(img,(5,5),0)
             img = img.astype(np.uint16)
-        prediction_regions_org = self.do_prediction(patches, img, model_region)
-
-        prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h)
-
+        prediction_regions_org=self.do_prediction(patches,img,model_region)
+        
+        prediction_regions_org=self.resize_image(prediction_regions_org, img_height_h, img_width_h )
+        
         ##plt.imshow(prediction_regions_org[:,:,0])
         ##plt.show()
         ##sys.exit()
-        prediction_regions_org = prediction_regions_org[:, :, 0]
-
-        prediction_regions_org[(prediction_regions_org[:, :] == 1) & (mask_zeros_y[:, :] == 1)] = 0
+        prediction_regions_org=prediction_regions_org[:,:,0]
+        
+        prediction_regions_org[(prediction_regions_org[:,:]==1) & (mask_zeros_y[:,:]==1)]=0
         session_region.close()
         del model_region
         del session_region
         gc.collect()
         ###K.clear_session()
-
+        
         model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
+        
+        gaussian_filter=False
+        patches=True
+        binary=False
+        
+        
+        
 
-        gaussian_filter = False
-        patches = True
-        binary = False
-
-        ratio_x = 1
-        ratio_y = 1
-        median_blur = False
-
-        img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
-
+        ratio_x=1
+        ratio_y=1
+        median_blur=False
+        
+        img= self.resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
+        
         if binary:
-            img = otsu_copy_binary(img)  # otsu_copy(img)
+            img = self.otsu_copy_binary(img)#self.otsu_copy(img)
             img = img.astype(np.uint16)
-
+            
         if median_blur:
-            img = cv2.medianBlur(img, 5)
+            img=cv2.medianBlur(img,5)
         if gaussian_filter:
-            img = cv2.GaussianBlur(img, (5, 5), 0)
+            img= cv2.GaussianBlur(img,(5,5),0)
             img = img.astype(np.uint16)
-        prediction_regions_org2 = self.do_prediction(patches, img, model_region)
-
-        prediction_regions_org2 = resize_image(prediction_regions_org2, img_height_h, img_width_h)
-
-        # plt.imshow(prediction_regions_org2[:,:,0])
-        # plt.show()
-        # sys.exit()
+            
+        marginal_patch=0.2
+        prediction_regions_org2=self.do_prediction(patches,img,model_region,marginal_patch)
+        
+        prediction_regions_org2=self.resize_image(prediction_regions_org2, img_height_h, img_width_h )
+        
+        #plt.imshow(prediction_regions_org2[:,:,0])
+        #plt.show()
+        #sys.exit()
         ##prediction_regions_org=prediction_regions_org[:,:,0]
-
+        
         session_region.close()
         del model_region
         del session_region
         gc.collect()
         ###K.clear_session()
+        
+        mask_zeros2=(prediction_regions_org2[:,:,0]==0)*1
+        mask_lines2=(prediction_regions_org2[:,:,0]==3)*1
+        
+        text_sume_early=( (prediction_regions_org[:,:]==1)*1 ).sum()
+        
+        
+        prediction_regions_org_copy=np.copy(prediction_regions_org)
 
-        mask_zeros2 = (prediction_regions_org2[:, :, 0] == 0) * 1
-        mask_lines2 = (prediction_regions_org2[:, :, 0] == 3) * 1
-
-        text_sume_early = ((prediction_regions_org[:, :] == 1) * 1).sum()
-
-        prediction_regions_org_copy = np.copy(prediction_regions_org)
-
-        prediction_regions_org_copy[(prediction_regions_org_copy[:, :] == 1) & (mask_zeros2[:, :] == 1)] = 0
-
-        text_sume_second = ((prediction_regions_org_copy[:, :] == 1) * 1).sum()
-
-        rate_two_models = text_sume_second / float(text_sume_early) * 100
-
-        print(rate_two_models, "ratio_of_two_models")
-        if is_image_enhanced and rate_two_models < 95.50:  # 98.45:
+        
+        prediction_regions_org_copy[(prediction_regions_org_copy[:,:]==1) & (mask_zeros2[:,:]==1)]=0
+        
+        text_sume_second=( (prediction_regions_org_copy[:,:]==1)*1 ).sum()
+        
+        rate_two_models=text_sume_second/float(text_sume_early)*100
+        
+        print(rate_two_models,'ratio_of_two_models')
+        if is_image_enhanced and rate_two_models<95.50:#98.45:
             pass
         else:
-            prediction_regions_org = np.copy(prediction_regions_org_copy)
-
+            prediction_regions_org=np.copy(prediction_regions_org_copy)
+        
         ##prediction_regions_org[mask_lines2[:,:]==1]=3
-        prediction_regions_org[(mask_lines2[:, :] == 1) & (prediction_regions_org[:, :] == 0)] = 3
-
+        prediction_regions_org[(mask_lines2[:,:]==1) & (prediction_regions_org[:,:]==0)]=3
+        
+        
         del mask_lines2
         del mask_zeros2
         del prediction_regions_org2
+        
+        #if is_image_enhanced:
+            #pass
+        #else:
+            #model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
+            
+            #gaussian_filter=False
+            #patches=True
+            #binary=False
+            
+            
+            
 
-        # if is_image_enhanced:
-        # pass
-        # else:
-        # model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
+            #ratio_x=1
+            #ratio_y=1
+            #median_blur=False
+            
+            #img= self.resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
+            
+            #if binary:
+                #img = self.otsu_copy_binary(img)#self.otsu_copy(img)
+                #img = img.astype(np.uint16)
+                
+            #if median_blur:
+                #img=cv2.medianBlur(img,5)
+            #if gaussian_filter:
+                #img= cv2.GaussianBlur(img,(5,5),0)
+                #img = img.astype(np.uint16)
+            #prediction_regions_org2=self.do_prediction(patches,img,model_region)
+            
+            #prediction_regions_org2=self.resize_image(prediction_regions_org2, img_height_h, img_width_h )
+            
+            ##plt.imshow(prediction_regions_org2[:,:,0])
+            ##plt.show()
+            ##sys.exit()
+            ###prediction_regions_org=prediction_regions_org[:,:,0]
+            
+            #session_region.close()
+            #del model_region
+            #del session_region
+            #gc.collect()
+            ####K.clear_session()
+            
+            #mask_zeros2=(prediction_regions_org2[:,:,0]==0)*1
+            #mask_lines2=(prediction_regions_org2[:,:,0]==3)*1
+            
+            #text_sume_early=( (prediction_regions_org[:,:]==1)*1 ).sum()
 
-        # gaussian_filter=False
-        # patches=True
-        # binary=False
-
-        # ratio_x=1
-        # ratio_y=1
-        # median_blur=False
-
-        # img= resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-
-        # if binary:
-        # img = otsu_copy_binary(img)#otsu_copy(img)
-        # img = img.astype(np.uint16)
-
-        # if median_blur:
-        # img=cv2.medianBlur(img,5)
-        # if gaussian_filter:
-        # img= cv2.GaussianBlur(img,(5,5),0)
-        # img = img.astype(np.uint16)
-        # prediction_regions_org2=self.do_prediction(patches,img,model_region)
-
-        # prediction_regions_org2=resize_image(prediction_regions_org2, img_height_h, img_width_h )
-
-        ##plt.imshow(prediction_regions_org2[:,:,0])
-        ##plt.show()
-        ##sys.exit()
-        ###prediction_regions_org=prediction_regions_org[:,:,0]
-
-        # session_region.close()
-        # del model_region
-        # del session_region
-        # gc.collect()
-        ####K.clear_session()
-
-        # mask_zeros2=(prediction_regions_org2[:,:,0]==0)*1
-        # mask_lines2=(prediction_regions_org2[:,:,0]==3)*1
-
-        # text_sume_early=( (prediction_regions_org[:,:]==1)*1 ).sum()
-
-        # prediction_regions_org[(prediction_regions_org[:,:]==1) & (mask_zeros2[:,:]==1)]=0
-
-        ###prediction_regions_org[mask_lines2[:,:]==1]=3
-        # prediction_regions_org[(mask_lines2[:,:]==1) & (prediction_regions_org[:,:]==0)]=3
-
-        # text_sume_second=( (prediction_regions_org[:,:]==1)*1 ).sum()
-
-        # print(text_sume_second/float(text_sume_early)*100,'twomodelsratio')
-
-        # del mask_lines2
-        # del mask_zeros2
-        # del prediction_regions_org2
-
-        mask_lines_only = (prediction_regions_org[:, :] == 3) * 1
-
-        prediction_regions_org = cv2.erode(prediction_regions_org[:, :], self.kernel, iterations=2)
-
-        # plt.imshow(text_region2_1st_channel)
-        # plt.show()
-
-        prediction_regions_org = cv2.dilate(prediction_regions_org[:, :], self.kernel, iterations=2)
-
-        mask_texts_only = (prediction_regions_org[:, :] == 1) * 1
-
-        mask_images_only = (prediction_regions_org[:, :] == 2) * 1
-
-        pixel_img = 1
-        min_area_text = 0.00001
-        polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only, pixel_img, min_area_text)
-
-        polygons_of_only_images = return_contours_of_interested_region(mask_images_only, pixel_img)
-
-        polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only, pixel_img, min_area_text)
-
-        text_regions_p_true = np.zeros(prediction_regions_org.shape)
-        # text_regions_p_true[:,:]=text_regions_p_1[:,:]
-
-        text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts=polygons_of_only_lines, color=(3, 3, 3))
-
+            
+            #prediction_regions_org[(prediction_regions_org[:,:]==1) & (mask_zeros2[:,:]==1)]=0
+            
+            ###prediction_regions_org[mask_lines2[:,:]==1]=3
+            #prediction_regions_org[(mask_lines2[:,:]==1) & (prediction_regions_org[:,:]==0)]=3
+            
+            #text_sume_second=( (prediction_regions_org[:,:]==1)*1 ).sum()
+            
+            #print(text_sume_second/float(text_sume_early)*100,'twomodelsratio')
+            
+            #del mask_lines2
+            #del mask_zeros2
+            #del prediction_regions_org2
+        
+        mask_lines_only=(prediction_regions_org[:,:]==3)*1
+        
+        prediction_regions_org = cv2.erode(prediction_regions_org[:,:], self.kernel, iterations=2)
+        
+        #plt.imshow(text_region2_1st_channel)
+        #plt.show()
+        
+        prediction_regions_org = cv2.dilate(prediction_regions_org[:,:], self.kernel, iterations=2)
+        
+        mask_texts_only=(prediction_regions_org[:,:]==1)*1
+        
+        mask_images_only=(prediction_regions_org[:,:]==2)*1
+        
+        
+        
+        pixel_img=1
+        min_area_text=0.00001
+        polygons_of_only_texts=self.return_contours_of_interested_region(mask_texts_only,pixel_img,min_area_text)
+        
+        polygons_of_only_images=self.return_contours_of_interested_region(mask_images_only,pixel_img)
+        
+        polygons_of_only_lines=self.return_contours_of_interested_region(mask_lines_only,pixel_img,min_area_text)
+        
+        
+        text_regions_p_true=np.zeros(prediction_regions_org.shape)
+        #text_regions_p_true[:,:]=text_regions_p_1[:,:]
+        
+        text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_lines, color=(3,3,3))
+        
         ##text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_images, color=(2,2,2))
-        text_regions_p_true[:, :][mask_images_only[:, :] == 1] = 2
-
-        text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts=polygons_of_only_texts, color=(1, 1, 1))
-
+        text_regions_p_true[:,:][mask_images_only[:,:]==1]=2
+        
+        text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
+        
         ##print(np.unique(text_regions_p_true))
-
-        # text_regions_p_true_3d=np.repeat(text_regions_p_1[:, :, np.newaxis], 3, axis=2)
-        # text_regions_p_true_3d=text_regions_p_true_3d.astype(np.uint8)
-
+        
+        
+        #text_regions_p_true_3d=np.repeat(text_regions_p_1[:, :, np.newaxis], 3, axis=2)
+        #text_regions_p_true_3d=text_regions_p_true_3d.astype(np.uint8)
+        
         del polygons_of_only_texts
         del polygons_of_only_images
         del polygons_of_only_lines
@@ -2986,13 +3017,14 @@ class eynollah:
         del prediction_regions_org
         del img
         del mask_zeros_y
-
+        
         del prediction_regions_org_y
         del img_org
         gc.collect()
-
+        
         return text_regions_p_true
-
+    
+    
     def write_images_into_directory(self, img_contoures, dir_of_cropped_imgs, image_page):
         index = 0
         for cont_ind in img_contoures:
@@ -3009,215 +3041,245 @@ class eynollah:
             cv2.imwrite(path, croped_page)
             index += 1
 
-    def get_marginals(self, text_with_lines, text_regions, num_col, slope_deskew):
-        mask_marginals = np.zeros((text_with_lines.shape[0], text_with_lines.shape[1]))
-        mask_marginals = mask_marginals.astype(np.uint8)
-
-        text_with_lines = text_with_lines.astype(np.uint8)
+    def get_marginals(self,text_with_lines,text_regions,num_col,slope_deskew):
+        mask_marginals=np.zeros((text_with_lines.shape[0],text_with_lines.shape[1]))
+        mask_marginals=mask_marginals.astype(np.uint8)
+        
+        
+        text_with_lines=text_with_lines.astype(np.uint8)
         ##text_with_lines=cv2.erode(text_with_lines,self.kernel,iterations=3)
-
-        text_with_lines_eroded = cv2.erode(text_with_lines, self.kernel, iterations=5)
-
-        if text_with_lines.shape[0] <= 1500:
+        
+        text_with_lines_eroded=cv2.erode(text_with_lines,self.kernel,iterations=5)
+        
+        if text_with_lines.shape[0]<=1500:
             pass
-        elif text_with_lines.shape[0] > 1500 and text_with_lines.shape[0] <= 1800:
-            text_with_lines = resize_image(text_with_lines, int(text_with_lines.shape[0] * 1.5), text_with_lines.shape[1])
-            text_with_lines = cv2.erode(text_with_lines, self.kernel, iterations=5)
-            text_with_lines = resize_image(text_with_lines, text_with_lines_eroded.shape[0], text_with_lines_eroded.shape[1])
+        elif text_with_lines.shape[0]>1500 and text_with_lines.shape[0]<=1800:
+            text_with_lines=self.resize_image(text_with_lines,int(text_with_lines.shape[0]*1.5),text_with_lines.shape[1])
+            text_with_lines=cv2.erode(text_with_lines,self.kernel,iterations=5)
+            text_with_lines=self.resize_image(text_with_lines,text_with_lines_eroded.shape[0],text_with_lines_eroded.shape[1])
         else:
-            text_with_lines = resize_image(text_with_lines, int(text_with_lines.shape[0] * 1.8), text_with_lines.shape[1])
-            text_with_lines = cv2.erode(text_with_lines, self.kernel, iterations=7)
-            text_with_lines = resize_image(text_with_lines, text_with_lines_eroded.shape[0], text_with_lines_eroded.shape[1])
+            text_with_lines=self.resize_image(text_with_lines,int(text_with_lines.shape[0]*1.8),text_with_lines.shape[1])
+            text_with_lines=cv2.erode(text_with_lines,self.kernel,iterations=7)
+            text_with_lines=self.resize_image(text_with_lines,text_with_lines_eroded.shape[0],text_with_lines_eroded.shape[1])
+        
 
-        text_with_lines_y = text_with_lines.sum(axis=0)
-        text_with_lines_y_eroded = text_with_lines_eroded.sum(axis=0)
-
-        thickness_along_y_percent = text_with_lines_y_eroded.max() / (float(text_with_lines.shape[0])) * 100
-
-        # print(thickness_along_y_percent,'thickness_along_y_percent')
-
-        if thickness_along_y_percent < 30:
-            min_textline_thickness = 8
-        elif thickness_along_y_percent >= 30 and thickness_along_y_percent < 50:
-            min_textline_thickness = 20
+        text_with_lines_y=text_with_lines.sum(axis=0)
+        text_with_lines_y_eroded=text_with_lines_eroded.sum(axis=0)
+        
+        thickness_along_y_percent=text_with_lines_y_eroded.max()/(float(text_with_lines.shape[0]))*100 
+        
+        #print(thickness_along_y_percent,'thickness_along_y_percent')
+        
+        if thickness_along_y_percent<30:
+            min_textline_thickness=8
+        elif thickness_along_y_percent>=30 and thickness_along_y_percent<50:
+            min_textline_thickness=20
         else:
-            min_textline_thickness = 40
+            min_textline_thickness=40
+        
+        
+        
+        if thickness_along_y_percent>=14:
+        
+            text_with_lines_y_rev=-1*text_with_lines_y[:]
+            #print(text_with_lines_y)
+            #print(text_with_lines_y_rev)
+            
 
-        if thickness_along_y_percent >= 14:
+            
+            
+            #plt.plot(text_with_lines_y)
+            #plt.show()
+        
+            
+            text_with_lines_y_rev=text_with_lines_y_rev-np.min(text_with_lines_y_rev)
+            
+            #plt.plot(text_with_lines_y_rev)
+            #plt.show()
+            sigma_gaus=1
+            region_sum_0= gaussian_filter1d(text_with_lines_y, sigma_gaus)
+            
+            region_sum_0_rev=gaussian_filter1d(text_with_lines_y_rev, sigma_gaus)
+            
+            #plt.plot(region_sum_0_rev)
+            #plt.show()
+            region_sum_0_updown=region_sum_0[len(region_sum_0)::-1]
 
-            text_with_lines_y_rev = -1 * text_with_lines_y[:]
-            # print(text_with_lines_y)
-            # print(text_with_lines_y_rev)
+            first_nonzero=(next((i for i, x in enumerate(region_sum_0) if x), None))
+            last_nonzero=(next((i for i, x in enumerate(region_sum_0_updown) if x), None))
 
-            # plt.plot(text_with_lines_y)
-            # plt.show()
 
-            text_with_lines_y_rev = text_with_lines_y_rev - np.min(text_with_lines_y_rev)
-
-            # plt.plot(text_with_lines_y_rev)
-            # plt.show()
-            sigma_gaus = 1
-            region_sum_0 = gaussian_filter1d(text_with_lines_y, sigma_gaus)
-
-            region_sum_0_rev = gaussian_filter1d(text_with_lines_y_rev, sigma_gaus)
-
-            # plt.plot(region_sum_0_rev)
-            # plt.show()
-            region_sum_0_updown = region_sum_0[len(region_sum_0) :: -1]
-
-            first_nonzero = next((i for i, x in enumerate(region_sum_0) if x), None)
-            last_nonzero = next((i for i, x in enumerate(region_sum_0_updown) if x), None)
-
-            last_nonzero = len(region_sum_0) - last_nonzero
-
+            last_nonzero=len(region_sum_0)-last_nonzero
+            
             ##img_sum_0_smooth_rev=-region_sum_0
+            
+            
+            mid_point=(last_nonzero+first_nonzero)/2.
+            
+            
+            one_third_right=(last_nonzero-mid_point)/3.0
+            one_third_left=(mid_point-first_nonzero)/3.0
+            
+            #img_sum_0_smooth_rev=img_sum_0_smooth_rev-np.min(img_sum_0_smooth_rev)
+            
 
-            mid_point = (last_nonzero + first_nonzero) / 2.0
-
-            one_third_right = (last_nonzero - mid_point) / 3.0
-            one_third_left = (mid_point - first_nonzero) / 3.0
-
-            # img_sum_0_smooth_rev=img_sum_0_smooth_rev-np.min(img_sum_0_smooth_rev)
-
+            
+            
             peaks, _ = find_peaks(text_with_lines_y_rev, height=0)
+            
 
-            peaks = np.array(peaks)
-
-            # print(region_sum_0[peaks])
+            peaks=np.array(peaks)
+            
+            
+            #print(region_sum_0[peaks])
             ##plt.plot(region_sum_0)
             ##plt.plot(peaks,region_sum_0[peaks],'*')
             ##plt.show()
-            # print(first_nonzero,last_nonzero,peaks)
-            peaks = peaks[(peaks > first_nonzero) & ((peaks < last_nonzero))]
-
-            # print(first_nonzero,last_nonzero,peaks)
-
-            # print(region_sum_0[peaks]<10)
+            #print(first_nonzero,last_nonzero,peaks)
+            peaks=peaks[(peaks>first_nonzero) & ((peaks<last_nonzero))]
+            
+            #print(first_nonzero,last_nonzero,peaks)
+            
+            
+            #print(region_sum_0[peaks]<10)
             ####peaks=peaks[region_sum_0[peaks]<25 ]
-
-            # print(region_sum_0[peaks])
-            peaks = peaks[region_sum_0[peaks] < min_textline_thickness]
-            # print(peaks)
-            # print(first_nonzero,last_nonzero,one_third_right,one_third_left)
-
-            if num_col == 1:
-                peaks_right = peaks[peaks > mid_point]
-                peaks_left = peaks[peaks < mid_point]
-            if num_col == 2:
-                peaks_right = peaks[peaks > (mid_point + one_third_right)]
-                peaks_left = peaks[peaks < (mid_point - one_third_left)]
-
+            
+            #print(region_sum_0[peaks])
+            peaks=peaks[region_sum_0[peaks]<min_textline_thickness ]
+            #print(peaks)
+            #print(first_nonzero,last_nonzero,one_third_right,one_third_left)
+            
+            if num_col==1:
+                peaks_right=peaks[peaks>mid_point]
+                peaks_left=peaks[peaks<mid_point]
+            if num_col==2:
+                peaks_right=peaks[peaks>(mid_point+one_third_right)]
+                peaks_left=peaks[peaks<(mid_point-one_third_left)]
+                
+            
             try:
-                point_right = np.min(peaks_right)
+                point_right=np.min(peaks_right)
             except:
-                point_right = last_nonzero
-
+                point_right=last_nonzero
+            
+            
             try:
-                point_left = np.max(peaks_left)
+                point_left=np.max(peaks_left)
             except:
-                point_left = first_nonzero
+                point_left=first_nonzero
+                
+                
 
-            # print(point_left,point_right)
-            # print(text_regions.shape)
-            if point_right >= mask_marginals.shape[1]:
-                point_right = mask_marginals.shape[1] - 1
-
+                
+            #print(point_left,point_right)
+            #print(text_regions.shape)
+            if point_right>=mask_marginals.shape[1]:
+                point_right=mask_marginals.shape[1]-1
+                
             try:
-                mask_marginals[:, point_left:point_right] = 1
+                mask_marginals[:,point_left:point_right]=1
             except:
-                mask_marginals[:, :] = 1
+                mask_marginals[:,:]=1
+                
+            #print(mask_marginals.shape,point_left,point_right,'nadosh')
+            mask_marginals_rotated=self.rotate_image(mask_marginals,-slope_deskew)
+            
+            #print(mask_marginals_rotated.shape,'nadosh')
+            mask_marginals_rotated_sum=mask_marginals_rotated.sum(axis=0)
+            
+            mask_marginals_rotated_sum[mask_marginals_rotated_sum!=0]=1
+            index_x=np.array(range(len(mask_marginals_rotated_sum)))+1
+            
+            index_x_interest=index_x[mask_marginals_rotated_sum==1]
+            
+            min_point_of_left_marginal=np.min(index_x_interest)-16
+            max_point_of_right_marginal=np.max(index_x_interest)+16
+            
+            if min_point_of_left_marginal<0:
+                min_point_of_left_marginal=0
+            if max_point_of_right_marginal>=text_regions.shape[1]:
+                max_point_of_right_marginal=text_regions.shape[1]-1
+            
+            
+            #print(np.min(index_x_interest) ,np.max(index_x_interest),'minmaxnew')
+            #print(mask_marginals_rotated.shape,text_regions.shape,'mask_marginals_rotated')
+            #plt.imshow(mask_marginals)
+            #plt.show()
+            
+            #plt.imshow(mask_marginals_rotated)
+            #plt.show()
 
-            # print(mask_marginals.shape,point_left,point_right,'nadosh')
-            mask_marginals_rotated = rotate_image(mask_marginals, -slope_deskew)
-
-            # print(mask_marginals_rotated.shape,'nadosh')
-            mask_marginals_rotated_sum = mask_marginals_rotated.sum(axis=0)
-
-            mask_marginals_rotated_sum[mask_marginals_rotated_sum != 0] = 1
-            index_x = np.array(range(len(mask_marginals_rotated_sum))) + 1
-
-            index_x_interest = index_x[mask_marginals_rotated_sum == 1]
-
-            min_point_of_left_marginal = np.min(index_x_interest) - 16
-            max_point_of_right_marginal = np.max(index_x_interest) + 16
-
-            if min_point_of_left_marginal < 0:
-                min_point_of_left_marginal = 0
-            if max_point_of_right_marginal >= text_regions.shape[1]:
-                max_point_of_right_marginal = text_regions.shape[1] - 1
-
-            # print(np.min(index_x_interest) ,np.max(index_x_interest),'minmaxnew')
-            # print(mask_marginals_rotated.shape,text_regions.shape,'mask_marginals_rotated')
-            # plt.imshow(mask_marginals)
-            # plt.show()
-
-            # plt.imshow(mask_marginals_rotated)
-            # plt.show()
-
-            text_regions[(mask_marginals_rotated[:, :] != 1) & (text_regions[:, :] == 1)] = 4
-
-            pixel_img = 4
-            min_area_text = 0.00001
-            polygons_of_marginals = return_contours_of_interested_region(text_regions, pixel_img, min_area_text)
-
-            cx_text_only, cy_text_only, x_min_text_only, x_max_text_only, y_min_text_only, y_max_text_only, y_cor_x_min_main = find_new_features_of_contoures(polygons_of_marginals)
-
-            text_regions[(text_regions[:, :] == 4)] = 1
-
-            marginlas_should_be_main_text = []
-
-            x_min_marginals_left = []
-            x_min_marginals_right = []
-
+            text_regions[(mask_marginals_rotated[:,:]!=1) & (text_regions[:,:]==1)]=4
+            
+            #plt.imshow(text_regions)
+            #plt.show()
+            
+            pixel_img=4
+            min_area_text=0.00001
+            polygons_of_marginals=self.return_contours_of_interested_region(text_regions,pixel_img,min_area_text)
+            
+            cx_text_only,cy_text_only ,x_min_text_only,x_max_text_only, y_min_text_only ,y_max_text_only,y_cor_x_min_main=self.find_new_features_of_contoures(polygons_of_marginals)
+            
+            text_regions[(text_regions[:,:]==4)]=1
+            
+            marginlas_should_be_main_text=[]
+            
+            x_min_marginals_left=[]
+            x_min_marginals_right=[]
+            
             for i in range(len(cx_text_only)):
-
-                x_width_mar = abs(x_min_text_only[i] - x_max_text_only[i])
-                y_height_mar = abs(y_min_text_only[i] - y_max_text_only[i])
-                # print(x_width_mar,y_height_mar,'y_height_mar')
-                if x_width_mar > 16 and y_height_mar / x_width_mar < 10:
+                
+                x_width_mar=abs(x_min_text_only[i]-x_max_text_only[i])
+                y_height_mar=abs(y_min_text_only[i]-y_max_text_only[i])
+                #print(x_width_mar,y_height_mar,y_height_mar/x_width_mar,'y_height_mar')
+                if x_width_mar>16 and y_height_mar/x_width_mar<18:
                     marginlas_should_be_main_text.append(polygons_of_marginals[i])
-                    if x_min_text_only[i] < (mid_point - one_third_left):
-                        x_min_marginals_left_new = x_min_text_only[i]
-                        if len(x_min_marginals_left) == 0:
+                    if x_min_text_only[i]<(mid_point-one_third_left):
+                        x_min_marginals_left_new=x_min_text_only[i]
+                        if len(x_min_marginals_left)==0:
                             x_min_marginals_left.append(x_min_marginals_left_new)
                         else:
-                            x_min_marginals_left[0] = min(x_min_marginals_left[0], x_min_marginals_left_new)
+                            x_min_marginals_left[0]=min(x_min_marginals_left[0],x_min_marginals_left_new)
                     else:
-                        x_min_marginals_right_new = x_min_text_only[i]
-                        if len(x_min_marginals_right) == 0:
+                        x_min_marginals_right_new=x_min_text_only[i]
+                        if len(x_min_marginals_right)==0:
                             x_min_marginals_right.append(x_min_marginals_right_new)
                         else:
-                            x_min_marginals_right[0] = min(x_min_marginals_right[0], x_min_marginals_right_new)
-
-            if len(x_min_marginals_left) == 0:
-                x_min_marginals_left = [0]
-            if len(x_min_marginals_right) == 0:
-                x_min_marginals_right = [text_regions.shape[1] - 1]
-
-            # print(x_min_marginals_left[0],x_min_marginals_right[0],'margo')
-
-            # print(marginlas_should_be_main_text,'marginlas_should_be_main_text')
-            text_regions = cv2.fillPoly(text_regions, pts=marginlas_should_be_main_text, color=(4, 4))
-
-            # print(np.unique(text_regions))
-
-            # text_regions[:,:int(x_min_marginals_left[0])][text_regions[:,:int(x_min_marginals_left[0])]==1]=0
-            # text_regions[:,int(x_min_marginals_right[0]):][text_regions[:,int(x_min_marginals_right[0]):]==1]=0
-
-            text_regions[:, : int(min_point_of_left_marginal)][text_regions[:, : int(min_point_of_left_marginal)] == 1] = 0
-            text_regions[:, int(max_point_of_right_marginal) :][text_regions[:, int(max_point_of_right_marginal) :] == 1] = 0
-
+                            x_min_marginals_right[0]=min(x_min_marginals_right[0],x_min_marginals_right_new)
+                            
+            if len(x_min_marginals_left)==0:                
+                x_min_marginals_left=[0]
+            if len(x_min_marginals_right)==0:
+                x_min_marginals_right=[text_regions.shape[1]-1]
+                    
+                        
+                        
+                        
+            #print(x_min_marginals_left[0],x_min_marginals_right[0],'margo')            
+                    
+            #print(marginlas_should_be_main_text,'marginlas_should_be_main_text')
+            text_regions=cv2.fillPoly(text_regions, pts =marginlas_should_be_main_text, color=(4,4))        
+            
+            #print(np.unique(text_regions))
+            
+            #text_regions[:,:int(x_min_marginals_left[0])][text_regions[:,:int(x_min_marginals_left[0])]==1]=0
+            #text_regions[:,int(x_min_marginals_right[0]):][text_regions[:,int(x_min_marginals_right[0]):]==1]=0
+            
+            text_regions[:,:int(min_point_of_left_marginal)][text_regions[:,:int(min_point_of_left_marginal)]==1]=0
+            text_regions[:,int(max_point_of_right_marginal):][text_regions[:,int(max_point_of_right_marginal):]==1]=0
+            
             ###text_regions[:,0:point_left][text_regions[:,0:point_left]==1]=4
-
+            
             ###text_regions[:,point_right:][ text_regions[:,point_right:]==1]=4
-            # plt.plot(region_sum_0)
-            # plt.plot(peaks,region_sum_0[peaks],'*')
-            # plt.show()
-
-            # plt.imshow(text_regions)
-            # plt.show()
-
-            # sys.exit()
+            #plt.plot(region_sum_0)
+            #plt.plot(peaks,region_sum_0[peaks],'*')
+            #plt.show()
+            
+            
+            #plt.imshow(text_regions)
+            #plt.show()
+            
+            #sys.exit()
         else:
             pass
         return text_regions
@@ -4119,7 +4181,7 @@ class eynollah:
             num_col = None
             peaks_neg_fin = []
 
-        print(num_col, "num_colnum_col")
+        #print(num_col, "num_colnum_col")
         if num_col is None:
             txt_con_org = []
             order_text_new = []
@@ -4144,7 +4206,7 @@ class eynollah:
                 K.clear_session()
                 gc.collect()
 
-                print(np.unique(textline_mask_tot_ea[:, :]), "textline")
+                #print(np.unique(textline_mask_tot_ea[:, :]), "textline")
 
                 if self.dir_of_all is not None:
 
