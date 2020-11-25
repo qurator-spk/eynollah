@@ -1491,3 +1491,118 @@ def return_boxes_of_images_by_order_of_reading_without_seperators_2cols(spliter_
 
     return boxes
 
+def add_tables_heuristic_to_layout(image_regions_eraly_p, boxes, slope_mean_hor, spliter_y, peaks_neg_tot, image_revised):
+
+    image_revised_1 = delete_seperator_around(spliter_y, peaks_neg_tot, image_revised)
+    img_comm_e = np.zeros(image_revised_1.shape)
+    img_comm = np.repeat(img_comm_e[:, :, np.newaxis], 3, axis=2)
+
+    for indiv in np.unique(image_revised_1):
+
+        # print(indiv,'indd')
+        image_col = (image_revised_1 == indiv) * 255
+        img_comm_in = np.repeat(image_col[:, :, np.newaxis], 3, axis=2)
+        img_comm_in = img_comm_in.astype(np.uint8)
+
+        imgray = cv2.cvtColor(img_comm_in, cv2.COLOR_BGR2GRAY)
+
+        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+        contours, hirarchy = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        main_contours = filter_contours_area_of_image_tables(thresh, contours, hirarchy, max_area=1, min_area=0.0001)
+
+        img_comm = cv2.fillPoly(img_comm, pts=main_contours, color=(indiv, indiv, indiv))
+        ###img_comm_in=cv2.fillPoly(img_comm, pts =interior_contours, color=(0,0,0))
+
+        # img_comm=np.repeat(img_comm[:, :, np.newaxis], 3, axis=2)
+        img_comm = img_comm.astype(np.uint8)
+
+    if not isNaN(slope_mean_hor):
+        image_revised_last = np.zeros((image_regions_eraly_p.shape[0], image_regions_eraly_p.shape[1], 3))
+        for i in range(len(boxes)):
+
+            image_box = img_comm[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][0]) : int(boxes[i][1]), :]
+
+            image_box_tabels_1 = (image_box[:, :, 0] == 7) * 1
+
+            contours_tab, _ = return_contours_of_image(image_box_tabels_1)
+
+            contours_tab = filter_contours_area_of_image_tables(image_box_tabels_1, contours_tab, _, 1, 0.001)
+
+            image_box_tabels_1 = (image_box[:, :, 0] == 6) * 1
+
+            image_box_tabels_and_m_text = ((image_box[:, :, 0] == 7) | (image_box[:, :, 0] == 1)) * 1
+            image_box_tabels_and_m_text = image_box_tabels_and_m_text.astype(np.uint8)
+
+            image_box_tabels_1 = image_box_tabels_1.astype(np.uint8)
+            image_box_tabels_1 = cv2.dilate(image_box_tabels_1, self.kernel, iterations=5)
+
+            contours_table_m_text, _ = return_contours_of_image(image_box_tabels_and_m_text)
+
+            image_box_tabels = np.repeat(image_box_tabels_1[:, :, np.newaxis], 3, axis=2)
+
+            image_box_tabels = image_box_tabels.astype(np.uint8)
+            imgray = cv2.cvtColor(image_box_tabels, cv2.COLOR_BGR2GRAY)
+            ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+            contours_line, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+            y_min_main_line, y_max_main_line, _ = find_features_of_contours(contours_line)
+            # _,_,y_min_main_line ,y_max_main_line,x_min_main_line,x_max_main_line=find_new_features_of_contoures(contours_line)
+            y_min_main_tab, y_max_main_tab, _ = find_features_of_contours(contours_tab)
+
+            cx_tab_m_text, cy_tab_m_text, x_min_tab_m_text, x_max_tab_m_text, y_min_tab_m_text, y_max_tab_m_text = find_new_features_of_contoures(contours_table_m_text)
+            cx_tabl, cy_tabl, x_min_tabl, x_max_tabl, y_min_tabl, y_max_tabl, _ = find_new_features_of_contoures(contours_tab)
+
+            if len(y_min_main_tab) > 0:
+                y_down_tabs = []
+                y_up_tabs = []
+
+                for i_t in range(len(y_min_main_tab)):
+                    y_down_tab = []
+                    y_up_tab = []
+                    for i_l in range(len(y_min_main_line)):
+                        if y_min_main_tab[i_t] > y_min_main_line[i_l] and y_max_main_tab[i_t] > y_min_main_line[i_l] and y_min_main_tab[i_t] > y_max_main_line[i_l] and y_max_main_tab[i_t] > y_min_main_line[i_l]:
+                            pass
+                        elif y_min_main_tab[i_t] < y_max_main_line[i_l] and y_max_main_tab[i_t] < y_max_main_line[i_l] and y_max_main_tab[i_t] < y_min_main_line[i_l] and y_min_main_tab[i_t] < y_min_main_line[i_l]:
+                            pass
+                        elif np.abs(y_max_main_line[i_l] - y_min_main_line[i_l]) < 100:
+                            pass
+
+                        else:
+                            y_up_tab.append(np.min([y_min_main_line[i_l], y_min_main_tab[i_t]]))
+                            y_down_tab.append(np.max([y_max_main_line[i_l], y_max_main_tab[i_t]]))
+
+                    if len(y_up_tab) == 0:
+                        for v_n in range(len(cx_tab_m_text)):
+                            if cx_tabl[i_t] <= x_max_tab_m_text[v_n] and cx_tabl[i_t] >= x_min_tab_m_text[v_n] and cy_tabl[i_t] <= y_max_tab_m_text[v_n] and cy_tabl[i_t] >= y_min_tab_m_text[v_n] and cx_tabl[i_t] != cx_tab_m_text[v_n] and cy_tabl[i_t] != cy_tab_m_text[v_n]:
+                                y_up_tabs.append(y_min_tab_m_text[v_n])
+                                y_down_tabs.append(y_max_tab_m_text[v_n])
+                        # y_up_tabs.append(y_min_main_tab[i_t])
+                        # y_down_tabs.append(y_max_main_tab[i_t])
+                    else:
+                        y_up_tabs.append(np.min(y_up_tab))
+                        y_down_tabs.append(np.max(y_down_tab))
+
+            else:
+                y_down_tabs = []
+                y_up_tabs = []
+                pass
+
+            for ii in range(len(y_up_tabs)):
+                image_box[y_up_tabs[ii] : y_down_tabs[ii], :, 0] = 7
+
+            image_revised_last[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][0]) : int(boxes[i][1]), :] = image_box[:, :, :]
+
+    else:
+        for i in range(len(boxes)):
+
+            image_box = img_comm[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][0]) : int(boxes[i][1]), :]
+            image_revised_last[int(boxes[i][2]) : int(boxes[i][3]), int(boxes[i][0]) : int(boxes[i][1]), :] = image_box[:, :, :]
+
+            ##plt.figure(figsize=(20,20))
+            ##plt.imshow(image_box[:,:,0])
+            ##plt.show()
+    return image_revised_last
+
