@@ -1526,12 +1526,12 @@ def find_num_col_deskew(regions_without_seperators, sigma_, multiplier=3.8):
     ###peaks, _ = find_peaks(z, height=0)
 
     ###peaks_neg=peaks_neg-10-10
-    
+
     ####print(np.std(z),'np.std(z)np.std(z)np.std(z)')
-    
+
     #####plt.plot(z)
     #####plt.show()
-    
+
     #####plt.imshow(regions_without_seperators)
     #####plt.show()
     ###"""
@@ -1539,18 +1539,18 @@ def find_num_col_deskew(regions_without_seperators, sigma_, multiplier=3.8):
     ###first_nonzero=first_nonzero+0#+100
 
     ###peaks_neg=peaks_neg[(peaks_neg>first_nonzero) & (peaks_neg<last_nonzero)]
-    
+
     ###peaks=peaks[(peaks>.06*regions_without_seperators.shape[1]) & (peaks<0.94*regions_without_seperators.shape[1])]
     ###"""
     ###interest_pos=z[peaks]
-    
+
     ###interest_pos=interest_pos[interest_pos>10]
-    
+
     ###interest_neg=z[peaks_neg]
-    
+
     ###min_peaks_pos=np.mean(interest_pos)
     ###min_peaks_neg=0#np.min(interest_neg)
-    
+
     ###dis_talaei=(min_peaks_pos-min_peaks_neg)/multiplier
     ####print(interest_pos)
     ###grenze=min_peaks_pos-dis_talaei#np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
@@ -1558,18 +1558,18 @@ def find_num_col_deskew(regions_without_seperators, sigma_, multiplier=3.8):
     ###interest_neg_fin=interest_neg[(interest_neg<grenze)]
     ###peaks_neg_fin=peaks_neg[(interest_neg<grenze)]
     ###interest_neg_fin=interest_neg[(interest_neg<grenze)]
-    
+
     ###"""
     ###if interest_neg[0]<0.1:
         ###interest_neg=interest_neg[1:]
     ###if interest_neg[len(interest_neg)-1]<0.1:
         ###interest_neg=interest_neg[:len(interest_neg)-1]
-        
-    
-    
+
+
+
     ###min_peaks_pos=np.min(interest_pos)
     ###min_peaks_neg=0#np.min(interest_neg)
-    
+
 
     ###dis_talaei=(min_peaks_pos-min_peaks_neg)/multiplier
     ###grenze=min_peaks_pos-dis_talaei#np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
@@ -1586,11 +1586,11 @@ def find_num_col_deskew(regions_without_seperators, sigma_, multiplier=3.8):
     ###p_m=int(len(y)/2.)
     ###p_g_l=int(len(y)/3.)
     ###p_g_u=len(y)-int(len(y)/3.)
-    
-    
+
+
     ###diff_peaks=np.abs( np.diff(peaks_neg_fin) )
     ###diff_peaks_annormal=diff_peaks[diff_peaks<30]
-    
+
     #print(len(interest_neg_fin),np.mean(interest_neg_fin))
     return np.std(z)#interest_neg_fin,np.std(z)
 
@@ -2349,11 +2349,11 @@ def return_regions_without_seperators(regions_pre):
 
 
 def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=None, f_name=None):
-    
-    
+
+
     if main_page and dir_of_all is not None:
-        
-        
+
+
         plt.figure(figsize=(70,40))
         plt.rcParams['font.size']='50'
         plt.subplot(1,2,1)
@@ -2364,49 +2364,49 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
         plt.ylabel('Height',fontsize=60)
         plt.yticks([0,len(gaussian_filter1d(img_patch_org.sum(axis=1), 3))])
         plt.gca().invert_yaxis()
-        
+
         plt.savefig(os.path.join(dir_of_all, f_name+'_density_of_textline.png'))
     #print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar')
-    
+
     #img_patch_org=resize_image(img_patch_org,int(img_patch_org.shape[0]*2.5),int(img_patch_org.shape[1]/2.5))
-    
+
     #print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar2')
-    
+
     img_int=np.zeros((img_patch_org.shape[0],img_patch_org.shape[1]))
     img_int[:,:]=img_patch_org[:,:]#img_patch_org[:,:,0]
-    
-    
-    
+
+
+
     max_shape=np.max(img_int.shape)
     img_resized=np.zeros((int( max_shape*(1.1) ) , int( max_shape*(1.1) ) ))
-    
-    
+
+
     onset_x=int((img_resized.shape[1]-img_int.shape[1])/2.)
     onset_y=int((img_resized.shape[0]-img_int.shape[0])/2.)
 
 
     #img_resized=np.zeros((int( img_int.shape[0]*(1.8) ) , int( img_int.shape[1]*(2.6) ) ))
-    
-    
+
+
 
     #img_resized[ int( img_int.shape[0]*(.4)):int( img_int.shape[0]*(.4))+img_int.shape[0] , int( img_int.shape[1]*(.8)):int( img_int.shape[1]*(.8))+img_int.shape[1] ]=img_int[:,:]
     img_resized[ onset_y:onset_y+img_int.shape[0] , onset_x:onset_x+img_int.shape[1] ]=img_int[:,:]
-    
+
     #print(img_resized.shape,'img_resizedshape')
     #plt.imshow(img_resized)
     #plt.show()
-    
+
     if main_page and img_patch_org.shape[1]>img_patch_org.shape[0]:
-        
+
         #plt.imshow(img_resized)
         #plt.show()
         angels=np.array([-45, 0 , 45 , 90 , ])#np.linspace(-12,12,100)#np.array([0 , 45 , 90 , -45])
-        
+
         #res=[]
         #num_of_peaks=[]
         #index_cor=[]
         var_res=[]
-        
+
         #indexer=0
         for rot in angels:
             img_rot=self.rotate_image(img_resized,rot)
@@ -2414,8 +2414,8 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             #plt.show()
             img_rot[img_rot!=0]=1
             #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
-            
-            
+
+
             #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
             #print(var_spectrum,'var_spectrum')
             try:
@@ -2426,7 +2426,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
                     #res_me=1000000000000000000000
                 #else:
                     #pass
-                    
+
                 #res_num=len(neg_peaks)
             except:
                 #res_me=1000000000000000000000
@@ -2440,7 +2440,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
                 #num_of_peaks.append( res_num )
                 #index_cor.append(indexer)
             #indexer=indexer+1
-            
+
             var_res.append(var_spectrum)
             #index_cor.append(indexer)
             #indexer=indexer+1
@@ -2448,19 +2448,19 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
         try:
             var_res=np.array(var_res)
-            
+
             ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
         except:
             ang_int=0
-            
-            
+
+
         angels=np.linspace(ang_int-22.5,ang_int+22.5,100)
 
         #res=[]
         #num_of_peaks=[]
         #index_cor=[]
         var_res=[]
-        
+
 
         for rot in angels:
             img_rot=self.rotate_image(img_resized,rot)
@@ -2476,33 +2476,33 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
             var_res.append(var_spectrum)
 
-            
+
 
 
         try:
             var_res=np.array(var_res)
-            
+
             ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
         except:
             ang_int=0
-            
+
     elif main_page and img_patch_org.shape[1]<=img_patch_org.shape[0]:
-        
+
         #plt.imshow(img_resized)
         #plt.show()
         angels=np.linspace(-12,12,100)#np.array([0 , 45 , 90 , -45])
-        
+
 
         var_res=[]
-        
+
         for rot in angels:
             img_rot=self.rotate_image(img_resized,rot)
             #plt.imshow(img_rot)
             #plt.show()
             img_rot[img_rot!=0]=1
             #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
-            
-            
+
+
             #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
             #print(var_spectrum,'var_spectrum')
             try:
@@ -2513,7 +2513,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
             var_res.append(var_spectrum)
 
-            
+
         if self.dir_of_all is not None:
             #print('galdi?')
             plt.figure(figsize=(60,30))
@@ -2521,7 +2521,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             plt.plot(angels,np.array(var_res),'-o',markersize=25,linewidth=4)
             plt.xlabel('angle',fontsize=50)
             plt.ylabel('variance of sum of rotated textline in direction of x axis',fontsize=50)
-            
+
             plt.plot(angels[np.argmax(var_res)],var_res[np.argmax(np.array(var_res))]  ,'*',markersize=50,label='Angle of deskewing=' +str("{:.2f}".format(angels[np.argmax(var_res)]))+r'$\degree$')
             plt.legend(loc='best')
             plt.savefig(os.path.join(self.dir_of_all,self.f_name+'_rotation_angle.png'))
@@ -2529,19 +2529,19 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
         try:
             var_res=np.array(var_res)
-            
+
             ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
         except:
             ang_int=0
-            
-            
+
+
         early_slope_edge=11
         if abs(ang_int)>early_slope_edge and ang_int<0:
-            
+
             angels=np.linspace(-90,-12,100)
 
             var_res=[]
-            
+
             for rot in angels:
                 img_rot=self.rotate_image(img_resized,rot)
                 ##plt.imshow(img_rot)
@@ -2558,18 +2558,18 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
             try:
                 var_res=np.array(var_res)
-                
+
                 ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
             except:
                 ang_int=0
-                
+
         elif abs(ang_int)>early_slope_edge and ang_int>0:
-            
+
             angels=np.linspace(90,12,100)
 
 
             var_res=[]
-            
+
             for rot in angels:
                 img_rot=self.rotate_image(img_resized,rot)
                 ##plt.imshow(img_rot)
@@ -2587,17 +2587,17 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
             try:
                 var_res=np.array(var_res)
-                
+
                 ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
             except:
                 ang_int=0
     else:
-        
+
 
         angels=np.linspace(-25,25,60)
 
         var_res=[]
-        
+
         indexer=0
         for rot in angels:
             img_rot=self.rotate_image(img_resized,rot)
@@ -2605,39 +2605,39 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             #plt.show()
             img_rot[img_rot!=0]=1
             #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
-            
-            
+
+
             #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
             #print(var_spectrum,'var_spectrum')
             try:
                 var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
             except:
                 var_spectrum=0
-                
+
             var_res.append(var_spectrum)
 
 
         try:
             var_res=np.array(var_res)
-            
+
             ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
         except:
             ang_int=0
-        
+
         #plt.plot(var_res)
         #plt.show()
-        
+
         ##plt.plot(mom3_res)
         ##plt.show()
         #print(ang_int,'ang_int111')
 
         early_slope_edge=22
         if abs(ang_int)>early_slope_edge and ang_int<0:
-            
+
             angels=np.linspace(-90,-25,60)
 
             var_res=[]
-            
+
             for rot in angels:
                 img_rot=self.rotate_image(img_resized,rot)
                 ##plt.imshow(img_rot)
@@ -2649,24 +2649,24 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
                 except:
                     var_spectrum=0
-                    
+
                 var_res.append(var_spectrum)
 
 
 
             try:
                 var_res=np.array(var_res)
-                
+
                 ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
             except:
                 ang_int=0
-        
+
         elif abs(ang_int)>early_slope_edge and ang_int>0:
-            
+
             angels=np.linspace(90,25,60)
 
             var_res=[]
-            
+
             indexer=0
             for rot in angels:
                 img_rot=self.rotate_image(img_resized,rot)
@@ -2686,11 +2686,11 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
             try:
                 var_res=np.array(var_res)
-                
+
                 ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
             except:
                 ang_int=0
-        
+
     return ang_int
 
 
@@ -2749,55 +2749,55 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch):
 def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions_model_full,contours_only_text_parent,all_box_coord,all_found_texline_polygons,slopes,contours_only_text_parent_d_ordered):
     #text_only=(regions_model_1[:,:]==1)*1
     #contours_only_text,hir_on_text=self.return_contours_of_image(text_only)
-    
+
     """
     contours_only_text_parent=self.return_parent_contours( contours_only_text,hir_on_text)
-    
+
     areas_cnt_text=np.array([cv2.contourArea(contours_only_text_parent[j]) for j in range(len(contours_only_text_parent))])
     areas_cnt_text=areas_cnt_text/float(text_only.shape[0]*text_only.shape[1])
-    
+
     ###areas_cnt_text_h=np.array([cv2.contourArea(contours_only_text_parent_h[j]) for j in range(len(contours_only_text_parent_h))])
     ###areas_cnt_text_h=areas_cnt_text_h/float(text_only_h.shape[0]*text_only_h.shape[1])
 
     ###contours_only_text_parent=[contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz]>0.0002]
     contours_only_text_parent=[contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz]>0.00001]
     """
-    
+
     cx_main,cy_main ,x_min_main , x_max_main, y_min_main ,y_max_main,y_corr_x_min_from_argmin=self.find_new_features_of_contoures(contours_only_text_parent)
-    
+
     length_con=x_max_main-x_min_main
     height_con=y_max_main-y_min_main
-    
-    
+
+
 
     all_found_texline_polygons_main=[]
     all_found_texline_polygons_head=[]
-    
+
     all_box_coord_main=[]
     all_box_coord_head=[]
-    
+
     slopes_main=[]
     slopes_head=[]
-    
+
     contours_only_text_parent_main=[]
     contours_only_text_parent_head=[]
-    
+
     contours_only_text_parent_main_d=[]
     contours_only_text_parent_head_d=[]
-    
+
     for ii in range(len(contours_only_text_parent)):
         con=contours_only_text_parent[ii]
         img=np.zeros((regions_model_1.shape[0],regions_model_1.shape[1],3))
         img = cv2.fillPoly(img, pts=[con], color=(255, 255, 255))
-        
-        
-        
+
+
+
         all_pixels=((img[:,:,0]==255)*1).sum()
-        
+
         pixels_header=( ( (img[:,:,0]==255) & (regions_model_full[:,:,0]==2) )*1 ).sum()
         pixels_main=all_pixels-pixels_header
-        
-        
+
+
         if (pixels_header>=pixels_main) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ):
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=2
             contours_only_text_parent_head.append(con)
@@ -2814,11 +2814,11 @@ def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions
             all_box_coord_main.append(all_box_coord[ii])
             slopes_main.append(slopes[ii])
             all_found_texline_polygons_main.append(all_found_texline_polygons[ii])
-            
-        #print(all_pixels,pixels_main,pixels_header)
-        
 
-        
+        #print(all_pixels,pixels_main,pixels_header)
+
+
+
         #plt.imshow(img[:,:,0])
         #plt.show()
     return regions_model_1,contours_only_text_parent_main,contours_only_text_parent_head,all_box_coord_main,all_box_coord_head,all_found_texline_polygons_main,all_found_texline_polygons_head,slopes_main,slopes_head,contours_only_text_parent_main_d,contours_only_text_parent_head_d
