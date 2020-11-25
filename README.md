@@ -1,3 +1,8 @@
+**WARNING! This tool is currently still**  
+![under_construction](http://www.textfiles.com/underconstruction/HeHeartlandPark2601underconstructionbar9.gif)  
+**For current status and planned changes,  
+please have a look at the [Pull Requests](https://github.com/qurator-spk/eynollah/pulls).**
+
 # Eynollah
 > Document Layout Analysis
 
