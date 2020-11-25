@@ -1606,3 +1606,1166 @@ def add_tables_heuristic_to_layout(image_regions_eraly_p, boxes, slope_mean_hor,
             ##plt.show()
     return image_revised_last
 
+def get_regions_from_xy_2models_ens(self, img):
+    img_org = np.copy(img)
+
+    img_height_h = img_org.shape[0]
+    img_width_h = img_org.shape[1]
+
+    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+
+    gaussian_filter = False
+    patches = False
+    binary = False
+
+    ratio_x = 1
+    ratio_y = 1
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+
+    prediction_regions_long = self.do_prediction(patches, img, model_region)
+
+    prediction_regions_long = resize_image(prediction_regions_long, img_height_h, img_width_h)
+
+    gaussian_filter = False
+    patches = True
+    binary = False
+
+    ratio_x = 1
+    ratio_y = 1.2
+    median_blur = False
+
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+    prediction_regions_org_y = self.do_prediction(patches, img, model_region)
+
+    prediction_regions_org_y = resize_image(prediction_regions_org_y, img_height_h, img_width_h)
+
+    # plt.imshow(prediction_regions_org[:,:,0])
+    # plt.show()
+    # sys.exit()
+    prediction_regions_org_y = prediction_regions_org_y[:, :, 0]
+
+    mask_zeros_y = (prediction_regions_org_y[:, :] == 0) * 1
+
+    ratio_x = 1.2
+    ratio_y = 1
+    median_blur = False
+
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+    prediction_regions_org = self.do_prediction(patches, img, model_region)
+
+    prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h)
+
+    # plt.imshow(prediction_regions_org[:,:,0])
+    # plt.show()
+    # sys.exit()
+    prediction_regions_org = prediction_regions_org[:, :, 0]
+
+    prediction_regions_org[(prediction_regions_org[:, :] == 1) & (mask_zeros_y[:, :] == 1)] = 0
+
+    prediction_regions_org[(prediction_regions_long[:, :, 0] == 1) & (prediction_regions_org[:, :] == 2)] = 1
+
+    session_region.close()
+    del model_region
+    del session_region
+    gc.collect()
+
+    return prediction_regions_org
+
+def resize_and_enhance_image(self, is_image_enhanced):
+    dpi = self.check_dpi()
+    img = cv2.imread(self.image_dir)
+    img = img.astype(np.uint8)
+    # sys.exit()
+
+    print(dpi)
+
+    if dpi < 298:
+        if img.shape[0] < 1000:
+            img_h_new = int(img.shape[0] * 3)
+            img_w_new = int(img.shape[1] * 3)
+            if img_h_new < 2800:
+                img_h_new = 3000
+                img_w_new = int(img.shape[1] / float(img.shape[0]) * 3000)
+        elif img.shape[0] >= 1000 and img.shape[0] < 2000:
+            img_h_new = int(img.shape[0] * 2)
+            img_w_new = int(img.shape[1] * 2)
+            if img_h_new < 2800:
+                img_h_new = 3000
+                img_w_new = int(img.shape[1] / float(img.shape[0]) * 3000)
+        else:
+            img_h_new = int(img.shape[0] * 1.5)
+            img_w_new = int(img.shape[1] * 1.5)
+        img_new = resize_image(img, img_h_new, img_w_new)
+        image_res = self.predict_enhancement(img_new)
+        # cv2.imwrite(os.path.join(self.dir_out, self.f_name) + ".tif",self.image)
+        # self.image=self.image.astype(np.uint16)
+
+        # self.scale_x=1
+        # self.scale_y=1
+        # self.height_org = self.image.shape[0]
+        # self.width_org = self.image.shape[1]
+        is_image_enhanced = True
+    else:
+        is_image_enhanced = False
+        image_res = np.copy(img)
+
+    return is_image_enhanced, img, image_res
+
+def resize_and_enhance_image_new(self, is_image_enhanced):
+    # self.check_dpi()
+    img = cv2.imread(self.image_dir)
+    img = img.astype(np.uint8)
+    # sys.exit()
+
+    image_res = np.copy(img)
+
+    return is_image_enhanced, img, image_res
+
+def get_image_and_scales_deskewd(self, img_deskewd):
+
+    self.image = img_deskewd
+    self.image_org = np.copy(self.image)
+    self.height_org = self.image.shape[0]
+    self.width_org = self.image.shape[1]
+
+    self.img_hight_int = int(self.image.shape[0] * 1)
+    self.img_width_int = int(self.image.shape[1] * 1)
+    self.scale_y = self.img_hight_int / float(self.image.shape[0])
+    self.scale_x = self.img_width_int / float(self.image.shape[1])
+
+    self.image = resize_image(self.image, self.img_hight_int, self.img_width_int)
+
+def extract_drop_capital_13(self, img, patches, cols):
+
+    img_height_h = img.shape[0]
+    img_width_h = img.shape[1]
+    patches = False
+
+    img = otsu_copy_binary(img)  # otsu_copy(img)
+    img = img.astype(np.uint16)
+
+    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_fully_np)
+
+    img_1 = img[: int(img.shape[0] / 3.0), :, :]
+    img_2 = img[int(img.shape[0] / 3.0) : int(2 * img.shape[0] / 3.0), :, :]
+    img_3 = img[int(2 * img.shape[0] / 3.0) :, :, :]
+
+    # img_1 = otsu_copy_binary(img_1)#otsu_copy(img)
+    # img_1 = img_1.astype(np.uint16)
+
+    plt.imshow(img_1)
+    plt.show()
+    # img_2 = otsu_copy_binary(img_2)#otsu_copy(img)
+    # img_2 = img_2.astype(np.uint16)
+
+    plt.imshow(img_2)
+    plt.show()
+    # img_3 = otsu_copy_binary(img_3)#otsu_copy(img)
+    # img_3 = img_3.astype(np.uint16)
+
+    plt.imshow(img_3)
+    plt.show()
+
+    prediction_regions_1 = self.do_prediction(patches, img_1, model_region)
+
+    plt.imshow(prediction_regions_1)
+    plt.show()
+
+    prediction_regions_2 = self.do_prediction(patches, img_2, model_region)
+
+    plt.imshow(prediction_regions_2)
+    plt.show()
+    prediction_regions_3 = self.do_prediction(patches, img_3, model_region)
+
+    plt.imshow(prediction_regions_3)
+    plt.show()
+    prediction_regions = np.zeros((img_height_h, img_width_h))
+
+    prediction_regions[: int(img.shape[0] / 3.0), :] = prediction_regions_1[:, :, 0]
+    prediction_regions[int(img.shape[0] / 3.0) : int(2 * img.shape[0] / 3.0), :] = prediction_regions_2[:, :, 0]
+    prediction_regions[int(2 * img.shape[0] / 3.0) :, :] = prediction_regions_3[:, :, 0]
+
+    session_region.close()
+    del img_1
+    del img_2
+    del img_3
+    del prediction_regions_1
+    del prediction_regions_2
+    del prediction_regions_3
+    del model_region
+    del session_region
+    del img
+    gc.collect()
+    return prediction_regions
+
+def extract_only_text_regions(self, img, patches):
+
+    model_region, session_region = self.start_new_session_and_model(self.model_only_text)
+    img = otsu_copy_binary(img)  # otsu_copy(img)
+    img = img.astype(np.uint8)
+    img_org = np.copy(img)
+
+    img_h = img_org.shape[0]
+    img_w = img_org.shape[1]
+
+    img = resize_image(img_org, int(img_org.shape[0] * 1), int(img_org.shape[1] * 1))
+
+    prediction_regions1 = self.do_prediction(patches, img, model_region)
+
+    prediction_regions1 = resize_image(prediction_regions1, img_h, img_w)
+
+    # prediction_regions1 = cv2.dilate(prediction_regions1, self.kernel, iterations=4)
+    # prediction_regions1 = cv2.erode(prediction_regions1, self.kernel, iterations=7)
+    # prediction_regions1 = cv2.dilate(prediction_regions1, self.kernel, iterations=2)
+
+    img = resize_image(img_org, int(img_org.shape[0] * 1), int(img_org.shape[1] * 1))
+
+    prediction_regions2 = self.do_prediction(patches, img, model_region)
+
+    prediction_regions2 = resize_image(prediction_regions2, img_h, img_w)
+
+    # prediction_regions2 = cv2.dilate(prediction_regions2, self.kernel, iterations=2)
+    prediction_regions2 = cv2.erode(prediction_regions2, self.kernel, iterations=2)
+    prediction_regions2 = cv2.dilate(prediction_regions2, self.kernel, iterations=2)
+
+    # prediction_regions=(  (prediction_regions2[:,:,0]==1) & (prediction_regions1[:,:,0]==1) )
+    # prediction_regions=(prediction_regions1[:,:,0]==1)
+
+    session_region.close()
+    del model_region
+    del session_region
+    gc.collect()
+    return prediction_regions1[:, :, 0]
+
+def extract_binarization(self, img, patches):
+
+    model_bin, session_bin = self.start_new_session_and_model(self.model_binafrization)
+
+    img_h = img.shape[0]
+    img_w = img.shape[1]
+
+    img = resize_image(img, int(img.shape[0] * 1), int(img.shape[1] * 1))
+
+    prediction_regions = self.do_prediction(patches, img, model_bin)
+
+    res = (prediction_regions[:, :, 0] != 0) * 1
+
+    img_fin = np.zeros((res.shape[0], res.shape[1], 3))
+    res[:, :][res[:, :] == 0] = 2
+    res = res - 1
+    res = res * 255
+    img_fin[:, :, 0] = res
+    img_fin[:, :, 1] = res
+    img_fin[:, :, 2] = res
+
+    session_bin.close()
+    del model_bin
+    del session_bin
+    gc.collect()
+    # plt.imshow(img_fin[:,:,0])
+    # plt.show()
+    return img_fin
+
+def get_text_region_contours_and_boxes(self, image):
+    rgb_class_of_texts = (1, 1, 1)
+    mask_texts = np.all(image == rgb_class_of_texts, axis=-1)
+
+    image = np.repeat(mask_texts[:, :, np.newaxis], 3, axis=2) * 255
+    image = image.astype(np.uint8)
+
+    image = cv2.morphologyEx(image, cv2.MORPH_OPEN, self.kernel)
+    image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, self.kernel)
+
+    imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    _, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+    contours, hirarchy = cv2.findContours(thresh.copy(), cv2.cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    main_contours = filter_contours_area_of_image(thresh, contours, hirarchy, max_area=1, min_area=0.00001)
+    self.boxes = []
+
+    for jj in range(len(main_contours)):
+        x, y, w, h = cv2.boundingRect(main_contours[jj])
+        self.boxes.append([x, y, w, h])
+
+    return main_contours
+
+def textline_contours_to_get_slope_correctly(self, textline_mask, img_patch, contour_interest):
+
+    slope_new = 0  # deskew_images(img_patch)
+
+    textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2) * 255
+
+    textline_mask = textline_mask.astype(np.uint8)
+    textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_OPEN, self.kernel)
+    textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_CLOSE, self.kernel)
+    textline_mask = cv2.erode(textline_mask, self.kernel, iterations=1)
+    imgray = cv2.cvtColor(textline_mask, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, self.kernel)
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, self.kernel)
+
+    contours, hirarchy = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    main_contours = filter_contours_area_of_image_tables(thresh, contours, hirarchy, max_area=1, min_area=0.003)
+
+    textline_maskt = textline_mask[:, :, 0]
+    textline_maskt[textline_maskt != 0] = 1
+
+    peaks_point, _ = seperate_lines(textline_maskt, contour_interest, slope_new)
+
+    mean_dis = np.mean(np.diff(peaks_point))
+
+    len_x = thresh.shape[1]
+
+    slope_lines = []
+    contours_slope_new = []
+
+    for kk in range(len(main_contours)):
+
+        if len(main_contours[kk].shape) == 2:
+            xminh = np.min(main_contours[kk][:, 0])
+            xmaxh = np.max(main_contours[kk][:, 0])
+
+            yminh = np.min(main_contours[kk][:, 1])
+            ymaxh = np.max(main_contours[kk][:, 1])
+        elif len(main_contours[kk].shape) == 3:
+            xminh = np.min(main_contours[kk][:, 0, 0])
+            xmaxh = np.max(main_contours[kk][:, 0, 0])
+
+            yminh = np.min(main_contours[kk][:, 0, 1])
+            ymaxh = np.max(main_contours[kk][:, 0, 1])
+
+        if ymaxh - yminh <= mean_dis and (xmaxh - xminh) >= 0.3 * len_x:  # xminh>=0.05*len_x and xminh<=0.4*len_x and xmaxh<=0.95*len_x and xmaxh>=0.6*len_x:
+            contours_slope_new.append(main_contours[kk])
+
+            rows, cols = thresh.shape[:2]
+            [vx, vy, x, y] = cv2.fitLine(main_contours[kk], cv2.DIST_L2, 0, 0.01, 0.01)
+
+            slope_lines.append((vy / vx) / np.pi * 180)
+
+        if len(slope_lines) >= 2:
+
+            slope = np.mean(slope_lines)  # slope_true/np.pi*180
+        else:
+            slope = 999
+
+    else:
+        slope = 0
+
+    return slope
+
+
+def return_deskew_slope_new(self, img_patch, sigma_des):
+    max_x_y = max(img_patch.shape[0], img_patch.shape[1])
+
+    ##img_patch=resize_image(img_patch,max_x_y,max_x_y)
+
+    img_patch_copy = np.zeros((img_patch.shape[0], img_patch.shape[1]))
+    img_patch_copy[:, :] = img_patch[:, :]  # img_patch_org[:,:,0]
+
+    img_patch_padded = np.zeros((int(max_x_y * (1.4)), int(max_x_y * (1.4))))
+
+    img_patch_padded_center_p = int(img_patch_padded.shape[0] / 2.0)
+    len_x_org_patch_half = int(img_patch_copy.shape[1] / 2.0)
+    len_y_org_patch_half = int(img_patch_copy.shape[0] / 2.0)
+
+    img_patch_padded[img_patch_padded_center_p - len_y_org_patch_half : img_patch_padded_center_p - len_y_org_patch_half + img_patch_copy.shape[0], img_patch_padded_center_p - len_x_org_patch_half : img_patch_padded_center_p - len_x_org_patch_half + img_patch_copy.shape[1]] = img_patch_copy[:, :]
+    # img_patch_padded[ int( img_patch_copy.shape[0]*(.1)):int( img_patch_copy.shape[0]*(.1))+img_patch_copy.shape[0] , int( img_patch_copy.shape[1]*(.8)):int( img_patch_copy.shape[1]*(.8))+img_patch_copy.shape[1] ]=img_patch_copy[:,:]
+    angles = np.linspace(-25, 25, 80)
+
+    res = []
+    num_of_peaks = []
+    index_cor = []
+    var_res = []
+
+    # plt.imshow(img_patch)
+    # plt.show()
+    indexer = 0
+    for rot in angles:
+        # print(rot,'rot')
+        img_rotated = rotate_image(img_patch_padded, rot)
+        img_rotated[img_rotated != 0] = 1
+
+        # plt.imshow(img_rotated)
+        # plt.show()
+
+        try:
+            neg_peaks, var_spectrum = self.get_standard_deviation_of_summed_textline_patch_along_width(img_rotated, sigma_des, 20.3)
+            res_me = np.mean(neg_peaks)
+            if res_me == 0:
+                res_me = VERY_LARGE_NUMBER
+            else:
+                pass
+
+            res_num = len(neg_peaks)
+        except:
+            res_me = VERY_LARGE_NUMBER
+            res_num = 0
+            var_spectrum = 0
+        if isNaN(res_me):
+            pass
+        else:
+            res.append(res_me)
+            var_res.append(var_spectrum)
+            num_of_peaks.append(res_num)
+            index_cor.append(indexer)
+        indexer = indexer + 1
+
+    try:
+        var_res = np.array(var_res)
+        # print(var_res)
+
+        ang_int = angles[np.argmax(var_res)]  # angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
+    except:
+        ang_int = 0
+
+    if abs(ang_int) > 15:
+        angles = np.linspace(-90, -50, 30)
+        res = []
+        num_of_peaks = []
+        index_cor = []
+        var_res = []
+
+        # plt.imshow(img_patch)
+        # plt.show()
+        indexer = 0
+        for rot in angles:
+            # print(rot,'rot')
+            img_rotated = rotate_image(img_patch_padded, rot)
+            img_rotated[img_rotated != 0] = 1
+
+            # plt.imshow(img_rotated)
+            # plt.show()
+
+            try:
+                neg_peaks, var_spectrum = self.get_standard_deviation_of_summed_textline_patch_along_width(img_rotated, sigma_des, 20.3)
+                res_me = np.mean(neg_peaks)
+                if res_me == 0:
+                    res_me = VERY_LARGE_NUMBER
+                else:
+                    pass
+
+                res_num = len(neg_peaks)
+            except:
+                res_me = VERY_LARGE_NUMBER
+                res_num = 0
+                var_spectrum = 0
+            if isNaN(res_me):
+                pass
+            else:
+                res.append(res_me)
+                var_res.append(var_spectrum)
+                num_of_peaks.append(res_num)
+                index_cor.append(indexer)
+            indexer = indexer + 1
+
+        try:
+            var_res = np.array(var_res)
+            # print(var_res)
+
+            ang_int = angles[np.argmax(var_res)]  # angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
+        except:
+            ang_int = 0
+
+    return ang_int
+
+def get_slopes_and_deskew(self, contours, textline_mask_tot):
+
+    slope_biggest = 0  # return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+
+    num_cores = cpu_count()
+    q = Queue()
+    poly = Queue()
+    box_sub = Queue()
+
+    processes = []
+    nh = np.linspace(0, len(self.boxes), num_cores + 1)
+
+    for i in range(num_cores):
+        boxes_per_process = self.boxes[int(nh[i]) : int(nh[i + 1])]
+        contours_per_process = contours[int(nh[i]) : int(nh[i + 1])]
+        processes.append(Process(target=self.do_work_of_slopes, args=(q, poly, box_sub, boxes_per_process, textline_mask_tot, contours_per_process)))
+
+    for i in range(num_cores):
+        processes[i].start()
+
+    self.slopes = []
+    self.all_found_texline_polygons = []
+    self.boxes = []
+
+    for i in range(num_cores):
+        slopes_for_sub_process = q.get(True)
+        boxes_for_sub_process = box_sub.get(True)
+        polys_for_sub_process = poly.get(True)
+
+        for j in range(len(slopes_for_sub_process)):
+            self.slopes.append(slopes_for_sub_process[j])
+            self.all_found_texline_polygons.append(polys_for_sub_process[j])
+            self.boxes.append(boxes_for_sub_process[j])
+
+    for i in range(num_cores):
+        processes[i].join()
+
+
+def write_into_page_xml_only_textlines(self, contours, page_coord, all_found_texline_polygons, all_box_coord, dir_of_image):
+
+    found_polygons_text_region = contours
+
+    # create the file structure
+    data = ET.Element("PcGts")
+
+    data.set("xmlns", "http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15")
+    data.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
+    data.set("xsi:schemaLocation", "http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15")
+
+    metadata = ET.SubElement(data, "Metadata")
+
+    author = ET.SubElement(metadata, "Creator")
+    author.text = "SBB_QURATOR"
+
+    created = ET.SubElement(metadata, "Created")
+    created.text = "2019-06-17T18:15:12"
+
+    changetime = ET.SubElement(metadata, "LastChange")
+    changetime.text = "2019-06-17T18:15:12"
+
+    page = ET.SubElement(data, "Page")
+
+    page.set("imageFilename", self.image_dir)
+    page.set("imageHeight", str(self.height_org))
+    page.set("imageWidth", str(self.width_org))
+    page.set("type", "content")
+    page.set("readingDirection", "left-to-right")
+    page.set("textLineOrder", "top-to-bottom")
+
+    page_print_sub = ET.SubElement(page, "PrintSpace")
+    coord_page = ET.SubElement(page_print_sub, "Coords")
+    points_page_print = ""
+
+    for lmm in range(len(self.cont_page[0])):
+        if len(self.cont_page[0][lmm]) == 2:
+            points_page_print = points_page_print + str(int((self.cont_page[0][lmm][0]) / self.scale_x))
+            points_page_print = points_page_print + ","
+            points_page_print = points_page_print + str(int((self.cont_page[0][lmm][1]) / self.scale_y))
+        else:
+            points_page_print = points_page_print + str(int((self.cont_page[0][lmm][0][0]) / self.scale_x))
+            points_page_print = points_page_print + ","
+            points_page_print = points_page_print + str(int((self.cont_page[0][lmm][0][1]) / self.scale_y))
+
+        if lmm < (len(self.cont_page[0]) - 1):
+            points_page_print = points_page_print + " "
+    coord_page.set("points", points_page_print)
+
+    if len(contours) > 0:
+
+        id_indexer = 0
+        id_indexer_l = 0
+
+        for mm in range(len(found_polygons_text_region)):
+            textregion = ET.SubElement(page, "TextRegion")
+
+            textregion.set("id", "r" + str(id_indexer))
+            id_indexer += 1
+
+            textregion.set("type", "paragraph")
+            # if mm==0:
+            #    textregion.set('type','header')
+            # else:
+            #    textregion.set('type','paragraph')
+            coord_text = ET.SubElement(textregion, "Coords")
+
+            points_co = ""
+            for lmm in range(len(found_polygons_text_region[mm])):
+                if len(found_polygons_text_region[mm][lmm]) == 2:
+                    points_co = points_co + str(int((found_polygons_text_region[mm][lmm][0] + page_coord[2]) / self.scale_x))
+                    points_co = points_co + ","
+                    points_co = points_co + str(int((found_polygons_text_region[mm][lmm][1] + page_coord[0]) / self.scale_y))
+                else:
+                    points_co = points_co + str(int((found_polygons_text_region[mm][lmm][0][0] + page_coord[2]) / self.scale_x))
+                    points_co = points_co + ","
+                    points_co = points_co + str(int((found_polygons_text_region[mm][lmm][0][1] + page_coord[0]) / self.scale_y))
+
+                if lmm < (len(found_polygons_text_region[mm]) - 1):
+                    points_co = points_co + " "
+            # print(points_co)
+            coord_text.set("points", points_co)
+
+            for j in range(len(all_found_texline_polygons[mm])):
+
+                textline = ET.SubElement(textregion, "TextLine")
+
+                textline.set("id", "l" + str(id_indexer_l))
+
+                id_indexer_l += 1
+
+                coord = ET.SubElement(textline, "Coords")
+
+                texteq = ET.SubElement(textline, "TextEquiv")
+
+                uni = ET.SubElement(texteq, "Unicode")
+                uni.text = " "
+
+                # points = ET.SubElement(coord, 'Points')
+
+                points_co = ""
+                for l in range(len(all_found_texline_polygons[mm][j])):
+                    # point = ET.SubElement(coord, 'Point')
+
+                    # point.set('x',str(found_polygons[j][l][0]))
+                    # point.set('y',str(found_polygons[j][l][1]))
+                    if len(all_found_texline_polygons[mm][j][l]) == 2:
+                        points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0] + page_coord[2]) / self.scale_x))
+                        points_co = points_co + ","
+                        points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][1] + page_coord[0]) / self.scale_y))
+                    else:
+                        points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0][0] + page_coord[2]) / self.scale_x))
+                        points_co = points_co + ","
+                        points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0][1] + page_coord[0]) / self.scale_y))
+
+                    if l < (len(all_found_texline_polygons[mm][j]) - 1):
+                        points_co = points_co + " "
+                # print(points_co)
+                coord.set("points", points_co)
+
+            texteqreg = ET.SubElement(textregion, "TextEquiv")
+
+            unireg = ET.SubElement(texteqreg, "Unicode")
+            unireg.text = " "
+
+    # print(dir_of_image)
+    print(self.f_name)
+    # print(os.path.join(dir_of_image, self.f_name) + ".xml")
+    tree = ET.ElementTree(data)
+    tree.write(os.path.join(dir_of_image, self.f_name) + ".xml")
+
+def return_teilwiese_deskewed_lines(self, text_regions_p, textline_rotated):
+
+    kernel = np.ones((5, 5), np.uint8)
+    textline_rotated = cv2.erode(textline_rotated, kernel, iterations=1)
+
+    textline_rotated_new = np.zeros(textline_rotated.shape)
+    rgb_m = 1
+    rgb_h = 2
+
+    cnt_m, boxes_m = return_contours_of_interested_region_and_bounding_box(text_regions_p, rgb_m)
+    cnt_h, boxes_h = return_contours_of_interested_region_and_bounding_box(text_regions_p, rgb_h)
+
+    areas_cnt_m = np.array([cv2.contourArea(cnt_m[j]) for j in range(len(cnt_m))])
+
+    argmax = np.argmax(areas_cnt_m)
+
+    # plt.imshow(textline_rotated[ boxes_m[argmax][1]:boxes_m[argmax][1]+boxes_m[argmax][3] ,boxes_m[argmax][0]:boxes_m[argmax][0]+boxes_m[argmax][2]])
+    # plt.show()
+
+    for argmax in range(len(boxes_m)):
+
+        textline_text_region = textline_rotated[boxes_m[argmax][1] : boxes_m[argmax][1] + boxes_m[argmax][3], boxes_m[argmax][0] : boxes_m[argmax][0] + boxes_m[argmax][2]]
+
+        textline_text_region_revised = self.seperate_lines_new(textline_text_region, 0)
+        # except:
+        #    textline_text_region_revised=textline_rotated[ boxes_m[argmax][1]:boxes_m[argmax][1]+boxes_m[argmax][3] ,boxes_m[argmax][0]:boxes_m[argmax][0]+boxes_m[argmax][2]  ]
+        textline_rotated_new[boxes_m[argmax][1] : boxes_m[argmax][1] + boxes_m[argmax][3], boxes_m[argmax][0] : boxes_m[argmax][0] + boxes_m[argmax][2]] = textline_text_region_revised[:, :]
+
+    # textline_rotated_new[textline_rotated_new>0]=1
+    # textline_rotated_new[textline_rotated_new<0]=0
+    # plt.imshow(textline_rotated_new)
+    # plt.show()
+
+def get_regions_from_xy_neu(self, img):
+    img_org = np.copy(img)
+
+    img_height_h = img_org.shape[0]
+    img_width_h = img_org.shape[1]
+
+    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p)
+
+    gaussian_filter = False
+    patches = True
+    binary = True
+
+    ratio_x = 1
+    ratio_y = 1
+    median_blur = False
+
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+    prediction_regions_org = self.do_prediction(patches, img, model_region)
+
+    prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h)
+
+    # plt.imshow(prediction_regions_org[:,:,0])
+    # plt.show()
+    # sys.exit()
+    prediction_regions_org = prediction_regions_org[:, :, 0]
+
+    gaussian_filter = False
+    patches = False
+    binary = False
+
+    ratio_x = 1
+    ratio_y = 1
+    median_blur = False
+
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+        img = cv2.medianBlur(img, 5)
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+    prediction_regions_orgt = self.do_prediction(patches, img, model_region)
+
+    prediction_regions_orgt = resize_image(prediction_regions_orgt, img_height_h, img_width_h)
+
+    # plt.imshow(prediction_regions_orgt[:,:,0])
+    # plt.show()
+    # sys.exit()
+    prediction_regions_orgt = prediction_regions_orgt[:, :, 0]
+
+    mask_texts_longshot = (prediction_regions_orgt[:, :] == 1) * 1
+
+    mask_texts_longshot = np.uint8(mask_texts_longshot)
+    # mask_texts_longshot = cv2.dilate(mask_texts_longshot[:,:], self.kernel, iterations=2)
+
+    pixel_img = 1
+    polygons_of_only_texts_longshot = return_contours_of_interested_region(mask_texts_longshot, pixel_img)
+
+    longshot_true = np.zeros(mask_texts_longshot.shape)
+    # text_regions_p_true[:,:]=text_regions_p_1[:,:]
+
+    longshot_true = cv2.fillPoly(longshot_true, pts=polygons_of_only_texts_longshot, color=(1, 1, 1))
+
+    # plt.imshow(longshot_true)
+    # plt.show()
+
+    gaussian_filter = False
+    patches = False
+    binary = False
+
+    ratio_x = 1
+    ratio_y = 1
+    median_blur = False
+
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+
+    one_third_upper_ny = int(img.shape[0] / 3.0)
+
+    img = img[0:one_third_upper_ny, :, :]
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+    prediction_regions_longshot_one_third = self.do_prediction(patches, img, model_region)
+
+    prediction_regions_longshot_one_third = resize_image(prediction_regions_longshot_one_third, one_third_upper_ny, img_width_h)
+
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+    img = img[one_third_upper_ny : int(2 * one_third_upper_ny), :, :]
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+    prediction_regions_longshot_one_third_middle = self.do_prediction(patches, img, model_region)
+
+    prediction_regions_longshot_one_third_middle = resize_image(prediction_regions_longshot_one_third_middle, one_third_upper_ny, img_width_h)
+
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+    img = img[int(2 * one_third_upper_ny) :, :, :]
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+    prediction_regions_longshot_one_third_down = self.do_prediction(patches, img, model_region)
+
+    prediction_regions_longshot_one_third_down = resize_image(prediction_regions_longshot_one_third_down, img_height_h - int(2 * one_third_upper_ny), img_width_h)
+
+    # plt.imshow(prediction_regions_org[:,:,0])
+    # plt.show()
+    # sys.exit()
+    prediction_regions_longshot = np.zeros((img_height_h, img_width_h))
+
+    # prediction_regions_longshot=prediction_regions_longshot[:,:,0]
+
+    # prediction_regions_longshot[0:one_third_upper_ny,:]=prediction_regions_longshot_one_third[:,:,0]
+    # prediction_regions_longshot[one_third_upper_ny:int(2*one_third_upper_ny):,:]=prediction_regions_longshot_one_third_middle[:,:,0]
+    # prediction_regions_longshot[int(2*one_third_upper_ny):,:]=prediction_regions_longshot_one_third_down[:,:,0]
+
+    prediction_regions_longshot = longshot_true[:, :]
+    # plt.imshow(prediction_regions_longshot)
+    # plt.show()
+
+    gaussian_filter = False
+    patches = True
+    binary = False
+
+    ratio_x = 1  # 1.1
+    ratio_y = 1
+    median_blur = False
+
+    # img= resize_image(img_org, int(img_org.shape[0]*0.8), int(img_org.shape[1]*1.6))
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+
+    prediction_regions = self.do_prediction(patches, img, model_region)
+    text_region1 = resize_image(prediction_regions, img_height_h, img_width_h)
+
+    # plt.imshow(text_region1[:,:,0])
+    # plt.show()
+    ratio_x = 1
+    ratio_y = 1.2  # 1.3
+    binary = False
+    median_blur = False
+
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+
+    prediction_regions = self.do_prediction(patches, img, model_region)
+    text_region2 = resize_image(prediction_regions, img_height_h, img_width_h)
+
+    # plt.imshow(text_region2[:,:,0])
+    # plt.show()
+    session_region.close()
+    del model_region
+    del session_region
+    gc.collect()
+
+    # text_region1=text_region1[:,:,0]
+    # text_region2=text_region2[:,:,0]
+
+    # text_region1[(text_region1[:,:]==2) & (text_region2[:,:]==1)]=1
+
+    mask_zeros_from_1 = (text_region2[:, :, 0] == 0) * 1
+    # mask_text_from_1=(text_region1[:,:,0]==1)*1
+
+    mask_img_text_region1 = (text_region1[:, :, 0] == 2) * 1
+    text_region2_1st_channel = text_region1[:, :, 0]
+
+    text_region2_1st_channel[mask_zeros_from_1 == 1] = 0
+
+    ##text_region2_1st_channel[mask_img_text_region1[:,:]==1]=2
+    # text_region2_1st_channel[(mask_text_from_1==1) & (text_region2_1st_channel==2)]=1
+
+    mask_lines1 = (text_region1[:, :, 0] == 3) * 1
+    mask_lines2 = (text_region2[:, :, 0] == 3) * 1
+
+    mask_lines2[mask_lines1[:, :] == 1] = 1
+
+    # plt.imshow(text_region2_1st_channel)
+    # plt.show()
+
+    text_region2_1st_channel = cv2.erode(text_region2_1st_channel[:, :], self.kernel, iterations=4)
+
+    # plt.imshow(text_region2_1st_channel)
+    # plt.show()
+
+    text_region2_1st_channel = cv2.dilate(text_region2_1st_channel[:, :], self.kernel, iterations=4)
+
+    text_region2_1st_channel[mask_lines2[:, :] == 1] = 3
+
+    # text_region2_1st_channel[ (prediction_regions_org[:,:]==1) & (text_region2_1st_channel[:,:]==2)]=1
+
+    # only in the case of model 3
+
+    text_region2_1st_channel[(prediction_regions_longshot[:, :] == 1) & (text_region2_1st_channel[:, :] == 2)] = 1
+
+    text_region2_1st_channel[(prediction_regions_org[:, :] == 2) & (text_region2_1st_channel[:, :] == 0)] = 2
+
+    # text_region2_1st_channel[prediction_regions_org[:,:]==0]=0
+
+    # plt.imshow(text_region2_1st_channel)
+    # plt.show()
+
+    # text_region2_1st_channel[:,:400]=0
+
+    mask_texts_only = (text_region2_1st_channel[:, :] == 1) * 1
+
+    mask_images_only = (text_region2_1st_channel[:, :] == 2) * 1
+
+    mask_lines_only = (text_region2_1st_channel[:, :] == 3) * 1
+
+    pixel_img = 1
+    polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only, pixel_img)
+
+    polygons_of_only_images = return_contours_of_interested_region(mask_images_only, pixel_img)
+
+    polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only, pixel_img)
+
+    text_regions_p_true = np.zeros(text_region2_1st_channel.shape)
+    # text_regions_p_true[:,:]=text_regions_p_1[:,:]
+
+    text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts=polygons_of_only_lines, color=(3, 3, 3))
+
+    text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts=polygons_of_only_images, color=(2, 2, 2))
+
+    text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts=polygons_of_only_texts, color=(1, 1, 1))
+
+    ##print(np.unique(text_regions_p_true))
+
+    # text_regions_p_true_3d=np.repeat(text_regions_p_1[:, :, np.newaxis], 3, axis=2)
+    # text_regions_p_true_3d=text_regions_p_true_3d.astype(np.uint8)
+
+    return text_regions_p_true  # text_region2_1st_channel
+
+def get_regions_from_xy(self, img):
+    img_org = np.copy(img)
+
+    img_height_h = img_org.shape[0]
+    img_width_h = img_org.shape[1]
+
+    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p)
+
+    gaussian_filter = False
+    patches = True
+    binary = True
+
+    ratio_x = 1
+    ratio_y = 1
+    median_blur = False
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+    prediction_regions_org = self.do_prediction(patches, img, model_region)
+
+    ###plt.imshow(prediction_regions_org[:,:,0])
+    ###plt.show()
+    ##sys.exit()
+    prediction_regions_org = prediction_regions_org[:, :, 0]
+
+    gaussian_filter = False
+    patches = True
+    binary = False
+
+    ratio_x = 1.1
+    ratio_y = 1
+    median_blur = False
+
+    # img= resize_image(img_org, int(img_org.shape[0]*0.8), int(img_org.shape[1]*1.6))
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+
+    prediction_regions = self.do_prediction(patches, img, model_region)
+    text_region1 = resize_image(prediction_regions, img_height_h, img_width_h)
+
+    ratio_x = 1
+    ratio_y = 1.1
+    binary = False
+    median_blur = False
+
+    img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
+
+    if binary:
+        img = otsu_copy_binary(img)  # otsu_copy(img)
+        img = img.astype(np.uint16)
+
+    if median_blur:
+        img = cv2.medianBlur(img, 5)
+    if gaussian_filter:
+        img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = img.astype(np.uint16)
+
+    prediction_regions = self.do_prediction(patches, img, model_region)
+    text_region2 = resize_image(prediction_regions, img_height_h, img_width_h)
+
+    session_region.close()
+    del model_region
+    del session_region
+    gc.collect()
+
+    mask_zeros_from_1 = (text_region1[:, :, 0] == 0) * 1
+    # mask_text_from_1=(text_region1[:,:,0]==1)*1
+
+    mask_img_text_region1 = (text_region1[:, :, 0] == 2) * 1
+    text_region2_1st_channel = text_region2[:, :, 0]
+
+    text_region2_1st_channel[mask_zeros_from_1 == 1] = 0
+
+    text_region2_1st_channel[mask_img_text_region1[:, :] == 1] = 2
+    # text_region2_1st_channel[(mask_text_from_1==1) & (text_region2_1st_channel==2)]=1
+
+    mask_lines1 = (text_region1[:, :, 0] == 3) * 1
+    mask_lines2 = (text_region2[:, :, 0] == 3) * 1
+
+    mask_lines2[mask_lines1[:, :] == 1] = 1
+
+    ##plt.imshow(text_region2_1st_channel)
+    ##plt.show()
+
+    text_region2_1st_channel = cv2.erode(text_region2_1st_channel[:, :], self.kernel, iterations=5)
+
+    ##plt.imshow(text_region2_1st_channel)
+    ##plt.show()
+
+    text_region2_1st_channel = cv2.dilate(text_region2_1st_channel[:, :], self.kernel, iterations=5)
+
+    text_region2_1st_channel[mask_lines2[:, :] == 1] = 3
+
+    text_region2_1st_channel[(prediction_regions_org[:, :] == 1) & (text_region2_1st_channel[:, :] == 2)] = 1
+    text_region2_1st_channel[prediction_regions_org[:, :] == 3] = 3
+
+    ##plt.imshow(text_region2_1st_channel)
+    ##plt.show()
+    return text_region2_1st_channel
+
+def do_work_of_textline_seperation(self, queue_of_all_params, polygons_per_process, index_polygons_per_process, con_par_org, textline_mask_tot, mask_texts_only, num_col, scale_par, boxes_text):
+
+    textregions_cnt_tot_per_process = []
+    textlines_cnt_tot_per_process = []
+    index_polygons_per_process_per_process = []
+    polygons_per_par_process_per_process = []
+    textline_cnt_seperated = np.zeros(textline_mask_tot.shape)
+    for iiii in range(len(polygons_per_process)):
+        # crop_img,crop_coor=crop_image_inside_box(boxes_text[mv],image_page_rotated)
+        # arg_max=np.argmax(areas_cnt_only_text)
+        textregions_cnt_tot_per_process.append(polygons_per_process[iiii] / scale_par)
+        textline_region_in_image = np.zeros(textline_mask_tot.shape)
+        cnt_o_t_max = polygons_per_process[iiii]
+
+        x, y, w, h = cv2.boundingRect(cnt_o_t_max)
+
+        mask_biggest = np.zeros(mask_texts_only.shape)
+        mask_biggest = cv2.fillPoly(mask_biggest, pts=[cnt_o_t_max], color=(1, 1, 1))
+
+        mask_region_in_patch_region = mask_biggest[y : y + h, x : x + w]
+
+        textline_biggest_region = mask_biggest * textline_mask_tot
+
+        textline_rotated_seperated = self.seperate_lines_new2(textline_biggest_region[y : y + h, x : x + w], 0, num_col)
+
+        # new line added
+        ##print(np.shape(textline_rotated_seperated),np.shape(mask_biggest))
+        textline_rotated_seperated[mask_region_in_patch_region[:, :] != 1] = 0
+        # till here
+
+        textline_cnt_seperated[y : y + h, x : x + w] = textline_rotated_seperated
+        textline_region_in_image[y : y + h, x : x + w] = textline_rotated_seperated
+
+        # plt.imshow(textline_region_in_image)
+        # plt.show()
+
+        # plt.imshow(textline_cnt_seperated)
+        # plt.show()
+
+        pixel_img = 1
+        cnt_textlines_in_image = return_contours_of_interested_textline(textline_region_in_image, pixel_img)
+
+        textlines_cnt_per_region = []
+        for jjjj in range(len(cnt_textlines_in_image)):
+            mask_biggest2 = np.zeros(mask_texts_only.shape)
+            mask_biggest2 = cv2.fillPoly(mask_biggest2, pts=[cnt_textlines_in_image[jjjj]], color=(1, 1, 1))
+            if num_col + 1 == 1:
+                mask_biggest2 = cv2.dilate(mask_biggest2, self.kernel, iterations=5)
+            else:
+
+                mask_biggest2 = cv2.dilate(mask_biggest2, self.kernel, iterations=4)
+
+            pixel_img = 1
+            cnt_textlines_in_image_ind = return_contours_of_interested_textline(mask_biggest2, pixel_img)
+
+            try:
+                textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0] / scale_par)
+            except:
+                pass
+            # print(len(cnt_textlines_in_image_ind))
+
+            # plt.imshow(mask_biggest2)
+            # plt.show()
+        textlines_cnt_tot_per_process.append(textlines_cnt_per_region)
+        index_polygons_per_process_per_process.append(index_polygons_per_process[iiii])
+        polygons_per_par_process_per_process.append(con_par_org[iiii])
+
+    queue_of_all_params.put([index_polygons_per_process_per_process, polygons_per_par_process_per_process, textregions_cnt_tot_per_process, textlines_cnt_tot_per_process])
+
+
