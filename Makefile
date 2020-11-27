@@ -7,6 +7,7 @@ help:
 	@echo "    models       Download and extract models to $(PWD)/models_eynollah"
 	@echo "    install      Install with pip"
 	@echo "    install-dev  Install editable with pip"
+	@echo "    test         Run unit tests"
 	@echo ""
 	@echo "  Variables"
 	@echo ""
@@ -33,3 +34,7 @@ install-dev:
 
 smoke-test:
 	eynollah -i tests/resources/kant_aufklaerung_1784_0020.tif -o . -m $(PWD)/models_eynollah
+
+# Run unit tests
+test:
+	pytest tests
