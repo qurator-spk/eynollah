@@ -2769,3 +2769,261 @@ def do_work_of_textline_seperation(self, queue_of_all_params, polygons_per_proce
     queue_of_all_params.put([index_polygons_per_process_per_process, polygons_per_par_process_per_process, textregions_cnt_tot_per_process, textlines_cnt_tot_per_process])
 
 
+def seperate_lines_new(img_path, thetha, num_col, dir_of_all, f_name):
+
+    if num_col == 1:
+        num_patches = int(img_path.shape[1] / 200.0)
+    else:
+        num_patches = int(img_path.shape[1] / 100.0)
+    # num_patches=int(img_path.shape[1]/200.)
+    if num_patches == 0:
+        num_patches = 1
+    (h, w) = img_path.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
+    x_d = M[0, 2]
+    y_d = M[1, 2]
+
+    thetha = thetha / 180.0 * np.pi
+    rotation_matrix = np.array([[np.cos(thetha), -np.sin(thetha)], [np.sin(thetha), np.cos(thetha)]])
+
+    x_min_cont = 0
+    x_max_cont = img_path.shape[1]
+    y_min_cont = 0
+    y_max_cont = img_path.shape[0]
+
+    xv = np.linspace(x_min_cont, x_max_cont, 1000)
+
+    mada_n = img_path.sum(axis=1)
+
+    ##plt.plot(mada_n)
+    ##plt.show()
+    first_nonzero = 0  # (next((i for i, x in enumerate(mada_n) if x), None))
+
+    y = mada_n[:]  # [first_nonzero:last_nonzero]
+    y_help = np.zeros(len(y) + 40)
+    y_help[20 : len(y) + 20] = y
+    x = np.array(range(len(y)))
+
+    peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
+    if len(peaks_real) <= 2 and len(peaks_real) > 1:
+        sigma_gaus = 10
+    else:
+        sigma_gaus = 6
+
+    z = gaussian_filter1d(y_help, sigma_gaus)
+    zneg_rev = -y_help + np.max(y_help)
+    zneg = np.zeros(len(zneg_rev) + 40)
+    zneg[20 : len(zneg_rev) + 20] = zneg_rev
+    zneg = gaussian_filter1d(zneg, sigma_gaus)
+
+    peaks, _ = find_peaks(z, height=0)
+    peaks_neg, _ = find_peaks(zneg, height=0)
+
+    for nn in range(len(peaks_neg)):
+        if peaks_neg[nn] > len(z) - 1:
+            peaks_neg[nn] = len(z) - 1
+        if peaks_neg[nn] < 0:
+            peaks_neg[nn] = 0
+
+    diff_peaks = np.abs(np.diff(peaks_neg))
+    cut_off = 20
+    peaks_neg_true = []
+    forest = []
+
+    for i in range(len(peaks_neg)):
+        if i == 0:
+            forest.append(peaks_neg[i])
+        if i < (len(peaks_neg) - 1):
+            if diff_peaks[i] <= cut_off:
+                forest.append(peaks_neg[i + 1])
+            if diff_peaks[i] > cut_off:
+                # print(forest[np.argmin(z[forest]) ] )
+                if not isNaN(forest[np.argmin(z[forest])]):
+                    # print(len(z),forest)
+                    peaks_neg_true.append(forest[np.argmin(z[forest])])
+                forest = []
+                forest.append(peaks_neg[i + 1])
+        if i == (len(peaks_neg) - 1):
+            # print(print(forest[np.argmin(z[forest]) ] ))
+            if not isNaN(forest[np.argmin(z[forest])]):
+
+                peaks_neg_true.append(forest[np.argmin(z[forest])])
+
+    peaks_neg_true = np.array(peaks_neg_true)
+
+    """
+    #plt.figure(figsize=(40,40))
+    #plt.subplot(1,2,1)
+    #plt.title('Textline segmentation von Textregion')
+    #plt.imshow(img_path)
+    #plt.xlabel('X')
+    #plt.ylabel('Y')
+    #plt.subplot(1,2,2)
+    #plt.title('Dichte entlang X')
+    #base = pyplot.gca().transData
+    #rot = transforms.Affine2D().rotate_deg(90)
+    #plt.plot(zneg,np.array(range(len(zneg))))
+    #plt.plot(zneg[peaks_neg_true],peaks_neg_true,'*')
+    #plt.gca().invert_yaxis()
+
+    #plt.xlabel('Dichte')
+    #plt.ylabel('Y')
+    ##plt.plot([0,len(y)], [grenze,grenze])
+    #plt.show()
+    """
+
+    peaks_neg_true = peaks_neg_true - 20 - 20
+    peaks = peaks - 20
+
+    # dis_up=peaks_neg_true[14]-peaks_neg_true[0]
+    # dis_down=peaks_neg_true[18]-peaks_neg_true[14]
+
+    img_patch_ineterst = img_path[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[15]+dis_down ,:]
+
+    ##plt.imshow(img_patch_ineterst)
+    ##plt.show()
+
+    length_x = int(img_path.shape[1] / float(num_patches))
+    margin = int(0.04 * length_x)
+
+    width_mid = length_x - 2 * margin
+
+    nxf = img_path.shape[1] / float(width_mid)
+
+    if nxf > int(nxf):
+        nxf = int(nxf) + 1
+    else:
+        nxf = int(nxf)
+
+    slopes_tile_wise = []
+    for i in range(nxf):
+        if i == 0:
+            index_x_d = i * width_mid
+            index_x_u = index_x_d + length_x
+        elif i > 0:
+            index_x_d = i * width_mid
+            index_x_u = index_x_d + length_x
+
+        if index_x_u > img_path.shape[1]:
+            index_x_u = img_path.shape[1]
+            index_x_d = img_path.shape[1] - length_x
+
+        # img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
+        img_xline = img_patch_ineterst[:, index_x_d:index_x_u]
+
+        sigma = 2
+        try:
+            slope_xline = return_deskew_slop(img_xline, sigma, dir_of_all=dir_of_all, f_name=f_name)
+        except:
+            slope_xline = 0
+        slopes_tile_wise.append(slope_xline)
+        # print(slope_xline,'xlineeee')
+        img_line_rotated = rotate_image(img_xline, slope_xline)
+        img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
+
+    """
+
+    xline=np.linspace(0,img_path.shape[1],nx)
+    slopes_tile_wise=[]
+
+    for ui in range( nx-1 ):
+        img_xline=img_patch_ineterst[:,int(xline[ui]):int(xline[ui+1])]
+
+
+        ##plt.imshow(img_xline)
+        ##plt.show()
+
+        sigma=3
+        try:
+            slope_xline=return_deskew_slop(img_xline,sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
+        except:
+            slope_xline=0
+        slopes_tile_wise.append(slope_xline)
+        print(slope_xline,'xlineeee')
+        img_line_rotated=rotate_image(img_xline,slope_xline)
+
+        ##plt.imshow(img_line_rotated)
+        ##plt.show()
+    """
+
+    # dis_up=peaks_neg_true[14]-peaks_neg_true[0]
+    # dis_down=peaks_neg_true[18]-peaks_neg_true[14]
+
+    img_patch_ineterst = img_path[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[14]+dis_down ,:]
+
+    img_patch_ineterst_revised = np.zeros(img_patch_ineterst.shape)
+
+    for i in range(nxf):
+        if i == 0:
+            index_x_d = i * width_mid
+            index_x_u = index_x_d + length_x
+        elif i > 0:
+            index_x_d = i * width_mid
+            index_x_u = index_x_d + length_x
+
+        if index_x_u > img_path.shape[1]:
+            index_x_u = img_path.shape[1]
+            index_x_d = img_path.shape[1] - length_x
+
+        img_xline = img_patch_ineterst[:, index_x_d:index_x_u]
+
+        img_int = np.zeros((img_xline.shape[0], img_xline.shape[1]))
+        img_int[:, :] = img_xline[:, :]  # img_patch_org[:,:,0]
+
+        img_resized = np.zeros((int(img_int.shape[0] * (1.2)), int(img_int.shape[1] * (3))))
+
+        img_resized[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0], int(img_int.shape[1] * (1)) : int(img_int.shape[1] * (1)) + img_int.shape[1]] = img_int[:, :]
+        ##plt.imshow(img_xline)
+        ##plt.show()
+        img_line_rotated = rotate_image(img_resized, slopes_tile_wise[i])
+        img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
+
+        img_patch_seperated = seperate_lines_new_inside_teils(img_line_rotated, 0)
+
+        ##plt.imshow(img_patch_seperated)
+        ##plt.show()
+        img_patch_seperated_returned = rotate_image(img_patch_seperated, -slopes_tile_wise[i])
+        img_patch_seperated_returned[:, :][img_patch_seperated_returned[:, :] != 0] = 1
+
+        img_patch_seperated_returned_true_size = img_patch_seperated_returned[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0], int(img_int.shape[1] * (1)) : int(img_int.shape[1] * (1)) + img_int.shape[1]]
+
+        img_patch_seperated_returned_true_size = img_patch_seperated_returned_true_size[:, margin : length_x - margin]
+        img_patch_ineterst_revised[:, index_x_d + margin : index_x_u - margin] = img_patch_seperated_returned_true_size
+
+    """
+    for ui in range( nx-1 ):
+        img_xline=img_patch_ineterst[:,int(xline[ui]):int(xline[ui+1])]
+
+
+        img_int=np.zeros((img_xline.shape[0],img_xline.shape[1]))
+        img_int[:,:]=img_xline[:,:]#img_patch_org[:,:,0]
+
+        img_resized=np.zeros((int( img_int.shape[0]*(1.2) ) , int( img_int.shape[1]*(3) ) ))
+
+        img_resized[ int( img_int.shape[0]*(.1)):int( img_int.shape[0]*(.1))+img_int.shape[0] , int( img_int.shape[1]*(1)):int( img_int.shape[1]*(1))+img_int.shape[1] ]=img_int[:,:]
+        ##plt.imshow(img_xline)
+        ##plt.show()
+        img_line_rotated=rotate_image(img_resized,slopes_tile_wise[ui])
+
+
+        #img_patch_seperated = seperate_lines_new_inside_teils(img_line_rotated,0)
+
+        img_patch_seperated = seperate_lines_new_inside_teils(img_line_rotated,0)
+
+        img_patch_seperated_returned=rotate_image(img_patch_seperated,-slopes_tile_wise[ui])
+        ##plt.imshow(img_patch_seperated)
+        ##plt.show()
+        print(img_patch_seperated_returned.shape)
+        #plt.imshow(img_patch_seperated_returned[ int( img_int.shape[0]*(.1)):int( img_int.shape[0]*(.1))+img_int.shape[0] , int( img_int.shape[1]*(1)):int( img_int.shape[1]*(1))+img_int.shape[1] ])
+        #plt.show()
+
+        img_patch_ineterst_revised[:,int(xline[ui]):int(xline[ui+1])]=img_patch_seperated_returned[ int( img_int.shape[0]*(.1)):int( img_int.shape[0]*(.1))+img_int.shape[0] , int( img_int.shape[1]*(1)):int( img_int.shape[1]*(1))+img_int.shape[1] ]
+
+
+    """
+
+    # print(img_patch_ineterst_revised.shape,np.unique(img_patch_ineterst_revised))
+    ##plt.imshow(img_patch_ineterst_revised)
+    ##plt.show()
+    return img_patch_ineterst_revised

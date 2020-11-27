@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 from scipy.signal import find_peaks
@@ -1365,4 +1366,457 @@ def textline_contours_postprocessing(textline_mask, slope, contour_text_interest
         contours_rotated_clean = []
 
     return contours_rotated_clean
+
+def seperate_lines_new2(img_path, thetha, num_col, slope_region, dir_of_all, f_name):
+
+    if num_col == 1:
+        num_patches = int(img_path.shape[1] / 200.0)
+    else:
+        num_patches = int(img_path.shape[1] / 140.0)
+    # num_patches=int(img_path.shape[1]/200.)
+    if num_patches == 0:
+        num_patches = 1
+
+    img_patch_ineterst = img_path[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[15]+dis_down ,:]
+
+    # plt.imshow(img_patch_ineterst)
+    # plt.show()
+
+    length_x = int(img_path.shape[1] / float(num_patches))
+    # margin = int(0.04 * length_x) just recently this was changed because it break lines into 2
+    margin = int(0.04 * length_x)
+    # print(margin,'margin')
+    # if margin<=4:
+    # margin = int(0.08 * length_x)
+
+    # margin=0
+
+    width_mid = length_x - 2 * margin
+
+    nxf = img_path.shape[1] / float(width_mid)
+
+    if nxf > int(nxf):
+        nxf = int(nxf) + 1
+    else:
+        nxf = int(nxf)
+
+    slopes_tile_wise = []
+    for i in range(nxf):
+        if i == 0:
+            index_x_d = i * width_mid
+            index_x_u = index_x_d + length_x
+        elif i > 0:
+            index_x_d = i * width_mid
+            index_x_u = index_x_d + length_x
+
+        if index_x_u > img_path.shape[1]:
+            index_x_u = img_path.shape[1]
+            index_x_d = img_path.shape[1] - length_x
+
+        # img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
+        img_xline = img_patch_ineterst[:, index_x_d:index_x_u]
+
+        sigma = 2
+        try:
+            slope_xline = return_deskew_slop(img_xline, sigma, dir_of_all=dir_of_all, f_name=f_name)
+        except:
+            slope_xline = 0
+
+        if abs(slope_region) < 25 and abs(slope_xline) > 25:
+            slope_xline = [slope_region][0]
+        # if abs(slope_region)>70 and abs(slope_xline)<25:
+        # slope_xline=[slope_region][0]
+        slopes_tile_wise.append(slope_xline)
+        # print(slope_xline,'xlineeee')
+        img_line_rotated = rotate_image(img_xline, slope_xline)
+        img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
+
+    # print(slopes_tile_wise,'slopes_tile_wise')
+    img_patch_ineterst = img_path[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[14]+dis_down ,:]
+
+    img_patch_ineterst_revised = np.zeros(img_patch_ineterst.shape)
+
+    for i in range(nxf):
+        if i == 0:
+            index_x_d = i * width_mid
+            index_x_u = index_x_d + length_x
+        elif i > 0:
+            index_x_d = i * width_mid
+            index_x_u = index_x_d + length_x
+
+        if index_x_u > img_path.shape[1]:
+            index_x_u = img_path.shape[1]
+            index_x_d = img_path.shape[1] - length_x
+
+        img_xline = img_patch_ineterst[:, index_x_d:index_x_u]
+
+        img_int = np.zeros((img_xline.shape[0], img_xline.shape[1]))
+        img_int[:, :] = img_xline[:, :]  # img_patch_org[:,:,0]
+
+        img_resized = np.zeros((int(img_int.shape[0] * (1.2)), int(img_int.shape[1] * (3))))
+
+        img_resized[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0], int(img_int.shape[1] * (1)) : int(img_int.shape[1] * (1)) + img_int.shape[1]] = img_int[:, :]
+        # plt.imshow(img_xline)
+        # plt.show()
+        img_line_rotated = rotate_image(img_resized, slopes_tile_wise[i])
+        img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
+
+        img_patch_seperated = seperate_lines_new_inside_teils2(img_line_rotated, 0)
+
+        img_patch_seperated_returned = rotate_image(img_patch_seperated, -slopes_tile_wise[i])
+        img_patch_seperated_returned[:, :][img_patch_seperated_returned[:, :] != 0] = 1
+
+        img_patch_seperated_returned_true_size = img_patch_seperated_returned[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0], int(img_int.shape[1] * (1)) : int(img_int.shape[1] * (1)) + img_int.shape[1]]
+
+        img_patch_seperated_returned_true_size = img_patch_seperated_returned_true_size[:, margin : length_x - margin]
+        img_patch_ineterst_revised[:, index_x_d + margin : index_x_u - margin] = img_patch_seperated_returned_true_size
+
+    # plt.imshow(img_patch_ineterst_revised)
+    # plt.show()
+    return img_patch_ineterst_revised
+
+def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=None, f_name=None):
+
+
+    if main_page and dir_of_all is not None:
+
+
+        plt.figure(figsize=(70,40))
+        plt.rcParams['font.size']='50'
+        plt.subplot(1,2,1)
+        plt.imshow(img_patch_org)
+        plt.subplot(1,2,2)
+        plt.plot(gaussian_filter1d(img_patch_org.sum(axis=1), 3),np.array(range(len(gaussian_filter1d(img_patch_org.sum(axis=1), 3)))),linewidth=8)
+        plt.xlabel('Density of textline prediction in direction of X axis',fontsize=60)
+        plt.ylabel('Height',fontsize=60)
+        plt.yticks([0,len(gaussian_filter1d(img_patch_org.sum(axis=1), 3))])
+        plt.gca().invert_yaxis()
+
+        plt.savefig(os.path.join(dir_of_all, f_name+'_density_of_textline.png'))
+    #print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar')
+
+    #img_patch_org=resize_image(img_patch_org,int(img_patch_org.shape[0]*2.5),int(img_patch_org.shape[1]/2.5))
+
+    #print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar2')
+
+    img_int=np.zeros((img_patch_org.shape[0],img_patch_org.shape[1]))
+    img_int[:,:]=img_patch_org[:,:]#img_patch_org[:,:,0]
+
+
+
+    max_shape=np.max(img_int.shape)
+    img_resized=np.zeros((int( max_shape*(1.1) ) , int( max_shape*(1.1) ) ))
+
+
+    onset_x=int((img_resized.shape[1]-img_int.shape[1])/2.)
+    onset_y=int((img_resized.shape[0]-img_int.shape[0])/2.)
+
+
+    #img_resized=np.zeros((int( img_int.shape[0]*(1.8) ) , int( img_int.shape[1]*(2.6) ) ))
+
+
+
+    #img_resized[ int( img_int.shape[0]*(.4)):int( img_int.shape[0]*(.4))+img_int.shape[0] , int( img_int.shape[1]*(.8)):int( img_int.shape[1]*(.8))+img_int.shape[1] ]=img_int[:,:]
+    img_resized[ onset_y:onset_y+img_int.shape[0] , onset_x:onset_x+img_int.shape[1] ]=img_int[:,:]
+
+    #print(img_resized.shape,'img_resizedshape')
+    #plt.imshow(img_resized)
+    #plt.show()
+
+    if main_page and img_patch_org.shape[1]>img_patch_org.shape[0]:
+
+        #plt.imshow(img_resized)
+        #plt.show()
+        angels=np.array([-45, 0 , 45 , 90 , ])#np.linspace(-12,12,100)#np.array([0 , 45 , 90 , -45])
+
+        #res=[]
+        #num_of_peaks=[]
+        #index_cor=[]
+        var_res=[]
+
+        #indexer=0
+        for rot in angels:
+            img_rot=self.rotate_image(img_resized,rot)
+            #plt.imshow(img_rot)
+            #plt.show()
+            img_rot[img_rot!=0]=1
+            #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
+
+
+            #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+            #print(var_spectrum,'var_spectrum')
+            try:
+                var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                ##print(rot,var_spectrum,'var_spectrum')
+                #res_me=np.mean(neg_peaks)
+                #if res_me==0:
+                    #res_me=1000000000000000000000
+                #else:
+                    #pass
+
+                #res_num=len(neg_peaks)
+            except:
+                #res_me=1000000000000000000000
+                #res_num=0
+                var_spectrum=0
+            #if self.isNaN(res_me):
+                #pass
+            #else:
+                #res.append( res_me )
+                #var_res.append(var_spectrum)
+                #num_of_peaks.append( res_num )
+                #index_cor.append(indexer)
+            #indexer=indexer+1
+
+            var_res.append(var_spectrum)
+            #index_cor.append(indexer)
+            #indexer=indexer+1
+
+
+        try:
+            var_res=np.array(var_res)
+
+            ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
+        except:
+            ang_int=0
+
+
+        angels=np.linspace(ang_int-22.5,ang_int+22.5,100)
+
+        #res=[]
+        #num_of_peaks=[]
+        #index_cor=[]
+        var_res=[]
+
+
+        for rot in angels:
+            img_rot=self.rotate_image(img_resized,rot)
+            ##plt.imshow(img_rot)
+            ##plt.show()
+            img_rot[img_rot!=0]=1
+            #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
+            try:
+                var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+
+            except:
+                var_spectrum=0
+
+            var_res.append(var_spectrum)
+
+
+
+
+        try:
+            var_res=np.array(var_res)
+
+            ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
+        except:
+            ang_int=0
+
+    elif main_page and img_patch_org.shape[1]<=img_patch_org.shape[0]:
+
+        #plt.imshow(img_resized)
+        #plt.show()
+        angels=np.linspace(-12,12,100)#np.array([0 , 45 , 90 , -45])
+
+
+        var_res=[]
+
+        for rot in angels:
+            img_rot=self.rotate_image(img_resized,rot)
+            #plt.imshow(img_rot)
+            #plt.show()
+            img_rot[img_rot!=0]=1
+            #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
+
+
+            #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+            #print(var_spectrum,'var_spectrum')
+            try:
+                var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+
+            except:
+                var_spectrum=0
+
+            var_res.append(var_spectrum)
+
+
+        if self.dir_of_all is not None:
+            #print('galdi?')
+            plt.figure(figsize=(60,30))
+            plt.rcParams['font.size']='50'
+            plt.plot(angels,np.array(var_res),'-o',markersize=25,linewidth=4)
+            plt.xlabel('angle',fontsize=50)
+            plt.ylabel('variance of sum of rotated textline in direction of x axis',fontsize=50)
+
+            plt.plot(angels[np.argmax(var_res)],var_res[np.argmax(np.array(var_res))]  ,'*',markersize=50,label='Angle of deskewing=' +str("{:.2f}".format(angels[np.argmax(var_res)]))+r'$\degree$')
+            plt.legend(loc='best')
+            plt.savefig(os.path.join(self.dir_of_all,self.f_name+'_rotation_angle.png'))
+
+
+        try:
+            var_res=np.array(var_res)
+
+            ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
+        except:
+            ang_int=0
+
+
+        early_slope_edge=11
+        if abs(ang_int)>early_slope_edge and ang_int<0:
+
+            angels=np.linspace(-90,-12,100)
+
+            var_res=[]
+
+            for rot in angels:
+                img_rot=self.rotate_image(img_resized,rot)
+                ##plt.imshow(img_rot)
+                ##plt.show()
+                img_rot[img_rot!=0]=1
+                #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
+                try:
+                    var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                except:
+                    var_spectrum=0
+
+                var_res.append(var_spectrum)
+
+
+            try:
+                var_res=np.array(var_res)
+
+                ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
+            except:
+                ang_int=0
+
+        elif abs(ang_int)>early_slope_edge and ang_int>0:
+
+            angels=np.linspace(90,12,100)
+
+
+            var_res=[]
+
+            for rot in angels:
+                img_rot=self.rotate_image(img_resized,rot)
+                ##plt.imshow(img_rot)
+                ##plt.show()
+                img_rot[img_rot!=0]=1
+                #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
+                try:
+                    var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                    #print(indexer,'indexer')
+                except:
+                    var_spectrum=0
+
+                var_res.append(var_spectrum)
+
+
+            try:
+                var_res=np.array(var_res)
+
+                ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
+            except:
+                ang_int=0
+    else:
+
+
+        angels=np.linspace(-25,25,60)
+
+        var_res=[]
+
+        indexer=0
+        for rot in angels:
+            img_rot=self.rotate_image(img_resized,rot)
+            #plt.imshow(img_rot)
+            #plt.show()
+            img_rot[img_rot!=0]=1
+            #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
+
+
+            #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+            #print(var_spectrum,'var_spectrum')
+            try:
+                var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+            except:
+                var_spectrum=0
+
+            var_res.append(var_spectrum)
+
+
+        try:
+            var_res=np.array(var_res)
+
+            ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
+        except:
+            ang_int=0
+
+        #plt.plot(var_res)
+        #plt.show()
+
+        ##plt.plot(mom3_res)
+        ##plt.show()
+        #print(ang_int,'ang_int111')
+
+        early_slope_edge=22
+        if abs(ang_int)>early_slope_edge and ang_int<0:
+
+            angels=np.linspace(-90,-25,60)
+
+            var_res=[]
+
+            for rot in angels:
+                img_rot=self.rotate_image(img_resized,rot)
+                ##plt.imshow(img_rot)
+                ##plt.show()
+                img_rot[img_rot!=0]=1
+                #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
+                try:
+                    var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+
+                except:
+                    var_spectrum=0
+
+                var_res.append(var_spectrum)
+
+
+
+            try:
+                var_res=np.array(var_res)
+
+                ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
+            except:
+                ang_int=0
+
+        elif abs(ang_int)>early_slope_edge and ang_int>0:
+
+            angels=np.linspace(90,25,60)
+
+            var_res=[]
+
+            indexer=0
+            for rot in angels:
+                img_rot=self.rotate_image(img_resized,rot)
+                ##plt.imshow(img_rot)
+                ##plt.show()
+                img_rot[img_rot!=0]=1
+                #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
+                try:
+                    var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                    #print(indexer,'indexer')
+                except:
+                    var_spectrum=0
+
+                var_res.append(var_spectrum)
+
+
+
+            try:
+                var_res=np.array(var_res)
+
+                ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
+            except:
+                ang_int=0
+
+    return ang_int
 
