@@ -1,3 +1,16 @@
+import numpy as np
+import cv2
+from scipy.signal import find_peaks
+from scipy.ndimage import gaussian_filter1d
+
+from .rotate import rotate_image
+from .contour import (
+    return_parent_contours,
+    filter_contours_area_of_image_tables,
+    return_contours_of_image,
+    filter_contours_area_of_image
+)
+from .is_nan import isNaN
 
 def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 
@@ -1262,4 +1275,94 @@ def seperate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
     ##print(cont_final,'nadizzzz')
     return None, cont_final
 
+
+def textline_contours_postprocessing(textline_mask, slope, contour_text_interest, box_ind, slope_first, add_boxes_coor_into_textlines=False):
+
+    textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2) * 255
+    textline_mask = textline_mask.astype(np.uint8)
+    kernel = np.ones((5, 5), np.uint8)
+    textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_OPEN, kernel)
+    textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_CLOSE, kernel)
+    textline_mask = cv2.erode(textline_mask, kernel, iterations=2)
+    # textline_mask = cv2.erode(textline_mask, kernel, iterations=1)
+
+    # print(textline_mask.shape[0]/float(textline_mask.shape[1]),'miz')
+    try:
+        # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
+        # plt.imshow(textline_mask)
+        # plt.show()
+
+        # if abs(slope)>1:
+        # x_help=30
+        # y_help=2
+        # else:
+        # x_help=2
+        # y_help=2
+
+        x_help = 30
+        y_help = 2
+
+        textline_mask_help = np.zeros((textline_mask.shape[0] + int(2 * y_help), textline_mask.shape[1] + int(2 * x_help), 3))
+        textline_mask_help[y_help : y_help + textline_mask.shape[0], x_help : x_help + textline_mask.shape[1], :] = np.copy(textline_mask[:, :, :])
+
+        dst = rotate_image(textline_mask_help, slope)
+        dst = dst[:, :, 0]
+        dst[dst != 0] = 1
+
+        # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
+        # plt.imshow(dst)
+        # plt.show()
+
+        contour_text_copy = contour_text_interest.copy()
+
+        contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[0]
+        contour_text_copy[:, 0, 1] = contour_text_copy[:, 0, 1] - box_ind[1]
+
+        img_contour = np.zeros((box_ind[3], box_ind[2], 3))
+        img_contour = cv2.fillPoly(img_contour, pts=[contour_text_copy], color=(255, 255, 255))
+
+        # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
+        # plt.imshow(img_contour)
+        # plt.show()
+
+        img_contour_help = np.zeros((img_contour.shape[0] + int(2 * y_help), img_contour.shape[1] + int(2 * x_help), 3))
+
+        img_contour_help[y_help : y_help + img_contour.shape[0], x_help : x_help + img_contour.shape[1], :] = np.copy(img_contour[:, :, :])
+
+        img_contour_rot = rotate_image(img_contour_help, slope)
+
+        # plt.imshow(img_contour_rot_help)
+        # plt.show()
+
+        # plt.imshow(dst_help)
+        # plt.show()
+
+        # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
+        # plt.imshow(img_contour_rot_help)
+        # plt.show()
+
+        # plt.imshow(dst_help)
+        # plt.show()
+
+        img_contour_rot = img_contour_rot.astype(np.uint8)
+        # dst_help = dst_help.astype(np.uint8)
+        imgrayrot = cv2.cvtColor(img_contour_rot, cv2.COLOR_BGR2GRAY)
+        _, threshrot = cv2.threshold(imgrayrot, 0, 255, 0)
+        contours_text_rot, _ = cv2.findContours(threshrot.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        len_con_text_rot = [len(contours_text_rot[ib]) for ib in range(len(contours_text_rot))]
+        ind_big_con = np.argmax(len_con_text_rot)
+
+        # print('juzaa')
+        if abs(slope) > 45:
+            # print(add_boxes_coor_into_textlines,'avval')
+            _, contours_rotated_clean = seperate_lines_vertical_cont(textline_mask, contours_text_rot[ind_big_con], box_ind, slope, add_boxes_coor_into_textlines=add_boxes_coor_into_textlines)
+        else:
+            _, contours_rotated_clean = seperate_lines(dst, contours_text_rot[ind_big_con], slope, x_help, y_help)
+
+    except:
+
+        contours_rotated_clean = []
+
+    return contours_rotated_clean
 

@@ -1,3 +1,7 @@
+import math
+
+import imutils
+import cv2
 
 def rotatedRectWithMaxArea(w, h, angle):
     if w <= 0 or h <= 0:
