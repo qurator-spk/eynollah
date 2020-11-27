@@ -35,35 +35,27 @@ from matplotlib import pyplot, transforms
 import matplotlib.patches as mpatches
 import imutils
 
-from .utils import (
-    boosting_headers_by_longshot_region_segmentation,
+from .utils.contour import (
     contours_in_same_horizon,
-    crop_image_inside_box,
     filter_contours_area_of_image_interiors,
     filter_contours_area_of_image_tables,
-    filter_small_drop_capitals_from_no_patch_layout,
     find_contours_mean_y_diff,
     find_features_of_contours,
-    find_features_of_lines,
     find_new_features_of_contoures,
-    find_num_col,
-    find_num_col_by_vertical_lines,
-    find_num_col_deskew,
-    find_num_col_only_image,
     get_text_region_boxes_by_given_contours,
     get_textregion_contours_in_org_image,
-    isNaN,
-    otsu_copy,
-    otsu_copy_binary,
-    resize_image,
     return_bonding_box_of_contours,
     return_contours_of_image,
     return_contours_of_interested_region,
     return_contours_of_interested_region_and_bounding_box,
     return_contours_of_interested_region_by_min_size,
     return_contours_of_interested_textline,
-    return_hor_spliter_by_index_for_without_verticals,
     return_parent_contours,
+    return_contours_of_interested_region_by_size,
+    textline_contours_postprocessing,
+)
+
+from .utils.rotate import (
     rotate_image,
     rotate_max_area,
     rotate_max_area_new,
@@ -71,10 +63,31 @@ from .utils import (
     rotation_image_new,
     rotation_not_90_func,
     rotation_not_90_func_full_layout,
+    rotyate_image_different,
+)
+
+from .utils.separate_lines import (
     seperate_lines,
     seperate_lines_new_inside_teils,
     seperate_lines_new_inside_teils2,
+    seperate_lines_vertical,
     seperate_lines_vertical_cont,
+)
+
+from .utils import (
+    boosting_headers_by_longshot_region_segmentation,
+    crop_image_inside_box,
+    filter_small_drop_capitals_from_no_patch_layout,
+    find_features_of_lines,
+    find_num_col,
+    find_num_col_by_vertical_lines,
+    find_num_col_deskew,
+    find_num_col_only_image,
+    isNaN,
+    otsu_copy,
+    otsu_copy_binary,
+    resize_image,
+    return_hor_spliter_by_index_for_without_verticals,
     delete_seperator_around,
     return_regions_without_seperators,
     return_deskew_slop,
@@ -82,14 +95,12 @@ from .utils import (
     putt_bb_of_drop_capitals_of_model_in_patches_in_layout,
     check_any_text_region_in_model_one_is_main_or_header,
     small_textlines_to_parent_adherence2,
-    return_contours_of_interested_region_by_size,
     order_and_id_of_texts,
     order_of_regions,
     implent_law_head_main_not_parallel,
     return_hor_spliter_by_index,
     combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new,
     return_points_with_boundies,
-    textline_contours_postprocessing,
     find_number_of_columns_in_document,
     return_boxes_of_images_by_order_of_reading_new,
 )
@@ -4085,7 +4096,7 @@ class eynollah:
         plt.savefig(os.path.join(self.dir_of_all, self.f_name + "_layout_and_page.png"))
 
     def save_deskewed_image(self, slope_deskew):
-        img_rotated = self.rotyate_image_different(self.image_org, slope_deskew)
+        img_rotated = rotyate_image_different(self.image_org, slope_deskew)
 
         if self.dir_of_all is not None:
             cv2.imwrite(os.path.join(self.dir_of_all, self.f_name + "_org.png"), self.image_org)
@@ -4236,7 +4247,7 @@ class eynollah:
 
                 if self.dir_of_deskewed is not None:
                     self.save_deskewed_image(slope_deskew)
-                # img_rotated=self.rotyate_image_different(self.image_org,slope_deskew)
+                # img_rotated=rotyate_image_different(self.image_org,slope_deskew)
                 print(slope_deskew, "slope_deskew")
 
                 ##plt.imshow(img_rotated)
