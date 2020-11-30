@@ -1,5 +1,5 @@
-**WARNING! This tool is currently still** ![under_construction](http://www.textfiles.com/underconstruction/HeHeartlandPark2601underconstructionbar9.gif)  
-**For current status and planned changes, please have a look at the [Pull Requests](https://github.com/qurator-spk/eynollah/pulls).**
+**WARNING! This tool is currently** ![under_construction](http://www.textfiles.com/underconstruction/HeHeartlandPark2601underconstructionbar9.gif)  
+**For any planned changes, please have a look at the [Pull Requests](https://github.com/qurator-spk/eynollah/pulls).**
 
 # Eynollah
 > Document Layout Analysis
@@ -56,7 +56,7 @@ Some heuristic methods are also employed to further improve the model prediction
 `run ./make`
 
 ### Models
-In order to run this tool you also need trained models. You can download our pretrained models from qurator-data.
+In order to run this tool you also need trained models. You can download our pretrained models from [here](https://qurator-data.de/eynollah/).
 
 ## Usage
 
