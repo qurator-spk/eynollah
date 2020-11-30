@@ -82,14 +82,14 @@ First of all, this model makes use of up to 9 trained models which are responsib
 
 * If none of the parameters is set to `true`, the tool will perform a layout detection of main regions (background, text, images, separators and marginals). An advantage of this tool is that it tries to extract main text regions separately as much as possible.
 
-* If you set `-ae` (allow image enhancement) parameter to `true`, the tool will first check the ppi (pixel-per-inch) of the image and when it is less than 300, the tool will resize it and only then image enhancement will occur. Image enhancement can also take place without this option, but by setting this option to `true`, the layout xml data (e.g. coordinates) will be based on the resized and enhanced image instead of the original image.
+* If you set `-ae` (**a**llow image **e**nhancement) parameter to `true`, the tool will first check the ppi (pixel-per-inch) of the image and when it is less than 300, the tool will resize it and only then image enhancement will occur. Image enhancement can also take place without this option, but by setting this option to `true`, the layout xml data (e.g. coordinates) will be based on the resized and enhanced image instead of the original image.
 
-* For some documents, while the quality is good, their scale is extremly large and the performance of tool decreases. In such cases you can set `-as` (allow scaling) to `true`. With this option enabled, the tool will try to rescale the image and only then the layout detection process will begin.
+* For some documents, while the quality is good, their scale is extremly large and the performance of tool decreases. In such cases you can set `-as` (**a**llow **s**caling) to `true`. With this option enabled, the tool will try to rescale the image and only then the layout detection process will begin.
 
-* If you care about drop capitals (initials) and headings, you can set `-fl` (full layout) to `true`. As we can see in the case of full layout, we can currently distinguish 7 document layout classes/elements.
+* If you care about drop capitals (initials) and headings, you can set `-fl` (**f**ull **l**ayout) to `true`. As we can see in the case of full layout, we can currently distinguish 7 document layout classes/elements.
 
-* In cases where the documents include curved headers or curved lines it is obvious that rectangular bounding boxes for textlines will not be a great option. For this, we have developed an option which tries to find contours of the curvy textlines. You can set `-cl` (curved lines) to `true` to enable this option. Be advised that this will increase the time needed for the tool to process the document.
+* In cases where the documents include curved headers or curved lines it is obvious that rectangular bounding boxes for textlines will not be a great option. For this, we have developed an option which tries to find contours of the curvy textlines. You can set `-cl` (**c**urved **l**ines) to `true` to enable this option. Be advised that this will increase the time needed for the tool to process the document.
 
-* If you want to crop and save image regions inside the document, just provide a directory with the parameter, `-si` (save images).
+* If you want to crop and save image regions inside the document, just provide a directory with the parameter, `-si` (**s**ave **i**mages).
 
 * This tool is actively being developed. If any problems occur or the performance does not meet your expectations, we welcome your feedback.
