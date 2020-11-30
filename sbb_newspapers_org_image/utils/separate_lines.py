@@ -13,8 +13,7 @@ from .contour import (
 )
 from .is_nan import isNaN
 
-def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
-
+def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
     (h, w) = img_patch.shape[:2]
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
@@ -23,7 +22,6 @@ def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 
     thetha = thetha / 180.0 * np.pi
     rotation_matrix = np.array([[np.cos(thetha), -np.sin(thetha)], [np.sin(thetha), np.cos(thetha)]])
-    contour_text_interest_copy = contour_text_interest.copy()
 
     x_cont = contour_text_interest[:, 0, 0]
     y_cont = contour_text_interest[:, 0, 1]
@@ -37,7 +35,7 @@ def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 
     xv = np.linspace(x_min_cont, x_max_cont, 1000)
 
-    textline_patch_sum_along_width = img_patch.sum(axis=1)
+    textline_patch_sum_along_width = img_patch.sum(axis=axis)
 
     first_nonzero = 0  # (next((i for i, x in enumerate(mada_n) if x), None))
 
@@ -120,6 +118,13 @@ def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 
     peaks, _ = find_peaks(y_padded_smoothed, height=0)
     peaks_neg, _ = find_peaks(y_padded_up_to_down_padded, height=0)
+
+    return x, y, x_d, y_d, xv, x_min_cont, y_min_cont, x_max_cont, y_max_cont, first_nonzero, y_padded_up_to_down_padded, y_padded_smoothed, peaks, peaks_neg, rotation_matrix
+
+def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
+
+    contour_text_interest_copy = contour_text_interest.copy()
+    x, y, x_d, y_d, xv, x_min_cont, y_min_cont, x_max_cont, y_max_cont, first_nonzero, y_padded_up_to_down_padded, y_padded_smoothed, peaks, peaks_neg, rotation_matrix = dedup_separate_lines(img_patch, contour_text_interest, thetha, 1)
 
     try:
         neg_peaks_max = np.max(y_padded_smoothed[peaks])
@@ -478,111 +483,9 @@ def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 def seperate_lines_vertical(img_patch, contour_text_interest, thetha):
 
     thetha = thetha + 90
-
-    (h, w) = img_patch.shape[:2]
-    center = (w // 2, h // 2)
-    M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
-    x_d = M[0, 2]
-    y_d = M[1, 2]
-
-    thetha = thetha / 180.0 * np.pi
-    rotation_matrix = np.array([[np.cos(thetha), -np.sin(thetha)], [np.sin(thetha), np.cos(thetha)]])
     contour_text_interest_copy = contour_text_interest.copy()
+    x, y, x_d, y_d, xv, x_min_cont, y_min_cont, x_max_cont, y_max_cont, first_nonzero, y_padded_up_to_down_padded, y_padded_smoothed, peaks, peaks_neg, rotation_matrix = dedup_separate_lines(img_patch, contour_text_interest, thetha, 0)
 
-    x_cont = contour_text_interest[:, 0, 0]
-    y_cont = contour_text_interest[:, 0, 1]
-    x_cont = x_cont - np.min(x_cont)
-    y_cont = y_cont - np.min(y_cont)
-
-    x_min_cont = 0
-    x_max_cont = img_patch.shape[1]
-    y_min_cont = 0
-    y_max_cont = img_patch.shape[0]
-
-    xv = np.linspace(x_min_cont, x_max_cont, 1000)
-
-    textline_patch_sum_along_width = img_patch.sum(axis=0)
-
-    first_nonzero = 0  # (next((i for i, x in enumerate(mada_n) if x), None))
-
-    y = textline_patch_sum_along_width[:]  # [first_nonzero:last_nonzero]
-    y_padded = np.zeros(len(y) + 40)
-    y_padded[20 : len(y) + 20] = y
-    x = np.array(range(len(y)))
-
-    peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
-    if 1 > 0:
-
-        try:
-
-            y_padded_smoothed_e = gaussian_filter1d(y_padded, 2)
-            y_padded_up_to_down_e = -y_padded + np.max(y_padded)
-            y_padded_up_to_down_padded_e = np.zeros(len(y_padded_up_to_down_e) + 40)
-            y_padded_up_to_down_padded_e[20 : len(y_padded_up_to_down_e) + 20] = y_padded_up_to_down_e
-            y_padded_up_to_down_padded_e = gaussian_filter1d(y_padded_up_to_down_padded_e, 2)
-
-            peaks_e, _ = find_peaks(y_padded_smoothed_e, height=0)
-            peaks_neg_e, _ = find_peaks(y_padded_up_to_down_padded_e, height=0)
-            neg_peaks_max = np.max(y_padded_up_to_down_padded_e[peaks_neg_e])
-
-            arg_neg_must_be_deleted = np.array(range(len(peaks_neg_e)))[y_padded_up_to_down_padded_e[peaks_neg_e] / float(neg_peaks_max) < 0.3]
-            diff_arg_neg_must_be_deleted = np.diff(arg_neg_must_be_deleted)
-
-            arg_diff = np.array(range(len(diff_arg_neg_must_be_deleted)))
-            arg_diff_cluster = arg_diff[diff_arg_neg_must_be_deleted > 1]
-
-            peaks_new = peaks_e[:]
-            peaks_neg_new = peaks_neg_e[:]
-
-            clusters_to_be_deleted = []
-            if len(arg_diff_cluster) > 0:
-
-                clusters_to_be_deleted.append(arg_neg_must_be_deleted[0 : arg_diff_cluster[0] + 1])
-                for i in range(len(arg_diff_cluster) - 1):
-                    clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[i] + 1 : arg_diff_cluster[i + 1] + 1])
-                clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster) - 1] + 1 :])
-
-            if len(clusters_to_be_deleted) > 0:
-                peaks_new_extra = []
-                for m in range(len(clusters_to_be_deleted)):
-                    min_cluster = np.min(peaks_e[clusters_to_be_deleted[m]])
-                    max_cluster = np.max(peaks_e[clusters_to_be_deleted[m]])
-                    peaks_new_extra.append(int((min_cluster + max_cluster) / 2.0))
-                    for m1 in range(len(clusters_to_be_deleted[m])):
-                        peaks_new = peaks_new[peaks_new != peaks_e[clusters_to_be_deleted[m][m1] - 1]]
-                        peaks_new = peaks_new[peaks_new != peaks_e[clusters_to_be_deleted[m][m1]]]
-
-                        peaks_neg_new = peaks_neg_new[peaks_neg_new != peaks_neg_e[clusters_to_be_deleted[m][m1]]]
-                peaks_new_tot = []
-                for i1 in peaks_new:
-                    peaks_new_tot.append(i1)
-                for i1 in peaks_new_extra:
-                    peaks_new_tot.append(i1)
-                peaks_new_tot = np.sort(peaks_new_tot)
-
-            else:
-                peaks_new_tot = peaks_e[:]
-
-            textline_con, hierachy = return_contours_of_image(img_patch)
-            textline_con_fil = filter_contours_area_of_image(img_patch, textline_con, hierachy, max_area=1, min_area=0.0008)
-            y_diff_mean = np.mean(np.diff(peaks_new_tot))  # self.find_contours_mean_y_diff(textline_con_fil)
-
-            sigma_gaus = int(y_diff_mean * (7.0 / 40.0))
-            # print(sigma_gaus,'sigma_gaus')
-        except:
-            sigma_gaus = 12
-        if sigma_gaus < 3:
-            sigma_gaus = 3
-        # print(sigma_gaus,'sigma')
-
-    y_padded_smoothed = gaussian_filter1d(y_padded, sigma_gaus)
-    y_padded_up_to_down = -y_padded + np.max(y_padded)
-    y_padded_up_to_down_padded = np.zeros(len(y_padded_up_to_down) + 40)
-    y_padded_up_to_down_padded[20 : len(y_padded_up_to_down) + 20] = y_padded_up_to_down
-    y_padded_up_to_down_padded = gaussian_filter1d(y_padded_up_to_down_padded, sigma_gaus)
-
-    peaks, _ = find_peaks(y_padded_smoothed, height=0)
-    peaks_neg, _ = find_peaks(y_padded_up_to_down_padded, height=0)
 
     # plt.plot(y_padded_up_to_down_padded)
     # plt.plot(peaks_neg,y_padded_up_to_down_padded[peaks_neg],'*')
