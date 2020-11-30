@@ -18,7 +18,7 @@ It can currently detect the following layout classes/elements:
  
 In addition, the tool can be used to detect the _Reading Order_ of regions. The final goal is to feed the output to an OCR model. 
 
-The tool uses a combination of various models and heuristics:
+The tool uses a combination of various models and heuristics (see flowchart below for the different stages and how they interact):
 * [Border detection](https://github.com/qurator-spk/eynollah#border-detection)
 * [Layout detection](https://github.com/qurator-spk/eynollah#layout-detection)
 * [Textline detection](https://github.com/qurator-spk/eynollah#textline-detection)
@@ -27,6 +27,8 @@ The tool uses a combination of various models and heuristics:
 * [Heuristic methods](https://https://github.com/qurator-spk/eynollah#heuristic-methods)
 
 The first three stages are based on [pixelwise segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation).
+
+![](https://user-images.githubusercontent.com/952378/100619946-1936f680-331e-11eb-9297-6e8b4cab3c16.png)
 
 ## Border detection
 For the purpose of text recognition (OCR) and in order to avoid noise being introduced from texts outside the printspace, one first needs to detect the border of the printed frame. This is done by a binary pixelwise-segmentation model trained on a dataset of 2,000 documents where about 1,200 of them come from the [dhSegment](https://github.com/dhlab-epfl/dhSegment/) project (you can download the dataset from [here](https://github.com/dhlab-epfl/dhSegment/releases/download/v0.2/pages.zip)) and the remainder having been annotated in SBB. For border detection, the model needs to be fed with the whole image at once rather than separated in patches.
