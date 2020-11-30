@@ -16,7 +16,7 @@ It can currently detect the following layout classes/elements:
 * Marginalia
 * Initial
  
-The final goal is to feed the output to an OCR model. 
+In addition, the tool can be used to determine the _Reading Order_ of regions. The final goal is to feed the output to an OCR model. 
 
 The tool uses a combination of various models and heuristics:
 * [Border detection](https://github.com/qurator-spk/eynollah#border-detection)
