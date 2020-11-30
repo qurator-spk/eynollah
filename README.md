@@ -14,7 +14,7 @@ It can currently detect the following layout classes/elements:
 * Textline
 * Separator
 * Marginalia
-* Initial
+* Initial (Drop Capital)
  
 In addition, the tool can be used to detect the _Reading Order_ of regions. The final goal is to feed the output to an OCR model. 
 
