@@ -1,15 +1,13 @@
-**WARNING! This tool is currently still**  
-![under_construction](http://www.textfiles.com/underconstruction/HeHeartlandPark2601underconstructionbar9.gif)  
-**For current status and planned changes,  
-please have a look at the [Pull Requests](https://github.com/qurator-spk/eynollah/pulls).**
+**WARNING! This tool is currently still** ![under_construction](http://www.textfiles.com/underconstruction/HeHeartlandPark2601underconstructionbar9.gif)  
+**For current status and planned changes, please have a look at the [Pull Requests](https://github.com/qurator-spk/eynollah/pulls).**
 
 # Eynollah
 > Document Layout Analysis
 
 ## Introduction
-This tool (eynollah) performs document layout analysis (segmentation) from document image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
+This tool performs document layout analysis (segmentation) from image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
 
-It can currently detect the following layout classes:
+It can currently detect the following layout classes/elements:
 * Border
 * Textregion
 * Image
@@ -21,12 +19,12 @@ It can currently detect the following layout classes:
 The final goal is to feed the output to an OCR model. 
 
 The tool uses a combination of various models and heuristics:
-* [Border detection](https://github.com/qurator-spk#border-detection)
-* [Layout detection](https://github.com/qurator-spk#layout-detection)
-* [Textline detection](https://github.com/qurator-spk#textline-detection)
-* [Image enhancement](https://github.com/qurator-spk#Image_enhancement)
-* [Scale classification](https://github.com/qurator-spk#Scale_classification)
-* [Heuristic methods](https://github.com/qurator-spk#heuristic-methods)
+* [Border detection](https://github.com/qurator-spk/eynollah#border-detection)
+* [Layout detection](https://github.com/qurator-spk/eynollah#layout-detection)
+* [Textline detection](https://github.com/qurator-spk/eynollah#textline-detection)
+* [Image enhancement](https://github.com/qurator-spk/eynollah#Image_enhancement)
+* [Scale classification](https://github.com/qurator-spk/eynollah#Scale_classification)
+* [Heuristic methods](https://https://github.com/qurator-spk/eynollah#heuristic-methods)
 
 The first three stages are based on [pixelwise segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation).
 
@@ -76,21 +74,21 @@ The basic command-line interface can be called like this:
 
 The tool does accept and works better on original images (RGB format) than binarized images.
 
-### How and where to use
+### How to use
 
 First of all, for this model we have trained 9 models which are doing different jobs like size detection (or column classifier), enhancing, page extraction, main layout detection, full layout detection and textline detetction. But this does not mean all those 9 models are needed for each document. Based on document and parameters it can be different. It is worthy to mention that with this tool we are able to detect reading order of text regions for simple documents (I will not go in detail with order of reading since it is a complex issue and many factors play a role about it).
 
 * If none of parameters is set to true, this tool will try to do a layout detection of main regions (background, text, images, separators and marginals). Actually, advantage of this tool is that it has tried to extract main text regions separately as much as possible.
 
-* If you set -ae(allow enhancement) paremeter to true, this tool would check first dpi of document and if it is less than 300 then our tool first will resize it and then enhancement will occur. In fact enhancemnet can take place even without this option but by setting this option to true layout (better say xml data) will be written on resized and enhanced image instead of original image.
+* If you set `-ae` (allow enhancement) paremeter to `true`, this tool would check first dpi of document and if it is less than 300 then our tool first will resize it and then enhancement will occur. In fact enhancemnet can take place even without this option but by setting this option to true layout (better say xml data) will be written on resized and enhanced image instead of original image.
 
-* Some documents quality are really good but their scale is extremly big and therefore the performance of tool decreases. In those cases you can set -as (allow scaling) to true. With this option our tool first would try to scale image and then layout detection process will begin.
+* Some documents quality are really good but their scale is extremly big and therefore the performance of tool decreases. In those cases you can set `-as` (allow scaling) to `true`. With this option our tool first would try to scale image and then layout detection process will begin.
 
-* If you care about drop capitals and headings you can set -fl (full layout) to true. As we can see in the case of full layout we can detect 7 elements of document.
+* If you care about drop capitals and headings you can set `-fl` (full layout) to `true`. As we can see in the case of full layout we can detect 7 elements of document.
 
-* We face documents which include curved header or curved lines and it is abvious that a rectangle bounding boxes for textlines would never be a great option. So, we have developed an option which can try to find contours of those curvy textlines. You can set -cl (curved lines) to true to have this option. Be carefull that this increase the time, the tool needs to go through document.
+* We face documents which include curved header or curved lines and it is abvious that a rectangle bounding boxes for textlines would never be a great option. So, we have developed an option which can try to find contours of those curvy textlines. You can set `-cl` (curved lines) to `true` to have this option. Be carefull that this increase the time, the tool needs to go through document.
 
-* If you want to crop and save image regions inside document just provide a directory with this parameter, -si (save images).
+* If you want to crop and save image regions inside document just provide a directory with this parameter, `-si` (save images).
 
 * At the end this tool still needs to be optimized and developed. So if any problems occur or this tool performance does not meet your expectation, you can provide us your worthy feedback.
 
