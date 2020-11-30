@@ -72,7 +72,7 @@ def color_images(seg, n_classes):
         seg_img[:, :, 2] = segl * c
     return seg_img
 
-def cleaning_probs(probs: np.ndarray, sigma: float) -> np.ndarray:
+def cleaning_probs(probs, sigma):
     # Smooth
     if sigma > 0.0:
         return cv2.GaussianBlur(probs, (int(3 * sigma) * 2 + 1, int(3 * sigma) * 2 + 1), sigma)
