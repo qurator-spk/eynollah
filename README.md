@@ -1,17 +1,34 @@
-# Textline Detection
-> Detect textlines in document images
+**WARNING! This tool is currently** ![under_construction](http://www.textfiles.com/underconstruction/HeHeartlandPark2601underconstructionbar9.gif)  
+**For any planned changes, please have a look at the [Pull Requests](https://github.com/qurator-spk/eynollah/pulls).**
+
+# Eynollah
+> Document Layout Analysis
 
 ## Introduction
-This tool (eynollah) performs border, region and textline detection and scaling and enhancing from document image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
-The goal of this project is to extract textlines of a document in order to feed them to an OCR model. This is achieved by four successive stages as follows:
-* [Border detection](https://github.com/qurator-spk#border-detection)
-* [Layout detection](https://github.com/qurator-spk#layout-detection)
-* [Textline detection](https://github.com/qurator-spk#textline-detection)
-* [Image enhancement](https://github.com/qurator-spk#Image_enhancement)
-* [Scale classification](https://github.com/qurator-spk#Scale_classification)
-* [Heuristic methods](https://github.com/qurator-spk#heuristic-methods)
+This tool performs document layout analysis (segmentation) from image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
+
+It can currently detect the following layout classes/elements:
+* Border
+* Textregion
+* Image
+* Textline
+* Separator
+* Marginalia
+* Initial (Drop Capital)
+ 
+In addition, the tool can be used to detect the _Reading Order_ of regions. The final goal is to feed the output to an OCR model. 
+
+The tool uses a combination of various models and heuristics (see flowchart below for the different stages and how they interact):
+* [Border detection](https://github.com/qurator-spk/eynollah#border-detection)
+* [Layout detection](https://github.com/qurator-spk/eynollah#layout-detection)
+* [Textline detection](https://github.com/qurator-spk/eynollah#textline-detection)
+* [Image enhancement](https://github.com/qurator-spk/eynollah#Image_enhancement)
+* [Scale classification](https://github.com/qurator-spk/eynollah#Scale_classification)
+* [Heuristic methods](https://https://github.com/qurator-spk/eynollah#heuristic-methods)
 
 The first three stages are based on [pixelwise segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation).
+
+![](https://user-images.githubusercontent.com/952378/100619946-1936f680-331e-11eb-9297-6e8b4cab3c16.png)
 
 ## Border detection
 For the purpose of text recognition (OCR) and in order to avoid noise being introduced from texts outside the printspace, one first needs to detect the border of the printed frame. This is done by a binary pixelwise-segmentation model trained on a dataset of 2,000 documents where about 1,200 of them come from the [dhSegment](https://github.com/dhlab-epfl/dhSegment/) project (you can download the dataset from [here](https://github.com/dhlab-epfl/dhSegment/releases/download/v0.2/pages.zip)) and the remainder having been annotated in SBB. For border detection, the model needs to be fed with the whole image at once rather than separated in patches.
@@ -38,43 +55,42 @@ Some heuristic methods are also employed to further improve the model prediction
 * Finally, using the derived coordinates, bounding boxes are determined for each textline.
 
 ## Installation
-
-```
-pip install .
-# or
-make install
-```
+`pip install .`
 
 ### Models
 
-<!-- TODO add link to models -->
-
-In order to run this tool you also need trained models. You can download [pretrained models from qurator-data](https://qurator-data.de/).
+In order to run this tool you also need trained models. You can download our pretrained models from [qurator-data.de](https://qurator-data.de/eynollah/).
 
 ## Usage
 
 The basic command-line interface can be called like this:
 
-    eynollah -i <image file name> -o <directory to write output xml or enhanced image> -m <directory of models> -fl <if this parameter is set to true, full layout will be done> -ae <if true, this tool would resize and enhance image and result will be written in  output> -as <if true, this tool would check whether the document needs scaling or not> -cl <if true, the tool will try to extract contours of texlines instead of rectangle bounding boxes> -si <if a directory is given here, this tool would write image regions inside documents there>
+    eynollah \
+    -i <image file name> \
+    -o <directory to write output xml or enhanced image> \
+    -m <directory of models> \
+    -fl <if true, the tool will perform full layout analysis> \
+    -ae <if true, the tool will resize and enhance the image and produce the resulting image as output> \
+    -as <if true, the tool will check whether the document needs rescaling or not> \
+    -cl <if true, the tool will try to extract the contours of texlines instead of rectangle bounding boxes> \
+    -si <if a directory is given here, the tool will output image regions inside documents there>
 
-The tool does accepts and works better on original images (RGB format).
+The tool does accept and works better on original images (RGB format) than binarized images.
 
-### How and where to use
+### How to use
 
-First of all, for this model we have trained 9 models which are doing different jobs like size detection (or column classifier), enhancing, page extraction, main layout detection, full layout detection and textline detetction. But this does not mean all those 9 models are needed for each document. Based on document and parameters it can be different. It is worthy to mention that with this tool we are able to detect reading order of text regions for simple documents (I will not go in detail with order of reading since it is a complex issue and many factors play a role about it).
+First of all, this model makes use of up to 9 trained models which are responsible for different operations like size detection, column classification, image enhancement, page extraction, main layout detection, full layout detection and textline detection. But this does not mean that all 9 models are always required for every document. Based on the document characteristics and parameters specified, different scenarios can be applied.
 
-* If none of parameters is set to true, this tool will try to do a layout detection of main regions (background, text, images, separators and marginals). Actually, advantage of this tool is that it has tried to extract main text regions separately as much as possible.
+* If none of the parameters is set to `true`, the tool will perform a layout detection of main regions (background, text, images, separators and marginals). An advantage of this tool is that it tries to extract main text regions separately as much as possible.
 
-* If you set -ae(allow enhancement) paremeter to true, this tool would check first dpi of document and if it is less than 300 then our tool first will resize it and then enhancement will occur. In fact enhancemnet can take place even without this option but by setting this option to true layout (better say xml data) will be written on resized and enhanced image instead of original image.
+* If you set `-ae` (**a**llow image **e**nhancement) parameter to `true`, the tool will first check the ppi (pixel-per-inch) of the image and when it is less than 300, the tool will resize it and only then image enhancement will occur. Image enhancement can also take place without this option, but by setting this option to `true`, the layout xml data (e.g. coordinates) will be based on the resized and enhanced image instead of the original image.
 
-* Some documents quality are really good but their scale is extremly big and therefore the performance of tool decreases. In those cases you can set -as (allow scaling) to true. With this option our tool first would try to scale image and then layout detection process will begin.
+* For some documents, while the quality is good, their scale is extremly large and the performance of tool decreases. In such cases you can set `-as` (**a**llow **s**caling) to `true`. With this option enabled, the tool will try to rescale the image and only then the layout detection process will begin.
 
-* If you care about drop capitals and headings you can set -fl (full layout) to true. As we can see in the case of full layout we can detect 7 elements of document.
+* If you care about drop capitals (initials) and headings, you can set `-fl` (**f**ull **l**ayout) to `true`. As we can see in the case of full layout, we can currently distinguish 7 document layout classes/elements.
 
-* We face documents which include curved header or curved lines and it is abvious that a rectangle bounding boxes for textlines would never be a great option. So, we have developed an option which can try to find contours of those curvy textlines. You can set -cl (curved lines) to true to have this option. Be carefull that this increase the time, the tool needs to go through document.
+* In cases where the documents include curved headers or curved lines it is obvious that rectangular bounding boxes for textlines will not be a great option. For this, we have developed an option which tries to find contours of the curvy textlines. You can set `-cl` (**c**urved **l**ines) to `true` to enable this option. Be advised that this will increase the time needed for the tool to process the document.
 
-* If you want to crop and save image regions inside document just provide a directory with this parameter, -si (save images).
+* If you want to crop and save image regions inside the document, just provide a directory with the parameter, `-si` (**s**ave **i**mages).
 
-* At the end this tool still needs to be optimized and developed. So if any problems occur or this tool performance does not meet your expectation, you can provide us your worthy feedback.
-
-
+* This tool is actively being developed. If any problems occur or the performance does not meet your expectations, we welcome your feedback.
