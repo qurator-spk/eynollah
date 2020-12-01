@@ -58,7 +58,8 @@ Some heuristic methods are also employed to further improve the model prediction
 `pip install .`
 
 ### Models
-In order to run this tool you also need trained models. You can download our pretrained models from [here](https://qurator-data.de/eynollah/).
+
+In order to run this tool you also need trained models. You can download our pretrained models from [qurator-data.de](https://qurator-data.de/eynollah/).
 
 ## Usage
 
