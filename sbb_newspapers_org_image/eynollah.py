@@ -1254,27 +1254,27 @@ class eynollah:
         slope_biggest = 0
 
         for mv in range(len(boxes_text)):
+            
+            crop_img,crop_coor=self.crop_image_inside_box(boxes_text[mv],image_page_rotated)
 
-            crop_img, crop_coor = crop_image_inside_box(boxes_text[mv], image_page_rotated)
-
-            # all_box_coord.append(crop_coor)
-
+            #all_box_coord.append(crop_coor)
+            
             mask_textline=np.zeros((textline_mask_tot_ea.shape))
-
+            
             mask_textline=cv2.fillPoly(mask_textline,pts=[contours_per_process[mv]],color=(1,1,1))
-
-
-
-            denoised = None
+            
+            
+        
+            denoised=None
             all_text_region_raw=(textline_mask_tot_ea*mask_textline[:,:])[boxes_text[mv][1]:boxes_text[mv][1]+boxes_text[mv][3] , boxes_text[mv][0]:boxes_text[mv][0]+boxes_text[mv][2] ]
-            all_text_region_raw = all_text_region_raw.astype(np.uint8)
-
-            img_int_p = all_text_region_raw[:, :]  # self.all_text_region_raw[mv]
-
-            img_int_p = cv2.erode(img_int_p, self.kernel, iterations=2)
-
-            if img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
-
+            all_text_region_raw=all_text_region_raw.astype(np.uint8)
+            
+            img_int_p=all_text_region_raw[:,:]#self.all_text_region_raw[mv]
+            
+            img_int_p=cv2.erode(img_int_p,self.kernel,iterations = 2)
+            
+            if img_int_p.shape[0]/img_int_p.shape[1]<0.1:
+                
                 slopes_per_each_subprocess.append(0)
 
                 slope_for_all = [slope_deskew][0]
