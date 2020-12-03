@@ -116,7 +116,6 @@ from .utils import (
 
 
 SLOPE_THRESHOLD = 0.13
-VERY_LARGE_NUMBER = 1000000000000000000000
 
 
 class eynollah:
