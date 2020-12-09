@@ -9,6 +9,10 @@ from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 
 from .is_nan import isNaN
+from .contour import (contours_in_same_horizon,
+                      find_new_features_of_contoures,
+                      return_contours_of_image,
+                      return_parent_contours)
 
 
 def crop_image_inside_box(box, img_org_copy):
@@ -767,7 +771,7 @@ def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions
     contours_only_text_parent=[contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz]>0.00001]
     """
 
-    cx_main,cy_main ,x_min_main , x_max_main, y_min_main ,y_max_main,y_corr_x_min_from_argmin=self.find_new_features_of_contoures(contours_only_text_parent)
+    cx_main,cy_main ,x_min_main , x_max_main, y_min_main ,y_max_main,y_corr_x_min_from_argmin=find_new_features_of_contoures(contours_only_text_parent)
 
     length_con=x_max_main-x_min_main
     height_con=y_max_main-y_min_main
