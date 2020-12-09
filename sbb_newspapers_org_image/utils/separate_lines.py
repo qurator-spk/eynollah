@@ -12,6 +12,33 @@ from .contour import (
     filter_contours_area_of_image
 )
 from .is_nan import isNaN
+from .utils import (
+    boosting_headers_by_longshot_region_segmentation,
+    crop_image_inside_box,
+    find_features_of_lines,
+    find_num_col,
+    find_num_col_by_vertical_lines,
+    find_num_col_deskew,
+    find_num_col_only_image,
+    isNaN,
+    otsu_copy,
+    otsu_copy_binary,
+    return_hor_spliter_by_index_for_without_verticals,
+    delete_seperator_around,
+    return_regions_without_seperators,
+    put_drop_out_from_only_drop_model,
+    putt_bb_of_drop_capitals_of_model_in_patches_in_layout,
+    check_any_text_region_in_model_one_is_main_or_header,
+    small_textlines_to_parent_adherence2,
+    order_and_id_of_texts,
+    order_of_regions,
+    implent_law_head_main_not_parallel,
+    return_hor_spliter_by_index,
+    combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new,
+    return_points_with_boundies,
+    find_number_of_columns_in_document,
+    return_boxes_of_images_by_order_of_reading_new,
+)
 
 def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
     (h, w) = img_patch.shape[:2]
@@ -1439,7 +1466,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
         #indexer=0
         for rot in angels:
-            img_rot=self.rotate_image(img_resized,rot)
+            img_rot=rotate_image(img_resized,rot)
             #plt.imshow(img_rot)
             #plt.show()
             img_rot[img_rot!=0]=1
@@ -1449,7 +1476,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
             #print(var_spectrum,'var_spectrum')
             try:
-                var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
                 ##print(rot,var_spectrum,'var_spectrum')
                 #res_me=np.mean(neg_peaks)
                 #if res_me==0:
@@ -1493,13 +1520,13 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
 
         for rot in angels:
-            img_rot=self.rotate_image(img_resized,rot)
+            img_rot=rotate_image(img_resized,rot)
             ##plt.imshow(img_rot)
             ##plt.show()
             img_rot[img_rot!=0]=1
             #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
             try:
-                var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
 
             except:
                 var_spectrum=0
@@ -1526,7 +1553,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
         var_res=[]
 
         for rot in angels:
-            img_rot=self.rotate_image(img_resized,rot)
+            img_rot=rotate_image(img_resized,rot)
             #plt.imshow(img_rot)
             #plt.show()
             img_rot[img_rot!=0]=1
@@ -1536,7 +1563,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
             #print(var_spectrum,'var_spectrum')
             try:
-                var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
 
             except:
                 var_spectrum=0
@@ -1544,7 +1571,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             var_res.append(var_spectrum)
 
 
-        if self.dir_of_all is not None:
+        if dir_of_all is not None:
             #print('galdi?')
             plt.figure(figsize=(60,30))
             plt.rcParams['font.size']='50'
@@ -1554,7 +1581,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
             plt.plot(angels[np.argmax(var_res)],var_res[np.argmax(np.array(var_res))]  ,'*',markersize=50,label='Angle of deskewing=' +str("{:.2f}".format(angels[np.argmax(var_res)]))+r'$\degree$')
             plt.legend(loc='best')
-            plt.savefig(os.path.join(self.dir_of_all,self.f_name+'_rotation_angle.png'))
+            plt.savefig(os.path.join(dir_of_all,f_name+'_rotation_angle.png'))
 
 
         try:
@@ -1573,13 +1600,13 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             var_res=[]
 
             for rot in angels:
-                img_rot=self.rotate_image(img_resized,rot)
+                img_rot=rotate_image(img_resized,rot)
                 ##plt.imshow(img_rot)
                 ##plt.show()
                 img_rot[img_rot!=0]=1
                 #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
                 try:
-                    var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                    var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
                 except:
                     var_spectrum=0
 
@@ -1601,13 +1628,13 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             var_res=[]
 
             for rot in angels:
-                img_rot=self.rotate_image(img_resized,rot)
+                img_rot=rotate_image(img_resized,rot)
                 ##plt.imshow(img_rot)
                 ##plt.show()
                 img_rot[img_rot!=0]=1
                 #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
                 try:
-                    var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                    var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
                     #print(indexer,'indexer')
                 except:
                     var_spectrum=0
@@ -1630,7 +1657,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
         indexer=0
         for rot in angels:
-            img_rot=self.rotate_image(img_resized,rot)
+            img_rot=rotate_image(img_resized,rot)
             #plt.imshow(img_rot)
             #plt.show()
             img_rot[img_rot!=0]=1
@@ -1640,7 +1667,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
             #print(var_spectrum,'var_spectrum')
             try:
-                var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
             except:
                 var_spectrum=0
 
@@ -1669,13 +1696,13 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             var_res=[]
 
             for rot in angels:
-                img_rot=self.rotate_image(img_resized,rot)
+                img_rot=rotate_image(img_resized,rot)
                 ##plt.imshow(img_rot)
                 ##plt.show()
                 img_rot[img_rot!=0]=1
                 #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
                 try:
-                    var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                    var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
 
                 except:
                     var_spectrum=0
@@ -1699,13 +1726,13 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
 
             indexer=0
             for rot in angels:
-                img_rot=self.rotate_image(img_resized,rot)
+                img_rot=rotate_image(img_resized,rot)
                 ##plt.imshow(img_rot)
                 ##plt.show()
                 img_rot[img_rot!=0]=1
                 #res_me=np.mean(self.find_num_col_deskew(img_rot,sigma_des,2.0  ))
                 try:
-                    var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+                    var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
                     #print(indexer,'indexer')
                 except:
                     var_spectrum=0
