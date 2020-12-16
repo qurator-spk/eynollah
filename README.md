@@ -7,15 +7,15 @@
 This tool performs document layout analysis (segmentation) from image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
 
 It can currently detect the following layout classes/elements:
-* Border
-* Textregion
-* Image
-* Textline
-* Separator
-* Marginalia
-* Initial (Drop Capital)
+* [Border](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_BorderType.html)
+* [Textregion](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_TextRegionType.html)
+* [Textline](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_TextLineType.html)
+* [Image](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_ImageRegionType.html)
+* [Separator](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_SeparatorRegionType.html)
+* [Marginalia](https://ocr-d.de/en/gt-guidelines/trans/lyMarginalie.html)
+* [Initial (Drop Capital)](https://ocr-d.de/en/gt-guidelines/trans/lyInitiale.html)
  
-In addition, the tool can be used to detect the _Reading Order_ of regions. The final goal is to feed the output to an OCR model. 
+In addition, the tool can be used to detect the _[ReadingOrder](https://ocr-d.de/en/gt-guidelines/trans/lyLeserichtung.html)_ of regions. The final goal is to feed the output to an OCR model. 
 
 The tool uses a combination of various models and heuristics (see flowchart below for the different stages and how they interact):
 * [Border detection](https://github.com/qurator-spk/eynollah#border-detection)
