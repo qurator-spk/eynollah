@@ -113,6 +113,8 @@ from .utils import (
     return_boxes_of_images_by_order_of_reading_new,
 )
 
+from utils.xml import create_page_xml
+
 
 SLOPE_THRESHOLD = 0.13
 
@@ -1444,37 +1446,15 @@ class eynollah:
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new)
 
+
+
     def write_into_page_xml_full(self, contours, contours_h, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals):
 
         found_polygons_text_region = contours
         found_polygons_text_region_h = contours_h
 
         # create the file structure
-        data = ET.Element("PcGts")
-
-        data.set("xmlns", "http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15")
-        data.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
-        data.set("xsi:schemaLocation", "http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15")
-
-        metadata = ET.SubElement(data, "Metadata")
-
-        author = ET.SubElement(metadata, "Creator")
-        author.text = "SBB_QURATOR"
-
-        created = ET.SubElement(metadata, "Created")
-        created.text = "2019-06-17T18:15:12"
-
-        changetime = ET.SubElement(metadata, "LastChange")
-        changetime.text = "2019-06-17T18:15:12"
-
-        page = ET.SubElement(data, "Page")
-
-        page.set("imageFilename", self.image_dir)
-        page.set("imageHeight", str(self.height_org))
-        page.set("imageWidth", str(self.width_org))
-        page.set("type", "content")
-        page.set("readingDirection", "left-to-right")
-        page.set("textLineOrder", "top-to-bottom")
+        pcgts, page = create_page_xml(self.image_dir, self.height_org, self.width_org)
 
         page_print_sub = ET.SubElement(page, "PrintSpace")
         coord_page = ET.SubElement(page_print_sub, "Coords")
@@ -1948,7 +1928,7 @@ class eynollah:
         print(dir_of_image)
         print(self.f_name)
         print(os.path.join(dir_of_image, self.f_name) + ".xml")
-        tree = ET.ElementTree(data)
+        tree = ET.ElementTree(pcgts)
         tree.write(os.path.join(dir_of_image, self.f_name) + ".xml")
 
     def write_into_page_xml(self, contours, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, curved_line, slopes, slopes_marginals):
@@ -1957,32 +1937,7 @@ class eynollah:
         ##found_polygons_text_region_h=contours_h
 
         # create the file structure
-        data = ET.Element("PcGts")
-
-        data.set("xmlns", "http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15")
-        data.set("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
-        data.set("xsi:schemaLocation", "http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15")
-
-        metadata = ET.SubElement(data, "Metadata")
-
-        author = ET.SubElement(metadata, "Creator")
-        author.text = "SBB_QURATOR"
-
-        created = ET.SubElement(metadata, "Created")
-        created.text = "2019-06-17T18:15:12"
-
-        changetime = ET.SubElement(metadata, "LastChange")
-        changetime.text = "2019-06-17T18:15:12"
-
-        page = ET.SubElement(data, "Page")
-
-        page.set("imageFilename", self.image_dir)
-        page.set("imageHeight", str(self.height_org))
-        page.set("imageWidth", str(self.width_org))
-        page.set("type", "content")
-        page.set("readingDirection", "left-to-right")
-        page.set("textLineOrder", "top-to-bottom")
-
+        pcgts, page = create_page_xml(self.image_dir, self.height_org, self.width_org)
         page_print_sub = ET.SubElement(page, "PrintSpace")
         coord_page = ET.SubElement(page_print_sub, "Coords")
         points_page_print = ""
