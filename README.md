@@ -1,22 +1,21 @@
-**WARNING! This tool is currently** ![under_construction](http://www.textfiles.com/underconstruction/HeHeartlandPark2601underconstructionbar9.gif)  
-**For any planned changes, please have a look at the [Pull Requests](https://github.com/qurator-spk/eynollah/pulls).**
-
 # Eynollah
 > Document Layout Analysis
+
+![](https://user-images.githubusercontent.com/952378/102350683-8a74db80-3fa5-11eb-8c7e-f743f7d6eae2.jpg)
 
 ## Introduction
 This tool performs document layout analysis (segmentation) from image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
 
 It can currently detect the following layout classes/elements:
-* Border
-* Textregion
-* Image
-* Textline
-* Separator
-* Marginalia
-* Initial (Drop Capital)
+* [Border](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_BorderType.html)
+* [Textregion](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_TextRegionType.html)
+* [Textline](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_TextLineType.html)
+* [Image](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_ImageRegionType.html)
+* [Separator](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_SeparatorRegionType.html)
+* [Marginalia](https://ocr-d.de/en/gt-guidelines/trans/lyMarginalie.html)
+* [Initial (Drop Capital)](https://ocr-d.de/en/gt-guidelines/trans/lyInitiale.html)
  
-In addition, the tool can be used to detect the _Reading Order_ of regions. The final goal is to feed the output to an OCR model. 
+In addition, the tool can be used to detect the _[ReadingOrder](https://ocr-d.de/en/gt-guidelines/trans/lyLeserichtung.html)_ of regions. The final goal is to feed the output to an OCR model. 
 
 The tool uses a combination of various models and heuristics (see flowchart below for the different stages and how they interact):
 * [Border detection](https://github.com/qurator-spk/eynollah#border-detection)
@@ -55,25 +54,37 @@ Some heuristic methods are also employed to further improve the model prediction
 * Finally, using the derived coordinates, bounding boxes are determined for each textline.
 
 ## Installation
-`pip install .`
+`pip install .` or 
+
+`pip install . -e` for editable installation
+
+Alternatively, you can also use `make` with these targets:  
+
+`make install` or  
+
+`make install-dev` for editable installation  
 
 ### Models
 
 In order to run this tool you also need trained models. You can download our pretrained models from [qurator-data.de](https://qurator-data.de/eynollah/).
 
+Alternatively, running `make models` will download and extract models to `$(PWD)/models_eynollah`.
+
 ## Usage
 
 The basic command-line interface can be called like this:
 
-    eynollah \
-    -i <image file name> \
-    -o <directory to write output xml or enhanced image> \
-    -m <directory of models> \
-    -fl <if true, the tool will perform full layout analysis> \
-    -ae <if true, the tool will resize and enhance the image and produce the resulting image as output> \
-    -as <if true, the tool will check whether the document needs rescaling or not> \
-    -cl <if true, the tool will try to extract the contours of texlines instead of rectangle bounding boxes> \
-    -si <if a directory is given here, the tool will output image regions inside documents there>
+```sh
+eynollah \
+-i <image file name> \
+-o <directory to write output xml or enhanced image> \
+-m <directory of models> \
+-fl <if true, the tool will perform full layout analysis> \
+-ae <if true, the tool will resize and enhance the image and produce the resulting image as output> \
+-as <if true, the tool will check whether the document needs rescaling or not> \
+-cl <if true, the tool will extract the contours of curved textlines instead of rectangle bounding boxes> \
+-si <if a directory is given here, the tool will output image regions inside documents there>
+```
 
 The tool does accept and works better on original images (RGB format) than binarized images.
 
@@ -87,10 +98,10 @@ First of all, this model makes use of up to 9 trained models which are responsib
 
 * For some documents, while the quality is good, their scale is extremly large and the performance of tool decreases. In such cases you can set `-as` (**a**llow **s**caling) to `true`. With this option enabled, the tool will try to rescale the image and only then the layout detection process will begin.
 
-* If you care about drop capitals (initials) and headings, you can set `-fl` (**f**ull **l**ayout) to `true`. As we can see in the case of full layout, we can currently distinguish 7 document layout classes/elements.
+* If you care about drop capitals (initials) and headings, you can set `-fl` (**f**ull **l**ayout) to `true`. With this setting, the tool can currently distinguish 7 document layout classes/elements.
 
-* In cases where the documents include curved headers or curved lines it is obvious that rectangular bounding boxes for textlines will not be a great option. For this, we have developed an option which tries to find contours of the curvy textlines. You can set `-cl` (**c**urved **l**ines) to `true` to enable this option. Be advised that this will increase the time needed for the tool to process the document.
+* In cases where the document includes curved headers or curved lines, rectangular bounding boxes for textlines will not be a great option. In such cases it is strongly recommended to set the flag `-cl` (**c**urved **l**ines) to `true` to find countours of curved lines instead of rectangular boundinx boxes. Be advised that enabling this option increases the processing time of the tool.
 
-* If you want to crop and save image regions inside the document, just provide a directory with the parameter, `-si` (**s**ave **i**mages).
+* To crop and save image regions inside the document, set the parameter `-si` (**s**ave **i**mages) to true and provide a directory path to store the extracted images.
 
-* This tool is actively being developed. If any problems occur or the performance does not meet your expectations, we welcome your feedback.
+* This tool is actively being developed. If problems occur or the performance does not meet your expectations, we welcome your feedback via [issues](https://github.com/qurator-spk/eynollah/issues).
