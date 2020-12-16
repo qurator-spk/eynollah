@@ -74,15 +74,17 @@ Alternatively, running `make models` will download and extract models to `$(PWD)
 
 The basic command-line interface can be called like this:
 
-    eynollah \
-    -i <image file name> \
-    -o <directory to write output xml or enhanced image> \
-    -m <directory of models> \
-    -fl <if true, the tool will perform full layout analysis> \
-    -ae <if true, the tool will resize and enhance the image and produce the resulting image as output> \
-    -as <if true, the tool will check whether the document needs rescaling or not> \
-    -cl <if true, the tool will extract the contours of curved textlines instead of rectangle bounding boxes> \
-    -si <if a directory is given here, the tool will output image regions inside documents there>
+```sh
+eynollah \
+-i <image file name> \
+-o <directory to write output xml or enhanced image> \
+-m <directory of models> \
+-fl <if true, the tool will perform full layout analysis> \
+-ae <if true, the tool will resize and enhance the image and produce the resulting image as output> \
+-as <if true, the tool will check whether the document needs rescaling or not> \
+-cl <if true, the tool will extract the contours of curved textlines instead of rectangle bounding boxes> \
+-si <if a directory is given here, the tool will output image regions inside documents there>
+```
 
 The tool does accept and works better on original images (RGB format) than binarized images.
 
