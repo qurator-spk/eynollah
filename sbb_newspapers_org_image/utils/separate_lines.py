@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
+import os
 
 from .rotate import rotate_image
 from .contour import (
@@ -150,86 +151,214 @@ def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
 
 def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 
+    (h, w) = img_patch.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
+    x_d = M[0, 2]
+    y_d = M[1, 2]
+    
+    thetha = thetha / 180. * np.pi
+    rotation_matrix = np.array([[np.cos(thetha), -np.sin(thetha)], [np.sin(thetha), np.cos(thetha)]])
     contour_text_interest_copy = contour_text_interest.copy()
-    x, y, x_d, y_d, xv, x_min_cont, y_min_cont, x_max_cont, y_max_cont, first_nonzero, y_padded_up_to_down_padded, y_padded_smoothed, peaks, peaks_neg, rotation_matrix = dedup_separate_lines(img_patch, contour_text_interest, thetha, 1)
 
+    x_cont = contour_text_interest[:, 0, 0]
+    y_cont = contour_text_interest[:, 0, 1]
+    x_cont = x_cont - np.min(x_cont)
+    y_cont = y_cont - np.min(y_cont)
+
+    x_min_cont = 0
+    x_max_cont = img_patch.shape[1]
+    y_min_cont = 0
+    y_max_cont = img_patch.shape[0]
+
+    xv = np.linspace(x_min_cont, x_max_cont, 1000)
+
+    textline_patch_sum_along_width = img_patch.sum(axis=1)
+
+    first_nonzero = 0  # (next((i for i, x in enumerate(mada_n) if x), None))
+
+    y = textline_patch_sum_along_width[:]  # [first_nonzero:last_nonzero]
+    y_padded = np.zeros(len(y) + 40)
+    y_padded[20:len(y) + 20] = y
+    x = np.array(range(len(y)))
+
+    peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
+    
+    if 1>0:
+
+        try:
+
+            y_padded_smoothed_e= gaussian_filter1d(y_padded, 2)
+            y_padded_up_to_down_e=-y_padded+np.max(y_padded)
+            y_padded_up_to_down_padded_e=np.zeros(len(y_padded_up_to_down_e)+40)
+            y_padded_up_to_down_padded_e[20:len(y_padded_up_to_down_e)+20]=y_padded_up_to_down_e
+            y_padded_up_to_down_padded_e= gaussian_filter1d(y_padded_up_to_down_padded_e, 2)
+            
+
+            peaks_e, _ = find_peaks(y_padded_smoothed_e, height=0)
+            peaks_neg_e, _ = find_peaks(y_padded_up_to_down_padded_e, height=0)
+            neg_peaks_max=np.max(y_padded_up_to_down_padded_e[peaks_neg_e])
+
+            arg_neg_must_be_deleted= np.array(range(len(peaks_neg_e)))[y_padded_up_to_down_padded_e[peaks_neg_e]/float(neg_peaks_max)<0.3  ] 
+            diff_arg_neg_must_be_deleted=np.diff(arg_neg_must_be_deleted)
+            
+
+            
+            arg_diff=np.array(range(len(diff_arg_neg_must_be_deleted)))
+            arg_diff_cluster=arg_diff[diff_arg_neg_must_be_deleted>1]
+            
+
+            peaks_new=peaks_e[:]
+            peaks_neg_new=peaks_neg_e[:]
+
+            clusters_to_be_deleted=[]
+            if len(arg_diff_cluster)>0:
+                
+                clusters_to_be_deleted.append(arg_neg_must_be_deleted[0:arg_diff_cluster[0]+1])
+                for i in range(len(arg_diff_cluster)-1):
+                    clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[i]+1:arg_diff_cluster[i+1]+1])
+                clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster)-1]+1:])
+                
+
+            if len(clusters_to_be_deleted)>0:
+                peaks_new_extra=[]
+                for m in range(len(clusters_to_be_deleted)):
+                    min_cluster=np.min(peaks_e[clusters_to_be_deleted[m]])
+                    max_cluster=np.max(peaks_e[clusters_to_be_deleted[m]])
+                    peaks_new_extra.append( int( (min_cluster+max_cluster)/2.0) )
+                    for m1 in range(len(clusters_to_be_deleted[m])):
+                        peaks_new=peaks_new[peaks_new!=peaks_e[clusters_to_be_deleted[m][m1]-1]]
+                        peaks_new=peaks_new[peaks_new!=peaks_e[clusters_to_be_deleted[m][m1]]]
+                        
+                        peaks_neg_new=peaks_neg_new[peaks_neg_new!=peaks_neg_e[clusters_to_be_deleted[m][m1]]]
+                peaks_new_tot=[]
+                for i1 in peaks_new:
+                    peaks_new_tot.append(i1)
+                for i1 in peaks_new_extra:
+                    peaks_new_tot.append(i1)
+                peaks_new_tot=np.sort(peaks_new_tot)
+                
+                
+            else:
+                peaks_new_tot=peaks_e[:]
+
+
+            textline_con,hierachy=return_contours_of_image(img_patch)
+            textline_con_fil=filter_contours_area_of_image(img_patch,textline_con,hierachy,max_area=1,min_area=0.0008)
+            y_diff_mean=np.mean(np.diff(peaks_new_tot))#self.find_contours_mean_y_diff(textline_con_fil)
+
+            sigma_gaus=int(  y_diff_mean * (7./40.0) )
+            #print(sigma_gaus,'sigma_gaus')
+        except:
+            sigma_gaus=12
+        if sigma_gaus<3:
+            sigma_gaus=3
+        #print(sigma_gaus,'sigma')
+
+
+    y_padded_smoothed= gaussian_filter1d(y_padded, sigma_gaus)
+    y_padded_up_to_down=-y_padded+np.max(y_padded)
+    y_padded_up_to_down_padded=np.zeros(len(y_padded_up_to_down)+40)
+    y_padded_up_to_down_padded[20:len(y_padded_up_to_down)+20]=y_padded_up_to_down
+    y_padded_up_to_down_padded= gaussian_filter1d(y_padded_up_to_down_padded, sigma_gaus)
+    
+
+    peaks, _ = find_peaks(y_padded_smoothed, height=0)
+    peaks_neg, _ = find_peaks(y_padded_up_to_down_padded, height=0)
+    
+    
+
+
+        
     try:
-        neg_peaks_max = np.max(y_padded_smoothed[peaks])
+        neg_peaks_max=np.max(y_padded_smoothed[peaks])
+        
 
-        arg_neg_must_be_deleted = np.array(range(len(peaks_neg)))[y_padded_up_to_down_padded[peaks_neg] / float(neg_peaks_max) < 0.42]
+        arg_neg_must_be_deleted= np.array(range(len(peaks_neg)))[y_padded_up_to_down_padded[peaks_neg]/float(neg_peaks_max)<0.42  ] 
 
-        diff_arg_neg_must_be_deleted = np.diff(arg_neg_must_be_deleted)
 
-        arg_diff = np.array(range(len(diff_arg_neg_must_be_deleted)))
-        arg_diff_cluster = arg_diff[diff_arg_neg_must_be_deleted > 1]
+        diff_arg_neg_must_be_deleted=np.diff(arg_neg_must_be_deleted)
+        
+
+        
+        arg_diff=np.array(range(len(diff_arg_neg_must_be_deleted)))
+        arg_diff_cluster=arg_diff[diff_arg_neg_must_be_deleted>1]
     except:
-        arg_neg_must_be_deleted = []
-        arg_diff_cluster = []
-
+        arg_neg_must_be_deleted=[]
+        arg_diff_cluster=[]
+        
+    
     try:
-        peaks_new = peaks[:]
-        peaks_neg_new = peaks_neg[:]
-        clusters_to_be_deleted = []
+        peaks_new=peaks[:]
+        peaks_neg_new=peaks_neg[:]
+        clusters_to_be_deleted=[]
+        
 
-        if len(arg_diff_cluster) >= 2 and len(arg_diff_cluster) > 0:
-
-            clusters_to_be_deleted.append(arg_neg_must_be_deleted[0 : arg_diff_cluster[0] + 1])
-            for i in range(len(arg_diff_cluster) - 1):
-                clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[i] + 1 : arg_diff_cluster[i + 1] + 1])
-            clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster) - 1] + 1 :])
-        elif len(arg_neg_must_be_deleted) >= 2 and len(arg_diff_cluster) == 0:
+        if len(arg_diff_cluster)>=2 and len(arg_diff_cluster)>0:
+        
+            clusters_to_be_deleted.append(arg_neg_must_be_deleted[0:arg_diff_cluster[0]+1])
+            for i in range(len(arg_diff_cluster)-1):
+                clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[i]+1:arg_diff_cluster[i+1]+1])
+            clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster)-1]+1:])
+        elif len(arg_neg_must_be_deleted)>=2 and len(arg_diff_cluster)==0:
             clusters_to_be_deleted.append(arg_neg_must_be_deleted[:])
-
-        if len(arg_neg_must_be_deleted) == 1:
+            
+    
+    
+        if  len(arg_neg_must_be_deleted)==1:
             clusters_to_be_deleted.append(arg_neg_must_be_deleted)
+            
 
-        if len(clusters_to_be_deleted) > 0:
-            peaks_new_extra = []
+        if len(clusters_to_be_deleted)>0:
+            peaks_new_extra=[]
             for m in range(len(clusters_to_be_deleted)):
-                min_cluster = np.min(peaks[clusters_to_be_deleted[m]])
-                max_cluster = np.max(peaks[clusters_to_be_deleted[m]])
-                peaks_new_extra.append(int((min_cluster + max_cluster) / 2.0))
+                min_cluster=np.min(peaks[clusters_to_be_deleted[m]])
+                max_cluster=np.max(peaks[clusters_to_be_deleted[m]])
+                peaks_new_extra.append( int( (min_cluster+max_cluster)/2.0) )
                 for m1 in range(len(clusters_to_be_deleted[m])):
-                    peaks_new = peaks_new[peaks_new != peaks[clusters_to_be_deleted[m][m1] - 1]]
-                    peaks_new = peaks_new[peaks_new != peaks[clusters_to_be_deleted[m][m1]]]
-
-                    peaks_neg_new = peaks_neg_new[peaks_neg_new != peaks_neg[clusters_to_be_deleted[m][m1]]]
-            peaks_new_tot = []
+                    peaks_new=peaks_new[peaks_new!=peaks[clusters_to_be_deleted[m][m1]-1]]
+                    peaks_new=peaks_new[peaks_new!=peaks[clusters_to_be_deleted[m][m1]]]
+                    
+                    peaks_neg_new=peaks_neg_new[peaks_neg_new!=peaks_neg[clusters_to_be_deleted[m][m1]]]
+            peaks_new_tot=[]
             for i1 in peaks_new:
                 peaks_new_tot.append(i1)
             for i1 in peaks_new_extra:
                 peaks_new_tot.append(i1)
-            peaks_new_tot = np.sort(peaks_new_tot)
-
+            peaks_new_tot=np.sort(peaks_new_tot)
+            
             ##plt.plot(y_padded_up_to_down_padded)
             ##plt.plot(peaks_neg,y_padded_up_to_down_padded[peaks_neg],'*')
             ##plt.show()
-
+            
             ##plt.plot(y_padded_up_to_down_padded)
             ##plt.plot(peaks_neg_new,y_padded_up_to_down_padded[peaks_neg_new],'*')
             ##plt.show()
-
+            
             ##plt.plot(y_padded_smoothed)
             ##plt.plot(peaks,y_padded_smoothed[peaks],'*')
             ##plt.show()
-
+            
             ##plt.plot(y_padded_smoothed)
             ##plt.plot(peaks_new_tot,y_padded_smoothed[peaks_new_tot],'*')
             ##plt.show()
-
-            peaks = peaks_new_tot[:]
-            peaks_neg = peaks_neg_new[:]
-
+            
+            peaks=peaks_new_tot[:]
+            peaks_neg=peaks_neg_new[:]
+            
+            
         else:
-            peaks_new_tot = peaks[:]
-            peaks = peaks_new_tot[:]
-            peaks_neg = peaks_neg_new[:]
+            peaks_new_tot=peaks[:]
+            peaks=peaks_new_tot[:]
+            peaks_neg=peaks_neg_new[:]
     except:
         pass
-
-    mean_value_of_peaks = np.mean(y_padded_smoothed[peaks])
-    std_value_of_peaks = np.std(y_padded_smoothed[peaks])
-    peaks_values = y_padded_smoothed[peaks]
+        
+    
+    mean_value_of_peaks=np.mean(y_padded_smoothed[peaks])
+    std_value_of_peaks=np.std(y_padded_smoothed[peaks])
+    peaks_values=y_padded_smoothed[peaks]
+    
 
     peaks_neg = peaks_neg - 20 - 20
     peaks = peaks - 20
@@ -241,42 +370,49 @@ def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
     for jj in range(len(peaks)):
         if peaks[jj] > len(x) - 1:
             peaks[jj] = len(x) - 1
+            
+    
 
     textline_boxes = []
     textline_boxes_rot = []
-
+    
     if len(peaks_neg) == len(peaks) + 1 and len(peaks) >= 3:
         for jj in range(len(peaks)):
-
-            if jj == (len(peaks) - 1):
+            
+            if jj==(len(peaks)-1):
                 dis_to_next_up = abs(peaks[jj] - peaks_neg[jj])
                 dis_to_next_down = abs(peaks[jj] - peaks_neg[jj + 1])
-
-                if peaks_values[jj] > mean_value_of_peaks - std_value_of_peaks / 2.0:
+                
+                if peaks_values[jj]>mean_value_of_peaks-std_value_of_peaks/2.:
                     point_up = peaks[jj] + first_nonzero - int(1.3 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = y_max_cont - 1  ##peaks[jj] + first_nonzero + int(1.3 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_down =y_max_cont-1##peaks[jj] + first_nonzero + int(1.3 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
                 else:
                     point_up = peaks[jj] + first_nonzero - int(1.4 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = y_max_cont - 1  ##peaks[jj] + first_nonzero + int(1.6 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_down =y_max_cont-1##peaks[jj] + first_nonzero + int(1.6 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
 
-                point_down_narrow = peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
+                point_down_narrow = peaks[jj] + first_nonzero + int(
+                    1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
             else:
                 dis_to_next_up = abs(peaks[jj] - peaks_neg[jj])
                 dis_to_next_down = abs(peaks[jj] - peaks_neg[jj + 1])
-
-                if peaks_values[jj] > mean_value_of_peaks - std_value_of_peaks / 2.0:
+                
+                if peaks_values[jj]>mean_value_of_peaks-std_value_of_peaks/2.:
                     point_up = peaks[jj] + first_nonzero - int(1.1 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
                     point_down = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
                 else:
                     point_up = peaks[jj] + first_nonzero - int(1.23 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
                     point_down = peaks[jj] + first_nonzero + int(1.33 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
 
-                point_down_narrow = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
+                point_down_narrow = peaks[jj] + first_nonzero + int(
+                    1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
+
+
 
             if point_down_narrow >= img_patch.shape[0]:
                 point_down_narrow = img_patch.shape[0] - 2
 
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True) for mj in range(len(xv))]
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True)
+                            for mj in range(len(xv))]
             distances = np.array(distances)
 
             xvinside = xv[distances >= 0]
@@ -297,48 +433,60 @@ def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
             x_max_rot2, point_up_rot2 = p2[0] + x_d, p2[1] + y_d
             x_max_rot3, point_down_rot3 = p3[0] + x_d, p3[1] + y_d
             x_min_rot4, point_down_rot4 = p4[0] + x_d, p4[1] + y_d
+            
+            if x_min_rot1<0:
+                x_min_rot1=0
+            if x_min_rot4<0:
+                x_min_rot4=0
+            if point_up_rot1<0:
+                point_up_rot1=0
+            if point_up_rot2<0:
+                point_up_rot2=0
 
-            if x_min_rot1 < 0:
-                x_min_rot1 = 0
-            if x_min_rot4 < 0:
-                x_min_rot4 = 0
-            if point_up_rot1 < 0:
-                point_up_rot1 = 0
-            if point_up_rot2 < 0:
-                point_up_rot2 = 0
+                
 
-            x_min_rot1 = x_min_rot1 - x_help
-            x_max_rot2 = x_max_rot2 - x_help
-            x_max_rot3 = x_max_rot3 - x_help
-            x_min_rot4 = x_min_rot4 - x_help
+            x_min_rot1=x_min_rot1-x_help
+            x_max_rot2=x_max_rot2-x_help
+            x_max_rot3=x_max_rot3-x_help
+            x_min_rot4=x_min_rot4-x_help
+            
+            point_up_rot1=point_up_rot1-y_help
+            point_up_rot2=point_up_rot2-y_help
+            point_down_rot3=point_down_rot3-y_help
+            point_down_rot4=point_down_rot4-y_help
 
-            point_up_rot1 = point_up_rot1 - y_help
-            point_up_rot2 = point_up_rot2 - y_help
-            point_down_rot3 = point_down_rot3 - y_help
-            point_down_rot4 = point_down_rot4 - y_help
+            
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)], [int(x_max_rot2), int(point_up_rot2)], [int(x_max_rot3), int(point_down_rot3)], [int(x_min_rot4), int(point_down_rot4)]]))
 
-            textline_boxes.append(np.array([[int(x_min), int(point_up)], [int(x_max), int(point_up)], [int(x_max), int(point_down)], [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
+                                                [int(x_max_rot2), int(point_up_rot2)],
+                                                [int(x_max_rot3), int(point_down_rot3)],
+                                                [int(x_min_rot4), int(point_down_rot4)]]))
+
+            textline_boxes.append(np.array([[int(x_min), int(point_up)],
+                                            [int(x_max), int(point_up)],
+                                            [int(x_max), int(point_down)],
+                                            [int(x_min), int(point_down)]]))
 
     elif len(peaks) < 1:
         pass
 
     elif len(peaks) == 1:
-
-        distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[0] + first_nonzero), True) for mj in range(len(xv))]
+        
+        distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[0] + first_nonzero), True)
+                        for mj in range(len(xv))]
         distances = np.array(distances)
 
         xvinside = xv[distances >= 0]
-
+        
         if len(xvinside) == 0:
             x_min = x_min_cont
             x_max = x_max_cont
         else:
             x_min = np.min(xvinside)  # max(x_min_interest,x_min_cont)
             x_max = np.max(xvinside)  # min(x_max_interest,x_max_cont)
-        # x_min = x_min_cont
-        # x_max = x_max_cont
+        #x_min = x_min_cont
+        #x_max = x_max_cont
 
         y_min = y_min_cont
         y_max = y_max_cont
@@ -352,45 +500,62 @@ def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
         x_max_rot2, point_up_rot2 = p2[0] + x_d, p2[1] + y_d
         x_max_rot3, point_down_rot3 = p3[0] + x_d, p3[1] + y_d
         x_min_rot4, point_down_rot4 = p4[0] + x_d, p4[1] + y_d
+        
+        
+        if x_min_rot1<0:
+            x_min_rot1=0
+        if x_min_rot4<0:
+            x_min_rot4=0
+        if point_up_rot1<0:
+            point_up_rot1=0
+        if point_up_rot2<0:
+            point_up_rot2=0
+            
+        
+        x_min_rot1=x_min_rot1-x_help
+        x_max_rot2=x_max_rot2-x_help
+        x_max_rot3=x_max_rot3-x_help
+        x_min_rot4=x_min_rot4-x_help
+        
+        point_up_rot1=point_up_rot1-y_help
+        point_up_rot2=point_up_rot2-y_help
+        point_down_rot3=point_down_rot3-y_help
+        point_down_rot4=point_down_rot4-y_help
+        
+        
 
-        if x_min_rot1 < 0:
-            x_min_rot1 = 0
-        if x_min_rot4 < 0:
-            x_min_rot4 = 0
-        if point_up_rot1 < 0:
-            point_up_rot1 = 0
-        if point_up_rot2 < 0:
-            point_up_rot2 = 0
 
-        x_min_rot1 = x_min_rot1 - x_help
-        x_max_rot2 = x_max_rot2 - x_help
-        x_max_rot3 = x_max_rot3 - x_help
-        x_min_rot4 = x_min_rot4 - x_help
+        textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
+                                            [int(x_max_rot2), int(point_up_rot2)],
+                                            [int(x_max_rot3), int(point_down_rot3)],
+                                            [int(x_min_rot4), int(point_down_rot4)]]))
 
-        point_up_rot1 = point_up_rot1 - y_help
-        point_up_rot2 = point_up_rot2 - y_help
-        point_down_rot3 = point_down_rot3 - y_help
-        point_down_rot4 = point_down_rot4 - y_help
+        textline_boxes.append(np.array([[int(x_min), int(y_min)],
+                                        [int(x_max), int(y_min)],
+                                        [int(x_max), int(y_max)],
+                                        [int(x_min), int(y_max)]]))
 
-        textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)], [int(x_max_rot2), int(point_up_rot2)], [int(x_max_rot3), int(point_down_rot3)], [int(x_min_rot4), int(point_down_rot4)]]))
 
-        textline_boxes.append(np.array([[int(x_min), int(y_min)], [int(x_max), int(y_min)], [int(x_max), int(y_max)], [int(x_min), int(y_max)]]))
 
     elif len(peaks) == 2:
         dis_to_next = np.abs(peaks[1] - peaks[0])
         for jj in range(len(peaks)):
             if jj == 0:
-                point_up = 0  # peaks[jj] + first_nonzero - int(1. / 1.7 * dis_to_next)
+                point_up = 0#peaks[jj] + first_nonzero - int(1. / 1.7 * dis_to_next)
                 if point_up < 0:
                     point_up = 1
-                point_down = peaks[jj] + first_nonzero + int(1.0 / 1.8 * dis_to_next)
+                point_down = peaks_neg[1] + first_nonzero# peaks[jj] + first_nonzero + int(1. / 1.8 * dis_to_next)
             elif jj == 1:
-                point_down = peaks[jj] + first_nonzero + int(1.0 / 1.8 * dis_to_next)
+                point_down =peaks_neg[1] + first_nonzero# peaks[jj] + first_nonzero + int(1. / 1.8 * dis_to_next)
                 if point_down >= img_patch.shape[0]:
                     point_down = img_patch.shape[0] - 2
-                point_up = peaks[jj] + first_nonzero - int(1.0 / 1.8 * dis_to_next)
+                try:
+                    point_up = peaks_neg[2] + first_nonzero#peaks[jj] + first_nonzero - int(1. / 1.8 * dis_to_next)
+                except:
+                    point_up =peaks[jj] + first_nonzero - int(1. / 1.8 * dis_to_next)
 
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True) for mj in range(len(xv))]
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True)
+                            for mj in range(len(xv))]
             distances = np.array(distances)
 
             xvinside = xv[distances >= 0]
@@ -411,56 +576,68 @@ def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
             x_max_rot2, point_up_rot2 = p2[0] + x_d, p2[1] + y_d
             x_max_rot3, point_down_rot3 = p3[0] + x_d, p3[1] + y_d
             x_min_rot4, point_down_rot4 = p4[0] + x_d, p4[1] + y_d
+            
 
-            if x_min_rot1 < 0:
-                x_min_rot1 = 0
-            if x_min_rot4 < 0:
-                x_min_rot4 = 0
-            if point_up_rot1 < 0:
-                point_up_rot1 = 0
-            if point_up_rot2 < 0:
-                point_up_rot2 = 0
+                
+            if x_min_rot1<0:
+                x_min_rot1=0
+            if x_min_rot4<0:
+                x_min_rot4=0
+            if point_up_rot1<0:
+                point_up_rot1=0
+            if point_up_rot2<0:
+                point_up_rot2=0                   
+                
+            x_min_rot1=x_min_rot1-x_help
+            x_max_rot2=x_max_rot2-x_help
+            x_max_rot3=x_max_rot3-x_help
+            x_min_rot4=x_min_rot4-x_help
+            
+            point_up_rot1=point_up_rot1-y_help
+            point_up_rot2=point_up_rot2-y_help
+            point_down_rot3=point_down_rot3-y_help
+            point_down_rot4=point_down_rot4-y_help
 
-            x_min_rot1 = x_min_rot1 - x_help
-            x_max_rot2 = x_max_rot2 - x_help
-            x_max_rot3 = x_max_rot3 - x_help
-            x_min_rot4 = x_min_rot4 - x_help
 
-            point_up_rot1 = point_up_rot1 - y_help
-            point_up_rot2 = point_up_rot2 - y_help
-            point_down_rot3 = point_down_rot3 - y_help
-            point_down_rot4 = point_down_rot4 - y_help
+            
+            
+            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
+                                                [int(x_max_rot2), int(point_up_rot2)],
+                                                [int(x_max_rot3), int(point_down_rot3)],
+                                                [int(x_min_rot4), int(point_down_rot4)]]))
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)], [int(x_max_rot2), int(point_up_rot2)], [int(x_max_rot3), int(point_down_rot3)], [int(x_min_rot4), int(point_down_rot4)]]))
-
-            textline_boxes.append(np.array([[int(x_min), int(point_up)], [int(x_max), int(point_up)], [int(x_max), int(point_down)], [int(x_min), int(point_down)]]))
+            textline_boxes.append(np.array([[int(x_min), int(point_up)],
+                                            [int(x_max), int(point_up)],
+                                            [int(x_max), int(point_down)],
+                                            [int(x_min), int(point_down)]]))
     else:
         for jj in range(len(peaks)):
 
             if jj == 0:
                 dis_to_next = peaks[jj + 1] - peaks[jj]
                 # point_up=peaks[jj]+first_nonzero-int(1./3*dis_to_next)
-                point_up = peaks[jj] + first_nonzero - int(1.0 / 1.9 * dis_to_next)
+                point_up = peaks[jj] + first_nonzero - int(1. / 1.9 * dis_to_next)
                 if point_up < 0:
                     point_up = 1
                 # point_down=peaks[jj]+first_nonzero+int(1./3*dis_to_next)
-                point_down = peaks[jj] + first_nonzero + int(1.0 / 1.9 * dis_to_next)
+                point_down = peaks[jj] + first_nonzero + int(1. / 1.9 * dis_to_next)
             elif jj == len(peaks) - 1:
                 dis_to_next = peaks[jj] - peaks[jj - 1]
                 # point_down=peaks[jj]+first_nonzero+int(1./3*dis_to_next)
-                point_down = peaks[jj] + first_nonzero + int(1.0 / 1.7 * dis_to_next)
+                point_down = peaks[jj] + first_nonzero + int(1. / 1.7 * dis_to_next)
                 if point_down >= img_patch.shape[0]:
                     point_down = img_patch.shape[0] - 2
                 # point_up=peaks[jj]+first_nonzero-int(1./3*dis_to_next)
-                point_up = peaks[jj] + first_nonzero - int(1.0 / 1.9 * dis_to_next)
+                point_up = peaks[jj] + first_nonzero - int(1. / 1.9 * dis_to_next)
             else:
                 dis_to_next_down = peaks[jj + 1] - peaks[jj]
                 dis_to_next_up = peaks[jj] - peaks[jj - 1]
 
-                point_up = peaks[jj] + first_nonzero - int(1.0 / 1.9 * dis_to_next_up)
-                point_down = peaks[jj] + first_nonzero + int(1.0 / 1.9 * dis_to_next_down)
+                point_up = peaks[jj] + first_nonzero - int(1. / 1.9 * dis_to_next_up)
+                point_down = peaks[jj] + first_nonzero + int(1. / 1.9 * dis_to_next_down)
 
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True) for mj in range(len(xv))]
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True)
+                            for mj in range(len(xv))]
             distances = np.array(distances)
 
             xvinside = xv[distances >= 0]
@@ -481,29 +658,40 @@ def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
             x_max_rot2, point_up_rot2 = p2[0] + x_d, p2[1] + y_d
             x_max_rot3, point_down_rot3 = p3[0] + x_d, p3[1] + y_d
             x_min_rot4, point_down_rot4 = p4[0] + x_d, p4[1] + y_d
+            
+            if x_min_rot1<0:
+                x_min_rot1=0
+            if x_min_rot4<0:
+                x_min_rot4=0
+            if point_up_rot1<0:
+                point_up_rot1=0
+            if point_up_rot2<0:
+                point_up_rot2=0                
 
-            if x_min_rot1 < 0:
-                x_min_rot1 = 0
-            if x_min_rot4 < 0:
-                x_min_rot4 = 0
-            if point_up_rot1 < 0:
-                point_up_rot1 = 0
-            if point_up_rot2 < 0:
-                point_up_rot2 = 0
+                
+            x_min_rot1=x_min_rot1-x_help
+            x_max_rot2=x_max_rot2-x_help
+            x_max_rot3=x_max_rot3-x_help
+            x_min_rot4=x_min_rot4-x_help
+            
+            point_up_rot1=point_up_rot1-y_help
+            point_up_rot2=point_up_rot2-y_help
+            point_down_rot3=point_down_rot3-y_help
+            point_down_rot4=point_down_rot4-y_help
+            
 
-            x_min_rot1 = x_min_rot1 - x_help
-            x_max_rot2 = x_max_rot2 - x_help
-            x_max_rot3 = x_max_rot3 - x_help
-            x_min_rot4 = x_min_rot4 - x_help
 
-            point_up_rot1 = point_up_rot1 - y_help
-            point_up_rot2 = point_up_rot2 - y_help
-            point_down_rot3 = point_down_rot3 - y_help
-            point_down_rot4 = point_down_rot4 - y_help
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)], [int(x_max_rot2), int(point_up_rot2)], [int(x_max_rot3), int(point_down_rot3)], [int(x_min_rot4), int(point_down_rot4)]]))
+            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
+                                                [int(x_max_rot2), int(point_up_rot2)],
+                                                [int(x_max_rot3), int(point_down_rot3)],
+                                                [int(x_min_rot4), int(point_down_rot4)]]))
 
-            textline_boxes.append(np.array([[int(x_min), int(point_up)], [int(x_max), int(point_up)], [int(x_max), int(point_down)], [int(x_min), int(point_down)]]))
+            textline_boxes.append(np.array([[int(x_min), int(point_up)],
+                                            [int(x_max), int(point_up)],
+                                            [int(x_max), int(point_down)],
+                                            [int(x_min), int(point_down)]]))
+
 
     return peaks, textline_boxes_rot
 
@@ -1411,7 +1599,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
     if main_page and dir_of_all is not None:
 
 
-        plt.figure(figsize=(70,40))
+        plt.figure(figsize=(80,40))
         plt.rcParams['font.size']='50'
         plt.subplot(1,2,1)
         plt.imshow(img_patch_org)
