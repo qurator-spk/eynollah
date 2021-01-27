@@ -9,6 +9,7 @@ import random
 import sys
 import time
 import warnings
+from pathlib import Path
 from multiprocessing import Process, Queue, cpu_count
 from sys import getsizeof
 
@@ -148,12 +149,8 @@ class eynollah:
         self.headers_off = headers_off
         self.dir_of_deskewed = dir_of_deskewed
         self.dir_of_all = dir_of_all
-        if self.f_name is None:
-            try:
-                self.f_name = image_dir.split("/")[len(image_dir.split("/")) - 1]
-                self.f_name = self.f_name.split(".")[0]
-            except:
-                self.f_name = self.f_name.split(".")[0]
+        if not self.f_name:
+            self.f_name = Path(Path(image_dir).name).stem
         self.dir_models = dir_models
         self.kernel = np.ones((5, 5), np.uint8)
 
