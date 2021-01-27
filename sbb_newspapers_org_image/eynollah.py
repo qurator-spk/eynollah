@@ -123,8 +123,8 @@ SLOPE_THRESHOLD = 0.13
 class eynollah:
     def __init__(
         self,
-        image_dir,
-        f_name,
+        image_filename,
+        image_filename_stem,
         dir_out,
         dir_models,
         dir_of_cropped_images=None,
@@ -137,9 +137,9 @@ class eynollah:
         allow_scaling=False,
         headers_off=False
     ):
-        self.image_dir = image_dir  # XXX This does not seem to be a directory as the name suggests, but a file
+        self.image_filename = image_filename  # XXX This does not seem to be a directory as the name suggests, but a file
         self.dir_out = dir_out
-        self.f_name = f_name
+        self.image_filename_stem = image_filename_stem
         self.dir_of_cropped_images = dir_of_cropped_images
         self.allow_enhancement = allow_enhancement
         self.curved_line = curved_line
@@ -149,8 +149,8 @@ class eynollah:
         self.headers_off = headers_off
         self.dir_of_deskewed = dir_of_deskewed
         self.dir_of_all = dir_of_all
-        if not self.f_name:
-            self.f_name = Path(Path(image_dir).name).stem
+        if not self.image_filename_stem:
+            self.image_filename_stem = Path(Path(image_filename).name).stem
         self.dir_models = dir_models
         self.kernel = np.ones((5, 5), np.uint8)
 
@@ -291,18 +291,18 @@ class eynollah:
             return prediction_true
 
     def check_dpi(self):
-        dpi = os.popen('identify -format "%x " ' + self.image_dir).read()
+        dpi = os.popen('identify -format "%x " ' + self.image_filename).read()
         return int(float(dpi))
 
     def resize_image_with_column_classifier(self, is_image_enhanced):
         dpi = self.check_dpi()
-        img = cv2.imread(self.image_dir)
+        img = cv2.imread(self.image_filename)
         img = img.astype(np.uint8)
 
         _, page_coord = self.early_page_for_num_of_column_classification()
         model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
 
-        img_1ch = cv2.imread(self.image_dir, 0)
+        img_1ch = cv2.imread(self.image_filename, 0)
 
         width_early = img_1ch.shape[1]
 
@@ -414,14 +414,14 @@ class eynollah:
 
     def resize_and_enhance_image_with_column_classifier(self, is_image_enhanced):
         dpi = self.check_dpi()
-        img = cv2.imread(self.image_dir)
+        img = cv2.imread(self.image_filename)
 
         img = img.astype(np.uint8)
 
         _, page_coord = self.early_page_for_num_of_column_classification()
         model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
 
-        img_1ch = cv2.imread(self.image_dir, 0)
+        img_1ch = cv2.imread(self.image_filename, 0)
         img_1ch = img_1ch.astype(np.uint8)
 
         width_early = img_1ch.shape[1]
@@ -538,7 +538,7 @@ class eynollah:
 
             # img_new=resize_image(img,img_h_new,img_w_new)
             image_res = self.predict_enhancement(img_new)
-            # cv2.imwrite(os.path.join(self.dir_out, self.f_name) + ".tif",self.image)
+            # cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem) + ".tif",self.image)
             # self.image=self.image.astype(np.uint16)
 
             # self.scale_x=1
@@ -553,7 +553,7 @@ class eynollah:
                 img_w_new=int(img.shape[1]/float(img.shape[0]) * 3000)
                 img_new=resize_image(img,img_h_new,img_w_new)
                 image_res=self.predict_enhancement(img_new)
-                #cv2.imwrite(os.path.join(self.dir_out, self.f_name) + ".tif",self.image)
+                #cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem) + ".tif",self.image)
                 #self.image=self.image.astype(np.uint16)
                 ##self.scale_x=1
                 ##self.scale_y=1
@@ -588,7 +588,7 @@ class eynollah:
 
     def get_image_and_scales_after_enhancing(self, img_org, img_res):
 
-        # self.image = cv2.imread(self.image_dir)
+        # self.image = cv2.imread(self.image_filename)
 
         self.image = np.copy(img_res)
         self.image = self.image.astype(np.uint8)
@@ -783,7 +783,7 @@ class eynollah:
         return prediction_true
 
     def early_page_for_num_of_column_classification(self):
-        img = cv2.imread(self.image_dir)
+        img = cv2.imread(self.image_filename)
         img = img.astype(np.uint8)
         patches = False
         model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
@@ -1166,7 +1166,7 @@ class eynollah:
 
                     img_int_p[img_int_p > 0] = 1
                     # slope_for_all=self.return_deskew_slope_new(img_int_p,sigma_des)
-                    slope_for_all = return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                    slope_for_all = return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
 
                     if abs(slope_for_all) < 0.5:
                         slope_for_all = [slope_deskew][0]
@@ -1177,7 +1177,7 @@ class eynollah:
                 except:
                     slope_for_all = 999
 
-                ##slope_for_all=return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                ##slope_for_all=return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
 
                 if slope_for_all == 999:
                     slope_for_all = [slope_deskew][0]
@@ -1207,7 +1207,7 @@ class eynollah:
                 textline_biggest_region = mask_biggest * textline_mask_tot_ea
 
                 # print(slope_for_all,'slope_for_all')
-                textline_rotated_seperated = seperate_lines_new2(textline_biggest_region[y : y + h, x : x + w], 0, num_col, slope_for_all, self.dir_of_all, self.f_name)
+                textline_rotated_seperated = seperate_lines_new2(textline_biggest_region[y : y + h, x : x + w], 0, num_col, slope_for_all, self.dir_of_all, self.image_filename_stem)
 
                 # new line added
                 ##print(np.shape(textline_rotated_seperated),np.shape(mask_biggest))
@@ -1329,7 +1329,7 @@ class eynollah:
 
                     img_int_p[img_int_p > 0] = 1
                     # slope_for_all=self.return_deskew_slope_new(img_int_p,sigma_des)
-                    slope_for_all = return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                    slope_for_all = return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
 
                     if abs(slope_for_all) <= 0.5:
                         slope_for_all = [slope_deskew][0]
@@ -1337,7 +1337,7 @@ class eynollah:
                 except:
                     slope_for_all = 999
 
-                ##slope_for_all=return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                ##slope_for_all=return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
 
                 if slope_for_all == 999:
                     slope_for_all = [slope_deskew][0]
@@ -1450,7 +1450,7 @@ class eynollah:
                     sigma_des = 1
 
                 crop_img[crop_img > 0] = 1
-                slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
 
             except:
                 slope_corresponding_textregion = 999
@@ -1478,7 +1478,7 @@ class eynollah:
         found_polygons_text_region_h = contours_h
 
         # create the file structure
-        pcgts, page = create_page_xml(self.image_dir, self.height_org, self.width_org)
+        pcgts, page = create_page_xml(self.image_filename, self.height_org, self.width_org)
 
         page_print_sub = ET.SubElement(page, "PrintSpace")
         coord_page = ET.SubElement(page_print_sub, "Coords")
@@ -1995,7 +1995,7 @@ class eynollah:
         print(self.f_name)
         print(os.path.join(dir_of_image, self.f_name) + ".xml")
         tree = ET.ElementTree(pcgts)
-        tree.write(os.path.join(dir_of_image, self.f_name) + ".xml")
+        tree.write(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
     
 
     def write_into_page_xml(self, contours, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, curved_line, slopes, slopes_marginals):
@@ -2004,7 +2004,7 @@ class eynollah:
         ##found_polygons_text_region_h=contours_h
 
         # create the file structure
-        pcgts, page = create_page_xml(self.image_dir, self.height_org, self.width_org)
+        pcgts, page = create_page_xml(self.image_filename, self.height_org, self.width_org)
         page_print_sub = ET.SubElement(page, "PrintSpace")
         coord_page = ET.SubElement(page_print_sub, "Coords")
         points_page_print = ""
@@ -2310,11 +2310,11 @@ class eynollah:
             pass
 
 
-        print(self.f_name)
-        # print(os.path.join(dir_of_image, self.f_name) + ".xml")
+        print(self.image_filename_stem)
+        # print(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
         tree = ET.ElementTree(pcgts)
-        tree.write(os.path.join(dir_of_image, self.f_name) + ".xml")
-        # cv2.imwrite(os.path.join(dir_of_image, self.f_name) + ".tif",self.image_org)
+        tree.write(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
+        # cv2.imwrite(os.path.join(dir_of_image, self.image_filename_stem) + ".tif",self.image_org)
 
     def get_regions_from_xy_2models(self,img,is_image_enhanced):
         img_org=np.copy(img)
@@ -2597,7 +2597,7 @@ class eynollah:
 
             croped_page = resize_image(croped_page, int(croped_page.shape[0] / self.scale_y), int(croped_page.shape[1] / self.scale_x))
 
-            path = os.path.join(dir_of_cropped_imgs, self.f_name + "_" + str(index) + ".jpg")
+            path = os.path.join(dir_of_cropped_imgs, self.image_filename_stem + "_" + str(index) + ".jpg")
             cv2.imwrite(path, croped_page)
             index += 1
 
@@ -2898,7 +2898,7 @@ class eynollah:
         colors = [im.cmap(im.norm(value)) for value in values]
         patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
         plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=40)
-        plt.savefig(os.path.join(self.dir_of_layout, self.f_name + "_layout_main.png"))
+        plt.savefig(os.path.join(self.dir_of_layout, self.image_filename_stem + "_layout_main.png"))
 
     def save_plot_of_layout_main_all(self, text_regions_p, image_page):
         values = np.unique(text_regions_p[:, :])
@@ -2918,7 +2918,7 @@ class eynollah:
         patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
         plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
 
-        plt.savefig(os.path.join(self.dir_of_all, self.f_name + "_layout_main_and_page.png"))
+        plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem + "_layout_main_and_page.png"))
 
     def save_plot_of_layout(self, text_regions_p, image_page):
         values = np.unique(text_regions_p[:, :])
@@ -2933,7 +2933,7 @@ class eynollah:
         colors = [im.cmap(im.norm(value)) for value in values]
         patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
         plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=40)
-        plt.savefig(os.path.join(self.dir_of_layout, self.f_name + "_layout.png"))
+        plt.savefig(os.path.join(self.dir_of_layout, self.image_filename_stem + "_layout.png"))
 
     def save_plot_of_layout_all(self, text_regions_p, image_page):
         values = np.unique(text_regions_p[:, :])
@@ -2953,15 +2953,15 @@ class eynollah:
         patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
         plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
 
-        plt.savefig(os.path.join(self.dir_of_all, self.f_name + "_layout_and_page.png"))
+        plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem + "_layout_and_page.png"))
 
     def save_deskewed_image(self, slope_deskew):
         img_rotated = rotyate_image_different(self.image_org, slope_deskew)
 
         if self.dir_of_all is not None:
-            cv2.imwrite(os.path.join(self.dir_of_all, self.f_name + "_org.png"), self.image_org)
+            cv2.imwrite(os.path.join(self.dir_of_all, self.image_filename_stem + "_org.png"), self.image_org)
 
-        cv2.imwrite(os.path.join(self.dir_of_deskewed, self.f_name + "_deskewed.png"), img_rotated)
+        cv2.imwrite(os.path.join(self.dir_of_deskewed, self.image_filename_stem + "_deskewed.png"), img_rotated)
         del img_rotated
 
     def run(self):
@@ -2978,7 +2978,7 @@ class eynollah:
         K.clear_session()
         scale = 1
         if (self.allow_enhancement) and is_image_enhanced:
-            cv2.imwrite(os.path.join(self.dir_out, self.f_name) + ".tif", img_res)
+            cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem) + ".tif", img_res)
             img_res = img_res.astype(np.uint8)
             self.get_image_and_scales(img_org, img_res, scale)
 
@@ -3004,7 +3004,7 @@ class eynollah:
 
         print("textregion: " + str(time.time() - t1))
 
-        img_g = cv2.imread(self.image_dir, 0)
+        img_g = cv2.imread(self.image_filename, 0)
         img_g = img_g.astype(np.uint8)
 
         img_g3 = np.zeros((img_g.shape[0], img_g.shape[1], 3))
@@ -3021,7 +3021,7 @@ class eynollah:
         # print(image_page.shape,'page')
 
         if self.dir_of_all is not None:
-            cv2.imwrite(os.path.join(self.dir_of_all, self.f_name + "_page.png"), image_page)
+            cv2.imwrite(os.path.join(self.dir_of_all, self.image_filename_stem + "_page.png"), image_page)
         ##########
         K.clear_session()
         gc.collect()
@@ -3094,7 +3094,7 @@ class eynollah:
                     patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
                     plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
 
-                    plt.savefig(os.path.join(self.dir_of_all, self.f_name + "_textline_and_page.png"))
+                    plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem + "_textline_and_page.png"))
                 print("textline: " + str(time.time() - t1))
                 # plt.imshow(textline_mask_tot_ea)
                 # plt.show()
@@ -3102,8 +3102,8 @@ class eynollah:
 
                 sigma = 2
                 main_page_deskew = True
-                slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2), sigma, main_page_deskew, dir_of_all=self.dir_of_all, f_name=self.f_name)
-                slope_first = 0  # return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2),sigma, dir_of_all=self.dir_of_all, f_name=self.f_name)
+                slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2), sigma, main_page_deskew, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
+                slope_first = 0  # return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2),sigma, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
 
                 if self.dir_of_deskewed is not None:
                     self.save_deskewed_image(slope_deskew)
