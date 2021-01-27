@@ -1,3 +1,4 @@
+# pylint: disable=no-member
 """
 tool to extract table form data from alto xml data
 """
@@ -200,15 +201,8 @@ class eynollah:
             nxf = img_w / float(width_mid)
             nyf = img_h / float(height_mid)
 
-            if nxf > int(nxf):
-                nxf = int(nxf) + 1
-            else:
-                nxf = int(nxf)
-
-            if nyf > int(nyf):
-                nyf = int(nyf) + 1
-            else:
-                nyf = int(nyf)
+            nxf = int(nxf) + 1 if nxf > int(nxf) else int(nxf)
+            nyf = int(nyf) + 1 if nyf > int(nyf) else int(nyf)
 
             for i in range(nxf):
                 for j in range(nyf):
@@ -295,7 +289,6 @@ class eynollah:
         return int(float(dpi))
 
     def resize_image_with_column_classifier(self, is_image_enhanced):
-        dpi = self.check_dpi()
         img = cv2.imread(self.image_filename)
         img = img.astype(np.uint8)
 
@@ -540,11 +533,6 @@ class eynollah:
             image_res = self.predict_enhancement(img_new)
             # cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem) + ".tif",self.image)
             # self.image=self.image.astype(np.uint16)
-
-            # self.scale_x=1
-            # self.scale_y=1
-            # self.height_org = self.image.shape[0]
-            # self.width_org = self.image.shape[1]
             is_image_enhanced = True
         else:
             is_image_enhanced = False
@@ -569,8 +557,6 @@ class eynollah:
         del img_org
 
     def get_image_and_scales_after_enhancing(self, img_org, img_res):
-
-        # self.image = cv2.imread(self.image_filename)
 
         self.image = np.copy(img_res)
         self.image = self.image.astype(np.uint8)
@@ -630,15 +616,8 @@ class eynollah:
             nxf = img_w / float(width_mid)
             nyf = img_h / float(height_mid)
 
-            if nxf > int(nxf):
-                nxf = int(nxf) + 1
-            else:
-                nxf = int(nxf)
-
-            if nyf > int(nyf):
-                nyf = int(nyf) + 1
-            else:
-                nyf = int(nyf)
+            nxf = int(nxf) + 1 if nxf > int(nxf) else int(nxf)
+            nyf = int(nyf) + 1 if nyf > int(nyf) else int(nyf)
 
             for i in range(nxf):
                 for j in range(nyf):
@@ -665,11 +644,8 @@ class eynollah:
                         index_y_d = img_h - img_height_model
 
                     img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-
                     label_p_pred = model.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]))
-
                     seg = np.argmax(label_p_pred, axis=3)[0]
-
                     seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
 
                     if i == 0 and j == 0:
