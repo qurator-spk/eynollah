@@ -139,6 +139,7 @@ class eynollah:
         headers_off=False
     ):
         self.image_filename = image_filename  # XXX This does not seem to be a directory as the name suggests, but a file
+        self.cont_page = []
         self.dir_out = dir_out
         self.image_filename_stem = image_filename_stem
         self.dir_of_cropped_images = dir_of_cropped_images
@@ -821,7 +822,6 @@ class eynollah:
 
         croped_page, page_coord = crop_image_inside_box(box, self.image)
 
-        self.cont_page = []
         self.cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
 
         session_page.close()
@@ -1414,24 +1414,7 @@ class eynollah:
 
         page_print_sub = ET.SubElement(page, "PrintSpace")
         coord_page = ET.SubElement(page_print_sub, "Coords")
-        points_page_print = ""
-
-        for lmm in range(len(self.cont_page[0])):
-            if len(self.cont_page[0][lmm])==2:
-                points_page_print=points_page_print+str( int( (self.cont_page[0][lmm][0])/self.scale_x ) )
-                points_page_print=points_page_print+','
-                points_page_print=points_page_print+str( int( (self.cont_page[0][lmm][1])/self.scale_y ) )
-            else:
-                points_page_print=points_page_print+str( int((self.cont_page[0][lmm][0][0])/self.scale_x) )
-                points_page_print=points_page_print+','
-                points_page_print=points_page_print+str( int((self.cont_page[0][lmm][0][1])/self.scale_y) )
-
-            if lmm<(len(self.cont_page[0])-1):
-                points_page_print=points_page_print+' '
-        coord_page.set('points',points_page_print)
-        
-        
-
+        coord_page.set('points', self.calculate_page_coords())
 
         if len(contours)>0:
             region_order=ET.SubElement(page, 'ReadingOrder')
@@ -1928,6 +1911,22 @@ class eynollah:
         tree.write(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
     
 
+    def calculate_page_coords(self):
+        points_page_print = ""
+        for lmm in range(len(self.cont_page[0])):
+            if len(self.cont_page[0][lmm]) == 2:
+                points_page_print = points_page_print + str(int((self.cont_page[0][lmm][0] ) / self.scale_x))
+                points_page_print = points_page_print + ','
+                points_page_print = points_page_print + str(int((self.cont_page[0][lmm][1] ) / self.scale_y))
+            else:
+                points_page_print = points_page_print + str(int((self.cont_page[0][lmm][0][0]) / self.scale_x))
+                points_page_print = points_page_print + ','
+                points_page_print = points_page_print + str(int((self.cont_page[0][lmm][0][1] ) / self.scale_y))
+
+            if lmm < (len( self.cont_page[0] ) - 1):
+                points_page_print = points_page_print + ' '
+        return points_page_print
+
     def write_into_page_xml(self, contours, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, curved_line, slopes, slopes_marginals):
 
         found_polygons_text_region = contours
@@ -1937,27 +1936,11 @@ class eynollah:
         pcgts, page = create_page_xml(self.image_filename, self.height_org, self.width_org)
         page_print_sub = ET.SubElement(page, "PrintSpace")
         coord_page = ET.SubElement(page_print_sub, "Coords")
-        points_page_print = ""
-
-        for lmm in range(len(self.cont_page[0])):
-            if len(self.cont_page[0][lmm]) == 2:
-                points_page_print = points_page_print + str( int( ( self.cont_page[0][lmm][0] ) / self.scale_x ) )
-                points_page_print = points_page_print + ','
-                points_page_print = points_page_print + str( int( ( self.cont_page[0][lmm][1] ) / self.scale_y ) )
-            else:
-                points_page_print = points_page_print + str( int( ( self.cont_page[0][lmm][0][0]) / self.scale_x ) )
-                points_page_print=points_page_print + ','
-                points_page_print=points_page_print + str( int( ( self.cont_page[0][lmm][0][1] ) / self.scale_y) )
-
-            if lmm < (len( self.cont_page[0] ) - 1):
-                points_page_print = points_page_print + ' '
-        coord_page.set( 'points', points_page_print )
-        
+        coord_page.set('points', self.calculate_page_coords())
 
         if len(contours) > 0:
             region_order = ET.SubElement(page, 'ReadingOrder')
             region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
-            
             region_order_sub.set('id',"ro357564684568544579089")
 
             indexer_region=0
