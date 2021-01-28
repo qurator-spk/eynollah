@@ -1404,15 +1404,15 @@ class eynollah:
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new)
 
-    def serialize_lines_in_region(self, textregion, all_found_texline_polygons, region_idx, page_coord, all_box_coord, slopes):
+    def serialize_lines_in_region(self, textregion, all_found_texline_polygons, region_idx, page_coord, all_box_coord, slopes, id_indexer_l):
         for j in range(len(all_found_texline_polygons[region_idx])):
             textline=ET.SubElement(textregion, 'TextLine')
             textline.set('id','l'+str(id_indexer_l))
-            id_indexer_l+=1
+            id_indexer_l += 1
             coord = ET.SubElement(textline, 'Coords')
             texteq = ET.SubElement(textline, 'TextEquiv')
             uni = ET.SubElement(texteq, 'Unicode')
-            uni.text = ' ' 
+            uni.text = ' '
 
             #points = ET.SubElement(coord, 'Points') 
 
@@ -1480,6 +1480,7 @@ class eynollah:
                 if l<(len(all_found_texline_polygons[region_idx][j])-1):
                     points_co=points_co+' '
             coord.set('points',points_co)
+        return id_indexer_l
 
     def write_into_page_xml_full(self, contours, contours_h, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals):
 
@@ -1550,7 +1551,7 @@ class eynollah:
                 #print(points_co)
                 coord_text.set('points',points_co)
 
-                self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord)
+                id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
                 texteqreg=ET.SubElement(textregion, 'TextEquiv')
     
                 unireg=ET.SubElement(texteqreg, 'Unicode')
@@ -1578,7 +1579,7 @@ class eynollah:
                 coord_text = ET.SubElement(textregion, 'Coords')
 
                     
-                self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord, slopes)
+                id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord, slopes, id_indexer_l)
                 texteqreg=ET.SubElement(textregion, 'TextEquiv')
     
                 unireg=ET.SubElement(texteqreg, 'Unicode')
