@@ -1482,6 +1482,23 @@ class eynollah:
             coord.set('points',points_co)
         return id_indexer_l
 
+    def calculate_polygon_coords(self, contour_list, i, j, page_coord):
+        coords = ''
+        for lmm in range(len(contour_list[i])):
+            if len(contour_list[i][j]) == 2:
+                coords += str(int((contour_list[i][j][0] + page_coord[2]) / self.scale_x))
+                coords += ','
+                coords += str(int((contour_list[i][j][1] + page_coord[0]) / self.scale_y))
+            else:
+                coords += str(int((contour_list[i][j][0][0] + page_coord[2]) / self.scale_x))
+                coords += ','
+                coords += str(int((contour_list[i][j][0][1] + page_coord[0]) / self.scale_y))
+
+            if j < len(contour_list[mm]) - 1:
+                coords=coords+' '
+        #print(coords)
+        return coords
+
     def write_into_page_xml_full(self, contours, contours_h, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals):
 
         found_polygons_text_region = contours
@@ -1527,29 +1544,11 @@ class eynollah:
     
                 textregion.set('id','r'+str(id_indexer))
                 id_indexer+=1
-                
+
                 textregion.set('type','paragraph')
-                #if mm==0:
-                #    textregion.set('type','header')
-                #else:
-                #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                
-                points_co=''
-                for lmm in range(len(found_polygons_text_region[mm])):
-                    if len(found_polygons_text_region[mm][lmm])==2:
-                        points_co=points_co+str(int((found_polygons_text_region[mm][lmm][0] + page_coord[2]) / self.scale_x))
-                        points_co=points_co+','
-                        points_co=points_co+str(int((found_polygons_text_region[mm][lmm][1] + page_coord[0]) / self.scale_y))
-                    else:
-                        points_co=points_co+str(int((found_polygons_text_region[mm][lmm][0][0] + page_coord[2]) / self.scale_x))
-                        points_co=points_co+','
-                        points_co=points_co+str(int((found_polygons_text_region[mm][lmm][0][1] + page_coord[0]) / self.scale_y))
-    
-                    if lmm<(len(found_polygons_text_region[mm])-1):
-                        points_co=points_co+' '
-                #print(points_co)
-                coord_text.set('points',points_co)
+
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, lmm, page_coord))
 
                 id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
                 texteqreg=ET.SubElement(textregion, 'TextEquiv')
@@ -1607,23 +1606,7 @@ class eynollah:
                 #else:
                 #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
-
-                points_co=''
-                for lmm in range(len(found_polygons_drop_capitals[mm])):
-
-                    if len(found_polygons_drop_capitals[mm][lmm])==2:
-                        points_co=points_co+str( int( (found_polygons_drop_capitals[mm][lmm][0] +page_coord[2])/self.scale_x ) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int( (found_polygons_drop_capitals[mm][lmm][1] +page_coord[0])/self.scale_y ) )
-                    else:
-                        points_co=points_co+str( int((found_polygons_drop_capitals[mm][lmm][0][0] +page_coord[2])/self.scale_x) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int((found_polygons_drop_capitals[mm][lmm][0][1] +page_coord[0])/self.scale_y) )
-
-                    if lmm<(len(found_polygons_drop_capitals[mm])-1):
-                        points_co=points_co+' '
-                #print(points_co)
-                coord_text.set('points',points_co)
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, lmm, page_coord)
                 
                     
                 texteqreg=ET.SubElement(textregion, 'TextEquiv')
@@ -1652,24 +1635,8 @@ class eynollah:
                 #else:
                 #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                
-                points_co=''
-                for lmm in range(len(found_polygons_marginals[mm])):
-                    if len(found_polygons_marginals[mm][lmm])==2:
-                        points_co=points_co+str( int( (found_polygons_marginals[mm][lmm][0]+page_coord[2] )/self.scale_x ) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int( (found_polygons_marginals[mm][lmm][1]+page_coord[0] )/self.scale_y ) )
-                    else:
-                        points_co=points_co+str( int((found_polygons_marginals[mm][lmm][0][0]+page_coord[2] )/self.scale_x) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int((found_polygons_marginals[mm][lmm][0][1] +page_coord[0])/self.scale_y) )
-    
-                    if lmm<(len(found_polygons_marginals[mm])-1):
-                        points_co=points_co+' '
-                #print(points_co)
-                coord_text.set('points',points_co)
-                
-                
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, lmm, page_coord)
+
                 for j in range(len(all_found_texline_polygons_marginals[mm])):
     
                     textline=ET.SubElement(textregion, 'TextLine')
@@ -1743,27 +1710,8 @@ class eynollah:
 
                 textregion.set('id','r'+str(id_indexer))
                 id_indexer+=1
-
-
                 coord_text = ET.SubElement(textregion, 'Coords')
-
-                points_co=''
-                for lmm in range(len(found_polygons_text_region_img[mm])):
-
-                    if len(found_polygons_text_region_img[mm][lmm])==2:
-                        points_co=points_co+str( int( (found_polygons_text_region_img[mm][lmm][0] +page_coord[2])/self.scale_x ) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int( (found_polygons_text_region_img[mm][lmm][1] +page_coord[0])/self.scale_y ) )
-                    else:
-                        points_co=points_co+str( int((found_polygons_text_region_img[mm][lmm][0][0] +page_coord[2])/self.scale_x) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int((found_polygons_text_region_img[mm][lmm][0][1] +page_coord[0])/self.scale_y) )
-
-                    if lmm<(len(found_polygons_text_region_img[mm])-1):
-                        points_co=points_co+' '
-                    
-                    
-                coord_text.set('points',points_co)
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_img, mm, lmm, page_coord)
         except:
             pass
 
@@ -1774,27 +1722,8 @@ class eynollah:
 
                 textregion.set('id','r'+str(id_indexer))
                 id_indexer+=1
-
-
                 coord_text = ET.SubElement(textregion, 'Coords')
-
-                points_co=''
-                for lmm in range(len(found_polygons_tables[mm])):
-
-                    if len(found_polygons_tables[mm][lmm])==2:
-                        points_co=points_co+str( int( (found_polygons_tables[mm][lmm][0] +page_coord[2])/self.scale_x ) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int( (found_polygons_tables[mm][lmm][1] +page_coord[0])/self.scale_y ) )
-                    else:
-                        points_co=points_co+str( int((found_polygons_tables[mm][lmm][0][0] +page_coord[2])/self.scale_x) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int((found_polygons_tables[mm][lmm][0][1] +page_coord[0])/self.scale_y) )
-
-                    if lmm<(len(found_polygons_tables[mm])-1):
-                        points_co=points_co+' '
-                    
-                    
-                coord_text.set('points',points_co)
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_tables, mm, lmm, page_coord)
         except:
             pass
 
@@ -1877,22 +1806,7 @@ class eynollah:
                 #else:
                 #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                
-                points_co = ''
-                for lmm in range(len(found_polygons_text_region[mm])):
-                    if len(found_polygons_text_region[mm][lmm]) == 2:
-                        points_co = points_co + str( int( (found_polygons_text_region[mm][lmm][0] + page_coord[2] ) / self.scale_x ) )
-                        points_co = points_co + ','
-                        points_co = points_co + str( int( (found_polygons_text_region[mm][lmm][1] + page_coord[0] ) / self.scale_y ) )
-                    else:
-                        points_co = points_co + str( int( (found_polygons_text_region[mm][lmm][0][0] + page_coord[2] ) / self.scale_x ) )
-                        points_co = points_co + ','
-                        points_co = points_co + str( int( (found_polygons_text_region[mm][lmm][0][1] + page_coord[0] ) /self.scale_y) )
-    
-                    if lmm < (len(found_polygons_text_region[mm]) - 1):
-                        points_co = points_co + ' '
-                #print(points_co)
-                coord_text.set('points', points_co)
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, lmm, page_coord))
                 
                 
                 
@@ -1981,15 +1895,13 @@ class eynollah:
                                 points_co = points_co + ','
                                 points_co = points_co+str( int( ( all_found_texline_polygons[mm][j][l][0][1] 
                                                         + all_box_coord[mm][0] + page_coord[0]) / self.scale_y) )
-                            
-    
+
                         if l < (len(all_found_texline_polygons[mm][j]) - 1):
                             points_co = points_co + ' '
                     #print(points_co)
                     coord.set('points', points_co)
-                    
+
                 texteqreg = ET.SubElement(textregion, 'TextEquiv')
-    
                 unireg = ET.SubElement(texteqreg, 'Unicode')
                 unireg.text = ' ' 
                 
@@ -2013,22 +1925,7 @@ class eynollah:
                 #else:
                 #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                
-                points_co = ''
-                for lmm in range(len(found_polygons_marginals[mm])):
-                    if len(found_polygons_marginals[mm][lmm])==2:
-                        points_co=points_co+str( int( (found_polygons_marginals[mm][lmm][0]+page_coord[2] )/self.scale_x ) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int( (found_polygons_marginals[mm][lmm][1]+page_coord[0] )/self.scale_y ) )
-                    else:
-                        points_co=points_co+str( int((found_polygons_marginals[mm][lmm][0][0]+page_coord[2] )/self.scale_x) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int((found_polygons_marginals[mm][lmm][0][1] +page_coord[0])/self.scale_y) )
-    
-                    if lmm<(len(found_polygons_marginals[mm])-1):
-                        points_co=points_co+' '
-                #print(points_co)
-                coord_text.set('points',points_co)
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, lmm, page_coord)
                 
                 for j in range(len(all_found_texline_polygons_marginals[mm])):
     
