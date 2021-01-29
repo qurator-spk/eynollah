@@ -744,9 +744,7 @@ class eynollah:
 
         if patches and cols == 2:
             img = otsu_copy_binary(img)  # otsu_copy(img)
-
             img = img.astype(np.uint8)
-
             if img_width_h >= 2000:
                 img = resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9))
             else:
@@ -755,7 +753,6 @@ class eynollah:
 
         if patches and cols == 1:
             img = otsu_copy_binary(img)  # otsu_copy(img)
-
             img = img.astype(np.uint8)
             img = resize_image(img, int(img_height_h * 0.5), int(img_width_h * 0.5))
             img = img.astype(np.uint8)
@@ -766,13 +763,11 @@ class eynollah:
                 img = img.astype(np.uint8)
                 #img= self.resize_image(img, int(img_height_h*0.8), int(img_width_h*0.8) )
                 img= resize_image(img, int(img_height_h*2800/float(img_width_h)), 2800 )
-
             else:
                 img = otsu_copy_binary(img)#self.otsu_copy(img)
                 img = img.astype(np.uint8)
                 #img= self.resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
-                
-            
+
         if patches and cols==4:
             #print(self.scale_x,img_width_h,'scale')
             if (self.scale_x==1 and img_width_h>4000) or (self.scale_x!=1 and img_width_h>3700):
@@ -784,7 +779,7 @@ class eynollah:
                 img = otsu_copy_binary(img)#self.otsu_copy(img)
                 img = img.astype(np.uint8)
                 img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
-            
+
         if patches and cols==5:
             if (self.scale_x==1 and img_width_h>5000):
                 img = otsu_copy_binary(img)#self.otsu_copy(img)
@@ -795,7 +790,7 @@ class eynollah:
                 img = otsu_copy_binary(img)#self.otsu_copy(img)
                 img = img.astype(np.uint8)
                 img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
-                
+
         if patches and cols>=6:
             if img_width_h>5600:
                 img = otsu_copy_binary(img)#self.otsu_copy(img)
@@ -943,28 +938,21 @@ class eynollah:
 
             all_text_region_raw = textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
             all_text_region_raw = all_text_region_raw.astype(np.uint8)
-
             img_int_p = all_text_region_raw[:, :]  # self.all_text_region_raw[mv]
 
             ##img_int_p=cv2.erode(img_int_p,self.kernel,iterations = 2)
-
             # plt.imshow(img_int_p)
             # plt.show()
 
             if img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
-
                 slopes_per_each_subprocess.append(0)
-
                 slope_first = 0
                 slope_for_all = [slope_deskew][0]
-
             else:
-
                 try:
                     textline_con, hierachy = return_contours_of_image(img_int_p)
                     textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.0008)
                     y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
-
                     sigma_des = int(y_diff_mean * (4.0 / 40.0))
 
                     if sigma_des < 1:
@@ -979,37 +967,26 @@ class eynollah:
                     # old method
                     # slope_for_all=self.textline_contours_to_get_slope_correctly(self.all_text_region_raw[mv],denoised,contours[mv])
                     # text_patch_processed=textline_contours_postprocessing(gada)
-
                 except:
                     slope_for_all = 999
 
-                ##slope_for_all=return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
-
                 if slope_for_all == 999:
                     slope_for_all = [slope_deskew][0]
-                ##if np.abs(slope_for_all)>32.5 and slope_for_all!=999:
-                ##slope_for_all=slope_biggest
-                ##elif slope_for_all==999:
-                ##slope_for_all=slope_biggest
                 slopes_per_each_subprocess.append(slope_for_all)
 
             index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
-
             crop_img, crop_coor = crop_image_inside_box(boxes_text[mv], image_page_rotated)
+
             if abs(slope_for_all) < 45:
 
                 # all_box_coord.append(crop_coor)
 
                 textline_region_in_image = np.zeros(textline_mask_tot_ea.shape)
                 cnt_o_t_max = contours_par_per_process[mv]
-
                 x, y, w, h = cv2.boundingRect(cnt_o_t_max)
-
                 mask_biggest = np.zeros(mask_texts_only.shape)
                 mask_biggest = cv2.fillPoly(mask_biggest, pts=[cnt_o_t_max], color=(1, 1, 1))
-
                 mask_region_in_patch_region = mask_biggest[y : y + h, x : x + w]
-
                 textline_biggest_region = mask_biggest * textline_mask_tot_ea
 
                 # print(slope_for_all,'slope_for_all')
@@ -1025,7 +1002,6 @@ class eynollah:
 
                 # plt.imshow(textline_region_in_image)
                 # plt.show()
-
                 # plt.imshow(textline_cnt_seperated)
                 # plt.show()
 
@@ -1039,21 +1015,16 @@ class eynollah:
                     if num_col + 1 == 1:
                         mask_biggest2 = cv2.dilate(mask_biggest2, self.kernel, iterations=5)
                     else:
-
                         mask_biggest2 = cv2.dilate(mask_biggest2, self.kernel, iterations=4)
 
                     pixel_img = 1
-
                     mask_biggest2 = resize_image(mask_biggest2, int(mask_biggest2.shape[0] * scale_par), int(mask_biggest2.shape[1] * scale_par))
-
                     cnt_textlines_in_image_ind = return_contours_of_interested_textline(mask_biggest2, pixel_img)
-
                     try:
                         # textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0]/scale_par)
                         textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0])
                     except:
                         pass
-
             else:
                 slope_first = 0
                 add_boxes_coor_into_textlines = True
@@ -1061,13 +1032,8 @@ class eynollah:
                 add_boxes_coor_into_textlines = False
                 # print(np.shape(textlines_cnt_per_region),'textlines_cnt_per_region')
 
-            # textlines_cnt_tot_per_process.append(textlines_cnt_per_region)
-            # index_polygons_per_process_per_process.append(index_polygons_per_process[iiii])
-
             textlines_rectangles_per_each_subprocess.append(textlines_cnt_per_region)
-            # all_found_texline_polygons.append(cnt_clean_rot)
             bounding_box_of_textregion_per_each_subprocess.append(boxes_text[mv])
-
             contours_textregion_per_each_subprocess.append(contours_per_process[mv])
             contours_textregion_par_per_each_subprocess.append(contours_par_per_process[mv])
             all_box_coord_per_process.append(crop_coor)
@@ -1086,74 +1052,42 @@ class eynollah:
         slope_biggest = 0
 
         for mv in range(len(boxes_text)):
-            
             crop_img,crop_coor=crop_image_inside_box(boxes_text[mv],image_page_rotated)
-
-            #all_box_coord.append(crop_coor)
-            
             mask_textline=np.zeros((textline_mask_tot_ea.shape))
-            
             mask_textline=cv2.fillPoly(mask_textline,pts=[contours_per_process[mv]],color=(1,1,1))
-            
-            
-        
             denoised=None
             all_text_region_raw=(textline_mask_tot_ea*mask_textline[:,:])[boxes_text[mv][1]:boxes_text[mv][1]+boxes_text[mv][3] , boxes_text[mv][0]:boxes_text[mv][0]+boxes_text[mv][2] ]
             all_text_region_raw=all_text_region_raw.astype(np.uint8)
-            
             img_int_p=all_text_region_raw[:,:]#self.all_text_region_raw[mv]
-            
             img_int_p=cv2.erode(img_int_p,self.kernel,iterations = 2)
-            
+
             if img_int_p.shape[0]/img_int_p.shape[1]<0.1:
-                
                 slopes_per_each_subprocess.append(0)
-
                 slope_for_all = [slope_deskew][0]
-
                 all_text_region_raw = textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
                 cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contours_par_per_process[mv], boxes_text[mv], 0)
-
                 textlines_rectangles_per_each_subprocess.append(cnt_clean_rot)
-
                 index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
-                # all_found_texline_polygons.append(cnt_clean_rot)
                 bounding_box_of_textregion_per_each_subprocess.append(boxes_text[mv])
             else:
-
                 try:
                     textline_con, hierachy = return_contours_of_image(img_int_p)
                     textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.00008)
-
                     y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
-
                     sigma_des = int(y_diff_mean * (4.0 / 40.0))
-
                     if sigma_des < 1:
                         sigma_des = 1
-
                     img_int_p[img_int_p > 0] = 1
-                    # slope_for_all=self.return_deskew_slope_new(img_int_p,sigma_des)
                     slope_for_all = return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
-
                     if abs(slope_for_all) <= 0.5:
                         slope_for_all = [slope_deskew][0]
-
                 except:
                     slope_for_all = 999
 
-                ##slope_for_all=return_deskew_slop(img_int_p,sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
-
                 if slope_for_all == 999:
                     slope_for_all = [slope_deskew][0]
-                ##if np.abs(slope_for_all)>32.5 and slope_for_all!=999:
-                ##slope_for_all=slope_biggest
-                ##elif slope_for_all==999:
-                ##slope_for_all=slope_biggest
                 slopes_per_each_subprocess.append(slope_for_all)
-
                 slope_first = 0
-
                 mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
                 mask_only_con_region = cv2.fillPoly(mask_only_con_region, pts=[contours_par_per_process[mv]], color=(1, 1, 1))
 
@@ -1166,7 +1100,6 @@ class eynollah:
                 ##plt.show()
                 ##plt.imshow(all_text_region_raw)
                 ##plt.show()
-
                 ##plt.imshow(mask_only_con_region)
                 ##plt.show()
 
@@ -1175,7 +1108,6 @@ class eynollah:
 
                 textlines_rectangles_per_each_subprocess.append(cnt_clean_rot)
                 index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
-                # all_found_texline_polygons.append(cnt_clean_rot)
                 bounding_box_of_textregion_per_each_subprocess.append(boxes_text[mv])
 
             contours_textregion_per_each_subprocess.append(contours_per_process[mv])
@@ -1190,38 +1122,22 @@ class eynollah:
             model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir)
         if not patches:
             model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir_np)
-
-        ##img = otsu_copy(img)
         img = img.astype(np.uint8)
-
         img_org = np.copy(img)
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
-
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
-
         prediction_textline = self.do_prediction(patches, img, model_textline)
-
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
-
         patches = False
         prediction_textline_longshot = self.do_prediction(patches, img, model_textline)
-
         prediction_textline_longshot_true_size = resize_image(prediction_textline_longshot, img_h, img_w)
 
-        # scaler_w=1.5
-        # scaler_h=1.5
-        # patches=True
-        # img= resize_image(img_org, int(img_org.shape[0]*scaler_h), int(img_org.shape[1]*scaler_w))
-
         # prediction_textline_streched=self.do_prediction(patches,img,model_textline)
-
         # prediction_textline_streched= resize_image(prediction_textline_streched, img_h, img_w)
-
         ##plt.imshow(prediction_textline_streched[:,:,0])
         ##plt.show()
 
-        # sys.exit()
         session_textline.close()
 
         del model_textline
@@ -1261,10 +1177,6 @@ class eynollah:
 
             if slope_corresponding_textregion == 999:
                 slope_corresponding_textregion = slope_biggest
-            ##if np.abs(slope_corresponding_textregion)>12.5 and slope_corresponding_textregion!=999:
-            ##slope_corresponding_textregion=slope_biggest
-            ##elif slope_corresponding_textregion==999:
-            ##slope_corresponding_textregion=slope_biggest
             slopes_sub.append(slope_corresponding_textregion)
 
             cnt_clean_rot = textline_contours_postprocessing(crop_img, slope_corresponding_textregion, contours_per_process[mv], boxes_per_process[mv])
@@ -1478,11 +1390,11 @@ class eynollah:
                 #else:
                 #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, lmm, page_coord)
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, lmm, page_coord))
                 
                     
-                texteqreg = ET.SubElement(textregion, 'TextEquiv')
     
+                texteqreg = ET.SubElement(textregion, 'TextEquiv')
                 unireg=ET.SubElement(texteqreg, 'Unicode')
                 unireg.text = ' ' 
                 
@@ -1507,7 +1419,7 @@ class eynollah:
                 #else:
                 #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, lmm, page_coord)
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, lmm, page_coord))
 
                 for j in range(len(all_found_texline_polygons_marginals[mm])):
     
@@ -1583,7 +1495,7 @@ class eynollah:
                 textregion.set('id','r'+str(id_indexer))
                 id_indexer+=1
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_img, mm, lmm, page_coord)
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_img, mm, lmm, page_coord))
         except:
             pass
 
@@ -1595,7 +1507,7 @@ class eynollah:
                 textregion.set('id','r'+str(id_indexer))
                 id_indexer+=1
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_tables, mm, lmm, page_coord)
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_tables, mm, lmm, page_coord))
         except:
             pass
 
@@ -1770,7 +1682,7 @@ class eynollah:
                 textregion.set('id', id_of_marginalia[mm])
                 textregion.set('type', 'marginalia')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, lmm, page_coord)
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, lmm, page_coord))
                 for j in range(len(all_found_texline_polygons_marginals[mm])):
                     textline=ET.SubElement(textregion, 'TextLine')
                     textline.set('id','l'+str(id_indexer_l))
