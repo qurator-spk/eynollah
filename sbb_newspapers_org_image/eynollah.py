@@ -273,41 +273,7 @@ class eynollah:
         dpi = os.popen('identify -format "%x " ' + self.image_filename).read()
         return int(float(dpi))
 
-    def resize_image_with_column_classifier(self, is_image_enhanced):
-        img = cv2.imread(self.image_filename)
-        img = img.astype(np.uint8)
-
-        _, page_coord = self.early_page_for_num_of_column_classification()
-        model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
-
-        img_1ch = cv2.imread(self.image_filename, 0)
-        width_early = img_1ch.shape[1]
-        img_1ch = img_1ch[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
-
-        # plt.imshow(img_1ch)
-        # plt.show()
-        img_1ch = img_1ch / 255.0
-
-        img_1ch = cv2.resize(img_1ch, (448, 448), interpolation=cv2.INTER_NEAREST)
-
-        img_in = np.zeros((1, img_1ch.shape[0], img_1ch.shape[1], 3))
-        img_in[0, :, :, 0] = img_1ch[:, :]
-        img_in[0, :, :, 1] = img_1ch[:, :]
-        img_in[0, :, :, 2] = img_1ch[:, :]
-
-        label_p_pred = model_num_classifier.predict(img_in)
-        num_col = np.argmax(label_p_pred[0]) + 1
-
-        print(num_col, label_p_pred, "num_col_classifier")
-
-        session_col_classifier.close()
-        del model_num_classifier
-        del session_col_classifier
-
-        K.clear_session()
-        gc.collect()
-
-        # sys.exit()
+    def calculate_width_height_by_columns(self, img, num_col, width_early):
         if num_col == 1 and width_early < 1100:
             img_w_new = 2000
             img_h_new = int(img.shape[0] / float(img.shape[1]) * 2000)
@@ -367,6 +333,45 @@ class eynollah:
             img_new = resize_image(img, img_h_new, img_w_new)
             num_column_is_classified = True
 
+        return img_new, num_column_is_classified
+
+    def resize_image_with_column_classifier(self, is_image_enhanced):
+        img = cv2.imread(self.image_filename)
+        img = img.astype(np.uint8)
+
+        _, page_coord = self.early_page_for_num_of_column_classification()
+        model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
+
+        img_1ch = cv2.imread(self.image_filename, 0)
+        width_early = img_1ch.shape[1]
+        img_1ch = img_1ch[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
+
+        # plt.imshow(img_1ch)
+        # plt.show()
+        img_1ch = img_1ch / 255.0
+
+        img_1ch = cv2.resize(img_1ch, (448, 448), interpolation=cv2.INTER_NEAREST)
+
+        img_in = np.zeros((1, img_1ch.shape[0], img_1ch.shape[1], 3))
+        img_in[0, :, :, 0] = img_1ch[:, :]
+        img_in[0, :, :, 1] = img_1ch[:, :]
+        img_in[0, :, :, 2] = img_1ch[:, :]
+
+        label_p_pred = model_num_classifier.predict(img_in)
+        num_col = np.argmax(label_p_pred[0]) + 1
+
+        print(num_col, label_p_pred, "num_col_classifier")
+
+        session_col_classifier.close()
+        del model_num_classifier
+        del session_col_classifier
+
+        K.clear_session()
+        gc.collect()
+
+        # sys.exit()
+        img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early)
+
         if img_new.shape[1] > img.shape[1]:
             img_new = self.predict_enhancement(img_new)
             is_image_enhanced = True
@@ -423,64 +428,7 @@ class eynollah:
         if dpi < 298:
 
             # sys.exit()
-            if num_col == 1 and width_early < 1100:
-                img_w_new = 2000
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 2000)
-            elif num_col == 1 and width_early >= 2500:
-                img_w_new = 2000
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 2000)
-            elif num_col == 1 and width_early >= 1100 and width_early < 2500:
-                img_w_new = width_early
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * width_early)
-            elif num_col == 2 and width_early < 2000:
-                img_w_new = 2400
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 2400)
-            elif num_col == 2 and width_early >= 3500:
-                img_w_new = 2400
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 2400)
-            elif num_col == 2 and width_early >= 2000 and width_early < 3500:
-                img_w_new = width_early
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * width_early)
-            elif num_col == 3 and width_early < 2000:
-                img_w_new = 3000
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 3000)
-            elif num_col == 3 and width_early >= 4000:
-                img_w_new = 3000
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 3000)
-            elif num_col == 3 and width_early >= 2000 and width_early < 4000:
-                img_w_new = width_early
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * width_early)
-            elif num_col == 4 and width_early < 2500:
-                img_w_new = 4000
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 4000)
-            elif num_col == 4 and width_early >= 5000:
-                img_w_new = 4000
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 4000)
-            elif num_col == 4 and width_early >= 2500 and width_early < 5000:
-                img_w_new = width_early
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * width_early)
-            elif num_col == 5 and width_early < 3700:
-                img_w_new = 5000
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 5000)
-            elif num_col == 5 and width_early >= 7000:
-                img_w_new = 5000
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 5000)
-            elif num_col == 5 and width_early >= 3700 and width_early < 7000:
-                img_w_new = width_early
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * width_early)
-            elif num_col == 6 and width_early < 4500:
-                img_w_new = 6500  # 5400
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * 6500)
-            else:
-                img_w_new = width_early
-                img_h_new = int(img.shape[0] / float(img.shape[1]) * width_early)
-
-            if label_p_pred[0][int(num_col - 1)] < 0.9 and img_w_new < width_early:
-                img_new = np.copy(img)
-                num_column_is_classified = False
-            else:
-                img_new = resize_image(img, img_h_new, img_w_new)
-                num_column_is_classified = True
+            img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early)
 
             # img_new=resize_image(img,img_h_new,img_w_new)
             image_res = self.predict_enhancement(img_new)
@@ -1533,7 +1481,7 @@ class eynollah:
                 coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, lmm, page_coord)
                 
                     
-                texteqreg=ET.SubElement(textregion, 'TextEquiv')
+                texteqreg = ET.SubElement(textregion, 'TextEquiv')
     
                 unireg=ET.SubElement(texteqreg, 'Unicode')
                 unireg.text = ' ' 
