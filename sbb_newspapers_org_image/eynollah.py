@@ -113,7 +113,7 @@ from .utils import (
     return_boxes_of_images_by_order_of_reading_new,
 )
 
-from utils.xml import create_page_xml
+from .utils.xml import create_page_xml
 
 
 SLOPE_THRESHOLD = 0.13
