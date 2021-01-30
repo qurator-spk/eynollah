@@ -13,7 +13,7 @@ from .contour import (
     filter_contours_area_of_image
 )
 from .is_nan import isNaN
-from .utils import (
+from . import (
     boosting_headers_by_longshot_region_segmentation,
     crop_image_inside_box,
     find_features_of_lines,
