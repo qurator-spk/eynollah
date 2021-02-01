@@ -273,7 +273,7 @@ class eynollah:
         dpi = os.popen('identify -format "%x " ' + self.image_filename).read()
         return int(float(dpi))
 
-    def calculate_width_height_by_columns(self, img, num_col, width_early):
+    def calculate_width_height_by_columns(self, img, num_col, width_early, label_p_pred):
         if num_col == 1 and width_early < 1100:
             img_w_new = 2000
             img_h_new = int(img.shape[0] / float(img.shape[1]) * 2000)
@@ -370,7 +370,7 @@ class eynollah:
         gc.collect()
 
         # sys.exit()
-        img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early)
+        img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
 
         if img_new.shape[1] > img.shape[1]:
             img_new = self.predict_enhancement(img_new)
@@ -428,7 +428,7 @@ class eynollah:
         if dpi < 298:
 
             # sys.exit()
-            img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early)
+            img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
 
             # img_new=resize_image(img,img_h_new,img_w_new)
             image_res = self.predict_enhancement(img_new)
