@@ -1422,31 +1422,16 @@ class eynollah:
                 coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, page_coord))
 
                 for j in range(len(all_found_texline_polygons_marginals[mm])):
-    
                     textline=ET.SubElement(textregion, 'TextLine')
-                    
                     textline.set('id','l'+str(id_indexer_l))
-                    
                     id_indexer_l+=1
-                    
-    
                     coord = ET.SubElement(textline, 'Coords')
-    
                     texteq=ET.SubElement(textline, 'TextEquiv')
-    
                     uni=ET.SubElement(texteq, 'Unicode')
                     uni.text = ' ' 
-    
-                    #points = ET.SubElement(coord, 'Points') 
-    
                     points_co=''
                     for l in range(len(all_found_texline_polygons_marginals[mm][j])):
-                        #point = ET.SubElement(coord, 'Point') 
-    
-    
                         if not self.curved_line:
-                            #point.set('x',str(found_polygons[j][l][0]))  
-                            #point.set('y',str(found_polygons[j][l][1]))
                             if len(all_found_texline_polygons_marginals[mm][j][l])==2:
                                 points_co=points_co+str( int( (all_found_texline_polygons_marginals[mm][j][l][0]
                                                         +all_box_coord_marginals[mm][2]+page_coord[2])/self.scale_x) )
@@ -1459,8 +1444,7 @@ class eynollah:
                                 points_co=points_co+','
                                 points_co=points_co+str( int( ( all_found_texline_polygons_marginals[mm][j][l][0][1] 
                                                         +all_box_coord_marginals[mm][0]+page_coord[0])/self.scale_y) ) 
-                                                
-                        if self.curved_line :
+                        else:
                             if len(all_found_texline_polygons_marginals[mm][j][l])==2:
                                 points_co=points_co+str( int( (all_found_texline_polygons_marginals[mm][j][l][0]
                                                         +page_coord[2])/self.scale_x) )
@@ -1610,29 +1594,13 @@ class eynollah:
                             #point.set('x',str(found_polygons[j][l][0]))  
                             #point.set('y',str(found_polygons[j][l][1]))
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
-                                textline_x_coord = int( (all_found_texline_polygons[mm][j][l][0]
-                                                        + all_box_coord[mm][2] + page_coord[2]) / self.scale_x)
-                                textline_y_coord=int( (all_found_texline_polygons[mm][j][l][1] 
-                                                        + all_box_coord[mm][0] + page_coord[0]) / self.scale_y)
-                                if textline_x_coord < 0:
-                                    textline_x_coord = 0
-                                if textline_y_coord < 0:
-                                    textline_y_coord = 0
-                                points_co = points_co + str( textline_x_coord )
-                                points_co = points_co + ','
-                                points_co = points_co + str( textline_y_coord )
+                                textline_x_coord = max(0, int((all_found_texline_polygons[mm][j][l][0] + all_box_coord[mm][2] + page_coord[2]) / self.scale_x))
+                                textline_y_coord = max(0, int((all_found_texline_polygons[mm][j][l][1] + all_box_coord[mm][0] + page_coord[0]) / self.scale_y))
+                                points_co += str(textline_x_coord) + ',' + str(textline_y_coord)
                             else:
-                                textline_x_coord = int( ( all_found_texline_polygons[mm][j][l][0][0] 
-                                                        + all_box_coord[mm][2]+page_coord[2])/self.scale_x )
-                                textline_y_coord=int( ( all_found_texline_polygons[mm][j][l][0][1] 
-                                                        +all_box_coord[mm][0]+page_coord[0])/self.scale_y)
-                                if textline_x_coord < 0:
-                                    textline_x_coord = 0
-                                if textline_y_coord < 0:
-                                    textline_y_coord = 0
-                                points_co = points_co + str( textline_x_coord )
-                                points_co = points_co + ','
-                                points_co = points_co + str( textline_y_coord ) 
+                                textline_x_coord = max(0, int((all_found_texline_polygons[mm][j][l][0][0] + all_box_coord[mm][2]+page_coord[2]) / self.scale_x))
+                                textline_y_coord = max(0, int((all_found_texline_polygons[mm][j][l][0][1] + all_box_coord[mm][0]+page_coord[0]) / self.scale_y))
+                                points_co += str(textline_x_coord) + ',' + str(textline_y_coord)
 
                         if (self.curved_line) and abs(slopes[mm]) <= 45:
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
@@ -1691,12 +1659,9 @@ class eynollah:
                     texteq = ET.SubElement(textline, 'TextEquiv')
                     uni = ET.SubElement(texteq, 'Unicode')
                     uni.text = ' ' 
-                    #points = ET.SubElement(coord, 'Points') 
                     points_co=''
                     for l in range(len(all_found_texline_polygons_marginals[mm][j])):
                         if not curved_line:
-                            #point.set('x',str(found_polygons[j][l][0]))  
-                            #point.set('y',str(found_polygons[j][l][1]))
                             if len(all_found_texline_polygons_marginals[mm][j][l])==2:
                                 points_co=points_co+str( int( (all_found_texline_polygons_marginals[mm][j][l][0]
                                                         +all_box_coord_marginals[mm][2]+page_coord[2])/self.scale_x) )
