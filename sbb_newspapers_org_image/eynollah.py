@@ -31,7 +31,7 @@ warnings.filterwarnings("ignore")
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from shapely import geometry
-import xml.etree.ElementTree as ET#from lxml import etree as ET
+from lxml import etree as ET
 from matplotlib import pyplot, transforms
 import matplotlib.patches as mpatches
 import imutils
