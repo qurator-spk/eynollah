@@ -1,4 +1,4 @@
-# pylint: disable=no-member
+# pylint: disable=no-member,invalid-name,line-too-long
 """
 tool to extract table form data from alto xml data
 """
@@ -419,18 +419,12 @@ class eynollah:
         del img_in
         del img_1ch
         del page_coord
-
         K.clear_session()
         gc.collect()
-
         print(dpi)
 
         if dpi < 298:
-
-            # sys.exit()
             img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
-
-            # img_new=resize_image(img,img_h_new,img_w_new)
             image_res = self.predict_enhancement(img_new)
             # cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem) + ".tif",self.image)
             # self.image=self.image.astype(np.uint16)
@@ -480,7 +474,6 @@ class eynollah:
 
         return model, session
 
-
     def do_prediction(self, patches, img, model, marginal_of_patch_percent=0.1):
 
         img_height_model = model.layers[len(model.layers) - 1].output_shape[1]
@@ -495,48 +488,34 @@ class eynollah:
                 img = resize_image(img, img.shape[0], img_width_model)
 
             # print(img_height_model,img_width_model)
-            # margin = int(0.2 * img_width_model)
             margin = int(marginal_of_patch_percent * img_height_model)
-
             width_mid = img_width_model - 2 * margin
             height_mid = img_height_model - 2 * margin
-
             img = img / float(255.0)
-            # print(sys.getsizeof(img))
-            # print(np.max(img))
-
             img = img.astype(np.float16)
-
-            # print(sys.getsizeof(img))
-
             img_h = img.shape[0]
             img_w = img.shape[1]
-
             prediction_true = np.zeros((img_h, img_w, 3))
             mask_true = np.zeros((img_h, img_w))
             nxf = img_w / float(width_mid)
             nyf = img_h / float(height_mid)
-
             nxf = int(nxf) + 1 if nxf > int(nxf) else int(nxf)
             nyf = int(nyf) + 1 if nyf > int(nyf) else int(nyf)
 
             for i in range(nxf):
                 for j in range(nyf):
-
                     if i == 0:
                         index_x_d = i * width_mid
                         index_x_u = index_x_d + img_width_model
                     else:
                         index_x_d = i * width_mid
                         index_x_u = index_x_d + img_width_model
-
                     if j == 0:
                         index_y_d = j * height_mid
                         index_y_u = index_y_d + img_height_model
                     else:
                         index_y_d = j * height_mid
                         index_y_u = index_y_d + img_height_model
-
                     if index_x_u > img_w:
                         index_x_u = img_w
                         index_x_d = img_w - img_width_model
@@ -681,7 +660,7 @@ class eynollah:
         x, y, w, h = cv2.boundingRect(cnt)
 
         if x <= 30:
-            w = w + x
+            w += x
             x = 0
         if (self.image.shape[1] - (x + w)) <= 30:
             w = w + (self.image.shape[1] - (x + w))
@@ -717,33 +696,31 @@ class eynollah:
             model_region, session_region = self.start_new_session_and_model(self.model_region_dir_fully_np)
 
         if patches and cols == 1:
-            img2 = otsu_copy_binary(img)  # otsu_copy(img)
+            img2 = otsu_copy_binary(img)
             img2 = img2.astype(np.uint8)
             img2 = resize_image(img2, int(img_height_h * 0.7), int(img_width_h * 0.7))
-
             marginal_of_patch_percent = 0.1
             prediction_regions2 = self.do_prediction(patches, img2, model_region, marginal_of_patch_percent)
             prediction_regions2 = resize_image(prediction_regions2, img_height_h, img_width_h)
 
         if patches and cols == 2:
-            img2 = otsu_copy_binary(img)  # otsu_copy(img)
+            img2 = otsu_copy_binary(img)
             img2 = img2.astype(np.uint8)
             img2 = resize_image(img2, int(img_height_h * 0.4), int(img_width_h * 0.4))
-
             marginal_of_patch_percent = 0.1
             prediction_regions2 = self.do_prediction(patches, img2, model_region, marginal_of_patch_percent)
             prediction_regions2 = resize_image(prediction_regions2, img_height_h, img_width_h)
+
         elif patches and cols > 2:
-            img2 = otsu_copy_binary(img)  # otsu_copy(img)
+            img2 = otsu_copy_binary(img)
             img2 = img2.astype(np.uint8)
             img2 = resize_image(img2, int(img_height_h * 0.3), int(img_width_h * 0.3))
-
             marginal_of_patch_percent = 0.1
             prediction_regions2 = self.do_prediction(patches, img2, model_region, marginal_of_patch_percent)
             prediction_regions2 = resize_image(prediction_regions2, img_height_h, img_width_h)
 
         if patches and cols == 2:
-            img = otsu_copy_binary(img)  # otsu_copy(img)
+            img = otsu_copy_binary(img)
             img = img.astype(np.uint8)
             if img_width_h >= 2000:
                 img = resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9))
@@ -752,60 +729,55 @@ class eynollah:
             img = img.astype(np.uint8)
 
         if patches and cols == 1:
-            img = otsu_copy_binary(img)  # otsu_copy(img)
+            img = otsu_copy_binary(img)
             img = img.astype(np.uint8)
             img = resize_image(img, int(img_height_h * 0.5), int(img_width_h * 0.5))
             img = img.astype(np.uint8)
 
-        if patches and cols==3:
-            if (self.scale_x==1 and img_width_h>3000) or (self.scale_x!=1 and img_width_h>2800):
-                img = otsu_copy_binary(img)#self.otsu_copy(img)
+        if patches and cols == 3:
+            if (self.scale_x == 1 and img_width_h > 3000) or (self.scale_x != 1 and img_width_h > 2800):
+                img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
-                #img= self.resize_image(img, int(img_height_h*0.8), int(img_width_h*0.8) )
-                img= resize_image(img, int(img_height_h*2800/float(img_width_h)), 2800 )
+                img = resize_image(img, int(img_height_h * 2800 / float(img_width_h)), 2800)
             else:
-                img = otsu_copy_binary(img)#self.otsu_copy(img)
+                img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
-                #img= self.resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
 
-        if patches and cols==4:
+        if patches and cols == 4:
             #print(self.scale_x,img_width_h,'scale')
-            if (self.scale_x==1 and img_width_h>4000) or (self.scale_x!=1 and img_width_h>3700):
-                img = otsu_copy_binary(img)#self.otsu_copy(img)
+            if (self.scale_x == 1 and img_width_h > 4000) or (self.scale_x != 1 and img_width_h > 3700):
+                img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
-                #img= self.resize_image(img, int(img_height_h*0.7), int(img_width_h*0.7) )
-                img= resize_image(img, int(img_height_h*3700/float(img_width_h)), 3700 )
+                img= resize_image(img, int(img_height_h * 3700 / float(img_width_h)), 3700)
             else:
                 img = otsu_copy_binary(img)#self.otsu_copy(img)
                 img = img.astype(np.uint8)
-                img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
+                img= resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9))
 
         if patches and cols==5:
-            if (self.scale_x==1 and img_width_h>5000):
-                img = otsu_copy_binary(img)#self.otsu_copy(img)
+            if self.scale_x == 1 and img_width_h > 5000:
+                img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
-                img= resize_image(img, int(img_height_h*0.7), int(img_width_h*0.7) )
-                #img= self.resize_image(img, int(img_height_h*4700/float(img_width_h)), 4700 )
+                img= resize_image(img, int(img_height_h * 0.7), int(img_width_h * 0.7))
             else:
-                img = otsu_copy_binary(img)#self.otsu_copy(img)
+                img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
-                img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
+                img= resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9) )
 
         if patches and cols>=6:
-            if img_width_h>5600:
-                img = otsu_copy_binary(img)#self.otsu_copy(img)
+            if img_width_h > 5600:
+                img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
-                #img= self.resize_image(img, int(img_height_h*0.7), int(img_width_h*0.7) )
-                img= resize_image(img, int(img_height_h*5600/float(img_width_h)), 5600 )
+                img= resize_image(img, int(img_height_h * 5600 / float(img_width_h)), 5600)
             else:
-                img = otsu_copy_binary(img)#self.otsu_copy(img)
+                img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
-                img= resize_image(img, int(img_height_h*0.9), int(img_width_h*0.9) )
+                img= resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9))
 
         if not patches:
-            img = otsu_copy_binary(img)#self.otsu_copy(img)
+            img = otsu_copy_binary(img)
             img = img.astype(np.uint8)
-            prediction_regions2=None
+            prediction_regions2 = None
 
         marginal_of_patch_percent = 0.1
         prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent)
@@ -847,7 +819,6 @@ class eynollah:
 
         for i in range(num_cores):
             list_all_par = queue_of_all_params.get(True)
-
             slopes_for_sub_process = list_all_par[0]
             polys_for_sub_process = list_all_par[1]
             boxes_for_sub_process = list_all_par[2]
@@ -855,7 +826,6 @@ class eynollah:
             contours_par_for_subprocess = list_all_par[4]
             boxes_coord_for_subprocess = list_all_par[5]
             indexes_for_subprocess = list_all_par[6]
-
             for j in range(len(slopes_for_sub_process)):
                 slopes.append(slopes_for_sub_process[j])
                 all_found_texline_polygons.append(polys_for_sub_process[j])
@@ -899,7 +869,6 @@ class eynollah:
 
         for i in range(num_cores):
             list_all_par = queue_of_all_params.get(True)
-
             polys_for_sub_process = list_all_par[0]
             boxes_for_sub_process = list_all_par[1]
             contours_for_subprocess = list_all_par[2]
@@ -907,7 +876,6 @@ class eynollah:
             boxes_coord_for_subprocess = list_all_par[4]
             indexes_for_subprocess = list_all_par[5]
             slopes_for_sub_process = list_all_par[6]
-
             for j in range(len(polys_for_sub_process)):
                 slopes.append(slopes_for_sub_process[j])
                 all_found_texline_polygons.append(polys_for_sub_process[j])
@@ -930,7 +898,6 @@ class eynollah:
         contours_textregion_par_per_each_subprocess = []
         all_box_coord_per_process = []
         index_by_text_region_contours = []
-        slope_biggest = 0
 
         textline_cnt_seperated = np.zeros(textline_mask_tot_ea.shape)
 
@@ -938,9 +905,9 @@ class eynollah:
 
             all_text_region_raw = textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
             all_text_region_raw = all_text_region_raw.astype(np.uint8)
-            img_int_p = all_text_region_raw[:, :]  # self.all_text_region_raw[mv]
+            img_int_p = all_text_region_raw[:, :]
 
-            ##img_int_p=cv2.erode(img_int_p,self.kernel,iterations = 2)
+            # img_int_p=cv2.erode(img_int_p,self.kernel,iterations = 2)
             # plt.imshow(img_int_p)
             # plt.show()
 
@@ -953,13 +920,9 @@ class eynollah:
                     textline_con, hierachy = return_contours_of_image(img_int_p)
                     textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.0008)
                     y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
-                    sigma_des = int(y_diff_mean * (4.0 / 40.0))
-
-                    if sigma_des < 1:
-                        sigma_des = 1
+                    sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
 
                     img_int_p[img_int_p > 0] = 1
-                    # slope_for_all=self.return_deskew_slope_new(img_int_p,sigma_des)
                     slope_for_all = return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
 
                     if abs(slope_for_all) < 0.5:
@@ -978,9 +941,7 @@ class eynollah:
             crop_img, crop_coor = crop_image_inside_box(boxes_text[mv], image_page_rotated)
 
             if abs(slope_for_all) < 45:
-
                 # all_box_coord.append(crop_coor)
-
                 textline_region_in_image = np.zeros(textline_mask_tot_ea.shape)
                 cnt_o_t_max = contours_par_per_process[mv]
                 x, y, w, h = cv2.boundingRect(cnt_o_t_max)
@@ -1049,7 +1010,6 @@ class eynollah:
         contours_textregion_par_per_each_subprocess = []
         all_box_coord_per_process = []
         index_by_text_region_contours = []
-        slope_biggest = 0
 
         for mv in range(len(boxes_text)):
             crop_img,crop_coor=crop_image_inside_box(boxes_text[mv],image_page_rotated)
