@@ -1266,9 +1266,9 @@ class eynollah:
             coord.set('points',points_co)
         return id_indexer_l
 
-    def calculate_polygon_coords(self, contour_list, i, j, page_coord):
+    def calculate_polygon_coords(self, contour_list, i, page_coord):
         coords = ''
-        for lmm in range(len(contour_list[i])):
+        for j in range(len(contour_list[i])):
             if len(contour_list[i][j]) == 2:
                 coords += str(int((contour_list[i][j][0] + page_coord[2]) / self.scale_x))
                 coords += ','
@@ -1278,7 +1278,7 @@ class eynollah:
                 coords += ','
                 coords += str(int((contour_list[i][j][0][1] + page_coord[0]) / self.scale_y))
 
-            if j < len(contour_list[mm]) - 1:
+            if j < len(contour_list[i]) - 1:
                 coords=coords+' '
         #print(coords)
         return coords
@@ -1332,7 +1332,7 @@ class eynollah:
                 textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
 
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, lmm, page_coord))
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, page_coord))
 
                 id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
                 texteqreg=ET.SubElement(textregion, 'TextEquiv')
@@ -1390,7 +1390,7 @@ class eynollah:
                 #else:
                 #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, lmm, page_coord))
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, page_coord))
                 
                     
     
@@ -1419,7 +1419,7 @@ class eynollah:
                 #else:
                 #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, lmm, page_coord))
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, page_coord))
 
                 for j in range(len(all_found_texline_polygons_marginals[mm])):
     
@@ -1495,7 +1495,7 @@ class eynollah:
                 textregion.set('id','r'+str(id_indexer))
                 id_indexer+=1
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_img, mm, lmm, page_coord))
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_img, mm, page_coord))
         except:
             pass
 
@@ -1507,7 +1507,7 @@ class eynollah:
                 textregion.set('id','r'+str(id_indexer))
                 id_indexer+=1
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_tables, mm, lmm, page_coord))
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_tables, mm, page_coord))
         except:
             pass
 
@@ -1590,7 +1590,7 @@ class eynollah:
                 #else:
                 #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, lmm, page_coord))
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, page_coord))
                 
                 
                 
@@ -1682,7 +1682,7 @@ class eynollah:
                 textregion.set('id', id_of_marginalia[mm])
                 textregion.set('type', 'marginalia')
                 coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, lmm, page_coord))
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, page_coord))
                 for j in range(len(all_found_texline_polygons_marginals[mm])):
                     textline=ET.SubElement(textregion, 'TextLine')
                     textline.set('id','l'+str(id_indexer_l))
