@@ -29,7 +29,7 @@ warnings.filterwarnings("ignore")
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from shapely import geometry
-import xml.etree.ElementTree as ET#from lxml import etree as ET
+from lxml import etree as ET
 from matplotlib import pyplot, transforms
 import matplotlib.patches as mpatches
 import imutils
@@ -113,7 +113,7 @@ from .utils import (
     return_boxes_of_images_by_order_of_reading_new,
 )
 
-from utils.xml import create_page_xml
+from .utils.xml import create_page_xml
 
 
 SLOPE_THRESHOLD = 0.13
