@@ -557,57 +557,35 @@ def return_hor_spliter_by_index_for_without_verticals(peaks_neg_fin_t, x_min_hor
 
 def find_num_col(regions_without_seperators, multiplier=3.8):
     regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=0)
-
     ##plt.plot(regions_without_seperators_0)
     ##plt.show()
-
     sigma_ = 35  # 70#35
-
     meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
-
     first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
     last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
-
-    # print(last_nonzero)
-    # print(isNaN(last_nonzero))
-    # last_nonzero=0#halalikh
     last_nonzero = len(regions_without_seperators_0) - last_nonzero
-
     y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
-
     y_help = np.zeros(len(y) + 20)
-
     y_help[10 : len(y) + 10] = y
-
     x = np.array(range(len(y)))
-
     zneg_rev = -y_help + np.max(y_help)
-
     zneg = np.zeros(len(zneg_rev) + 20)
-
     zneg[10 : len(zneg_rev) + 10] = zneg_rev
-
     z = gaussian_filter1d(y, sigma_)
     zneg = gaussian_filter1d(zneg, sigma_)
 
     peaks_neg, _ = find_peaks(zneg, height=0)
     peaks, _ = find_peaks(z, height=0)
-
     peaks_neg = peaks_neg - 10 - 10
 
     last_nonzero = last_nonzero - 100
     first_nonzero = first_nonzero + 200
 
     peaks_neg = peaks_neg[(peaks_neg > first_nonzero) & (peaks_neg < last_nonzero)]
-
     peaks = peaks[(peaks > 0.06 * regions_without_seperators.shape[1]) & (peaks < 0.94 * regions_without_seperators.shape[1])]
     peaks_neg = peaks_neg[(peaks_neg > 370) & (peaks_neg < (regions_without_seperators.shape[1] - 370))]
-
-    # print(peaks)
     interest_pos = z[peaks]
-
     interest_pos = interest_pos[interest_pos > 10]
-
     # plt.plot(z)
     # plt.show()
     interest_neg = z[peaks_neg]
@@ -621,9 +599,7 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
     min_peaks_neg = 0  # np.min(interest_neg)
 
     # print(np.min(interest_pos),np.max(interest_pos),np.max(interest_pos)/np.min(interest_pos),'minmax')
-    # $print(min_peaks_pos)
     dis_talaei = (min_peaks_pos - min_peaks_neg) / multiplier
-    # print(interest_pos)
     grenze = min_peaks_pos - dis_talaei  # np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
 
     # print(interest_neg,'interest_neg')
@@ -650,15 +626,11 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
         if (peaks_neg_fin[0] > p_g_u and peaks_neg_fin[1] > p_g_u) or (peaks_neg_fin[0] < p_g_l and peaks_neg_fin[1] < p_g_l) or ((peaks_neg_fin[0] + 200) < p_m and peaks_neg_fin[1] < p_m) or ((peaks_neg_fin[0] - 200) > p_m and peaks_neg_fin[1] > p_m):
             num_col = 1
             peaks_neg_fin = []
-        else:
-            pass
 
     if num_col == 2:
         if (peaks_neg_fin[0] > p_g_u) or (peaks_neg_fin[0] < p_g_l):
             num_col = 1
             peaks_neg_fin = []
-        else:
-            pass
 
     ##print(len(peaks_neg_fin))
 
@@ -673,7 +645,7 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
     for i in range(len(peaks_neg_fin)):
         if i == 0:
             forest.append(peaks_neg_fin[i])
-        if i < (len(peaks_neg_fin) - 1):
+        if i < len(peaks_neg_fin) - 1:
             if diff_peaks[i] <= cut_off:
                 forest.append(peaks_neg_fin[i + 1])
             if diff_peaks[i] > cut_off:
@@ -687,7 +659,7 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
             if not isNaN(forest[np.argmin(z[forest])]):
                 peaks_neg_true.append(forest[np.argmin(z[forest])])
 
-    num_col = (len(peaks_neg_true)) + 1
+    num_col = len(peaks_neg_true) + 1
     p_l = 0
     p_u = len(y) - 1
     p_m = int(len(y) / 2.0)
@@ -706,15 +678,11 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
             peaks_neg_true = [peaks_neg_true[0]]
         elif (peaks_neg_true[1] < p_g_u and peaks_neg_true[1] > p_g_l) and (peaks_neg_true[0] < p_quarter):
             peaks_neg_true = [peaks_neg_true[1]]
-        else:
-            pass
 
     if num_col == 2:
         if (peaks_neg_true[0] > p_g_u) or (peaks_neg_true[0] < p_g_l):
             num_col = 1
             peaks_neg_true = []
-        else:
-            pass
 
     diff_peaks_annormal = diff_peaks[diff_peaks < 360]
 
@@ -732,9 +700,7 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
                 else:
                     peaks_neg_fin_new.append(peaks_neg_fin[ii + 1])
 
-            elif (ii - 1) in arg_help_ann:
-                pass
-            else:
+            elif (ii - 1) not in arg_help_ann:
                 peaks_neg_fin_new.append(peaks_neg_fin[ii])
     else:
         peaks_neg_fin_new = peaks_neg_fin
