@@ -1,4 +1,4 @@
-# pylint: disable=no-member,invalid-name,line-too-long
+# pylint: disable=no-member,invalid-name,line-too-long,missing-function-docstring
 """
 tool to extract table form data from alto xml data
 """
@@ -2112,14 +2112,11 @@ class eynollah:
 
     def save_plot_of_layout_main(self, text_regions_p, image_page):
         values = np.unique(text_regions_p[:, :])
-
         # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-
         pixels=['Background' , 'Main text'  , 'Image' , 'Separator','Marginalia']
         values_indexes = [0, 1, 2, 3, 4]
         plt.figure(figsize=(40, 40))
         plt.rcParams["font.size"] = "40"
-
         im = plt.imshow(text_regions_p[:, :])
         colors = [im.cmap(im.norm(value)) for value in values]
         patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
@@ -2128,12 +2125,9 @@ class eynollah:
 
     def save_plot_of_layout_main_all(self, text_regions_p, image_page):
         values = np.unique(text_regions_p[:, :])
-
         # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-
         pixels=['Background' , 'Main text'  , 'Image' , 'Separator','Marginalia']
         values_indexes = [0, 1, 2, 3, 4]
-
         plt.figure(figsize=(80, 40))
         plt.rcParams["font.size"] = "40"
         plt.subplot(1, 2, 1)
@@ -2143,14 +2137,11 @@ class eynollah:
         colors = [im.cmap(im.norm(value)) for value in values]
         patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
         plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
-
         plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem + "_layout_main_and_page.png"))
 
     def save_plot_of_layout(self, text_regions_p, image_page):
         values = np.unique(text_regions_p[:, :])
-
         # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-
         pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator"]
         values_indexes = [0, 1, 2, 8, 4, 5, 6]
         plt.figure(figsize=(40, 40))
@@ -2163,12 +2154,9 @@ class eynollah:
 
     def save_plot_of_layout_all(self, text_regions_p, image_page):
         values = np.unique(text_regions_p[:, :])
-
         # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-
         pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator"]
         values_indexes = [0, 1, 2, 8, 4, 5, 6]
-
         plt.figure(figsize=(80, 40))
         plt.rcParams["font.size"] = "40"
         plt.subplot(1, 2, 1)
@@ -2178,8 +2166,22 @@ class eynollah:
         colors = [im.cmap(im.norm(value)) for value in values]
         patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
         plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
-
         plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem + "_layout_and_page.png"))
+
+    def save_plot_of_textlines(self, textline_mask_tot_ea, image_page):
+        values = np.unique(textline_mask_tot_ea[:, :])
+        pixels = ["Background", "Textlines"]
+        values_indexes = [0, 1]
+        plt.figure(figsize=(80, 40))
+        plt.rcParams["font.size"] = "40"
+        plt.subplot(1, 2, 1)
+        plt.imshow(image_page)
+        plt.subplot(1, 2, 2)
+        im = plt.imshow(textline_mask_tot_ea[:, :])
+        colors = [im.cmap(im.norm(value)) for value in values]
+        patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
+        plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
+        plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem + "_textline_and_page.png"))
 
     def save_deskewed_image(self, slope_deskew):
         img_rotated = rotyate_image_different(self.image_org, slope_deskew)
@@ -2297,20 +2299,7 @@ class eynollah:
                 gc.collect()
                 #print(np.unique(textline_mask_tot_ea[:, :]), "textline")
                 if self.dir_of_all is not None:
-                    values = np.unique(textline_mask_tot_ea[:, :])
-                    pixels = ["Background", "Textlines"]
-                    values_indexes = [0, 1]
-                    plt.figure(figsize=(80, 40))
-                    plt.rcParams["font.size"] = "40"
-                    plt.subplot(1, 2, 1)
-                    plt.imshow(image_page)
-                    plt.subplot(1, 2, 2)
-                    im = plt.imshow(textline_mask_tot_ea[:, :])
-                    colors = [im.cmap(im.norm(value)) for value in values]
-                    patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
-                    plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
-
-                    plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem + "_textline_and_page.png"))
+                    self.save_plot_of_textlines(textline_mask_tot_ea, image_page)
                 print("textline: " + str(time.time() - t1))
                 # plt.imshow(textline_mask_tot_ea)
                 # plt.show()
@@ -2728,19 +2717,5 @@ class eynollah:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
                     # order_text_new , id_of_texts_tot=self.do_order_of_regions(contours_only_text_parent,contours_only_text_parent_h,boxes,textline_mask_tot)
                     self.write_into_page_xml(txt_con_org, page_coord, self.dir_out, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, self.curved_line, slopes, slopes_marginals)
-
-            ##except:
-                ##txt_con_org = []
-                ##order_text_new = []
-                ##id_of_texts_tot = []
-                ##all_found_texline_polygons = []
-                ##all_box_coord = []
-                ##polygons_of_images = []
-                ##polygons_of_marginals = []
-                ##all_found_texline_polygons_marginals = []
-                ##all_box_coord_marginals = []
-                ##slopes = []
-                ##slopes_marginals = []
-                ##self.write_into_page_xml(txt_con_org, page_coord, self.dir_out, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, self.curved_line, slopes, slopes_marginals)
 
         print("Job done in: " + str(time.time() - t1))
