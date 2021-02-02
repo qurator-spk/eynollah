@@ -913,7 +913,6 @@ class eynollah:
 
             if img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
                 slopes_per_each_subprocess.append(0)
-                slope_first = 0
                 slope_for_all = [slope_deskew][0]
             else:
                 try:
@@ -987,9 +986,8 @@ class eynollah:
                     except:
                         pass
             else:
-                slope_first = 0
                 add_boxes_coor_into_textlines = True
-                textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contours_par_per_process[mv], boxes_text[mv], slope_first, add_boxes_coor_into_textlines)
+                textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contours_par_per_process[mv], boxes_text[mv], add_boxes_coor_into_textlines)
                 add_boxes_coor_into_textlines = False
                 # print(np.shape(textlines_cnt_per_region),'textlines_cnt_per_region')
 
@@ -1047,7 +1045,6 @@ class eynollah:
                 if slope_for_all == 999:
                     slope_for_all = [slope_deskew][0]
                 slopes_per_each_subprocess.append(slope_for_all)
-                slope_first = 0
                 mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
                 mask_only_con_region = cv2.fillPoly(mask_only_con_region, pts=[contours_par_per_process[mv]], color=(1, 1, 1))
 
@@ -1064,7 +1061,7 @@ class eynollah:
                 ##plt.show()
 
                 all_text_region_raw[mask_only_con_region == 0] = 0
-                cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contours_par_per_process[mv], boxes_text[mv], slope_first)
+                cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contours_par_per_process[mv], boxes_text[mv])
 
                 textlines_rectangles_per_each_subprocess.append(cnt_clean_rot)
                 index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
@@ -2334,7 +2331,7 @@ class eynollah:
                 ##sys.exit()
                 print("deskewing: " + str(time.time() - t1))
 
-                image_page_rotated, textline_mask_tot = image_page[:, :], textline_mask_tot_ea[:, :]  # rotation_not_90_func(image_page,textline_mask_tot_ea,slope_first)
+                image_page_rotated, textline_mask_tot = image_page[:, :], textline_mask_tot_ea[:, :]
                 textline_mask_tot[mask_images[:, :] == 1] = 0
 
                 pixel_img = 1

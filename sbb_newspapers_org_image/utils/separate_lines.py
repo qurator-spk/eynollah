@@ -1395,7 +1395,7 @@ def seperate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
     return None, cont_final
 
 
-def textline_contours_postprocessing(textline_mask, slope, contour_text_interest, box_ind, slope_first, add_boxes_coor_into_textlines=False):
+def textline_contours_postprocessing(textline_mask, slope, contour_text_interest, box_ind, add_boxes_coor_into_textlines=False):
 
     textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2) * 255
     textline_mask = textline_mask.astype(np.uint8)
