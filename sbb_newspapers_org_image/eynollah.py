@@ -12,11 +12,9 @@ import time
 import warnings
 from pathlib import Path
 from multiprocessing import Process, Queue, cpu_count
-from sys import getsizeof
 
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 stderr = sys.stderr
@@ -117,9 +115,9 @@ from .utils import (
 
 from .utils.xml import create_page_xml
 
+from .plot import EynollahPlotter
 
 SLOPE_THRESHOLD = 0.13
-
 
 class eynollah:
     def __init__(
@@ -132,6 +130,7 @@ class eynollah:
         dir_of_layout=None,
         dir_of_deskewed=None,
         dir_of_all=None,
+        enable_plotting=False,
         allow_enhancement=False,
         curved_line=False,
         full_layout=False,
@@ -142,17 +141,21 @@ class eynollah:
         self.cont_page = []
         self.dir_out = dir_out
         self.image_filename_stem = image_filename_stem
-        self.dir_of_cropped_images = dir_of_cropped_images
         self.allow_enhancement = allow_enhancement
         self.curved_line = curved_line
         self.full_layout = full_layout
         self.allow_scaling = allow_scaling
-        self.dir_of_layout = dir_of_layout
         self.headers_off = headers_off
-        self.dir_of_deskewed = dir_of_deskewed
-        self.dir_of_all = dir_of_all
         if not self.image_filename_stem:
             self.image_filename_stem = Path(Path(image_filename).name).stem
+        self.plotter = None if not enable_plotting else EynollahPlotter(
+            dir_of_all=dir_of_all,
+            dir_of_deskewed=dir_of_deskewed,
+            dir_of_cropped_images=dir_of_cropped_images,
+            dir_of_layout=dir_of_layout,
+            image_filename=image_filename,
+            image_filename_stem=image_filename_stem,
+        )
         self.dir_models = dir_models
         self.kernel = np.ones((5, 5), np.uint8)
 
@@ -448,8 +451,12 @@ class eynollah:
         self.scale_x = self.img_width_int / float(self.image.shape[1])
 
         self.image = resize_image(self.image, self.img_hight_int, self.img_width_int)
-        del img_res
-        del img_org
+
+        # Also set for the plotter
+        # XXX TODO hacky
+        self.plotter.image_org = self.image_org
+        self.plotter.scale_y = self.scale_y
+        self.plotter.scale_x = self.scale_x
 
     def get_image_and_scales_after_enhancing(self, img_org, img_res):
 
@@ -922,7 +929,7 @@ class eynollah:
                     sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
 
                     img_int_p[img_int_p > 0] = 1
-                    slope_for_all = return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
+                    slope_for_all = return_deskew_slop(img_int_p, sigma_des, plotter=self.plotter)
 
                     if abs(slope_for_all) < 0.5:
                         slope_for_all = [slope_deskew][0]
@@ -950,7 +957,7 @@ class eynollah:
                 textline_biggest_region = mask_biggest * textline_mask_tot_ea
 
                 # print(slope_for_all,'slope_for_all')
-                textline_rotated_seperated = seperate_lines_new2(textline_biggest_region[y : y + h, x : x + w], 0, num_col, slope_for_all, self.dir_of_all, self.image_filename_stem)
+                textline_rotated_seperated = seperate_lines_new2(textline_biggest_region[y : y + h, x : x + w], 0, num_col, slope_for_all, plotter=self.plotter)
 
                 # new line added
                 ##print(np.shape(textline_rotated_seperated),np.shape(mask_biggest))
@@ -1036,7 +1043,7 @@ class eynollah:
                     if sigma_des < 1:
                         sigma_des = 1
                     img_int_p[img_int_p > 0] = 1
-                    slope_for_all = return_deskew_slop(img_int_p, sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
+                    slope_for_all = return_deskew_slop(img_int_p, sigma_des, plotter=self.plotter)
                     if abs(slope_for_all) <= 0.5:
                         slope_for_all = [slope_deskew][0]
                 except:
@@ -1127,7 +1134,7 @@ class eynollah:
                     sigma_des = 1
 
                 crop_img[crop_img > 0] = 1
-                slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
+                slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des, plotter=self.plotter)
 
             except:
                 slope_corresponding_textregion = 999
@@ -1814,20 +1821,6 @@ class eynollah:
 
         return text_regions_p_true
 
-
-    def write_images_into_directory(self, img_contoures, dir_of_cropped_imgs, image_page):
-        index = 0
-        for cont_ind in img_contoures:
-            x, y, w, h = cv2.boundingRect(cont_ind)
-            box = [x, y, w, h]
-            croped_page, page_coord = crop_image_inside_box(box, image_page)
-
-            croped_page = resize_image(croped_page, int(croped_page.shape[0] / self.scale_y), int(croped_page.shape[1] / self.scale_x))
-
-            path = os.path.join(dir_of_cropped_imgs, self.image_filename_stem + "_" + str(index) + ".jpg")
-            cv2.imwrite(path, croped_page)
-            index += 1
-
     def do_order_of_regions(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
 
         if self.full_layout:
@@ -2110,88 +2103,6 @@ class eynollah:
 
             return order_text_new, id_of_texts_tot
 
-    def save_plot_of_layout_main(self, text_regions_p, image_page):
-        values = np.unique(text_regions_p[:, :])
-        # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-        pixels=['Background' , 'Main text'  , 'Image' , 'Separator','Marginalia']
-        values_indexes = [0, 1, 2, 3, 4]
-        plt.figure(figsize=(40, 40))
-        plt.rcParams["font.size"] = "40"
-        im = plt.imshow(text_regions_p[:, :])
-        colors = [im.cmap(im.norm(value)) for value in values]
-        patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
-        plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=40)
-        plt.savefig(os.path.join(self.dir_of_layout, self.image_filename_stem + "_layout_main.png"))
-
-    def save_plot_of_layout_main_all(self, text_regions_p, image_page):
-        values = np.unique(text_regions_p[:, :])
-        # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-        pixels=['Background' , 'Main text'  , 'Image' , 'Separator','Marginalia']
-        values_indexes = [0, 1, 2, 3, 4]
-        plt.figure(figsize=(80, 40))
-        plt.rcParams["font.size"] = "40"
-        plt.subplot(1, 2, 1)
-        plt.imshow(image_page)
-        plt.subplot(1, 2, 2)
-        im = plt.imshow(text_regions_p[:, :])
-        colors = [im.cmap(im.norm(value)) for value in values]
-        patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
-        plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
-        plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem + "_layout_main_and_page.png"))
-
-    def save_plot_of_layout(self, text_regions_p, image_page):
-        values = np.unique(text_regions_p[:, :])
-        # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-        pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator"]
-        values_indexes = [0, 1, 2, 8, 4, 5, 6]
-        plt.figure(figsize=(40, 40))
-        plt.rcParams["font.size"] = "40"
-        im = plt.imshow(text_regions_p[:, :])
-        colors = [im.cmap(im.norm(value)) for value in values]
-        patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
-        plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=40)
-        plt.savefig(os.path.join(self.dir_of_layout, self.image_filename_stem + "_layout.png"))
-
-    def save_plot_of_layout_all(self, text_regions_p, image_page):
-        values = np.unique(text_regions_p[:, :])
-        # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-        pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator"]
-        values_indexes = [0, 1, 2, 8, 4, 5, 6]
-        plt.figure(figsize=(80, 40))
-        plt.rcParams["font.size"] = "40"
-        plt.subplot(1, 2, 1)
-        plt.imshow(image_page)
-        plt.subplot(1, 2, 2)
-        im = plt.imshow(text_regions_p[:, :])
-        colors = [im.cmap(im.norm(value)) for value in values]
-        patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
-        plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
-        plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem + "_layout_and_page.png"))
-
-    def save_plot_of_textlines(self, textline_mask_tot_ea, image_page):
-        values = np.unique(textline_mask_tot_ea[:, :])
-        pixels = ["Background", "Textlines"]
-        values_indexes = [0, 1]
-        plt.figure(figsize=(80, 40))
-        plt.rcParams["font.size"] = "40"
-        plt.subplot(1, 2, 1)
-        plt.imshow(image_page)
-        plt.subplot(1, 2, 2)
-        im = plt.imshow(textline_mask_tot_ea[:, :])
-        colors = [im.cmap(im.norm(value)) for value in values]
-        patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
-        plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
-        plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem + "_textline_and_page.png"))
-
-    def save_deskewed_image(self, slope_deskew):
-        img_rotated = rotyate_image_different(self.image_org, slope_deskew)
-
-        if self.dir_of_all is not None:
-            cv2.imwrite(os.path.join(self.dir_of_all, self.image_filename_stem + "_org.png"), self.image_org)
-
-        cv2.imwrite(os.path.join(self.dir_of_deskewed, self.image_filename_stem + "_deskewed.png"), img_rotated)
-        del img_rotated
-
     def run(self):
         is_image_enhanced = False
         # get image and sclaes, then extract the page of scanned image
@@ -2243,8 +2154,8 @@ class eynollah:
 
         image_page, page_coord = self.extract_page()
         # print(image_page.shape,'page')
-        if self.dir_of_all is not None:
-            cv2.imwrite(os.path.join(self.dir_of_all, self.image_filename_stem + "_page.png"), image_page)
+        if self.plotter:
+            self.plotter.save_page_image(image_page)
         K.clear_session()
         gc.collect()
 
@@ -2298,8 +2209,8 @@ class eynollah:
                 K.clear_session()
                 gc.collect()
                 #print(np.unique(textline_mask_tot_ea[:, :]), "textline")
-                if self.dir_of_all is not None:
-                    self.save_plot_of_textlines(textline_mask_tot_ea, image_page)
+                if self.plotter:
+                    self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page)
                 print("textline: " + str(time.time() - t1))
                 # plt.imshow(textline_mask_tot_ea)
                 # plt.show()
@@ -2307,11 +2218,11 @@ class eynollah:
 
                 sigma = 2
                 main_page_deskew = True
-                slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2), sigma, main_page_deskew, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
-                slope_first = 0  # return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2),sigma, dir_of_all=self.dir_of_all, image_filename_stem=self.image_filename_stem)
+                slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2), sigma, main_page_deskew, plotter=self.plotter)
+                slope_first = 0  # return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2),sigma, plotter=self.plotter)
 
-                if self.dir_of_deskewed is not None:
-                    self.save_deskewed_image(slope_deskew)
+                if self.plotter:
+                    self.plotter.save_deskewed_image(slope_deskew)
                 # img_rotated=rotyate_image_different(self.image_org,slope_deskew)
                 print(slope_deskew, "slope_deskew")
 
@@ -2344,10 +2255,9 @@ class eynollah:
                 # plt.imshow(text_regions_p)
                 # plt.show()
 
-                if self.dir_of_all is not None:
-                    self.save_plot_of_layout_main_all(text_regions_p, image_page)
-                if self.dir_of_layout is not None:
-                    self.save_plot_of_layout_main(text_regions_p, image_page)
+                if self.plotter:
+                    self.plotter.save_plot_of_layout_main_all(text_regions_p, image_page)
+                    self.plotter.save_plot_of_layout_main(text_regions_p, image_page)
 
                 print("marginals: " + str(time.time() - t1))
 
@@ -2632,10 +2542,9 @@ class eynollah:
                         contours_only_text_parent_d_ordered = None
                         text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
 
-                    if self.dir_of_layout is not None:
-                        self.save_plot_of_layout(text_regions_p, image_page)
-                    if self.dir_of_all is not None:
-                        self.save_plot_of_layout_all(text_regions_p, image_page)
+                    if self.plotter:
+                        self.plotter.save_plot_of_layout(text_regions_p, image_page)
+                        self.plotter.save_plot_of_layout_all(text_regions_p, image_page)
 
                     K.clear_session()
                     gc.collect()
@@ -2696,8 +2605,8 @@ class eynollah:
                         boxes_d = return_boxes_of_images_by_order_of_reading_new(spliter_y_new_d, regions_without_seperators_d, matrix_of_lines_ch_d, num_col_classifier)
 
                 # print(slopes)
-                if self.dir_of_cropped_images is not None:
-                    self.write_images_into_directory(polygons_of_images, self.dir_of_cropped_images, image_page)
+                if self.plotter:
+                    self.plotter.write_images_into_directory(polygons_of_images, image_page)
 
                 if self.full_layout:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:

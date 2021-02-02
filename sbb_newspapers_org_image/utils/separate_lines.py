@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 from scipy.signal import find_peaks
@@ -1485,7 +1484,7 @@ def textline_contours_postprocessing(textline_mask, slope, contour_text_interest
 
     return contours_rotated_clean
 
-def seperate_lines_new2(img_path, thetha, num_col, slope_region, dir_of_all, image_filename_stem):
+def seperate_lines_new2(img_path, thetha, num_col, slope_region, plotter=None):
 
     if num_col == 1:
         num_patches = int(img_path.shape[1] / 200.0)
@@ -1536,7 +1535,7 @@ def seperate_lines_new2(img_path, thetha, num_col, slope_region, dir_of_all, ima
 
         sigma = 2
         try:
-            slope_xline = return_deskew_slop(img_xline, sigma, dir_of_all=dir_of_all, image_filename_stem=image_filename_stem)
+            slope_xline = return_deskew_slop(img_xline, sigma, plotter=plotter)
         except:
             slope_xline = 0
 
@@ -1593,29 +1592,10 @@ def seperate_lines_new2(img_path, thetha, num_col, slope_region, dir_of_all, ima
     # plt.show()
     return img_patch_ineterst_revised
 
-def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=None, image_filename_stem=None):
+def return_deskew_slop(img_patch_org, sigma_des, main_page=False, plotter=None):
 
-
-    if main_page and dir_of_all is not None:
-
-
-        plt.figure(figsize=(80,40))
-        plt.rcParams['font.size']='50'
-        plt.subplot(1,2,1)
-        plt.imshow(img_patch_org)
-        plt.subplot(1,2,2)
-        plt.plot(gaussian_filter1d(img_patch_org.sum(axis=1), 3),np.array(range(len(gaussian_filter1d(img_patch_org.sum(axis=1), 3)))),linewidth=8)
-        plt.xlabel('Density of textline prediction in direction of X axis',fontsize=60)
-        plt.ylabel('Height',fontsize=60)
-        plt.yticks([0,len(gaussian_filter1d(img_patch_org.sum(axis=1), 3))])
-        plt.gca().invert_yaxis()
-
-        plt.savefig(os.path.join(dir_of_all, image_filename_stem+'_density_of_textline.png'))
-    #print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar')
-
-    #img_patch_org=resize_image(img_patch_org,int(img_patch_org.shape[0]*2.5),int(img_patch_org.shape[1]/2.5))
-
-    #print(np.max(img_patch_org.sum(axis=0)) ,np.max(img_patch_org.sum(axis=1)),'axislar2')
+    if main_page and plotter:
+        plotter.save_plot_of_textline_density(img_patch_org)
 
     img_int=np.zeros((img_patch_org.shape[0],img_patch_org.shape[1]))
     img_int[:,:]=img_patch_org[:,:]#img_patch_org[:,:,0]
@@ -1713,17 +1693,8 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, dir_of_all=Non
             var_res.append(var_spectrum)
 
 
-        if dir_of_all is not None:
-            #print('galdi?')
-            plt.figure(figsize=(60,30))
-            plt.rcParams['font.size']='50'
-            plt.plot(angels,np.array(var_res),'-o',markersize=25,linewidth=4)
-            plt.xlabel('angle',fontsize=50)
-            plt.ylabel('variance of sum of rotated textline in direction of x axis',fontsize=50)
-
-            plt.plot(angels[np.argmax(var_res)],var_res[np.argmax(np.array(var_res))]  ,'*',markersize=50,label='Angle of deskewing=' +str("{:.2f}".format(angels[np.argmax(var_res)]))+r'$\degree$')
-            plt.legend(loc='best')
-            plt.savefig(os.path.join(dir_of_all,image_filename_stem+'_rotation_angle.png'))
+        if plotter:
+            plotter.save_plot_of_rotation_angle(angels, var_res)
         try:
             var_res=np.array(var_res)
             ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]

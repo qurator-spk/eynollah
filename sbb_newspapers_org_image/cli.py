@@ -4,13 +4,18 @@ from sbb_newspapers_org_image.eynollah import eynollah
 
 @click.command()
 @click.option(
-    "--image", "-i", help="image filename", type=click.Path(exists=True, dir_okay=False)
+    "--image",
+    "-i",
+    help="image filename",
+    type=click.Path(exists=True, dir_okay=False),
+    required=True,
 )
 @click.option(
     "--out",
     "-o",
     help="directory to write output xml data",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
 @click.option(
     "--model",
@@ -41,6 +46,12 @@ from sbb_newspapers_org_image.eynollah import eynollah
     "-sa",
     help="if a directory is given, all plots needed for documentation will be saved there",
     type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
+    "--enable_plotting",
+    "-ep",
+    is_flag=True,
+    help="If set, will plot intermediary files and images",
 )
 @click.option(
     "--allow_enhancement",
@@ -80,6 +91,7 @@ def main(
     save_layout,
     save_deskewed,
     save_all,
+    enable_plotting,
     allow_enhancement,
     curved_line,
     full_layout,
@@ -95,6 +107,7 @@ def main(
         save_layout,
         save_deskewed,
         save_all,
+        enable_plotting,
         allow_enhancement,
         curved_line,
         full_layout,
