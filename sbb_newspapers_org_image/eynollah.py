@@ -33,7 +33,6 @@ from lxml import etree as ET
 from matplotlib import pyplot, transforms
 import matplotlib.patches as mpatches
 import imutils
-import matplotlib.pyplot as plt
 
 from .utils.contour import (
     contours_in_same_horizon,
