@@ -33,6 +33,7 @@ from lxml import etree as ET
 from matplotlib import pyplot, transforms
 import matplotlib.patches as mpatches
 import imutils
+import matplotlib.pyplot as plt
 
 from .utils.contour import (
     contours_in_same_horizon,
@@ -454,9 +455,12 @@ class eynollah:
 
         # Also set for the plotter
         # XXX TODO hacky
-        self.plotter.image_org = self.image_org
-        self.plotter.scale_y = self.scale_y
-        self.plotter.scale_x = self.scale_x
+        #self.plotter.image_org = self.image_org
+        
+        #self.plotter.scale_y = self.scale_y
+        #self.plotter.scale_x = self.scale_x
+        
+
 
     def get_image_and_scales_after_enhancing(self, img_org, img_res):
 
@@ -468,6 +472,7 @@ class eynollah:
 
         self.scale_y = img_res.shape[0] / float(self.image_org.shape[0])
         self.scale_x = img_res.shape[1] / float(self.image_org.shape[1])
+        
 
         del img_org
         del img_res
@@ -1324,9 +1329,11 @@ class eynollah:
                 #else:
                 #    textregion.set('type','paragraph')
                 coord_text = ET.SubElement(textregion, 'Coords')
+                
+                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_h, mm, page_coord))
 
                     
-                id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord, slopes, id_indexer_l)
+                id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord_h, slopes, id_indexer_l)
                 texteqreg=ET.SubElement(textregion, 'TextEquiv')
     
                 unireg=ET.SubElement(texteqreg, 'Unicode')
@@ -1459,9 +1466,14 @@ class eynollah:
         except:
             pass
 
-        print(dir_of_image)
-        print(self.f_name)
-        print(os.path.join(dir_of_image, self.f_name) + ".xml")
+        ##print(dir_of_image)
+        ##print(self.f_name)
+        ##print(os.path.join(dir_of_image, self.f_name) + ".xml")
+        ##tree = ET.ElementTree(pcgts)
+        ##tree.write(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
+        
+        print(self.image_filename_stem)
+        # print(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
         tree = ET.ElementTree(pcgts)
         tree.write(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
     
@@ -2134,7 +2146,9 @@ class eynollah:
             img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced)
             self.get_image_and_scales_after_enhancing(img_org, img_res)
 
-        # print(self.scale_x)
+        
+
+        
 
         print("enhancing: " + str(time.time() - t1))
         text_regions_p_1 = self.get_regions_from_xy_2models(img_res, is_image_enhanced)
@@ -2377,8 +2391,8 @@ class eynollah:
                     text_regions_p[:, :][regions_fully[:, :, 0] == 4] = 4
                     text_regions_p[:, :][regions_fully_np[:, :, 0] == 4] = 4
 
-                    # plt.imshow(text_regions_p)
-                    # plt.show()
+                    #plt.imshow(text_regions_p)
+                    #plt.show()
 
                     if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                         image_page_rotated_n, textline_mask_tot_d, text_regions_p_1_n, regions_fully_n = rotation_not_90_func_full_layout(image_page, textline_mask_tot, text_regions_p, regions_fully, slope_deskew)
@@ -2541,6 +2555,8 @@ class eynollah:
                     else:
                         contours_only_text_parent_d_ordered = None
                         text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
+                        
+                        
 
                     if self.plotter:
                         self.plotter.save_plot_of_layout(text_regions_p, image_page)
