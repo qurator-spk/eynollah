@@ -1,5 +1,5 @@
 import click
-from ocrd_utils import initLogging
+from ocrd_utils import initLogging, setOverrideLogLevel
 from sbb_newspapers_org_image.eynollah import eynollah
 
 
@@ -84,6 +84,12 @@ from sbb_newspapers_org_image.eynollah import eynollah
     is_flag=True,
     help="if this parameter set to true, this tool would ignore headers role in reading order",
 )
+@click.option(
+    "--log-level",
+    "-l",
+    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
+    help="Override log level globally to this",
+)
 def main(
     image,
     out,
@@ -98,7 +104,10 @@ def main(
     full_layout,
     allow_scaling,
     headers_off,
+    log_level
 ):
+    if log_level:
+        setOverrideLogLevel(log_level)
     initLogging()
     eynollah(
         image,
