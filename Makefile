@@ -1,3 +1,6 @@
+EYNOLLAH_MODELS ?= $(PWD)/models_eynollah
+export EYNOLLAH_MODELS
+
 # BEGIN-EVAL makefile-parser --make-help Makefile
 
 help:

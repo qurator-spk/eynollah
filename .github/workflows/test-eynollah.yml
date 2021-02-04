@@ -32,4 +32,4 @@ jobs:
         python -m pip install --upgrade pip
         pip install .
     - name: Test with pytest
-      run: echo success # make test
+      run: make test
