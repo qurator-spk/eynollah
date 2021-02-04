@@ -1,4 +1,5 @@
 import click
+from ocrd_utils import initLogging
 from sbb_newspapers_org_image.eynollah import eynollah
 
 
@@ -98,6 +99,7 @@ def main(
     allow_scaling,
     headers_off,
 ):
+    initLogging()
     eynollah(
         image,
         None,

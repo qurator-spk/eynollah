@@ -12,6 +12,7 @@ import time
 import warnings
 from pathlib import Path
 from multiprocessing import Process, Queue, cpu_count
+from ocrd_utils import getLogger
 
 import cv2
 import numpy as np
@@ -156,6 +157,7 @@ class eynollah:
             image_filename=image_filename,
             image_filename_stem=image_filename_stem,
         )
+        self.logger = getLogger('eynollah')
         self.dir_models = dir_models
         self.kernel = np.ones((5, 5), np.uint8)
 
@@ -382,7 +384,9 @@ class eynollah:
         return img, img_new, is_image_enhanced
 
     def resize_and_enhance_image_with_column_classifier(self, is_image_enhanced):
+        self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
         dpi = self.check_dpi()
+        self.logger.info("Detected %s DPI" % dpi)
         img = cv2.imread(self.image_filename)
 
         img = img.astype(np.uint8)
@@ -477,6 +481,7 @@ class eynollah:
         del img_res
 
     def start_new_session_and_model(self, model_dir):
+        self.logger.debug("enter start_new_session_and_model")
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
 
@@ -486,6 +491,7 @@ class eynollah:
         return model, session
 
     def do_prediction(self, patches, img, model, marginal_of_patch_percent=0.1):
+        self.logger.debug("enter do_prediction")
 
         img_height_model = model.layers[len(model.layers) - 1].output_shape[1]
         img_width_model = model.layers[len(model.layers) - 1].output_shape[2]
@@ -615,6 +621,7 @@ class eynollah:
         return prediction_true
 
     def early_page_for_num_of_column_classification(self):
+        self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
         img = cv2.imread(self.image_filename)
         img = img.astype(np.uint8)
         patches = False
@@ -2115,6 +2122,7 @@ class eynollah:
             return order_text_new, id_of_texts_tot
 
     def run(self):
+        self.logger.debug("enter run")
         is_image_enhanced = False
         # get image and sclaes, then extract the page of scanned image
         t1 = time.time()
@@ -2122,39 +2130,36 @@ class eynollah:
         ##########
 
         ###is_image_enhanced,img_org,img_res=self.resize_and_enhance_image(is_image_enhanced)
+        self.logger.info("resize and enhance image")
         is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified = self.resize_and_enhance_image_with_column_classifier(is_image_enhanced)
+        self.logger.info("Image is %senhanced" % 'is ' if is_image_enhanced else '')
 
-        print(is_image_enhanced, "is_image_enhanced")
         K.clear_session()
         scale = 1
-        if (self.allow_enhancement) and is_image_enhanced:
+        if self.allow_enhancement and is_image_enhanced:
             cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem) + ".tif", img_res)
             img_res = img_res.astype(np.uint8)
             self.get_image_and_scales(img_org, img_res, scale)
 
-        if (not self.allow_enhancement) and is_image_enhanced:
+        if not self.allow_enhancement and is_image_enhanced:
             self.get_image_and_scales_after_enhancing(img_org, img_res)
 
-        if (self.allow_enhancement) and not is_image_enhanced:
+        if self.allow_enhancement and not is_image_enhanced:
             self.get_image_and_scales(img_org, img_res, scale)
 
-        if (not self.allow_enhancement) and not is_image_enhanced:
+        if not self.allow_enhancement and not is_image_enhanced:
             self.get_image_and_scales(img_org, img_res, scale)
 
-        if (self.allow_scaling) and not is_image_enhanced:
+        if self.allow_scaling and not is_image_enhanced:
             img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced)
             self.get_image_and_scales_after_enhancing(img_org, img_res)
+        self.logger.info("Enhancing took %ss ", str(time.time() - t1))
 
-        
-
-        
-
-        print("enhancing: " + str(time.time() - t1))
         text_regions_p_1 = self.get_regions_from_xy_2models(img_res, is_image_enhanced)
         K.clear_session()
         gc.collect()
 
-        print("textregion: " + str(time.time() - t1))
+        print("Textregion detection took %ss " + str(time.time() - t1))
 
         img_g = cv2.imread(self.image_filename, 0)
         img_g = img_g.astype(np.uint8)
