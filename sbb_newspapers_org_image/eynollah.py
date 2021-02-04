@@ -1284,7 +1284,7 @@ class eynollah:
         # create the file structure
         pcgts, page = create_page_xml(self.image_filename, self.height_org, self.width_org)
 
-        page_print_sub = ET.SubElement(page, "PrintSpace")
+        page_print_sub = ET.SubElement(page, "Border")
         coord_page = ET.SubElement(page_print_sub, "Coords")
         coord_page.set('points', self.calculate_page_coords())
 
@@ -1527,7 +1527,7 @@ class eynollah:
 
         # create the file structure
         pcgts, page = create_page_xml(self.image_filename, self.height_org, self.width_org)
-        page_print_sub = ET.SubElement(page, "PrintSpace")
+        page_print_sub = ET.SubElement(page, "Border")
         coord_page = ET.SubElement(page_print_sub, "Coords")
         coord_page.set('points', self.calculate_page_coords())
 
