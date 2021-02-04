@@ -2136,23 +2136,21 @@ class eynollah:
 
         K.clear_session()
         scale = 1
-        if self.allow_enhancement and is_image_enhanced:
-            cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem) + ".tif", img_res)
-            img_res = img_res.astype(np.uint8)
-            self.get_image_and_scales(img_org, img_res, scale)
-
-        if not self.allow_enhancement and is_image_enhanced:
-            self.get_image_and_scales_after_enhancing(img_org, img_res)
-
-        if self.allow_enhancement and not is_image_enhanced:
-            self.get_image_and_scales(img_org, img_res, scale)
-
-        if not self.allow_enhancement and not is_image_enhanced:
-            self.get_image_and_scales(img_org, img_res, scale)
-
-        if self.allow_scaling and not is_image_enhanced:
-            img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced)
-            self.get_image_and_scales_after_enhancing(img_org, img_res)
+        if is_image_enhanced:
+            if self.allow_enhancement:
+                cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem) + ".tif", img_res)
+                img_res = img_res.astype(np.uint8)
+                self.get_image_and_scales(img_org, img_res, scale)
+            else:
+                self.get_image_and_scales_after_enhancing(img_org, img_res)
+        else:
+            if self.allow_enhancement:
+                self.get_image_and_scales(img_org, img_res, scale)
+            else:
+                self.get_image_and_scales(img_org, img_res, scale)
+            if self.allow_scaling:
+                img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced)
+                self.get_image_and_scales_after_enhancing(img_org, img_res)
         self.logger.info("Enhancing took %ss ", str(time.time() - t1))
 
         text_regions_p_1 = self.get_regions_from_xy_2models(img_res, is_image_enhanced)
