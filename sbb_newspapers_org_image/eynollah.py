@@ -347,7 +347,7 @@ class eynollah:
         _, page_coord = self.early_page_for_num_of_column_classification()
         model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
 
-        img_1ch = cv2.imread(self.image_filename, 0)
+        img_1ch = cv2.imread(self.image_filename, cv.IMREAD_GRAYSCALE)
         width_early = img_1ch.shape[1]
         img_1ch = img_1ch[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
 
@@ -394,7 +394,7 @@ class eynollah:
         _, page_coord = self.early_page_for_num_of_column_classification()
         model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
 
-        img_1ch = cv2.imread(self.image_filename, 0)
+        img_1ch = cv2.imread(self.image_filename, cv2.IMREAD_GRAYSCALE)
         img_1ch = img_1ch.astype(np.uint8)
 
         width_early = img_1ch.shape[1]
@@ -1673,6 +1673,7 @@ class eynollah:
         # cv2.imwrite(os.path.join(dir_of_image, self.image_filename_stem) + ".tif",self.image_org)
 
     def get_regions_from_xy_2models(self,img,is_image_enhanced):
+        self.logger.debug("enter get_regions_from_xy_2models")
         img_org = np.copy(img)
         img_height_h = img_org.shape[0]
         img_width_h = img_org.shape[1]
@@ -2132,7 +2133,7 @@ class eynollah:
         ###is_image_enhanced,img_org,img_res=self.resize_and_enhance_image(is_image_enhanced)
         self.logger.info("resize and enhance image")
         is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified = self.resize_and_enhance_image_with_column_classifier(is_image_enhanced)
-        self.logger.info("Image is %senhanced" % 'is ' if is_image_enhanced else '')
+        self.logger.info("Image is %senhanced", '' if is_image_enhanced else 'not ')
 
         K.clear_session()
         scale = 1
@@ -2156,10 +2157,9 @@ class eynollah:
         text_regions_p_1 = self.get_regions_from_xy_2models(img_res, is_image_enhanced)
         K.clear_session()
         gc.collect()
+        self.logger.info("Textregion detection took %ss " + str(time.time() - t1))
 
-        print("Textregion detection took %ss " + str(time.time() - t1))
-
-        img_g = cv2.imread(self.image_filename, 0)
+        img_g = cv2.imread(self.image_filename, cv2.IMREAD_GRAYSCALE)
         img_g = img_g.astype(np.uint8)
 
         img_g3 = np.zeros((img_g.shape[0], img_g.shape[1], 3))
