@@ -49,38 +49,38 @@ from sbb_newspapers_org_image.eynollah import eynollah
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
-    "--enable_plotting",
-    "-ep",
+    "--enable-plotting/--disable-plotting",
+    "-ep/-noep",
     is_flag=True,
     help="If set, will plot intermediary files and images",
 )
 @click.option(
-    "--allow_enhancement",
-    "-ae",
+    "--allow-enhancement/--no-allow-enhancement",
+    "-ae/-noae",
     is_flag=True,
     help="if this parameter set to true, this tool would check that input image need resizing and enhancement or not. If so output of resized and enhanced image and corresponding layout data will be written in out directory",
 )
 @click.option(
-    "--curved_line",
-    "-cl",
+    "--curved-line/--no-curvedline",
+    "-cl/-nocl",
     is_flag=True,
     help="if this parameter set to true, this tool will try to return contoure of textlines instead of rectabgle bounding box of textline. This should be taken into account that with this option the tool need more time to do process.",
 )
 @click.option(
-    "--full_layout",
-    "-fl",
+    "--full-layout/--no-full-layout",
+    "-fl/-nofl",
     is_flag=True,
     help="if this parameter set to true, this tool will try to return all elements of layout.",
 )
 @click.option(
-    "--allow_scaling",
-    "-as",
+    "--allow_scaling/--no-allow-scaling",
+    "-as/-noas",
     is_flag=True,
     help="if this parameter set to true, this tool would check the scale and if needed it will scale it to perform better layout detection",
 )
 @click.option(
-    "--headers_off",
-    "-ho",
+    "--headers-off/--headers-on",
+    "-ho/-noho",
     is_flag=True,
     help="if this parameter set to true, this tool would ignore headers role in reading order",
 )

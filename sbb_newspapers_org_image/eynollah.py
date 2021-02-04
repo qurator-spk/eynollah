@@ -176,6 +176,7 @@ class eynollah:
         self.model_textline_dir = dir_models + "/model_textline_newspapers.h5"  #'/model_hor_ver_home_trextline_very_good.h5'# '/model_hor_ver_1_great.h5'#'/model_curved_office_works_great.h5'
 
     def predict_enhancement(self, img):
+        self.logger.debug("enter predict_enhancement")
         model_enhancement, session_enhancemnet = self.start_new_session_and_model(self.model_dir_of_enhancemnet)
 
         img_height_model = model_enhancement.layers[len(model_enhancement.layers) - 1].output_shape[1]
@@ -279,6 +280,7 @@ class eynollah:
         return int(float(dpi))
 
     def calculate_width_height_by_columns(self, img, num_col, width_early, label_p_pred):
+        self.logger.debug("enter calculate_width_height_by_columns")
         if num_col == 1 and width_early < 1100:
             img_w_new = 2000
             img_h_new = int(img.shape[0] / float(img.shape[1]) * 2000)
@@ -341,6 +343,7 @@ class eynollah:
         return img_new, num_column_is_classified
 
     def resize_image_with_column_classifier(self, is_image_enhanced):
+        self.logger.debug("enter resize_image_with_column_classifier")
         img = cv2.imread(self.image_filename)
         img = img.astype(np.uint8)
 
@@ -444,6 +447,7 @@ class eynollah:
         return is_image_enhanced, img, image_res, num_col, num_column_is_classified
 
     def get_image_and_scales(self, img_org, img_res, scale):
+        self.logger.debug("enter get_image_and_scales")
         self.image = np.copy(img_res)
         self.image_org = np.copy(img_org)
         self.height_org = self.image.shape[0]
@@ -462,11 +466,10 @@ class eynollah:
         
         #self.plotter.scale_y = self.scale_y
         #self.plotter.scale_x = self.scale_x
-        
 
 
     def get_image_and_scales_after_enhancing(self, img_org, img_res):
-
+        self.logger.debug("enter get_image_and_scales_after_enhancing")
         self.image = np.copy(img_res)
         self.image = self.image.astype(np.uint8)
         self.image_org = np.copy(img_org)
