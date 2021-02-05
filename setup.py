@@ -10,7 +10,7 @@ setup(
     author='Vahid Rezanezhad',
     url='https://github.com/qurator-spk/eynollah',
     license='Apache License 2.0',
-    packages=find_packages,
+    packages=find_packages(),
     install_requires=install_requires,
     entry_points={
         'console_scripts': [
