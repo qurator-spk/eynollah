@@ -749,8 +749,6 @@ class eynollah:
             img = img.astype(np.uint8)
             if img_width_h >= 2000:
                 img = resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9))
-            else:
-                pass  # img= resize_image(img, int(img_height_h*1), int(img_width_h*1) )
             img = img.astype(np.uint8)
 
         if patches and cols == 1:
@@ -1808,9 +1806,7 @@ class eynollah:
         rate_two_models=text_sume_second/float(text_sume_early)*100
 
         self.logger.info("ratio_of_two_models: %s", rate_two_models)
-        if is_image_enhanced and rate_two_models<95.50:#98.45:
-            pass
-        else:
+        if not(is_image_enhanced and rate_two_models<95.50):#98.45:
             prediction_regions_org=np.copy(prediction_regions_org_copy)
 
         ##prediction_regions_org[mask_lines2[:,:]==1]=3
@@ -2178,11 +2174,13 @@ class eynollah:
                 img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced)
                 self.get_image_and_scales_after_enhancing(img_org, img_res)
         self.logger.info("Enhancing took %ss ", str(time.time() - t1))
+        t1 = time.time()
 
         text_regions_p_1 = self.get_regions_from_xy_2models(img_res, is_image_enhanced)
         K.clear_session()
         gc.collect()
         self.logger.info("Textregion detection took %ss " + str(time.time() - t1))
+        t1 = time.time()
 
         img_g = cv2.imread(self.image_filename, cv2.IMREAD_GRAYSCALE)
         img_g = img_g.astype(np.uint8)
@@ -2251,6 +2249,7 @@ class eynollah:
             if self.plotter:
                 self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page)
             self.logger.info("textline detection took %ss", str(time.time() - t1))
+            t1 = time.time()
             # plt.imshow(textline_mask_tot_ea)
             # plt.show()
             # sys.exit()
@@ -2269,6 +2268,7 @@ class eynollah:
             ##plt.show()
             ##sys.exit()
             self.logger.info("deskewing: " + str(time.time() - t1))
+            t1 = time.time()
 
             image_page_rotated, textline_mask_tot = image_page[:, :], textline_mask_tot_ea[:, :]
             textline_mask_tot[mask_images[:, :] == 1] = 0
@@ -2285,9 +2285,7 @@ class eynollah:
                 try:
                     regions_without_seperators = (text_regions_p[:, :] == 1) * 1
                     regions_without_seperators = regions_without_seperators.astype(np.uint8)
-
                     text_regions_p = get_marginals(rotate_image(regions_without_seperators, slope_deskew), text_regions_p, num_col_classifier, slope_deskew, kernel=self.kernel)
-
                 except:
                     pass
 
@@ -2299,6 +2297,7 @@ class eynollah:
                 self.plotter.save_plot_of_layout_main(text_regions_p, image_page)
 
             self.logger.info("detection of marginals took %ss", str(time.time() - t1))
+            t1 = time.time()
 
             if not self.full_layout:
 
@@ -2344,6 +2343,7 @@ class eynollah:
 
                 self.logger.debug("len(boxes): %s", len(boxes))
                 self.logger.info("detecting boxes took %ss", str(time.time() - t1))
+                t1 = time.time()
                 img_revised_tab = text_regions_p[:, :]
                 pixel_img = 2
                 polygons_of_images = return_contours_of_interested_region(img_revised_tab, pixel_img)
@@ -2431,6 +2431,7 @@ class eynollah:
                 gc.collect()
                 img_revised_tab = np.copy(text_regions_p[:, :])
                 self.logger.info("detection of full layout took %ss", str(time.time() - t1))
+                t1 = time.time()
                 pixel_img = 5
                 polygons_of_images = return_contours_of_interested_region(img_revised_tab, pixel_img)
 
@@ -2588,8 +2589,6 @@ class eynollah:
                 K.clear_session()
                 gc.collect()
 
-                ##print('Job done in: '+str(time.time()-t1))
-
                 polygons_of_tabels = []
                 pixel_img = 4
                 polygons_of_drop_capitals = return_contours_of_interested_region_by_min_size(text_regions_p, pixel_img)
@@ -2618,25 +2617,17 @@ class eynollah:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         regions_without_seperators = regions_without_seperators.astype(np.uint8)
                         regions_without_seperators = cv2.erode(regions_without_seperators[:, :], self.kernel, iterations=6)
-
                         random_pixels_for_image = np.random.randn(regions_without_seperators.shape[0], regions_without_seperators.shape[1])
                         random_pixels_for_image[random_pixels_for_image < -0.5] = 0
                         random_pixels_for_image[random_pixels_for_image != 0] = 1
-
                         regions_without_seperators[(random_pixels_for_image[:, :] == 1) & (text_regions_p[:, :] == 5)] = 1
-
                     else:
-
                         regions_without_seperators_d = regions_without_seperators_d.astype(np.uint8)
                         regions_without_seperators_d = cv2.erode(regions_without_seperators_d[:, :], self.kernel, iterations=6)
-
                         random_pixels_for_image = np.random.randn(regions_without_seperators_d.shape[0], regions_without_seperators_d.shape[1])
                         random_pixels_for_image[random_pixels_for_image < -0.5] = 0
                         random_pixels_for_image[random_pixels_for_image != 0] = 1
-
                         regions_without_seperators_d[(random_pixels_for_image[:, :] == 1) & (text_regions_p_1_n[:, :] == 5)] = 1
-                else:
-                    pass
 
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     boxes = return_boxes_of_images_by_order_of_reading_new(spliter_y_new, regions_without_seperators, matrix_of_lines_ch, num_col_classifier)
