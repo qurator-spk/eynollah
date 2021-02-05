@@ -387,7 +387,7 @@ class eynollah:
 
         return img, img_new, is_image_enhanced
 
-    def resize_and_enhance_image_with_column_classifier(self, is_image_enhanced):
+    def resize_and_enhance_image_with_column_classifier(self):
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
         dpi = self.check_dpi()
         self.logger.info("Detected %s DPI" % dpi)
@@ -432,19 +432,17 @@ class eynollah:
         del page_coord
         K.clear_session()
         gc.collect()
-        self.logger.info("%s DPI" % dpi)
 
         if dpi < 298:
             img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
             image_res = self.predict_enhancement(img_new)
-            # cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem) + ".tif",self.image)
-            # self.image=self.image.astype(np.uint16)
             is_image_enhanced = True
         else:
             is_image_enhanced = False
             num_column_is_classified = True
             image_res = np.copy(img)
 
+        self.logger.debug("exit resize_and_enhance_image_with_column_classifier")
         return is_image_enhanced, img, image_res, num_col, num_column_is_classified
 
     def get_image_and_scales(self, img_org, img_res, scale):
@@ -463,10 +461,10 @@ class eynollah:
 
         # Also set for the plotter
         # XXX TODO hacky
-        #self.plotter.image_org = self.image_org
-        
-        #self.plotter.scale_y = self.scale_y
-        #self.plotter.scale_x = self.scale_x
+        if self.plotter:
+            self.plotter.image_org = self.image_org
+            self.plotter.scale_y = self.scale_y
+            self.plotter.scale_x = self.scale_x
 
 
     def get_image_and_scales_after_enhancing(self, img_org, img_res):
@@ -625,7 +623,7 @@ class eynollah:
         return prediction_true
 
     def early_page_for_num_of_column_classification(self):
-        self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
+        self.logger.debug("enter early_page_for_num_of_column_classification")
         img = cv2.imread(self.image_filename)
         img = img.astype(np.uint8)
         patches = False
@@ -661,7 +659,7 @@ class eynollah:
         del img_page_prediction
 
         gc.collect()
-        self.logger.debug("exit resize_and_enhance_image_with_column_classifier")
+        self.logger.debug("exit early_page_for_num_of_column_classification")
         return croped_page, page_coord
 
     def extract_page(self):
@@ -1852,6 +1850,7 @@ class eynollah:
         del img_org
         gc.collect()
 
+        K.clear_session()
         return text_regions_p_true
 
     def do_order_of_regions_full_layout(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
@@ -2141,21 +2140,10 @@ class eynollah:
             return self.do_order_of_regions_full_layout(*args, **kwargs)
         return self.do_order_of_regions_no_full_layout(*args, **kwargs)
 
-    def run(self):
-        """
-        Get image and scales, then extract the page of scanned image
-        """
-        self.logger.debug("enter run")
-        is_image_enhanced = False
-        t1 = time.time()
-
-        ##########
-
-        ###is_image_enhanced,img_org,img_res=self.resize_and_enhance_image(is_image_enhanced)
+    def run_enhancement(self):
         self.logger.info("resize and enhance image")
-        is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified = self.resize_and_enhance_image_with_column_classifier(is_image_enhanced)
+        is_image_enhanced, img_org, img_res, _, num_column_is_classified = self.resize_and_enhance_image_with_column_classifier()
         self.logger.info("Image is %senhanced", '' if is_image_enhanced else 'not ')
-
         K.clear_session()
         scale = 1
         if is_image_enhanced:
@@ -2173,13 +2161,22 @@ class eynollah:
             if self.allow_scaling:
                 img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced)
                 self.get_image_and_scales_after_enhancing(img_org, img_res)
-        self.logger.info("Enhancing took %ss ", str(time.time() - t1))
-        t1 = time.time()
+        return img_res, is_image_enhanced, num_column_is_classified
 
+    def run(self):
+        """
+        Get image and scales, then extract the page of scanned image
+        """
+        self.logger.debug("enter run")
+        is_image_enhanced = False
+
+        t1 = time.time()
+        img_res, is_image_enhanced, num_column_is_classified = self.run_enhancement()
+        self.logger.info("Enhancing took %ss ", str(time.time() - t1))
+
+        t1 = time.time()
         text_regions_p_1 = self.get_regions_from_xy_2models(img_res, is_image_enhanced)
-        K.clear_session()
-        gc.collect()
-        self.logger.info("Textregion detection took %ss " + str(time.time() - t1))
+        self.logger.info("Textregion detection took %ss ", str(time.time() - t1))
         t1 = time.time()
 
         img_g = cv2.imread(self.image_filename, cv2.IMREAD_GRAYSCALE)
@@ -2224,7 +2221,8 @@ class eynollah:
             peaks_neg_fin = []
 
         #print(num_col, "num_colnum_col")
-        if num_col is None:
+        if not num_col:
+            self.logger.info("No columns detected, outputting an empty PAGE-XML")
             txt_con_org = []
             order_text_new = []
             id_of_texts_tot = []
@@ -2252,7 +2250,6 @@ class eynollah:
             t1 = time.time()
             # plt.imshow(textline_mask_tot_ea)
             # plt.show()
-            # sys.exit()
 
             sigma = 2
             main_page_deskew = True
@@ -2261,12 +2258,11 @@ class eynollah:
 
             if self.plotter:
                 self.plotter.save_deskewed_image(slope_deskew)
-            # img_rotated=rotyate_image_different(self.image_org,slope_deskew)
             self.logger.info("slope_deskew: %s", slope_deskew)
 
             ##plt.imshow(img_rotated)
             ##plt.show()
-            ##sys.exit()
+
             self.logger.info("deskewing: " + str(time.time() - t1))
             t1 = time.time()
 
@@ -2634,7 +2630,6 @@ class eynollah:
                 else:
                     boxes_d = return_boxes_of_images_by_order_of_reading_new(spliter_y_new_d, regions_without_seperators_d, matrix_of_lines_ch_d, num_col_classifier)
 
-            # print(slopes)
             if self.plotter:
                 self.plotter.write_images_into_directory(polygons_of_images, image_page)
 
