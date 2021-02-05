@@ -2154,6 +2154,7 @@ class eynollah:
         img_only_regions_with_sep = img_only_regions_with_sep.astype(np.uint8)
         img_only_regions = cv2.erode(img_only_regions_with_sep[:, :], self.kernel, iterations=6)
 
+        num_col_classifier = None
         try:
             num_col, peaks_neg_fin = find_num_col(img_only_regions, multiplier=6.0)
             if not num_column_is_classified:
@@ -2161,7 +2162,6 @@ class eynollah:
         except:
             num_col = None
             peaks_neg_fin = []
-            num_col_classifier = None
         return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines
 
     def run_enhancement(self):
