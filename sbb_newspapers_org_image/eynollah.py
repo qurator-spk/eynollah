@@ -2187,32 +2187,7 @@ class eynollah:
                 self.get_image_and_scales_after_enhancing(img_org, img_res)
         return img_res, is_image_enhanced, num_column_is_classified
 
-
-    def run(self):
-        """
-        Get image and scales, then extract the page of scanned image
-        """
-        self.logger.debug("enter run")
-        is_image_enhanced = False
-
-        t1 = time.time()
-        img_res, is_image_enhanced, num_column_is_classified = self.run_enhancement()
-        self.logger.info("Enhancing took %ss ", str(time.time() - t1))
-
-        t1 = time.time()
-        text_regions_p_1 = self.get_regions_from_xy_2models(img_res, is_image_enhanced)
-        self.logger.info("Textregion detection took %ss ", str(time.time() - t1))
-
-        t1 = time.time()
-        num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines = self.run_graphics_and_columns(text_regions_p_1, num_column_is_classified)
-        self.logger.info("Graphics detection took %ss ", str(time.time() - t1))
-
-        if not num_col:
-            self.logger.info("No columns detected, outputting an empty PAGE-XML")
-            self.write_into_page_xml([], page_coord, self.dir_out, [], [], [], [], [], [], [], [], self.curved_line, [], [])
-            self.logger.info("Job done in %ss", str(time.time() - t1))
-            return
-
+    def run_textline(self, image_page):
         scaler_h_textline = 1  # 1.2#1.2
         scaler_w_textline = 1  # 0.9#1
         textline_mask_tot_ea, textline_mask_tot_long_shot = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline)
@@ -2220,28 +2195,33 @@ class eynollah:
         K.clear_session()
         gc.collect()
         #print(np.unique(textline_mask_tot_ea[:, :]), "textline")
-        if self.plotter:
-            self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page)
-        self.logger.info("textline detection took %ss", str(time.time() - t1))
-        t1 = time.time()
         # plt.imshow(textline_mask_tot_ea)
         # plt.show()
+        if self.plotter:
+            self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page)
+        return textline_mask_tot_ea, textline_mask_tot_long_shot
 
+    def run_deskew(self, textline_mask_tot_ea):
         sigma = 2
         main_page_deskew = True
         slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2), sigma, main_page_deskew, plotter=self.plotter)
-        slope_first = 0  # return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2),sigma, plotter=self.plotter)
+        slope_first = 0
 
         if self.plotter:
             self.plotter.save_deskewed_image(slope_deskew)
         self.logger.info("slope_deskew: %s", slope_deskew)
+        return slope_deskew, slope_first
 
-        ##plt.imshow(img_rotated)
-        ##plt.show()
-
-        self.logger.info("deskewing: " + str(time.time() - t1))
-        t1 = time.time()
-
+    def run_marginals(
+        self,
+        image_page,
+        textline_mask_tot_ea,
+        mask_images,
+        mask_lines,
+        num_col_classifier,
+        slope_deskew,
+        text_regions_p_1
+    ):
         image_page_rotated, textline_mask_tot = image_page[:, :], textline_mask_tot_ea[:, :]
         textline_mask_tot[mask_images[:, :] == 1] = 0
 
@@ -2267,7 +2247,44 @@ class eynollah:
         if self.plotter:
             self.plotter.save_plot_of_layout_main_all(text_regions_p, image_page)
             self.plotter.save_plot_of_layout_main(text_regions_p, image_page)
+        return textline_mask_tot, text_regions_p, image_page_rotated
 
+    def run(self):
+        """
+        Get image and scales, then extract the page of scanned image
+        """
+        self.logger.debug("enter run")
+        is_image_enhanced = False
+
+        t1 = time.time()
+        img_res, is_image_enhanced, num_column_is_classified = self.run_enhancement()
+        self.logger.info("Enhancing took %ss ", str(time.time() - t1))
+
+        t1 = time.time()
+        text_regions_p_1 = self.get_regions_from_xy_2models(img_res, is_image_enhanced)
+        self.logger.info("Textregion detection took %ss ", str(time.time() - t1))
+
+        t1 = time.time()
+        num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines = \
+                self.run_graphics_and_columns(text_regions_p_1, num_column_is_classified)
+        self.logger.info("Graphics detection took %ss ", str(time.time() - t1))
+
+        if not num_col:
+            self.logger.info("No columns detected, outputting an empty PAGE-XML")
+            self.write_into_page_xml([], page_coord, self.dir_out, [], [], [], [], [], [], [], [], self.curved_line, [], [])
+            self.logger.info("Job done in %ss", str(time.time() - t1))
+            return
+
+        t1 = time.time()
+        textline_mask_tot_ea, textline_mask_tot_long_shot = self.run_textline(image_page)
+        self.logger.info("textline detection took %ss", str(time.time() - t1))
+
+        t1 = time.time()
+        slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
+        self.logger.info("deskewing took %ss", str(time.time() - t1))
+        t1 = time.time()
+
+        textline_mask_tot, text_regions_p, image_page_rotated = self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines, num_col_classifier, slope_deskew, text_regions_p_1)
         self.logger.info("detection of marginals took %ss", str(time.time() - t1))
         t1 = time.time()
 
