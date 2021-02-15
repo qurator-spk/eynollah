@@ -295,7 +295,11 @@ class eynollah:
 
     def check_dpi(self):
         dpi = os.popen('identify -format "%x " ' + self.image_dir).read()
-        return int(float(dpi))
+        try:
+            int_dpi = int(float(dpi))
+        except:
+            int_dpi = 300
+        return int_dpi
 
     def resize_image_with_column_classifier(self, is_image_enhanced):
         dpi = self.check_dpi()
