@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-from setuptools import setup
+from setuptools import setup, find_packages
 
 install_requires = open('requirements.txt').read().split('\n')
 
@@ -12,7 +10,7 @@ setup(
     author='Vahid Rezanezhad',
     url='https://github.com/qurator-spk/eynollah',
     license='Apache License 2.0',
-    packages=['sbb_newspapers_org_image'],
+    packages=find_packages(),
     install_requires=install_requires,
     entry_points={
         'console_scripts': [
