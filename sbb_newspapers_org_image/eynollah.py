@@ -2125,7 +2125,7 @@ class eynollah:
             return self.do_order_of_regions_full_layout(*args, **kwargs)
         return self.do_order_of_regions_no_full_layout(*args, **kwargs)
 
-    def run_graphics_and_columns(self, text_regions_p_1, num_column_is_classified):
+    def run_graphics_and_columns(self, text_regions_p_1, num_col_classifier, num_column_is_classified):
         img_g = cv2.imread(self.image_filename, cv2.IMREAD_GRAYSCALE)
         img_g = img_g.astype(np.uint8)
 
@@ -2154,19 +2154,20 @@ class eynollah:
         img_only_regions_with_sep = img_only_regions_with_sep.astype(np.uint8)
         img_only_regions = cv2.erode(img_only_regions_with_sep[:, :], self.kernel, iterations=6)
 
-        num_col_classifier = None
+        
         try:
             num_col, peaks_neg_fin = find_num_col(img_only_regions, multiplier=6.0)
+            
             if not num_column_is_classified:
                 num_col_classifier = num_col + 1
         except:
             num_col = None
             peaks_neg_fin = []
-        return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines
+        return num_col+1, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1
 
     def run_enhancement(self):
         self.logger.info("resize and enhance image")
-        is_image_enhanced, img_org, img_res, _, num_column_is_classified = self.resize_and_enhance_image_with_column_classifier()
+        is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified = self.resize_and_enhance_image_with_column_classifier()
         self.logger.info("Image is %senhanced", '' if is_image_enhanced else 'not ')
         K.clear_session()
         scale = 1
@@ -2185,7 +2186,7 @@ class eynollah:
             if self.allow_scaling:
                 img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced)
                 self.get_image_and_scales_after_enhancing(img_org, img_res)
-        return img_res, is_image_enhanced, num_column_is_classified
+        return img_res, is_image_enhanced, num_col_classifier, num_column_is_classified
 
     def run_textline(self, image_page):
         scaler_h_textline = 1  # 1.2#1.2
@@ -2215,7 +2216,7 @@ class eynollah:
     def run_marginals(self, image_page, textline_mask_tot_ea, mask_images, mask_lines, num_col_classifier, slope_deskew, text_regions_p_1):
         image_page_rotated, textline_mask_tot = image_page[:, :], textline_mask_tot_ea[:, :]
         textline_mask_tot[mask_images[:, :] == 1] = 0
-
+        
         pixel_img = 1
         min_area = 0.00001
         max_area = 0.0006
@@ -2228,6 +2229,8 @@ class eynollah:
             try:
                 regions_without_seperators = (text_regions_p[:, :] == 1) * 1
                 regions_without_seperators = regions_without_seperators.astype(np.uint8)
+                
+                
                 text_regions_p = get_marginals(rotate_image(regions_without_seperators, slope_deskew), text_regions_p, num_col_classifier, slope_deskew, kernel=self.kernel)
             except:
                 pass
@@ -2248,7 +2251,13 @@ class eynollah:
             textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
             regions_without_seperators_d = (text_regions_p_1_n[:, :] == 1) * 1
         regions_without_seperators = (text_regions_p[:, :] == 1) * 1  # ( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_seperators_new(text_regions_p[:,:,0],img_only_regions)
-
+        
+        
+        if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+            text_regions_p_1_n = None
+            textline_mask_tot_d = None
+            regions_without_seperators_d = None
+            
         pixel_lines = 3
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
             num_col, peaks_neg_fin, matrix_of_lines_ch, spliter_y_new, seperators_closeup_n = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
@@ -2280,9 +2289,13 @@ class eynollah:
         t1 = time.time()
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
             boxes = return_boxes_of_images_by_order_of_reading_new(spliter_y_new, regions_without_seperators, matrix_of_lines_ch, num_col_classifier)
+            boxes_d = None
+            self.logger.debug("len(boxes): %s", len(boxes))
         else:
             boxes_d = return_boxes_of_images_by_order_of_reading_new(spliter_y_new_d, regions_without_seperators_d, matrix_of_lines_ch_d, num_col_classifier)
-        self.logger.debug("len(boxes): %s", len(boxes))
+            boxes = None
+            self.logger.debug("len(boxes): %s", len(boxes_d))
+        
         self.logger.info("detecting boxes took %ss", str(time.time() - t1))
         img_revised_tab = text_regions_p[:, :]
         polygons_of_images = return_contours_of_interested_region(img_revised_tab, 2)
@@ -2291,7 +2304,7 @@ class eynollah:
         # plt.show()
         K.clear_session()
         self.logger.debug('exit run_boxes_no_full_layout')
-        return polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_seperators_d
+        return polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_seperators_d, boxes, boxes_d
 
     def run_boxes_full_layout(self, image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions):
         self.logger.debug('enter run_boxes_full_layout')
@@ -2360,6 +2373,13 @@ class eynollah:
             textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
             regions_fully_n = resize_image(regions_fully_n, text_regions_p.shape[0], text_regions_p.shape[1])
             regions_without_seperators_d = (text_regions_p_1_n[:, :] == 1) * 1
+            
+        else:
+            text_regions_p_1_n = None
+            textline_mask_tot_d = None
+            regions_without_seperators_d = None
+            
+            
 
         regions_without_seperators = (text_regions_p[:, :] == 1) * 1  # ( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_seperators_new(text_regions_p[:,:,0],img_only_regions)
 
@@ -2369,7 +2389,7 @@ class eynollah:
         pixel_img = 5
         polygons_of_images = return_contours_of_interested_region(img_revised_tab, pixel_img)
         self.logger.debug('exit run_boxes_full_layout')
-        return polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_seperators_d, regions_fully
+        return polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_seperators_d, regions_fully, regions_without_seperators
 
     def run(self):
         """
@@ -2378,7 +2398,7 @@ class eynollah:
         self.logger.debug("enter run")
 
         t1 = time.time()
-        img_res, is_image_enhanced, num_column_is_classified = self.run_enhancement()
+        img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement()
         self.logger.info("Enhancing took %ss ", str(time.time() - t1))
 
         t1 = time.time()
@@ -2386,10 +2406,11 @@ class eynollah:
         self.logger.info("Textregion detection took %ss ", str(time.time() - t1))
 
         t1 = time.time()
-        num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines = \
-                self.run_graphics_and_columns(text_regions_p_1, num_column_is_classified)
+        num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1 = \
+                self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified)
         self.logger.info("Graphics detection took %ss ", str(time.time() - t1))
-
+        
+        
         if not num_col:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
             self.write_into_page_xml([], page_coord, self.dir_out, [], [], [], [], [], [], [], [], self.curved_line, [], [])
@@ -2410,14 +2431,14 @@ class eynollah:
         t1 = time.time()
 
         if not self.full_layout:
-            polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_seperators_d = self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier)
+            polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_seperators_d, boxes, boxes_d = self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier)
 
         pixel_img = 4
         min_area_mar = 0.00001
         polygons_of_marginals = return_contours_of_interested_region(text_regions_p, pixel_img, min_area_mar)
 
         if self.full_layout:
-            polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_seperators_d, regions_fully = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions)
+            polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_seperators_d, regions_fully, regions_without_seperators = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions)
         # plt.imshow(img_revised_tab)
         # plt.show()
 
