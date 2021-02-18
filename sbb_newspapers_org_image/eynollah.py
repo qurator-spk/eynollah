@@ -12,8 +12,9 @@ import time
 import warnings
 from pathlib import Path
 from multiprocessing import Process, Queue, cpu_count
-from ocrd_utils import getLogger
 
+from lxml import etree as ET
+from ocrd_utils import getLogger
 import cv2
 import numpy as np
 
@@ -26,14 +27,6 @@ sys.stderr = stderr
 import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
-
-from scipy.signal import find_peaks
-from scipy.ndimage import gaussian_filter1d
-from shapely import geometry
-from lxml import etree as ET
-from matplotlib import pyplot, transforms
-import matplotlib.patches as mpatches
-import imutils
 
 from .utils.contour import (
     contours_in_same_horizon,
@@ -115,7 +108,7 @@ from .utils import (
 )
 
 from .utils.xml import create_page_xml
-
+from .utils.pil_cv2 import check_dpi
 from .plot import EynollahPlotter
 
 SLOPE_THRESHOLD = 0.13
@@ -275,11 +268,6 @@ class eynollah:
 
             return prediction_true
 
-    def check_dpi(self):
-        self.logger.debug("enter check_dpi")
-        dpi = os.popen('identify -format "%x " ' + self.image_filename).read()
-        return int(float(dpi))
-
     def calculate_width_height_by_columns(self, img, num_col, width_early, label_p_pred):
         self.logger.debug("enter calculate_width_height_by_columns")
         if num_col == 1 and width_early < 1100:
@@ -389,7 +377,7 @@ class eynollah:
 
     def resize_and_enhance_image_with_column_classifier(self):
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
-        dpi = self.check_dpi()
+        dpi = check_dpi(self.image_filename)
         self.logger.info("Detected %s DPI" % dpi)
         img = cv2.imread(self.image_filename)
 
