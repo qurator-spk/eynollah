@@ -156,17 +156,31 @@ class eynollah:
 
         self.model_dir_of_enhancemnet = dir_models + "/model_enhancement.h5"
         self.model_dir_of_col_classifier = dir_models + "/model_scale_classifier.h5"
-        self.model_region_dir_p = dir_models + "/model_main_covid19_lr5-5_scale_1_1_great.h5"  # dir_models +'/model_main_covid_19_many_scalin_down_lr5-5_the_best.h5'#'/model_main_covid19_lr5-5_scale_1_1_great.h5'#'/model_main_scale_1_1und_1_2_corona_great.h5'
-        # self.model_region_dir_p_ens = dir_models +'/model_ensemble_s.h5'#'/model_main_covid19_lr5-5_scale_1_1_great.h5'#'/model_main_scale_1_1und_1_2_corona_great.h5'
+        self.model_region_dir_p = dir_models + "/model_main_covid19_lr5-5_scale_1_1_great.h5"
         self.model_region_dir_p2 = dir_models + "/model_main_home_corona3_rot.h5"
-
         self.model_region_dir_fully_np = dir_models + "/model_no_patches_class0_30eopch.h5"
-        self.model_region_dir_fully = dir_models + "/model_3up_new_good_no_augmentation.h5"  # "model_3col_p_soft_10_less_aug_binarization_only.h5"
-
+        self.model_region_dir_fully = dir_models + "/model_3up_new_good_no_augmentation.h5"
         self.model_page_dir = dir_models + "/model_page_mixed_best.h5"
-        self.model_region_dir_p_ens = dir_models + "/model_ensemble_s.h5"  # dir_models +'/model_main_covid_19_many_scalin_down_lr5-5_the_best.h5' #dir_models +'/model_ensemble_s.h5'
-        ###self.model_region_dir_p = dir_models +'/model_layout_newspapers.h5'#'/model_ensemble_s.h5'#'/model_layout_newspapers.h5'#'/model_ensemble_s.h5'#'/model_main_home_5_soft_new.h5'#'/model_home_soft_5_all_data.h5' #'/model_main_office_long_soft.h5'#'/model_20_cat_main.h5'
-        self.model_textline_dir = dir_models + "/model_textline_newspapers.h5"  #'/model_hor_ver_home_trextline_very_good.h5'# '/model_hor_ver_1_great.h5'#'/model_curved_office_works_great.h5'
+        self.model_region_dir_p_ens = dir_models + "/model_ensemble_s.h5"
+        self.model_textline_dir = dir_models + "/model_textline_newspapers.h5" 
+
+        self._imgs = {}
+
+    def imread(self, grayscale=False, uint8=True):
+        key = 'img'
+        if grayscale:
+            key += '_grayscale'
+        if uint8:
+            key += '_uint8'
+        if key not in self._imgs:
+            if grayscale:
+                img = cv2.imread(self.image_filename, cv2.IMREAD_GRAYSCALE)
+            else:
+                img = cv2.imread(self.image_filename)
+            if uint8:
+                img = img.astype(np.uint8)
+            self._imgs[key] = img
+        return self._imgs[key].copy()
 
     def predict_enhancement(self, img):
         self.logger.debug("enter predict_enhancement")
@@ -333,13 +347,12 @@ class eynollah:
 
     def resize_image_with_column_classifier(self, is_image_enhanced):
         self.logger.debug("enter resize_image_with_column_classifier")
-        img = cv2.imread(self.image_filename)
-        img = img.astype(np.uint8)
+        img = self.imread()
 
         _, page_coord = self.early_page_for_num_of_column_classification()
         model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
 
-        img_1ch = cv2.imread(self.image_filename, cv.IMREAD_GRAYSCALE)
+        img_1ch = self.imread(grayscale=True, uint8=False)
         width_early = img_1ch.shape[1]
         img_1ch = img_1ch[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
 
@@ -379,15 +392,12 @@ class eynollah:
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
         dpi = check_dpi(self.image_filename)
         self.logger.info("Detected %s DPI" % dpi)
-        img = cv2.imread(self.image_filename)
-
-        img = img.astype(np.uint8)
+        img = self.imread()
 
         _, page_coord = self.early_page_for_num_of_column_classification()
         model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
 
-        img_1ch = cv2.imread(self.image_filename, cv2.IMREAD_GRAYSCALE)
-        img_1ch = img_1ch.astype(np.uint8)
+        img_1ch = self.imread(grayscale=True)
 
         width_early = img_1ch.shape[1]
 
@@ -611,8 +621,7 @@ class eynollah:
 
     def early_page_for_num_of_column_classification(self):
         self.logger.debug("enter early_page_for_num_of_column_classification")
-        img = cv2.imread(self.image_filename)
-        img = img.astype(np.uint8)
+        img = self.imread()
         model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
         for ii in range(1):
             img = cv2.GaussianBlur(img, (5, 5), 0)
@@ -2114,8 +2123,7 @@ class eynollah:
         return self.do_order_of_regions_no_full_layout(*args, **kwargs)
 
     def run_graphics_and_columns(self, text_regions_p_1, num_col_classifier, num_column_is_classified):
-        img_g = cv2.imread(self.image_filename, cv2.IMREAD_GRAYSCALE)
-        img_g = img_g.astype(np.uint8)
+        img_g = self.imread(grayscale=True, uint8=True)
 
         img_g3 = np.zeros((img_g.shape[0], img_g.shape[1], 3))
         img_g3 = img_g3.astype(np.uint8)
