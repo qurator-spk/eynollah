@@ -33,7 +33,6 @@ from .utils.contour import (
     filter_contours_area_of_image_tables,
     filter_contours_area_of_image,
     find_contours_mean_y_diff,
-    find_features_of_contours,
     find_new_features_of_contoures,
     get_text_region_boxes_by_given_contours,
     get_textregion_contours_in_org_image,
