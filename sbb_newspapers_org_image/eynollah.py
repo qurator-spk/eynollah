@@ -1295,11 +1295,8 @@ class eynollah:
             indexer_region += 1
 
 
-    def write_into_page_xml(self, contours, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, curved_line, slopes, slopes_marginals):
+    def write_into_page_xml(self, found_polygons_text_region, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, curved_line, slopes, slopes_marginals):
         self.logger.debug('enter write_into_page_xml')
-        id_of_marginalia = []
-
-        found_polygons_text_region = contours
 
         # create the file structure
         pcgts, page = create_page_xml(self.image_filename, self.height_org, self.width_org)
@@ -1308,10 +1305,11 @@ class eynollah:
         coord_page.set('points', self.calculate_page_coords())
 
 
-        if len(contours) > 0:
+        id_of_marginalia = []
+        id_indexer = 0
+        id_indexer_l = 0
+        if len(found_polygons_text_region) > 0:
             self.xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
-            id_indexer = 0
-            id_indexer_l = 0
     
             for mm in range(len(found_polygons_text_region)):
                 textregion=ET.SubElement(page, 'TextRegion')
@@ -1414,7 +1412,7 @@ class eynollah:
             pass
                 
         try:
-            id_indexer=len(contours)+len(found_polygons_marginals)
+            id_indexer = len(found_polygons_text_region) + len(found_polygons_marginals)
             for mm in range(len(found_polygons_text_region_img)):
                 textregion=ET.SubElement(page, 'ImageRegion')
 
@@ -1439,11 +1437,8 @@ class eynollah:
         tree = ET.ElementTree(pcgts)
         tree.write(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
 
-    def write_into_page_xml_full(self, contours, contours_h, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals):
+    def write_into_page_xml_full(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals):
         self.logger.debug('enter write_into_page_xml_full')
-
-        found_polygons_text_region = contours
-        found_polygons_text_region_h = contours_h
 
         # create the file structure
         pcgts, page = create_page_xml(self.image_filename, self.height_org, self.width_org)
@@ -1455,7 +1450,7 @@ class eynollah:
         id_indexer_l = 0
         id_of_marginalia = []
 
-        if len(contours) > 0:
+        if len(found_polygons_text_region) > 0:
             self.xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
             for mm in range(len(found_polygons_text_region)):
                 textregion=ET.SubElement(page, 'TextRegion')
@@ -1469,8 +1464,8 @@ class eynollah:
                 unireg = ET.SubElement(texteqreg, 'Unicode')
                 unireg.text = ' '
 
-        self.logger.debug('len(contours_h) %s', len(contours_h))
-        if len(contours_h) > 0:
+        self.logger.debug('len(found_polygons_text_region_h) %s', len(found_polygons_text_region_h))
+        if len(found_polygons_text_region_h) > 0:
             for mm in range(len(found_polygons_text_region_h)):
                 textregion=ET.SubElement(page, 'TextRegion')
                 textregion.set('id', 'r%s' % id_indexer)
@@ -1484,7 +1479,7 @@ class eynollah:
                 unireg.text = ' '
 
         if len(found_polygons_drop_capitals) > 0:
-            id_indexer = len(contours_h) + len(contours) + len(found_polygons_marginals)
+            id_indexer = len(found_polygons_text_region) + len(found_polygons_text_region_h) + len(found_polygons_marginals)
             for mm in range(len(found_polygons_drop_capitals)):
                 textregion=ET.SubElement(page, 'TextRegion')
                 textregion.set('id',' r%s' % id_indexer)
@@ -1496,13 +1491,8 @@ class eynollah:
                 unireg=ET.SubElement(texteqreg, 'Unicode')
                 unireg.text = ' ' 
         try:
-            try:
-                id_indexer_l=id_indexer_l
-            except:
-                id_indexer_l=0
             for mm in range(len(found_polygons_marginals)):
-                textregion=ET.SubElement(page, 'TextRegion')
-    
+                textregion = ET.SubElement(page, 'TextRegion')
                 textregion.set('id', id_of_marginalia[mm])
                 
                 textregion.set('type','marginalia')
