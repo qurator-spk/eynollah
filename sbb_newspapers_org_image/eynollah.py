@@ -1160,75 +1160,46 @@ class eynollah:
     def serialize_lines_in_region(self, textregion, all_found_texline_polygons, region_idx, page_coord, all_box_coord, slopes, id_indexer_l):
         self.logger.debug('enter serialize_lines_in_region')
         for j in range(len(all_found_texline_polygons[region_idx])):
-            textline=ET.SubElement(textregion, 'TextLine')
-            textline.set('id','l'+str(id_indexer_l))
+            textline = ET.SubElement(textregion, 'TextLine')
+            textline.set('id', 'l%s' % id_indexer_l)
             id_indexer_l += 1
             coord = ET.SubElement(textline, 'Coords')
             add_textequiv(textline)
 
-            points_co=''
+            points_co = ''
             for l in range(len(all_found_texline_polygons[region_idx][j])):
                 if not self.curved_line:
-                    #point.set('x',str(found_polygons[j][l][0]))  
-                    #point.set('y',str(found_polygons[j][l][1]))
                     if len(all_found_texline_polygons[region_idx][j][l])==2:
-                        textline_x_coord=int( (all_found_texline_polygons[region_idx][j][l][0]
-                                                +all_box_coord[region_idx][2]+page_coord[2])/self.scale_x)
-                        textline_y_coord=int( (all_found_texline_polygons[region_idx][j][l][1] 
-                                                +all_box_coord[region_idx][0]+page_coord[0])/self.scale_y)
-                        
-                        if textline_x_coord<0:
-                            textline_x_coord=0
-                        if textline_y_coord<0:
-                            textline_y_coord=0
-                        points_co=points_co+str( textline_x_coord )
-                        points_co=points_co+','
-                        points_co=points_co+str( textline_y_coord )
+                        textline_x_coord = max(0, int((all_found_texline_polygons[region_idx][j][l][0] + all_box_coord[region_idx][2] + page_coord[2]) / self.scale_x))
+                        textline_y_coord = max(0, int((all_found_texline_polygons[region_idx][j][l][1] + all_box_coord[region_idx][0] + page_coord[0]) / self.scale_y))
                     else:
-                        
-                        textline_x_coord=int( ( all_found_texline_polygons[region_idx][j][l][0][0] 
-                                                +all_box_coord[region_idx][2]+page_coord[2])/self.scale_x )
-                        textline_y_coord=int( ( all_found_texline_polygons[region_idx][j][l][0][1] 
-                                                +all_box_coord[region_idx][0]+page_coord[0])/self.scale_y)
-                        
-                        if textline_x_coord<0:
-                            textline_x_coord=0
-                        if textline_y_coord<0:
-                            textline_y_coord=0
-                            
-                        points_co=points_co+str( textline_x_coord )
-                        points_co=points_co+','
-                        points_co=points_co+str( textline_y_coord ) 
-                                        
-                if (self.curved_line) and np.abs(slopes[region_idx]) <= 45 :
-                    if len(all_found_texline_polygons[region_idx][j][l])==2:
-                        points_co=points_co+str( int( (all_found_texline_polygons[region_idx][j][l][0]
-                                                +page_coord[2])/self.scale_x) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int( (all_found_texline_polygons[region_idx][j][l][1] 
-                                                +page_coord[0])/self.scale_y) )
-                    else:
-                        points_co=points_co+str( int( ( all_found_texline_polygons[region_idx][j][l][0][0] 
-                                                +page_coord[2])/self.scale_x ) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int( ( all_found_texline_polygons[region_idx][j][l][0][1] 
-                                                +page_coord[0])/self.scale_y) )
-                elif (self.curved_line) and np.abs(slopes[region_idx]) > 45 :
-                    if len(all_found_texline_polygons[region_idx][j][l])==2:
-                        points_co=points_co+str( int( (all_found_texline_polygons[region_idx][j][l][0]
-                                                +all_box_coord[region_idx][2]+page_coord[2])/self.scale_x) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int( (all_found_texline_polygons[region_idx][j][l][1] 
-                                                +all_box_coord[region_idx][0]+page_coord[0])/self.scale_y) )
-                    else:
-                        points_co=points_co+str( int( ( all_found_texline_polygons[region_idx][j][l][0][0] 
-                                                +all_box_coord[region_idx][2]+page_coord[2])/self.scale_x ) )
-                        points_co=points_co+','
-                        points_co=points_co+str( int( ( all_found_texline_polygons[region_idx][j][l][0][1] 
-                                                +all_box_coord[region_idx][0]+page_coord[0])/self.scale_y) )
+                        textline_x_coord = max(0, int((all_found_texline_polygons[region_idx][j][l][0][0] + all_box_coord[region_idx][2] + page_coord[2]) / self.scale_x))
+                        textline_y_coord = max(0, int((all_found_texline_polygons[region_idx][j][l][0][1] + all_box_coord[region_idx][0] + page_coord[0]) / self.scale_y))
+                    points_co += str(textline_x_coord)
+                    points_co += ','
+                    points_co += str(textline_y_coord)
 
-                if l<(len(all_found_texline_polygons[region_idx][j])-1):
-                    points_co=points_co+' '
+                if self.curved_line and np.abs(slopes[region_idx]) <= 45:
+                    if len(all_found_texline_polygons[region_idx][j][l]) == 2:
+                        points_co += str(int((all_found_texline_polygons[region_idx][j][l][0] + page_coord[2]) / self.scale_x))
+                        points_co += ','
+                        points_co += str(int((all_found_texline_polygons[region_idx][j][l][1] + page_coord[0]) / self.scale_y))
+                    else:
+                        points_co += str(int((all_found_texline_polygons[region_idx][j][l][0][0] + page_coord[2]) / self.scale_x))
+                        points_co += ','
+                        points_co += str(int((all_found_texline_polygons[region_idx][j][l][0][1] + page_coord[0])/self.scale_y))
+                elif self.curved_line and np.abs(slopes[region_idx]) > 45:
+                    if len(all_found_texline_polygons[region_idx][j][l])==2:
+                        points_co += str(int((all_found_texline_polygons[region_idx][j][l][0] + all_box_coord[region_idx][2]+page_coord[2])/self.scale_x))
+                        points_co += ','
+                        points_co += str(int((all_found_texline_polygons[region_idx][j][l][1] + all_box_coord[region_idx][0]+page_coord[0])/self.scale_y))
+                    else:
+                        points_co += str(int((all_found_texline_polygons[region_idx][j][l][0][0] + all_box_coord[region_idx][2]+page_coord[2])/self.scale_x))
+                        points_co += ','
+                        points_co += str(int((all_found_texline_polygons[region_idx][j][l][0][1] + all_box_coord[region_idx][0]+page_coord[0])/self.scale_y))
+
+                if l < len(all_found_texline_polygons[region_idx][j]) - 1:
+                    points_co += ' '
             coord.set('points',points_co)
         return id_indexer_l
 
@@ -1263,7 +1234,7 @@ class eynollah:
                 points_page_print += ','
                 points_page_print += str(int((self.cont_page[0][lmm][0][1] ) / self.scale_y))
 
-            if lmm < (len( self.cont_page[0] ) - 1):
+            if lmm < len( self.cont_page[0] ) - 1:
                 points_page_print = points_page_print + ' '
         return points_page_print
 
@@ -1318,17 +1289,16 @@ class eynollah:
                     id_indexer_l += 1
                     coord = ET.SubElement(textline, 'Coords')
                     add_textequiv(textline)
-                    points_co=''
+                    points_co = ''
                     for l in range(len(all_found_texline_polygons[mm][j])):
                         if not curved_line:
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
                                 textline_x_coord = max(0, int((all_found_texline_polygons[mm][j][l][0] + all_box_coord[mm][2] + page_coord[2]) / self.scale_x))
                                 textline_y_coord = max(0, int((all_found_texline_polygons[mm][j][l][1] + all_box_coord[mm][0] + page_coord[0]) / self.scale_y))
-                                points_co += str(textline_x_coord) + ',' + str(textline_y_coord)
                             else:
                                 textline_x_coord = max(0, int((all_found_texline_polygons[mm][j][l][0][0] + all_box_coord[mm][2]+page_coord[2]) / self.scale_x))
                                 textline_y_coord = max(0, int((all_found_texline_polygons[mm][j][l][0][1] + all_box_coord[mm][0]+page_coord[0]) / self.scale_y))
-                                points_co += str(textline_x_coord) + ',' + str(textline_y_coord)
+                            points_co += str(textline_x_coord) + ',' + str(textline_y_coord)
                         if curved_line and abs(slopes[mm]) <= 45:
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
                                 points_co += str(int((all_found_texline_polygons[mm][j][l][0] + page_coord[2]) / self.scale_x))
@@ -1470,7 +1440,7 @@ class eynollah:
                 id_indexer_l += 1
                 coord = ET.SubElement(textline, 'Coords')
                 add_textequiv(textline)
-                points_co=''
+                points_co = ''
                 for l in range(len(all_found_texline_polygons_marginals[mm][j])):
                     if not self.curved_line:
                         if len(all_found_texline_polygons_marginals[mm][j][l]) == 2:
@@ -1491,8 +1461,8 @@ class eynollah:
                             points_co += ','
                             points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0][1] + page_coord[0]) / self.scale_y))
 
-                    if l<(len(all_found_texline_polygons_marginals[mm][j])-1):
-                        points_co=points_co+' '
+                    if l < len(all_found_texline_polygons_marginals[mm][j]) - 1:
+                        points_co = points_co+' '
                 coord.set('points',points_co)
             add_textequiv(textregion)
 
