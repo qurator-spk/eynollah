@@ -88,6 +88,21 @@ eynollah \
 
 The tool does accept and works better on original images (RGB format) than binarized images.
 
+### `--full-layout` vs `--no-full-layout`
+
+Here are the difference in elements detected depending on the `--full-layout`/`--no-full-layout` command line flags:
+
+|                          | `--full-layout` | `--no-full-layout` |
+| ---                      | ---             | ---                |
+| reading order            | x               | x                  |
+| header regions           | x               | -                  |
+| text regions             | x               | x                  |
+| text regions / text line | x               | x                  |
+| drop-capitals            | x               | -                  |
+| marginals                | x               | x                  |
+| marginals / text line    | x               | x                  |
+| image region             | x               | x                  |
+
 ### How to use
 
 First of all, this model makes use of up to 9 trained models which are responsible for different operations like size detection, column classification, image enhancement, page extraction, main layout detection, full layout detection and textline detection. But this does not mean that all 9 models are always required for every document. Based on the document characteristics and parameters specified, different scenarios can be applied.
