@@ -40,7 +40,6 @@ from .utils.contour import (
     return_bonding_box_of_contours,
     return_contours_of_image,
     return_contours_of_interested_region,
-    return_contours_of_interested_region_and_bounding_box,
     return_contours_of_interested_region_by_min_size,
     return_contours_of_interested_textline,
     return_parent_contours,

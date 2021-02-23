@@ -40,26 +40,6 @@ def find_features_of_contours(contours_main):
 
     return y_min_main, y_max_main, areas_main
 
-def return_contours_of_interested_region_and_bounding_box(region_pre_p, pixel):
-
-    # pixels of images are identified by 5
-    cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    contours_imgs = return_parent_contours(contours_imgs, hiearchy)
-    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.0003)
-
-    boxes = []
-
-    for jj in range(len(contours_imgs)):
-        x, y, w, h = cv2.boundingRect(contours_imgs[jj])
-        boxes.append([int(x), int(y), int(w), int(h)])
-    return contours_imgs, boxes
-
 def get_text_region_boxes_by_given_contours(contours):
 
     kernel = np.ones((5, 5), np.uint8)
