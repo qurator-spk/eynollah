@@ -29,7 +29,6 @@ warnings.filterwarnings("ignore")
 
 from .utils.contour import (
     contours_in_same_horizon,
-    filter_contours_area_of_image_interiors,
     filter_contours_area_of_image_tables,
     filter_contours_area_of_image,
     find_contours_mean_y_diff,
@@ -46,21 +45,11 @@ from .utils.contour import (
 
 from .utils.rotate import (
     rotate_image,
-    rotate_max_area,
-    rotate_max_area_new,
-    rotatedRectWithMaxArea,
-    rotation_image_new,
     rotation_not_90_func,
-    rotation_not_90_func_full_layout,
-    rotyate_image_different,
+    rotation_not_90_func_full_layout
 )
 
 from .utils.separate_lines import (
-    seperate_lines,
-    seperate_lines_new_inside_teils,
-    seperate_lines_new_inside_teils2,
-    seperate_lines_vertical,
-    seperate_lines_vertical_cont,
     textline_contours_postprocessing,
     seperate_lines_new2,
     return_deskew_slop,
