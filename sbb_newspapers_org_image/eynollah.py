@@ -379,7 +379,6 @@ class eynollah:
         K.clear_session()
         gc.collect()
 
-        # sys.exit()
         img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
 
         if img_new.shape[1] > img.shape[1]:
@@ -1585,7 +1584,6 @@ class eynollah:
 
         #plt.imshow(prediction_regions_org_y[:,:,0])
         #plt.show()
-        #sys.exit()
         prediction_regions_org_y=prediction_regions_org_y[:,:,0]
         mask_zeros_y=(prediction_regions_org_y[:,:]==0)*1
         if is_image_enhanced:
@@ -1611,7 +1609,6 @@ class eynollah:
 
         ##plt.imshow(prediction_regions_org[:,:,0])
         ##plt.show()
-        ##sys.exit()
         prediction_regions_org=prediction_regions_org[:,:,0]
 
         prediction_regions_org[(prediction_regions_org[:,:]==1) & (mask_zeros_y[:,:]==1)]=0
@@ -1647,7 +1644,6 @@ class eynollah:
 
         #plt.imshow(prediction_regions_org2[:,:,0])
         #plt.show()
-        #sys.exit()
         ##prediction_regions_org=prediction_regions_org[:,:,0]
 
         session_region.close()
@@ -2277,11 +2273,10 @@ class eynollah:
                 self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified)
         self.logger.info("Graphics detection took %ss ", str(time.time() - t1))
 
-        if num_col is None:
+        if not num_col:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
             self.write_into_page_xml([], page_coord, self.dir_out, [], [], [], [], [], [], [], [], self.curved_line, [], [])
             self.logger.info("Job done in %ss", str(time.time() - t1))
-            sys.exit()
             return
 
         t1 = time.time()
