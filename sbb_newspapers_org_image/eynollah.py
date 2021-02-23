@@ -6,7 +6,6 @@ tool to extract table form data from alto xml data
 import gc
 import math
 import os
-import random
 import sys
 import time
 import warnings
@@ -1659,7 +1658,6 @@ class eynollah:
                     if (x_min_text_only[ii] + 80) >= boxes[jj][0] and (x_min_text_only[ii] + 80) < boxes[jj][1] and y_cor_x_min_main[ii] >= boxes[jj][2] and y_cor_x_min_main[ii] < boxes[jj][3]:
                         arg_text_con.append(jj)
                         break
-            arg_arg_text_con = np.argsort(arg_text_con)
             args_contours = np.array(range(len(arg_text_con)))
 
             arg_text_con_h = []
@@ -1668,7 +1666,6 @@ class eynollah:
                     if (x_min_text_only_h[ii] + 80) >= boxes[jj][0] and (x_min_text_only_h[ii] + 80) < boxes[jj][1] and y_cor_x_min_main_h[ii] >= boxes[jj][2] and y_cor_x_min_main_h[ii] < boxes[jj][3]:
                         arg_text_con_h.append(jj)
                         break
-            arg_arg_text_con = np.argsort(arg_text_con_h)
             args_contours_h = np.array(range(len(arg_text_con_h)))
 
             order_by_con_head = np.zeros(len(arg_text_con_h))
@@ -1738,7 +1735,6 @@ class eynollah:
                     if cx_text_only[ii] >= boxes[jj][0] and cx_text_only[ii] < boxes[jj][1] and cy_text_only[ii] >= boxes[jj][2] and cy_text_only[ii] < boxes[jj][3]:  # this is valid if the center of region identify in which box it is located
                         arg_text_con.append(jj)
                         break
-            arg_arg_text_con = np.argsort(arg_text_con)
             args_contours = np.array(range(len(arg_text_con)))
 
             order_by_con_main = np.zeros(len(arg_text_con))
@@ -1825,7 +1821,6 @@ class eynollah:
                     if (x_min_text_only[ii] + 80) >= boxes[jj][0] and (x_min_text_only[ii] + 80) < boxes[jj][1] and y_cor_x_min_main[ii] >= boxes[jj][2] and y_cor_x_min_main[ii] < boxes[jj][3]:
                         arg_text_con.append(jj)
                         break
-            arg_arg_text_con = np.argsort(arg_text_con)
             args_contours = np.array(range(len(arg_text_con)))
 
             order_by_con_main = np.zeros(len(arg_text_con))
@@ -1849,8 +1844,6 @@ class eynollah:
 
                 indexes_sorted_main = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 1]
                 indexes_by_type_main = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 1]
-                indexes_sorted_head = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 2]
-                indexes_by_type_head = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 2]
 
                 zahler = 0
                 for mtv in args_contours_box:
@@ -1880,7 +1873,6 @@ class eynollah:
                     if cx_text_only[ii] >= boxes[jj][0] and cx_text_only[ii] < boxes[jj][1] and cy_text_only[ii] >= boxes[jj][2] and cy_text_only[ii] < boxes[jj][3]:  # this is valid if the center of region identify in which box it is located
                         arg_text_con.append(jj)
                         break
-            arg_arg_text_con = np.argsort(arg_text_con)
             args_contours = np.array(range(len(arg_text_con)))
 
             order_by_con_main = np.zeros(len(arg_text_con))
@@ -2397,9 +2389,9 @@ class eynollah:
                     num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, spliter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h_d_ordered)
             elif self.headers_off:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    num_col, peaks_neg_fin, matrix_of_lines_ch, spliter_y_new, seperators_closeup_n = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+                    num_col, peaks_neg_fin, matrix_of_lines_ch, spliter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
                 else:
-                    num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, spliter_y_new_d, seperators_closeup_n_d = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+                    num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, spliter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
 
             # print(peaks_neg_fin,peaks_neg_fin_d,'num_col2')
             # print(spliter_y_new,spliter_y_new_d,'num_col_classifier')
