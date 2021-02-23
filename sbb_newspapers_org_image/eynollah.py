@@ -1310,7 +1310,7 @@ class eynollah:
         id_indexer_l = 0
         if len(found_polygons_text_region) > 0:
             self.xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
-    
+
             for mm in range(len(found_polygons_text_region)):
                 textregion=ET.SubElement(page, 'TextRegion')
                 textregion.set('id', 'r'+str(id_indexer))
@@ -1395,42 +1395,36 @@ class eynollah:
                             else:
                                 points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0][0] + all_box_coord_marginals[mm][2] + page_coord[2]) / self.scale_x))
                                 points_co += ','
-                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0][1] + all_box_coord_marginals[mm][0] + page_coord[0])/self.scale_y)) 
+                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0][1] + all_box_coord_marginals[mm][0] + page_coord[0])/self.scale_y))
                         else:
-                            if len(all_found_texline_polygons_marginals[mm][j][l])==2:
+                            if len(all_found_texline_polygons_marginals[mm][j][l]) == 2:
                                 points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0] + page_coord[2]) / self.scale_x))
                                 points_co += ','
                                 points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][1] + page_coord[0]) / self.scale_y))
                             else:
                                 points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0][0] + page_coord[2]) / self.scale_x))
                                 points_co += ','
-                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0][1] + page_coord[0]) / self.scale_y)) 
+                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0][1] + page_coord[0]) / self.scale_y))
                         if l < len(all_found_texline_polygons_marginals[mm][j]) - 1:
                             points_co += ' '
                     coord.set('points',points_co)
         except:
             pass
-                
-        try:
-            id_indexer = len(found_polygons_text_region) + len(found_polygons_marginals)
-            for mm in range(len(found_polygons_text_region_img)):
-                textregion=ET.SubElement(page, 'ImageRegion')
 
-                textregion.set('id','r'+str(id_indexer))
-                id_indexer+=1
-
-
-                coord_text = ET.SubElement(textregion, 'Coords')
-                points_co=''
-                for lmm in range(len(found_polygons_text_region_img[mm])):
-                    points_co=points_co+str(int((found_polygons_text_region_img[mm][lmm,0,0] + page_coord[2]) / self.scale_x))
-                    points_co=points_co+','
-                    points_co=points_co+str(int((found_polygons_text_region_img[mm][lmm,0,1] + page_coord[0]) / self.scale_y))
-                    if lmm < len(found_polygons_text_region_img[mm]) - 1:
-                        points_co += ' '
-                coord_text.set('points', points_co)
-        except:
-            pass
+        id_indexer = len(found_polygons_text_region) + len(found_polygons_marginals)
+        for mm in range(len(found_polygons_text_region_img)):
+            textregion=ET.SubElement(page, 'ImageRegion')
+            textregion.set('id', 'r%s' % id_indexer)
+            id_indexer += 1
+            coord_text = ET.SubElement(textregion, 'Coords')
+            points_co = ''
+            for lmm in range(len(found_polygons_text_region_img[mm])):
+                points_co += str(int((found_polygons_text_region_img[mm][lmm,0,0] + page_coord[2]) / self.scale_x))
+                points_co += ','
+                points_co += str(int((found_polygons_text_region_img[mm][lmm,0,1] + page_coord[0]) / self.scale_y))
+                if lmm < len(found_polygons_text_region_img[mm]) - 1:
+                    points_co += ' '
+            coord_text.set('points', points_co)
 
 
         self.logger.info("filename stem: '%s'", self.image_filename_stem)
@@ -1489,105 +1483,77 @@ class eynollah:
                 coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, page_coord))
                 texteqreg = ET.SubElement(textregion, 'TextEquiv')
                 unireg=ET.SubElement(texteqreg, 'Unicode')
-                unireg.text = ' ' 
+                unireg.text = ' '
         try:
             for mm in range(len(found_polygons_marginals)):
                 textregion = ET.SubElement(page, 'TextRegion')
                 textregion.set('id', id_of_marginalia[mm])
-                
-                textregion.set('type','marginalia')
-                #if mm==0:
-                #    textregion.set('type','header')
-                #else:
-                #    textregion.set('type','paragraph')
+                textregion.set('type', 'marginalia')
                 coord_text = ET.SubElement(textregion, 'Coords')
                 coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, page_coord))
 
                 for j in range(len(all_found_texline_polygons_marginals[mm])):
-                    textline=ET.SubElement(textregion, 'TextLine')
-                    textline.set('id','l'+str(id_indexer_l))
-                    id_indexer_l+=1
+                    textline = ET.SubElement(textregion, 'TextLine')
+                    textline.set('id', 'l%s' % id_indexer_l)
+                    id_indexer_l += 1
                     coord = ET.SubElement(textline, 'Coords')
-                    texteq=ET.SubElement(textline, 'TextEquiv')
-                    uni=ET.SubElement(texteq, 'Unicode')
-                    uni.text = ' ' 
+                    texteq = ET.SubElement(textline, 'TextEquiv')
+                    uni = ET.SubElement(texteq, 'Unicode')
+                    uni.text = ' '
                     points_co=''
                     for l in range(len(all_found_texline_polygons_marginals[mm][j])):
                         if not self.curved_line:
-                            if len(all_found_texline_polygons_marginals[mm][j][l])==2:
-                                points_co=points_co+str( int( (all_found_texline_polygons_marginals[mm][j][l][0]
-                                                        +all_box_coord_marginals[mm][2]+page_coord[2])/self.scale_x) )
-                                points_co=points_co+','
-                                points_co=points_co+str( int( (all_found_texline_polygons_marginals[mm][j][l][1] 
-                                                        +all_box_coord_marginals[mm][0]+page_coord[0])/self.scale_y) )
+                            if len(all_found_texline_polygons_marginals[mm][j][l]) == 2:
+                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0] + all_box_coord_marginals[mm][2] + page_coord[2]) / self.scale_x))
+                                points_co += ','
+                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][1] + all_box_coord_marginals[mm][0] + page_coord[0]) / self.scale_y))
                             else:
-                                points_co=points_co+str( int( ( all_found_texline_polygons_marginals[mm][j][l][0][0] 
-                                                        +all_box_coord_marginals[mm][2]+page_coord[2])/self.scale_x ) )
-                                points_co=points_co+','
-                                points_co=points_co+str( int( ( all_found_texline_polygons_marginals[mm][j][l][0][1] 
-                                                        +all_box_coord_marginals[mm][0]+page_coord[0])/self.scale_y) ) 
+                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0][0] + all_box_coord_marginals[mm][2] + page_coord[2]) / self.scale_x))
+                                points_co += ','
+                                points_co+= str(int((all_found_texline_polygons_marginals[mm][j][l][0][1] + all_box_coord_marginals[mm][0] + page_coord[0]) / self.scale_y))
                         else:
                             if len(all_found_texline_polygons_marginals[mm][j][l])==2:
-                                points_co=points_co+str( int( (all_found_texline_polygons_marginals[mm][j][l][0]
-                                                        +page_coord[2])/self.scale_x) )
-                                points_co=points_co+','
-                                points_co=points_co+str( int( (all_found_texline_polygons_marginals[mm][j][l][1] 
-                                                        +page_coord[0])/self.scale_y) )
+                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0] + page_coord[2]) / self.scale_x))
+                                points_co += ','
+                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][1] + page_coord[0]) / self.scale_y))
                             else:
-                                points_co=points_co+str( int( ( all_found_texline_polygons_marginals[mm][j][l][0][0] 
-                                                        +page_coord[2])/self.scale_x ) )
-                                points_co=points_co+','
-                                points_co=points_co+str( int( ( all_found_texline_polygons_marginals[mm][j][l][0][1] 
-                                                        +page_coord[0])/self.scale_y) ) 
-    
+                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0][0] + page_coord[2]) / self.scale_x))
+                                points_co += ','
+                                points_co += str(int((all_found_texline_polygons_marginals[mm][j][l][0][1] + page_coord[0]) / self.scale_y))
+
                         if l<(len(all_found_texline_polygons_marginals[mm][j])-1):
                             points_co=points_co+' '
-                    #print(points_co)
                     coord.set('points',points_co)
-                
-                
-                texteqreg=ET.SubElement(textregion, 'TextEquiv')
-    
-                unireg=ET.SubElement(texteqreg, 'Unicode')
+                texteqreg = ET.SubElement(textregion, 'TextEquiv')
+                unireg = ET.SubElement(texteqreg, 'Unicode')
                 unireg.text = ' ' 
         except:
             pass
-                
+
         try:
-            id_indexer=len(contours_h)+len(contours)+len(found_polygons_marginals)+len(found_polygons_drop_capitals)
+            id_indexer = len(found_polygons_text_region) + len(found_polygons_text_region_h) + len(found_polygons_marginals) + len(found_polygons_drop_capitals)
             for mm in range(len(found_polygons_text_region_img)):
                 textregion=ET.SubElement(page, 'ImageRegion')
-
-                textregion.set('id','r'+str(id_indexer))
-                id_indexer+=1
+                textregion.set('id','r%s' % id_indexer)
+                id_indexer += 1
                 coord_text = ET.SubElement(textregion, 'Coords')
                 coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_img, mm, page_coord))
         except:
             pass
 
-
         try:
             for mm in range(len(found_polygons_tables)):
-                textregion=ET.SubElement(page, 'TableRegion')
-
-                textregion.set('id','r'+str(id_indexer))
-                id_indexer+=1
+                textregion = ET.SubElement(page, 'TableRegion')
+                textregion.set('id', 'r%s' %id_indexer)
+                id_indexer += 1
                 coord_text = ET.SubElement(textregion, 'Coords')
                 coord_text.set('points', self.calculate_polygon_coords(found_polygons_tables, mm, page_coord))
         except:
             pass
 
-        ##print(dir_of_image)
-        ##print(self.f_name)
-        ##print(os.path.join(dir_of_image, self.f_name) + ".xml")
-        ##tree = ET.ElementTree(pcgts)
-        ##tree.write(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
-        
         self.logger.info("filename stem: '%s'", self.image_filename_stem)
-        # print(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
         tree = ET.ElementTree(pcgts)
         tree.write(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
-    
 
     def get_regions_from_xy_2models(self,img,is_image_enhanced):
         self.logger.debug("enter get_regions_from_xy_2models")
