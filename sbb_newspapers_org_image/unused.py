@@ -3048,3 +3048,12 @@ def return_contours_of_interested_region_and_bounding_box(region_pre_p, pixel):
         boxes.append([int(x), int(y), int(w), int(h)])
     return contours_imgs, boxes
 
+def return_bonding_box_of_contours(cnts):
+    boxes_tot = []
+    for i in range(len(cnts)):
+        x, y, w, h = cv2.boundingRect(cnts[i])
+
+        box = [x, y, w, h]
+        boxes_tot.append(box)
+    return boxes_tot
+

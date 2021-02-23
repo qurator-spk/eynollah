@@ -216,15 +216,6 @@ def return_contours_of_interested_textline(region_pre_p, pixel):
     contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.000000003)
     return contours_imgs
 
-def return_bonding_box_of_contours(cnts):
-    boxes_tot = []
-    for i in range(len(cnts)):
-        x, y, w, h = cv2.boundingRect(cnts[i])
-
-        box = [x, y, w, h]
-        boxes_tot.append(box)
-    return boxes_tot
-
 def return_contours_of_image(image):
 
     if len(image.shape) == 2:

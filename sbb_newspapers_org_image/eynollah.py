@@ -37,7 +37,6 @@ from .utils.contour import (
     find_new_features_of_contoures,
     get_text_region_boxes_by_given_contours,
     get_textregion_contours_in_org_image,
-    return_bonding_box_of_contours,
     return_contours_of_image,
     return_contours_of_interested_region,
     return_contours_of_interested_region_by_min_size,
