@@ -107,7 +107,7 @@ from .utils import (
     return_boxes_of_images_by_order_of_reading_new,
 )
 
-from .utils.xml import create_page_xml
+from .utils.xml import create_page_xml, add_textequiv
 from .utils.pil_cv2 import check_dpi
 from .plot import EynollahPlotter
 
@@ -1164,11 +1164,7 @@ class eynollah:
             textline.set('id','l'+str(id_indexer_l))
             id_indexer_l += 1
             coord = ET.SubElement(textline, 'Coords')
-            texteq = ET.SubElement(textline, 'TextEquiv')
-            uni = ET.SubElement(texteq, 'Unicode')
-            uni.text = ' '
-
-            #points = ET.SubElement(coord, 'Points') 
+            add_textequiv(textline)
 
             points_co=''
             for l in range(len(all_found_texline_polygons[region_idx][j])):
@@ -1303,7 +1299,6 @@ class eynollah:
         coord_page = ET.SubElement(page_print_sub, "Coords")
         coord_page.set('points', self.calculate_page_coords())
 
-
         id_of_marginalia = []
         id_indexer = 0
         id_indexer_l = 0
@@ -1322,9 +1317,7 @@ class eynollah:
                     textline.set('id', 'l' + str(id_indexer_l))
                     id_indexer_l += 1
                     coord = ET.SubElement(textline, 'Coords')
-                    texteq=ET.SubElement(textline, 'TextEquiv')
-                    uni=ET.SubElement(texteq, 'Unicode')
-                    uni.text = ' ' 
+                    add_textequiv(textline)
                     points_co=''
                     for l in range(len(all_found_texline_polygons[mm][j])):
                         #point = ET.SubElement(coord, 'Point') 
@@ -1360,9 +1353,7 @@ class eynollah:
                             points_co += ' '
                     coord.set('points', points_co)
 
-                texteqreg = ET.SubElement(textregion, 'TextEquiv')
-                unireg = ET.SubElement(texteqreg, 'Unicode')
-                unireg.text = ' ' 
+                add_textequiv(textregion)
         try:
             #id_indexer_l=0
             try:
@@ -1381,10 +1372,8 @@ class eynollah:
                     textline.set('id','l'+str(id_indexer_l))
                     id_indexer_l+=1
                     coord = ET.SubElement(textline, 'Coords')
-                    texteq = ET.SubElement(textline, 'TextEquiv')
-                    uni = ET.SubElement(texteq, 'Unicode')
-                    uni.text = ' ' 
-                    points_co=''
+                    add_textequiv(textline)
+                    points_co = ''
                     for l in range(len(all_found_texline_polygons_marginals[mm][j])):
                         if not curved_line:
                             if len(all_found_texline_polygons_marginals[mm][j][l]) == 2:
@@ -1453,9 +1442,7 @@ class eynollah:
                 coord_text = ET.SubElement(textregion, 'Coords')
                 coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, page_coord))
                 id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
-                texteqreg = ET.SubElement(textregion, 'TextEquiv')
-                unireg = ET.SubElement(texteqreg, 'Unicode')
-                unireg.text = ' '
+                add_textequiv(textregion)
 
         self.logger.debug('len(found_polygons_text_region_h) %s', len(found_polygons_text_region_h))
         if len(found_polygons_text_region_h) > 0:
@@ -1467,9 +1454,7 @@ class eynollah:
                 coord_text = ET.SubElement(textregion, 'Coords')
                 coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_h, mm, page_coord))
                 id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord_h, slopes, id_indexer_l)
-                texteqreg = ET.SubElement(textregion, 'TextEquiv')
-                unireg = ET.SubElement(texteqreg, 'Unicode')
-                unireg.text = ' '
+                add_textequiv(textregion)
 
         if len(found_polygons_drop_capitals) > 0:
             id_indexer = len(found_polygons_text_region) + len(found_polygons_text_region_h) + len(found_polygons_marginals)
@@ -1480,9 +1465,7 @@ class eynollah:
                 textregion.set('type','drop-capital')
                 coord_text = ET.SubElement(textregion, 'Coords')
                 coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, page_coord))
-                texteqreg = ET.SubElement(textregion, 'TextEquiv')
-                unireg=ET.SubElement(texteqreg, 'Unicode')
-                unireg.text = ' '
+                add_textequiv(textregion)
         try:
             for mm in range(len(found_polygons_marginals)):
                 textregion = ET.SubElement(page, 'TextRegion')
@@ -1496,9 +1479,7 @@ class eynollah:
                     textline.set('id', 'l%s' % id_indexer_l)
                     id_indexer_l += 1
                     coord = ET.SubElement(textline, 'Coords')
-                    texteq = ET.SubElement(textline, 'TextEquiv')
-                    uni = ET.SubElement(texteq, 'Unicode')
-                    uni.text = ' '
+                    add_textequiv(textline)
                     points_co=''
                     for l in range(len(all_found_texline_polygons_marginals[mm][j])):
                         if not self.curved_line:
@@ -1523,9 +1504,7 @@ class eynollah:
                         if l<(len(all_found_texline_polygons_marginals[mm][j])-1):
                             points_co=points_co+' '
                     coord.set('points',points_co)
-                texteqreg = ET.SubElement(textregion, 'TextEquiv')
-                unireg = ET.SubElement(texteqreg, 'Unicode')
-                unireg.text = ' ' 
+                add_textequiv(textregion)
         except:
             pass
 

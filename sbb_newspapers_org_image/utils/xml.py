@@ -32,3 +32,7 @@ def create_page_xml(imageFilename, height, width):
 
     return pcgts, page
 
+def add_textequiv(parent, text=''):
+    textequiv = ET.SubElement(parent, 'TextEquiv')
+    unireg = ET.SubElement(textequiv, 'Unicode')
+    unireg.text = text
