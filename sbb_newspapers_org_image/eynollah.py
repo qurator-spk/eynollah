@@ -171,93 +171,81 @@ class eynollah:
 
         if img.shape[1] < img_width_model:
             img = cv2.resize(img, (img_height_model, img.shape[0]), interpolation=cv2.INTER_NEAREST)
+        margin = int(0 * img_width_model)
+        width_mid = img_width_model - 2 * margin
+        height_mid = img_height_model - 2 * margin
+        img = img / float(255.0)
 
-        margin = True
+        img_h = img.shape[0]
+        img_w = img.shape[1]
 
-        if margin:
-            kernel = np.ones((5, 5), np.uint8)
+        prediction_true = np.zeros((img_h, img_w, 3))
+        mask_true = np.zeros((img_h, img_w))
+        nxf = img_w / float(width_mid)
+        nyf = img_h / float(height_mid)
 
-            margin = int(0 * img_width_model)
+        nxf = int(nxf) + 1 if nxf > int(nxf) else int(nxf)
+        nyf = int(nyf) + 1 if nyf > int(nyf) else int(nyf)
 
-            width_mid = img_width_model - 2 * margin
-            height_mid = img_height_model - 2 * margin
+        for i in range(nxf):
+            for j in range(nyf):
+                if i == 0:
+                    index_x_d = i * width_mid
+                    index_x_u = index_x_d + img_width_model
+                else:
+                    index_x_d = i * width_mid
+                    index_x_u = index_x_d + img_width_model
+                if j == 0:
+                    index_y_d = j * height_mid
+                    index_y_u = index_y_d + img_height_model
+                else:
+                    index_y_d = j * height_mid
+                    index_y_u = index_y_d + img_height_model
 
-            img = img / float(255.0)
+                if index_x_u > img_w:
+                    index_x_u = img_w
+                    index_x_d = img_w - img_width_model
+                if index_y_u > img_h:
+                    index_y_u = img_h
+                    index_y_d = img_h - img_height_model
 
-            img_h = img.shape[0]
-            img_w = img.shape[1]
+                img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
+                label_p_pred = model_enhancement.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]))
 
-            prediction_true = np.zeros((img_h, img_w, 3))
-            mask_true = np.zeros((img_h, img_w))
-            nxf = img_w / float(width_mid)
-            nyf = img_h / float(height_mid)
+                seg = label_p_pred[0, :, :, :]
+                seg = seg * 255
 
-            nxf = int(nxf) + 1 if nxf > int(nxf) else int(nxf)
-            nyf = int(nyf) + 1 if nyf > int(nyf) else int(nyf)
+                if i == 0 and j == 0:
+                    seg = seg[0 : seg.shape[0] - margin, 0 : seg.shape[1] - margin]
+                    prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + 0 : index_x_u - margin, :] = seg
+                elif i == nxf - 1 and j == nyf - 1:
+                    seg = seg[margin : seg.shape[0] - 0, margin : seg.shape[1] - 0]
+                    prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - 0, :] = seg
+                elif i == 0 and j == nyf - 1:
+                    seg = seg[margin : seg.shape[0] - 0, 0 : seg.shape[1] - margin]
+                    prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + 0 : index_x_u - margin, :] = seg
+                elif i == nxf - 1 and j == 0:
+                    seg = seg[0 : seg.shape[0] - margin, margin : seg.shape[1] - 0]
+                    prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - 0, :] = seg
+                elif i == 0 and j != 0 and j != nyf - 1:
+                    seg = seg[margin : seg.shape[0] - margin, 0 : seg.shape[1] - margin]
+                    prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + 0 : index_x_u - margin, :] = seg
+                elif i == nxf - 1 and j != 0 and j != nyf - 1:
+                    seg = seg[margin : seg.shape[0] - margin, margin : seg.shape[1] - 0]
+                    prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - 0, :] = seg
+                elif i != 0 and i != nxf - 1 and j == 0:
+                    seg = seg[0 : seg.shape[0] - margin, margin : seg.shape[1] - margin]
+                    prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg
+                elif i != 0 and i != nxf - 1 and j == nyf - 1:
+                    seg = seg[margin : seg.shape[0] - 0, margin : seg.shape[1] - margin]
+                    prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - margin, :] = seg
+                else:
+                    seg = seg[margin : seg.shape[0] - margin, margin : seg.shape[1] - margin]
+                    prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg
 
-            for i in range(nxf):
-                for j in range(nyf):
-                    if i == 0:
-                        index_x_d = i * width_mid
-                        index_x_u = index_x_d + img_width_model
-                    else:
-                        index_x_d = i * width_mid
-                        index_x_u = index_x_d + img_width_model
+        prediction_true = prediction_true.astype(int)
 
-                    if j == 0:
-                        index_y_d = j * height_mid
-                        index_y_u = index_y_d + img_height_model
-                    else:
-                        index_y_d = j * height_mid
-                        index_y_u = index_y_d + img_height_model
-
-                    if index_x_u > img_w:
-                        index_x_u = img_w
-                        index_x_d = img_w - img_width_model
-                    if index_y_u > img_h:
-                        index_y_u = img_h
-                        index_y_d = img_h - img_height_model
-
-                    img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-                    label_p_pred = model_enhancement.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]))
-
-                    seg = label_p_pred[0, :, :, :]
-                    seg = seg * 255
-
-                    if i == 0 and j == 0:
-                        seg = seg[0 : seg.shape[0] - margin, 0 : seg.shape[1] - margin]
-                        prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + 0 : index_x_u - margin, :] = seg
-                    elif i == nxf - 1 and j == nyf - 1:
-                        seg = seg[margin : seg.shape[0] - 0, margin : seg.shape[1] - 0]
-                        prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - 0, :] = seg
-                    elif i == 0 and j == nyf - 1:
-                        seg = seg[margin : seg.shape[0] - 0, 0 : seg.shape[1] - margin]
-                        prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + 0 : index_x_u - margin, :] = seg
-                    elif i == nxf - 1 and j == 0:
-                        seg = seg[0 : seg.shape[0] - margin, margin : seg.shape[1] - 0]
-                        prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - 0, :] = seg
-                    elif i == 0 and j != 0 and j != nyf - 1:
-                        seg = seg[margin : seg.shape[0] - margin, 0 : seg.shape[1] - margin]
-                        prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + 0 : index_x_u - margin, :] = seg
-                    elif i == nxf - 1 and j != 0 and j != nyf - 1:
-                        seg = seg[margin : seg.shape[0] - margin, margin : seg.shape[1] - 0]
-                        prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - 0, :] = seg
-                    elif i != 0 and i != nxf - 1 and j == 0:
-                        seg = seg[0 : seg.shape[0] - margin, margin : seg.shape[1] - margin]
-                        prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg
-                    elif i != 0 and i != nxf - 1 and j == nyf - 1:
-                        seg = seg[margin : seg.shape[0] - 0, margin : seg.shape[1] - margin]
-                        prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - margin, :] = seg
-                    else:
-                        seg = seg[margin : seg.shape[0] - margin, margin : seg.shape[1] - margin]
-                        prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg
-
-            prediction_true = prediction_true.astype(int)
-
-            del model_enhancement
-            del session_enhancemnet
-
-            return prediction_true
+        return prediction_true
 
     def calculate_width_height_by_columns(self, img, num_col, width_early, label_p_pred):
         self.logger.debug("enter calculate_width_height_by_columns")
@@ -1252,7 +1240,6 @@ class eynollah:
         id_indexer_l = 0
         if len(found_polygons_text_region) > 0:
             self.xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
-
             for mm in range(len(found_polygons_text_region)):
                 textregion = ET.SubElement(page, 'TextRegion')
                 textregion.set('id', 'r%s' % id_indexer)
@@ -1282,9 +1269,9 @@ class eynollah:
                                 points_co += ','
                                 points_co += str(int((all_found_texline_polygons[mm][j][l][1] + page_coord[0]) / self.scale_y))
                             else:
-                                points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0][0] + page_coord[2]) / self.scale_x))
-                                points_co = points_co + ','
-                                points_co = points_co + str(int((all_found_texline_polygons[mm][j][l][0][1] + page_coord[0]) / self.scale_y))
+                                points_co += str(int((all_found_texline_polygons[mm][j][l][0][0] + page_coord[2]) / self.scale_x))
+                                points_co += ','
+                                points_co += str(int((all_found_texline_polygons[mm][j][l][0][1] + page_coord[0]) / self.scale_y))
                         elif curved_line and abs(slopes[mm]) > 45:
                             if len(all_found_texline_polygons[mm][j][l]) == 2:
                                 points_co += str(int((all_found_texline_polygons[mm][j][l][0] + all_box_coord[mm][2] + page_coord[2]) / self.scale_x))
@@ -1298,7 +1285,6 @@ class eynollah:
                         if l < len(all_found_texline_polygons[mm][j]) - 1:
                             points_co += ' '
                     coord.set('points', points_co)
-
                 add_textequiv(textregion)
 
         for mm in range(len(found_polygons_marginals)):
@@ -2002,12 +1988,13 @@ class eynollah:
         text_regions_p = text_regions_p_1[:, :]  # long_short_region[:,:]#self.get_regions_from_2_models(image_page)
         text_regions_p = np.array(text_regions_p)
 
-        if num_col_classifier == 1 or num_col_classifier == 2:
+        if num_col_classifier in (1, 2):
             try:
                 regions_without_seperators = (text_regions_p[:, :] == 1) * 1
                 regions_without_seperators = regions_without_seperators.astype(np.uint8)
                 text_regions_p = get_marginals(rotate_image(regions_without_seperators, slope_deskew), text_regions_p, num_col_classifier, slope_deskew, kernel=self.kernel)
-            except:
+            except Exception as e:
+                self.logger.error("exception %s", e)
                 pass
 
         if self.plotter:
