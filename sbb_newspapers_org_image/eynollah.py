@@ -2142,12 +2142,13 @@ class eynollah:
 
         try:
             num_col, peaks_neg_fin = find_num_col(img_only_regions, multiplier=6.0)
+            num_col = num_col + 1
             if not num_column_is_classified:
                 num_col_classifier = num_col + 1
         except:
-            num_col = 0
+            num_col = None
             peaks_neg_fin = []
-        return num_col + 1, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1
+        return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1
 
     def run_enhancement(self):
         self.logger.info("resize and enhance image")
@@ -2381,10 +2382,11 @@ class eynollah:
                 self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified)
         self.logger.info("Graphics detection took %ss ", str(time.time() - t1))
 
-        if not num_col:
+        if num_col is None:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
             self.write_into_page_xml([], page_coord, self.dir_out, [], [], [], [], [], [], [], [], self.curved_line, [], [])
             self.logger.info("Job done in %ss", str(time.time() - t1))
+            sys.exit()
             return
 
         t1 = time.time()
