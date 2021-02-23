@@ -28,8 +28,6 @@ tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
 
 from .utils.contour import (
-    contours_in_same_horizon,
-    filter_contours_area_of_image_tables,
     filter_contours_area_of_image,
     find_contours_mean_y_diff,
     find_new_features_of_contoures,
@@ -67,15 +65,9 @@ from .utils.resize import resize_image
 from .utils import (
     boosting_headers_by_longshot_region_segmentation,
     crop_image_inside_box,
-    find_features_of_lines,
     find_num_col,
-    find_num_col_by_vertical_lines,
-    find_num_col_deskew,
-    find_num_col_only_image,
-    isNaN,
     otsu_copy,
     otsu_copy_binary,
-    return_hor_spliter_by_index_for_without_verticals,
     delete_seperator_around,
     return_regions_without_seperators,
     put_drop_out_from_only_drop_model,

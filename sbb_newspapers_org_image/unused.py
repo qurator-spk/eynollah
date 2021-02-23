@@ -3087,4 +3087,82 @@ def filter_contours_area_of_image_interiors(image, contours, hirarchy, max_area,
         jv += 1
     return found_polygons_early
 
+def return_hor_spliter_by_index_for_without_verticals(peaks_neg_fin_t, x_min_hor_some, x_max_hor_some):
+    # print(peaks_neg_fin_t,x_min_hor_some,x_max_hor_some)
+    arg_min_hor_sort = np.argsort(x_min_hor_some)
+    x_min_hor_some_sort = np.sort(x_min_hor_some)
+    x_max_hor_some_sort = x_max_hor_some[arg_min_hor_sort]
 
+    arg_minmax = np.array(range(len(peaks_neg_fin_t)))
+    indexer_lines = []
+    indexes_to_delete = []
+    indexer_lines_deletions_len = []
+    indexr_uniq_ind = []
+    for i in range(len(x_min_hor_some_sort)):
+        min_h = peaks_neg_fin_t - x_min_hor_some_sort[i]
+
+        max_h = peaks_neg_fin_t - x_max_hor_some_sort[i]
+
+        min_h[0] = min_h[0]  # +20
+        max_h[len(max_h) - 1] = max_h[len(max_h) - 1] - 20
+
+        min_h_neg = arg_minmax[(min_h < 0)]
+        min_h_neg_n = min_h[min_h < 0]
+
+        try:
+            min_h_neg = [min_h_neg[np.argmax(min_h_neg_n)]]
+        except:
+            min_h_neg = []
+
+        max_h_neg = arg_minmax[(max_h > 0)]
+        max_h_neg_n = max_h[max_h > 0]
+
+        if len(max_h_neg_n) > 0:
+            max_h_neg = [max_h_neg[np.argmin(max_h_neg_n)]]
+        else:
+            max_h_neg = []
+
+        if len(min_h_neg) > 0 and len(max_h_neg) > 0:
+            deletions = list(range(min_h_neg[0] + 1, max_h_neg[0]))
+            unique_delets_int = []
+            # print(deletions,len(deletions),'delii')
+            if len(deletions) > 0:
+
+                for j in range(len(deletions)):
+                    indexes_to_delete.append(deletions[j])
+                    # print(deletions,indexes_to_delete,'badiii')
+                    unique_delets = np.unique(indexes_to_delete)
+                    # print(min_h_neg[0],unique_delets)
+                    unique_delets_int = unique_delets[unique_delets < min_h_neg[0]]
+
+                indexer_lines_deletions_len.append(len(deletions))
+                indexr_uniq_ind.append([deletions])
+
+            else:
+                indexer_lines_deletions_len.append(0)
+                indexr_uniq_ind.append(-999)
+
+            index_line_true = min_h_neg[0] - len(unique_delets_int)
+            # print(index_line_true)
+            if index_line_true > 0 and min_h_neg[0] >= 2:
+                index_line_true = index_line_true
+            else:
+                index_line_true = min_h_neg[0]
+
+            indexer_lines.append(index_line_true)
+
+            if len(unique_delets_int) > 0:
+                for dd in range(len(unique_delets_int)):
+                    indexes_to_delete.append(unique_delets_int[dd])
+        else:
+            indexer_lines.append(-999)
+            indexer_lines_deletions_len.append(-999)
+            indexr_uniq_ind.append(-999)
+
+    peaks_true = []
+    for m in range(len(peaks_neg_fin_t)):
+        if m in indexes_to_delete:
+            pass
+        else:
+            peaks_true.append(peaks_neg_fin_t[m])
+    return indexer_lines, peaks_true, arg_min_hor_sort, indexer_lines_deletions_len, indexr_uniq_ind
