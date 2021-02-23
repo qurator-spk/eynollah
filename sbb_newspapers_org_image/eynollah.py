@@ -1122,6 +1122,63 @@ class eynollah:
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new)
 
+    def calculate_polygon_coords(self, contour_list, i, page_coord):
+        self.logger.debug('enter calculate_polygon_coords')
+        coords = ''
+        for j in range(len(contour_list[i])):
+            if len(contour_list[i][j]) == 2:
+                coords += str(int((contour_list[i][j][0] + page_coord[2]) / self.scale_x))
+                coords += ','
+                coords += str(int((contour_list[i][j][1] + page_coord[0]) / self.scale_y))
+            else:
+                coords += str(int((contour_list[i][j][0][0] + page_coord[2]) / self.scale_x))
+                coords += ','
+                coords += str(int((contour_list[i][j][0][1] + page_coord[0]) / self.scale_y))
+
+            if j < len(contour_list[i]) - 1:
+                coords=coords + ' '
+        #print(coords)
+        return coords
+
+    def calculate_page_coords(self):
+        self.logger.debug('enter calculate_page_coords')
+        points_page_print = ""
+        for lmm in range(len(self.cont_page[0])):
+            if len(self.cont_page[0][lmm]) == 2:
+                points_page_print += str(int((self.cont_page[0][lmm][0] ) / self.scale_x))
+                points_page_print += ','
+                points_page_print += str(int((self.cont_page[0][lmm][1] ) / self.scale_y))
+            else:
+                points_page_print += str(int((self.cont_page[0][lmm][0][0]) / self.scale_x))
+                points_page_print += ','
+                points_page_print += str(int((self.cont_page[0][lmm][0][1] ) / self.scale_y))
+
+            if lmm < len( self.cont_page[0] ) - 1:
+                points_page_print = points_page_print + ' '
+        return points_page_print
+
+    def xml_reading_order(self, page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals):
+        """
+        XXX side-effect: extends id_of_marginalia
+        """
+        region_order = ET.SubElement(page, 'ReadingOrder')
+        region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
+        region_order_sub.set('id', "ro357564684568544579089")
+        indexer_region = 0
+        for vj in order_of_texts:
+            name = "coord_text_%s" % vj
+            name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
+            name.set('index', str(indexer_region))
+            name.set('regionRef', id_of_texts[vj])
+            indexer_region+=1
+        for vm in range(len(found_polygons_marginals)):
+            id_of_marginalia.append('r%s' % indexer_region)
+            name = "coord_text_%s" % indexer_region
+            name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
+            name.set('index', str(indexer_region))
+            name.set('regionRef', 'r%s' % indexer_region)
+            indexer_region += 1
+
     def serialize_lines_in_region(self, textregion, all_found_texline_polygons, region_idx, page_coord, all_box_coord, slopes, id_indexer_l):
         self.logger.debug('enter serialize_lines_in_region')
         for j in range(len(all_found_texline_polygons[region_idx])):
@@ -1167,63 +1224,6 @@ class eynollah:
                     points_co += ' '
             coord.set('points',points_co)
         return id_indexer_l
-
-    def calculate_polygon_coords(self, contour_list, i, page_coord):
-        self.logger.debug('enter calculate_polygon_coords')
-        coords = ''
-        for j in range(len(contour_list[i])):
-            if len(contour_list[i][j]) == 2:
-                coords += str(int((contour_list[i][j][0] + page_coord[2]) / self.scale_x))
-                coords += ','
-                coords += str(int((contour_list[i][j][1] + page_coord[0]) / self.scale_y))
-            else:
-                coords += str(int((contour_list[i][j][0][0] + page_coord[2]) / self.scale_x))
-                coords += ','
-                coords += str(int((contour_list[i][j][0][1] + page_coord[0]) / self.scale_y))
-
-            if j < len(contour_list[i]) - 1:
-                coords=coords+' '
-        #print(coords)
-        return coords
-
-    def calculate_page_coords(self):
-        self.logger.debug('enter calculate_page_coords')
-        points_page_print = ""
-        for lmm in range(len(self.cont_page[0])):
-            if len(self.cont_page[0][lmm]) == 2:
-                points_page_print += str(int((self.cont_page[0][lmm][0] ) / self.scale_x))
-                points_page_print += ','
-                points_page_print += str(int((self.cont_page[0][lmm][1] ) / self.scale_y))
-            else:
-                points_page_print += str(int((self.cont_page[0][lmm][0][0]) / self.scale_x))
-                points_page_print += ','
-                points_page_print += str(int((self.cont_page[0][lmm][0][1] ) / self.scale_y))
-
-            if lmm < len( self.cont_page[0] ) - 1:
-                points_page_print = points_page_print + ' '
-        return points_page_print
-
-    def xml_reading_order(self, page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals):
-        """
-        XXX side-effect: extends id_of_marginalia
-        """
-        region_order = ET.SubElement(page, 'ReadingOrder')
-        region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
-        region_order_sub.set('id', "ro357564684568544579089")
-        indexer_region = 0
-        for vj in order_of_texts:
-            name = "coord_text_%s" % vj
-            name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
-            name.set('index', str(indexer_region))
-            name.set('regionRef', id_of_texts[vj])
-            indexer_region+=1
-        for vm in range(len(found_polygons_marginals)):
-            id_of_marginalia.append('r%s' % indexer_region)
-            name = "coord_text_%s" % indexer_region
-            name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
-            name.set('index', str(indexer_region))
-            name.set('regionRef', 'r%s' % indexer_region)
-            indexer_region += 1
 
 
     def write_into_page_xml(self, found_polygons_text_region, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, curved_line, slopes, slopes_marginals):
