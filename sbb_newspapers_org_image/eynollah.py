@@ -2145,7 +2145,7 @@ class eynollah:
             if not num_column_is_classified:
                 num_col_classifier = num_col + 1
         except:
-            num_col = None
+            num_col = 0
             peaks_neg_fin = []
         return num_col + 1, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1
 
@@ -2519,8 +2519,8 @@ class eynollah:
             cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contoures([contours_biggest])
             cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contoures(contours_only_text_parent)
             self.logger.debug('areas_cnt_text_parent %s', areas_cnt_text_parent)
-            self.logger.debug('areas_cnt_text_parent_d %s', areas_cnt_text_parent_d)
-            self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))
+            # self.logger.debug('areas_cnt_text_parent_d %s', areas_cnt_text_parent_d)
+            # self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))
 
         txt_con_org = get_textregion_contours_in_org_image(contours_only_text_parent, self.image, slope_first)
         boxes_text, _ = get_text_region_boxes_by_given_contours(contours_only_text_parent)
