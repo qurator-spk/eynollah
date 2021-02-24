@@ -91,6 +91,7 @@ SLOPE_THRESHOLD = 0.13
 RATIO_OF_TWO_MODEL_THRESHOLD = 95.50 #98.45:
 DPI_THRESHOLD = 298
 MAX_SLOPE = 999
+KERNEL = np.ones((5, 5), np.uint8)
 
 class eynollah:
     def __init__(
@@ -131,7 +132,6 @@ class eynollah:
         )
         self.logger = getLogger('eynollah')
         self.dir_models = dir_models
-        self.kernel = np.ones((5, 5), np.uint8)
 
         self.model_dir_of_enhancemnet = dir_models + "/model_enhancement.h5"
         self.model_dir_of_col_classifier = dir_models + "/model_scale_classifier.h5"
@@ -554,14 +554,13 @@ class eynollah:
         self.logger.debug("enter early_page_for_num_of_column_classification")
         img = self.imread()
         model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-        for ii in range(1):
-            img = cv2.GaussianBlur(img, (5, 5), 0)
+        img = cv2.GaussianBlur(img, (5, 5), 0)
 
         img_page_prediction = self.do_prediction(False, img, model_page)
 
         imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(imgray, 0, 255, 0)
-        thresh = cv2.dilate(thresh, self.kernel, iterations=3)
+        thresh = cv2.dilate(thresh, KERNEL, iterations=3)
         contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
         cnt = contours[np.argmax(cnt_size)]
@@ -576,15 +575,14 @@ class eynollah:
     def extract_page(self):
         self.logger.debug("enter extract_page")
         model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-        for ii in range(1):
-            img = cv2.GaussianBlur(self.image, (5, 5), 0)
+        img = cv2.GaussianBlur(self.image, (5, 5), 0)
 
         img_page_prediction = self.do_prediction(False, img, model_page)
 
         imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-        thresh = cv2.dilate(thresh, self.kernel, iterations=3)
+        thresh = cv2.dilate(thresh, KERNEL, iterations=3)
         contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
@@ -830,7 +828,7 @@ class eynollah:
             all_text_region_raw = all_text_region_raw.astype(np.uint8)
             img_int_p = all_text_region_raw[:, :]
 
-            # img_int_p=cv2.erode(img_int_p,self.kernel,iterations = 2)
+            # img_int_p=cv2.erode(img_int_p,KERNEL,iterations = 2)
             # plt.imshow(img_int_p)
             # plt.show()
 
@@ -897,9 +895,9 @@ class eynollah:
                     mask_biggest2 = np.zeros(mask_texts_only.shape)
                     mask_biggest2 = cv2.fillPoly(mask_biggest2, pts=[cnt_textlines_in_image[jjjj]], color=(1, 1, 1))
                     if num_col + 1 == 1:
-                        mask_biggest2 = cv2.dilate(mask_biggest2, self.kernel, iterations=5)
+                        mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=5)
                     else:
-                        mask_biggest2 = cv2.dilate(mask_biggest2, self.kernel, iterations=4)
+                        mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=4)
 
                     pixel_img = 1
                     mask_biggest2 = resize_image(mask_biggest2, int(mask_biggest2.shape[0] * scale_par), int(mask_biggest2.shape[1] * scale_par))
@@ -941,7 +939,7 @@ class eynollah:
             all_text_region_raw=(textline_mask_tot_ea*mask_textline[:,:])[boxes_text[mv][1]:boxes_text[mv][1]+boxes_text[mv][3] , boxes_text[mv][0]:boxes_text[mv][0]+boxes_text[mv][2] ]
             all_text_region_raw=all_text_region_raw.astype(np.uint8)
             img_int_p=all_text_region_raw[:,:]#self.all_text_region_raw[mv]
-            img_int_p=cv2.erode(img_int_p,self.kernel,iterations = 2)
+            img_int_p=cv2.erode(img_int_p,KERNEL,iterations = 2)
 
             if img_int_p.shape[0]/img_int_p.shape[1]<0.1:
                 slopes_per_each_subprocess.append(0)
@@ -1025,11 +1023,9 @@ class eynollah:
         boxes_sub_new = []
         poly_sub = []
         for mv in range(len(boxes_per_process)):
-
             crop_img, _ = crop_image_inside_box(boxes_per_process[mv], np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
             crop_img = crop_img[:, :, 0]
-            crop_img = cv2.erode(crop_img, self.kernel, iterations=2)
-
+            crop_img = cv2.erode(crop_img, KERNEL, iterations=2)
             try:
                 textline_con, hierachy = return_contours_of_image(crop_img)
                 textline_con_fil = filter_contours_area_of_image(crop_img, textline_con, hierachy, max_area=1, min_area=0.0008)
@@ -1194,7 +1190,7 @@ class eynollah:
         tree = ET.ElementTree(pcgts)
         tree.write(os.path.join(self.dir_out, self.image_filename_stem) + ".xml")
 
-    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals):
+    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes):
         self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
@@ -1228,7 +1224,7 @@ class eynollah:
 
         id_indexer = len(found_polygons_text_region) + len(found_polygons_marginals)
         for mm in range(len(found_polygons_text_region_img)):
-            textregion=ET.SubElement(page, 'ImageRegion')
+            textregion = ET.SubElement(page, 'ImageRegion')
             textregion.set('id', 'r%s' % id_indexer)
             id_indexer += 1
             coord_text = ET.SubElement(textregion, 'Coords')
@@ -1243,7 +1239,7 @@ class eynollah:
 
         return pcgts
 
-    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals):
+    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes):
         self.logger.debug('enter build_pagexml_full_layout')
 
         # create the file structure
@@ -1375,12 +1371,12 @@ class eynollah:
 
         prediction_regions_org[(mask_lines2[:,:]==1) & (prediction_regions_org[:,:]==0)]=3
         mask_lines_only=(prediction_regions_org[:,:]==3)*1
-        prediction_regions_org = cv2.erode(prediction_regions_org[:,:], self.kernel, iterations=2)
+        prediction_regions_org = cv2.erode(prediction_regions_org[:,:], KERNEL, iterations=2)
 
         #plt.imshow(text_region2_1st_channel)
         #plt.show()
 
-        prediction_regions_org = cv2.dilate(prediction_regions_org[:,:], self.kernel, iterations=2)
+        prediction_regions_org = cv2.dilate(prediction_regions_org[:,:], KERNEL, iterations=2)
         mask_texts_only=(prediction_regions_org[:,:]==1)*1
         mask_images_only=(prediction_regions_org[:,:]==2)*1
 
@@ -1680,14 +1676,14 @@ class eynollah:
 
         mask_images = (text_regions_p_1[:, :] == 2) * 1
         mask_images = mask_images.astype(np.uint8)
-        mask_images = cv2.erode(mask_images[:, :], self.kernel, iterations=10)
+        mask_images = cv2.erode(mask_images[:, :], KERNEL, iterations=10)
 
         mask_lines = (text_regions_p_1[:, :] == 3) * 1
         mask_lines = mask_lines.astype(np.uint8)
 
         img_only_regions_with_sep = ((text_regions_p_1[:, :] != 3) & (text_regions_p_1[:, :] != 0)) * 1
         img_only_regions_with_sep = img_only_regions_with_sep.astype(np.uint8)
-        img_only_regions = cv2.erode(img_only_regions_with_sep[:, :], self.kernel, iterations=6)
+        img_only_regions = cv2.erode(img_only_regions_with_sep[:, :], KERNEL, iterations=6)
 
         try:
             num_col, peaks_neg_fin = find_num_col(img_only_regions, multiplier=6.0)
@@ -1739,7 +1735,7 @@ class eynollah:
     def run_deskew(self, textline_mask_tot_ea):
         sigma = 2
         main_page_deskew = True
-        slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, self.kernel, iterations=2), sigma, main_page_deskew, plotter=self.plotter)
+        slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), sigma, main_page_deskew, plotter=self.plotter)
         slope_first = 0
 
         if self.plotter:
@@ -1763,7 +1759,7 @@ class eynollah:
             try:
                 regions_without_seperators = (text_regions_p[:, :] == 1) * 1
                 regions_without_seperators = regions_without_seperators.astype(np.uint8)
-                text_regions_p = get_marginals(rotate_image(regions_without_seperators, slope_deskew), text_regions_p, num_col_classifier, slope_deskew, kernel=self.kernel)
+                text_regions_p = get_marginals(rotate_image(regions_without_seperators, slope_deskew), text_regions_p, num_col_classifier, slope_deskew, kernel=KERNEL)
             except Exception as e:
                 self.logger.error("exception %s", e)
                 pass
@@ -1798,14 +1794,14 @@ class eynollah:
         if num_col_classifier >= 3:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                 regions_without_seperators = regions_without_seperators.astype(np.uint8)
-                regions_without_seperators = cv2.erode(regions_without_seperators[:, :], self.kernel, iterations=6)
+                regions_without_seperators = cv2.erode(regions_without_seperators[:, :], KERNEL, iterations=6)
                 #random_pixels_for_image = np.random.randn(regions_without_seperators.shape[0], regions_without_seperators.shape[1])
                 #random_pixels_for_image[random_pixels_for_image < -0.5] = 0
                 #random_pixels_for_image[random_pixels_for_image != 0] = 1
                 #regions_without_seperators[(random_pixels_for_image[:, :] == 1) & (text_regions_p[:, :] == 2)] = 1
             else:
                 regions_without_seperators_d = regions_without_seperators_d.astype(np.uint8)
-                regions_without_seperators_d = cv2.erode(regions_without_seperators_d[:, :], self.kernel, iterations=6)
+                regions_without_seperators_d = cv2.erode(regions_without_seperators_d[:, :], KERNEL, iterations=6)
                 #random_pixels_for_image = np.random.randn(regions_without_seperators_d.shape[0], regions_without_seperators_d.shape[1])
                 #random_pixels_for_image[random_pixels_for_image < -0.5] = 0
                 #random_pixels_for_image[random_pixels_for_image != 0] = 1
@@ -2065,9 +2061,9 @@ class eynollah:
 
         else:
             scale_param = 1
-            all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_curved(txt_con_org, contours_only_text_parent, cv2.erode(textline_mask_tot_ea, kernel=self.kernel, iterations=1), image_page_rotated, boxes_text, text_only, num_col_classifier, scale_param, slope_deskew)
+            all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_curved(txt_con_org, contours_only_text_parent, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_text, text_only, num_col_classifier, scale_param, slope_deskew)
             all_found_texline_polygons = small_textlines_to_parent_adherence2(all_found_texline_polygons, textline_mask_tot_ea, num_col_classifier)
-            all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, index_by_text_par_con_marginal, slopes_marginals = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=self.kernel, iterations=1), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
+            all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, index_by_text_par_con_marginal, slopes_marginals = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
             all_found_texline_polygons_marginals = small_textlines_to_parent_adherence2(all_found_texline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
         index_of_vertical_text_contours = np.array(range(len(slopes)))[(abs(np.array(slopes)) > 60)]
 
@@ -2091,7 +2087,7 @@ class eynollah:
             polygons_of_tabels = []
             pixel_img = 4
             polygons_of_drop_capitals = return_contours_of_interested_region_by_min_size(text_regions_p, pixel_img)
-            all_found_texline_polygons = adhere_drop_capital_region_into_cprresponding_textline(text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, kernel=self.kernel, curved_line=self.curved_line)
+            all_found_texline_polygons = adhere_drop_capital_region_into_cprresponding_textline(text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, kernel=KERNEL, curved_line=self.curved_line)
 
             # print(len(contours_only_text_parent_h),len(contours_only_text_parent_h_d_ordered),'contours_only_text_parent_h')
             pixel_lines = 6
@@ -2114,14 +2110,14 @@ class eynollah:
             if num_col_classifier >= 3:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     regions_without_seperators = regions_without_seperators.astype(np.uint8)
-                    regions_without_seperators = cv2.erode(regions_without_seperators[:, :], self.kernel, iterations=6)
+                    regions_without_seperators = cv2.erode(regions_without_seperators[:, :], KERNEL, iterations=6)
                     random_pixels_for_image = np.random.randn(regions_without_seperators.shape[0], regions_without_seperators.shape[1])
                     random_pixels_for_image[random_pixels_for_image < -0.5] = 0
                     random_pixels_for_image[random_pixels_for_image != 0] = 1
                     regions_without_seperators[(random_pixels_for_image[:, :] == 1) & (text_regions_p[:, :] == 5)] = 1
                 else:
                     regions_without_seperators_d = regions_without_seperators_d.astype(np.uint8)
-                    regions_without_seperators_d = cv2.erode(regions_without_seperators_d[:, :], self.kernel, iterations=6)
+                    regions_without_seperators_d = cv2.erode(regions_without_seperators_d[:, :], KERNEL, iterations=6)
                     random_pixels_for_image = np.random.randn(regions_without_seperators_d.shape[0], regions_without_seperators_d.shape[1])
                     random_pixels_for_image[random_pixels_for_image < -0.5] = 0
                     random_pixels_for_image[random_pixels_for_image != 0] = 1
