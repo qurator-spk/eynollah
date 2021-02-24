@@ -133,7 +133,7 @@ def main(
         headers_off,
     )
     pcgts = eynollah.run()
-    eynollah.write_pagexml(pcgts)
+    eynollah.writer.write_pagexml(pcgts)
 
 if __name__ == "__main__":
     main()
