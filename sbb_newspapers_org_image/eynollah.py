@@ -1,5 +1,6 @@
 # pylint: disable=no-member,invalid-name,line-too-long,missing-function-docstring
 # pylint: disable=too-many-locals,wrong-import-position,too-many-lines
+# pylint: disable=too-many-public-methods
 """
 tool to extract table form data from alto xml data
 """
@@ -74,7 +75,6 @@ from .utils import (
     small_textlines_to_parent_adherence2,
     order_and_id_of_texts,
     order_of_regions,
-    implent_law_head_main_not_parallel,
     find_number_of_columns_in_document,
     return_boxes_of_images_by_order_of_reading_new,
 )

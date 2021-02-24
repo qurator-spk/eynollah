@@ -3252,3 +3252,96 @@ def return_hor_spliter_by_index(peaks_neg_fin_t, x_min_hor_some, x_max_hor_some)
             peaks_true.append(peaks_neg_fin_t[m])
     return indexer_lines, peaks_true, arg_min_hor_sort, indexer_lines_deletions_len, indexr_uniq_ind
 
+def implent_law_head_main_not_parallel(text_regions):
+    # print(text_regions.shape)
+    text_indexes = [1, 2]  # 1: main text , 2: header , 3: comments
+
+    for t_i in text_indexes:
+        textline_mask = text_regions[:, :] == t_i
+        textline_mask = textline_mask * 255.0
+
+        textline_mask = textline_mask.astype(np.uint8)
+        textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2)
+        kernel = np.ones((5, 5), np.uint8)
+
+        # print(type(textline_mask),np.unique(textline_mask),textline_mask.shape)
+        imgray = cv2.cvtColor(textline_mask, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+        if t_i == 1:
+            contours_main, hirarchy = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            # print(type(contours_main))
+            areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
+            M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
+            cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+            cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+            x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+            x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+
+            y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+            y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+            # print(contours_main[0],np.shape(contours_main[0]),contours_main[0][:,0,0])
+        elif t_i == 2:
+            contours_header, hirarchy = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            # print(type(contours_header))
+            areas_header = np.array([cv2.contourArea(contours_header[j]) for j in range(len(contours_header))])
+            M_header = [cv2.moments(contours_header[j]) for j in range(len(contours_header))]
+            cx_header = [(M_header[j]["m10"] / (M_header[j]["m00"] + 1e-32)) for j in range(len(M_header))]
+            cy_header = [(M_header[j]["m01"] / (M_header[j]["m00"] + 1e-32)) for j in range(len(M_header))]
+
+            x_min_header = np.array([np.min(contours_header[j][:, 0, 0]) for j in range(len(contours_header))])
+            x_max_header = np.array([np.max(contours_header[j][:, 0, 0]) for j in range(len(contours_header))])
+
+            y_min_header = np.array([np.min(contours_header[j][:, 0, 1]) for j in range(len(contours_header))])
+            y_max_header = np.array([np.max(contours_header[j][:, 0, 1]) for j in range(len(contours_header))])
+
+    args = np.array(range(1, len(cy_header) + 1))
+    args_main = np.array(range(1, len(cy_main) + 1))
+    for jj in range(len(contours_main)):
+        headers_in_main = [(cy_header > y_min_main[jj]) & ((cy_header < y_max_main[jj]))]
+        mains_in_main = [(cy_main > y_min_main[jj]) & ((cy_main < y_max_main[jj]))]
+        args_log = args * headers_in_main
+        res = args_log[args_log > 0]
+        res_true = res - 1
+
+        args_log_main = args_main * mains_in_main
+        res_main = args_log_main[args_log_main > 0]
+        res_true_main = res_main - 1
+
+        if len(res_true) > 0:
+            sum_header = np.sum(areas_header[res_true])
+            sum_main = np.sum(areas_main[res_true_main])
+            if sum_main > sum_header:
+                cnt_int = [contours_header[j] for j in res_true]
+                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(1, 1, 1))
+            else:
+                cnt_int = [contours_main[j] for j in res_true_main]
+                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(2, 2, 2))
+
+    for jj in range(len(contours_header)):
+        main_in_header = [(cy_main > y_min_header[jj]) & ((cy_main < y_max_header[jj]))]
+        header_in_header = [(cy_header > y_min_header[jj]) & ((cy_header < y_max_header[jj]))]
+        args_log = args_main * main_in_header
+        res = args_log[args_log > 0]
+        res_true = res - 1
+
+        args_log_header = args * header_in_header
+        res_header = args_log_header[args_log_header > 0]
+        res_true_header = res_header - 1
+
+        if len(res_true) > 0:
+
+            sum_header = np.sum(areas_header[res_true_header])
+            sum_main = np.sum(areas_main[res_true])
+
+            if sum_main > sum_header:
+
+                cnt_int = [contours_header[j] for j in res_true_header]
+                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(1, 1, 1))
+            else:
+                cnt_int = [contours_main[j] for j in res_true]
+                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(2, 2, 2))
+
+    return text_regions
+
+
