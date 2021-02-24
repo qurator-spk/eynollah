@@ -1,3 +1,4 @@
+import sys
 import click
 from ocrd_utils import initLogging, setOverrideLogLevel
 from sbb_newspapers_org_image.eynollah import Eynollah
@@ -109,6 +110,12 @@ def main(
     if log_level:
         setOverrideLogLevel(log_level)
     initLogging()
+    if not enable_plotting and (save_layout or save_deskewed or save_all or save_images):
+        print("Error: You used one of -sl, -sd, -sa or -si but did not enable plotting with -ep")
+        sys.exit(1)
+    elif enable_plotting and not (save_layout or save_deskewed or save_all or save_images):
+        print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa or -si")
+        sys.exit(1)
     eynollah = Eynollah(
         image,
         None,
