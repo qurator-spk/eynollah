@@ -1392,11 +1392,11 @@ class eynollah:
                 con_inter_box = []
                 con_inter_box_h = []
 
-                for i in range(len(args_contours_box)):
-                    con_inter_box.append(contours_only_text_parent[args_contours_box[i]])
+                for box in args_contours_box:
+                    con_inter_box.append(contours_only_text_parent[box])
 
-                for i in range(len(args_contours_box_h)):
-                    con_inter_box_h.append(contours_only_text_parent_h[args_contours_box_h[i]])
+                for box in args_contours_box_h:
+                    con_inter_box_h.append(contours_only_text_parent_h[box])
 
                 indexes_sorted, matrix_of_orders, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(textline_mask_tot[int(boxes[iij][2]) : int(boxes[iij][3]), int(boxes[iij][0]) : int(boxes[iij][1])], con_inter_box, con_inter_box_h, boxes[iij][2])
 
@@ -1431,8 +1431,7 @@ class eynollah:
 
             order_text_new = []
             for iii in range(len(order_of_texts_tot)):
-                tartib_new = np.where(np.array(order_of_texts_tot) == iii)[0][0]
-                order_text_new.append(tartib_new)
+                order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
 
         except Exception as why:
             self.logger.error(why)
@@ -1506,8 +1505,7 @@ class eynollah:
 
             order_text_new = []
             for iii in range(len(order_of_texts_tot)):
-                tartib_new = np.where(np.array(order_of_texts_tot) == iii)[0][0]
-                order_text_new.append(tartib_new)
+                order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
         return order_text_new, id_of_texts_tot
 
     def do_order_of_regions_no_full_layout(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
@@ -1557,8 +1555,7 @@ class eynollah:
 
             order_text_new = []
             for iii in range(len(order_of_texts_tot)):
-                tartib_new = np.where(np.array(order_of_texts_tot) == iii)[0][0]
-                order_text_new.append(tartib_new)
+                order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
 
         except Exception as why:
             self.logger.error(why)
@@ -1590,7 +1587,7 @@ class eynollah:
                 indexes_sorted_main = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 1]
                 indexes_by_type_main = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 1]
 
-                for zahler, mtv in enumerate(args_contours_box):
+                for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
                     tartib = np.where(indexes_sorted == arg_order_v)[0][0]
                     order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
@@ -1606,8 +1603,7 @@ class eynollah:
 
             order_text_new = []
             for iii in range(len(order_of_texts_tot)):
-                tartib_new = np.where(np.array(order_of_texts_tot) == iii)[0][0]
-                order_text_new.append(tartib_new)
+                order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
 
         return order_text_new, id_of_texts_tot
 
@@ -1675,11 +1671,7 @@ class eynollah:
         scaler_h_textline = 1  # 1.2#1.2
         scaler_w_textline = 1  # 0.9#1
         textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline)
-
         K.clear_session()
-        #print(np.unique(textline_mask_tot_ea[:, :]), "textline")
-        # plt.imshow(textline_mask_tot_ea)
-        # plt.show()
         if self.plotter:
             self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page)
         return textline_mask_tot_ea
@@ -1878,21 +1870,9 @@ class eynollah:
         # plt.imshow(img_revised_tab)
         # plt.show()
 
-        # print(img_revised_tab.shape,text_regions_p_1_n.shape)
-        # text_regions_p_1_n=resize_image(text_regions_p_1_n,img_revised_tab.shape[0],img_revised_tab.shape[1])
-        # print(np.unique(text_regions_p_1_n),'uni')
-
         text_only = ((img_revised_tab[:, :] == 1)) * 1
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
             text_only_d = ((text_regions_p_1_n[:, :] == 1)) * 1
-        ##text_only_h=( (img_revised_tab[:,:,0]==2) )*1
-
-        # print(text_only.shape,text_only_d.shape)
-        # plt.imshow(text_only)
-        # plt.show()
-
-        # plt.imshow(text_only_d)
-        # plt.show()
 
         min_con_area = 0.000005
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
@@ -1943,26 +1923,12 @@ class eynollah:
             x_diff = p_big[0] - cx_bigest_d_big
             y_diff = p_big[1] - cy_biggest_d_big
 
-            # print(p_big)
-            # print(cx_bigest_d_big,cy_biggest_d_big)
-            # print(x_diff,y_diff)
-
             contours_only_text_parent_d_ordered = []
             for i in range(len(contours_only_text_parent)):
-                # img1=np.zeros((text_only.shape[0],text_only.shape[1],3))
-                # img1=cv2.fillPoly(img1,pts=[contours_only_text_parent[i]] ,color=(1,1,1))
-                # plt.imshow(img1[:,:,0])
-                # plt.show()
-
                 p = np.dot(M_22, [cx_bigest[i], cy_biggest[i]])
-                # print(p)
                 p[0] = p[0] - x_diff[0]
                 p[1] = p[1] - y_diff[0]
-                # print(p)
-                # print(cx_bigest_d)
-                # print(cy_biggest_d)
                 dists = [math.sqrt((p[0] - cx_bigest_d[j]) ** 2 + (p[1] - cy_biggest_d[j]) ** 2) for j in range(len(cx_bigest_d))]
-                # print(np.argmin(dists))
                 contours_only_text_parent_d_ordered.append(contours_only_text_parent_d[np.argmin(dists)])
                 # img2=np.zeros((text_only.shape[0],text_only.shape[1],3))
                 # img2=cv2.fillPoly(img2,pts=[contours_only_text_parent_d[np.argmin(dists)]] ,color=(1,1,1))
