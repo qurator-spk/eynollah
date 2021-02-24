@@ -1262,7 +1262,7 @@ class eynollah:
         tree = ET.ElementTree(pcgts)
         tree.write(os.path.join(self.dir_out, self.image_filename_stem) + ".xml")
 
-    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, curved_line, slopes, slopes_marginals):
+    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals):
         self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
@@ -2100,7 +2100,7 @@ class eynollah:
 
         if not num_col:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
-            self.write_into_page_xml(self.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], self.curved_line, [], []))
+            self.write_into_page_xml(self.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], []))
             self.logger.info("Job done in %ss", str(time.time() - t1))
             return
 
@@ -2338,6 +2338,6 @@ class eynollah:
             else:
                 contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered)[index_by_text_par_con])
                 order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
-            self.write_into_page_xml(self.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, self.curved_line, slopes, slopes_marginals))
+            self.write_into_page_xml(self.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals))
 
         self.logger.info("Job done in %ss", str(time.time() - t1))
