@@ -1,6 +1,6 @@
 import click
 from ocrd_utils import initLogging, setOverrideLogLevel
-from sbb_newspapers_org_image.eynollah import eynollah
+from sbb_newspapers_org_image.eynollah import Eynollah
 
 
 @click.command()
@@ -109,7 +109,7 @@ def main(
     if log_level:
         setOverrideLogLevel(log_level)
     initLogging()
-    eynollah(
+    eynollah = Eynollah(
         image,
         None,
         out,
@@ -124,8 +124,9 @@ def main(
         full_layout,
         allow_scaling,
         headers_off,
-    ).run()
-
+    )
+    pcgts = eynollah.run()
+    eynollah.write_pagexml(pcgts)
 
 if __name__ == "__main__":
     main()

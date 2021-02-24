@@ -88,7 +88,7 @@ DPI_THRESHOLD = 298
 MAX_SLOPE = 999
 KERNEL = np.ones((5, 5), np.uint8)
 
-class eynollah:
+class Eynollah:
     def __init__(
         self,
         image_filename,
@@ -1149,7 +1149,7 @@ class eynollah:
             coord.set('points',points_co)
         return id_indexer_l
 
-    def write_into_page_xml(self, pcgts):
+    def write_pagexml(self, pcgts):
         self.logger.info("filename stem: '%s'", self.image_filename_stem)
         tree = ET.ElementTree(pcgts)
         tree.write(os.path.join(self.dir_out, self.image_filename_stem) + ".xml")
@@ -1826,9 +1826,9 @@ class eynollah:
         """
         self.logger.debug("enter run")
 
-        t1 = time.time()
+        t0 = time.time()
         img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement()
-        self.logger.info("Enhancing took %ss ", str(time.time() - t1))
+        self.logger.info("Enhancing took %ss ", str(time.time() - t0))
 
         t1 = time.time()
         text_regions_p_1 = self.get_regions_from_xy_2models(img_res, is_image_enhanced)
@@ -1841,9 +1841,9 @@ class eynollah:
 
         if not num_col:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
-            self.write_into_page_xml(self.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], []))
+            pcgts = self.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [])
             self.logger.info("Job done in %ss", str(time.time() - t1))
-            return
+            return pcgts
 
         t1 = time.time()
         textline_mask_tot_ea = self.run_textline(image_page)
@@ -2040,8 +2040,9 @@ class eynollah:
             else:
                 order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
 
-            self.write_into_page_xml(self.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, polygons_of_tabels, polygons_of_drop_capitals, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes))
-
+            pcgts = self.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, polygons_of_tabels, polygons_of_drop_capitals, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes)
+            self.logger.info("Job done in %ss", str(time.time() - t0))
+            return pcgts
         else:
             contours_only_text_parent_h = None
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
@@ -2049,6 +2050,7 @@ class eynollah:
             else:
                 contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered)[index_by_text_par_con])
                 order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
-            self.write_into_page_xml(self.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes))
+            pcgts = self.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes)
+            self.logger.info("Job done in %ss", str(time.time() - t0))
+            return pcgts
 
-        self.logger.info("Job done in %ss", str(time.time() - t1))
