@@ -336,11 +336,8 @@ class eynollah:
         self.logger.info("Found %s columns (%s)", num_col, label_p_pred)
 
         session_col_classifier.close()
-        del model_num_classifier
-        del session_col_classifier
 
         K.clear_session()
-        gc.collect()
 
         img_new, _ = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
 
@@ -385,13 +382,7 @@ class eynollah:
         self.logger.info("Found %s columns (%s)", num_col, label_p_pred)
 
         session_col_classifier.close()
-        del model_num_classifier
-        del session_col_classifier
-        del img_in
-        del img_1ch
-        del page_coord
         K.clear_session()
-        gc.collect()
 
         if dpi < 298:
             img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
@@ -439,8 +430,6 @@ class eynollah:
         self.scale_x = img_res.shape[1] / float(self.image_org.shape[1])
         
 
-        del img_org
-        del img_res
 
     def start_new_session_and_model(self, model_dir):
         self.logger.debug("enter start_new_session_and_model (model_dir=%s)", model_dir)
@@ -471,10 +460,6 @@ class eynollah:
             prediction_true = resize_image(seg_color, img_h_page, img_w_page)
             prediction_true = prediction_true.astype(np.uint8)
 
-            del img
-            del seg_color
-            del label_p_pred
-            del seg
 
         else:
             if img.shape[0] < img_height_model:
@@ -571,12 +556,6 @@ class eynollah:
                         prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg_color
 
             prediction_true = prediction_true.astype(np.uint8)
-            del img
-            del mask_true
-            del seg_color
-            del seg
-            del img_patch
-        gc.collect()
         return prediction_true
 
     def early_page_for_num_of_column_classification(self):
@@ -598,22 +577,7 @@ class eynollah:
         box = [x, y, w, h]
         croped_page, page_coord = crop_image_inside_box(box, img)
         session_page.close()
-        del model_page
-        del session_page
-        del contours
-        del thresh
-        del img
-        del cnt_size
-        del cnt
-        del box
-        del x
-        del y
-        del w
-        del h
-        del imgray
-        del img_page_prediction
 
-        gc.collect()
         self.logger.debug("exit early_page_for_num_of_column_classification")
         return croped_page, page_coord
 
@@ -652,15 +616,8 @@ class eynollah:
         self.cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
 
         session_page.close()
-        del model_page
-        del session_page
-        del contours
-        del thresh
-        del img
-        del imgray
 
         K.clear_session()
-        gc.collect()
         self.logger.debug("exit extract_page")
         return croped_page, page_coord
 
@@ -757,10 +714,6 @@ class eynollah:
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
 
         session_region.close()
-        del model_region
-        del session_region
-        del img
-        gc.collect()
         self.logger.debug("exit extract_text_regions")
         return prediction_regions, prediction_regions2
 
@@ -1069,12 +1022,7 @@ class eynollah:
         ##plt.show()
 
         session_textline.close()
-        del model_textline
-        del session_textline
-        del img
-        del img_org
 
-        gc.collect()
         return prediction_textline[:, :, 0], prediction_textline_longshot_true_size[:, :, 0]
 
     def do_work_of_slopes(self, q, poly, box_sub, boxes_per_process, textline_mask_tot, contours_per_process):
@@ -1389,47 +1337,20 @@ class eynollah:
 
         model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
 
-        gaussian_filter=False
-        binary=False
         ratio_y=1.3
         ratio_x=1
-        median_blur=False
 
         img = resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-
-        if binary:
-            img = otsu_copy_binary(img)
-            img = img.astype(np.uint16)
-        if median_blur:
-            img = cv2.medianBlur(img,5)
-        if gaussian_filter:
-            img= cv2.GaussianBlur(img,(5,5),0)
-            img = img.astype(np.uint16)
 
         prediction_regions_org_y = self.do_prediction(True, img, model_region)
         prediction_regions_org_y = resize_image(prediction_regions_org_y, img_height_h, img_width_h )
 
         #plt.imshow(prediction_regions_org_y[:,:,0])
         #plt.show()
-        prediction_regions_org_y=prediction_regions_org_y[:,:,0]
-        mask_zeros_y=(prediction_regions_org_y[:,:]==0)*1
-        if is_image_enhanced:
-            ratio_x = 1.2
-        else:
-            ratio_x = 1
-        ratio_y = 1
-        median_blur=False
+        prediction_regions_org_y = prediction_regions_org_y[:,:,0]
+        mask_zeros_y = (prediction_regions_org_y[:,:]==0)*1
 
-        img = resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-
-        if binary:
-            img = otsu_copy_binary(img)#self.otsu_copy(img)
-            img = img.astype(np.uint16)
-        if median_blur:
-            img = cv2.medianBlur(img, 5)
-        if gaussian_filter:
-            img = cv2.GaussianBlur(img, (5,5 ), 0)
-            img = img.astype(np.uint16)
+        img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]*(1.2 if is_image_enhanced else 1)))
 
         prediction_regions_org = self.do_prediction(True, img, model_region)
         prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
@@ -1437,36 +1358,12 @@ class eynollah:
         ##plt.imshow(prediction_regions_org[:,:,0])
         ##plt.show()
         prediction_regions_org=prediction_regions_org[:,:,0]
-
         prediction_regions_org[(prediction_regions_org[:,:]==1) & (mask_zeros_y[:,:]==1)]=0
         session_region.close()
-        del model_region
-        del session_region
-        gc.collect()
 
         model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
-
-        gaussian_filter=False
-        binary=False
-        ratio_x=1
-        ratio_y=1
-        median_blur=False
-
-        img= resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-
-        if binary:
-            img = otsu_copy_binary(img)#self.otsu_copy(img)
-            img = img.astype(np.uint16)
-
-        if median_blur:
-            img=cv2.medianBlur(img,5)
-        if gaussian_filter:
-            img= cv2.GaussianBlur(img,(5,5),0)
-            img = img.astype(np.uint16)
-
-        marginal_patch=0.2
-        prediction_regions_org2=self.do_prediction(True, img, model_region, marginal_patch)
-
+        img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]))
+        prediction_regions_org2 = self.do_prediction(True, img, model_region, 0.2)
         prediction_regions_org2=resize_image(prediction_regions_org2, img_height_h, img_width_h )
 
         #plt.imshow(prediction_regions_org2[:,:,0])
@@ -1474,22 +1371,13 @@ class eynollah:
         ##prediction_regions_org=prediction_regions_org[:,:,0]
 
         session_region.close()
-        del model_region
-        del session_region
-        gc.collect()
 
-        mask_zeros2=(prediction_regions_org2[:,:,0]==0)*1
-        mask_lines2=(prediction_regions_org2[:,:,0]==3)*1
-
-        text_sume_early=( (prediction_regions_org[:,:]==1)*1 ).sum()
-
-
-        prediction_regions_org_copy=np.copy(prediction_regions_org)
-
-
-        prediction_regions_org_copy[(prediction_regions_org_copy[:,:]==1) & (mask_zeros2[:,:]==1)]=0
-
-        text_sume_second=( (prediction_regions_org_copy[:,:]==1)*1 ).sum()
+        mask_zeros2 = (prediction_regions_org2[:,:,0] == 0)
+        mask_lines2 = (prediction_regions_org2[:,:,0] == 3)
+        text_sume_early = (prediction_regions_org[:,:] == 1).sum()
+        prediction_regions_org_copy = np.copy(prediction_regions_org)
+        prediction_regions_org_copy[(prediction_regions_org_copy[:,:]==1) & (mask_zeros2[:,:]==1)] = 0
+        text_sume_second = ((prediction_regions_org_copy[:,:]==1)*1).sum()
 
         rate_two_models=text_sume_second/float(text_sume_early)*100
 
@@ -1501,9 +1389,6 @@ class eynollah:
         prediction_regions_org[(mask_lines2[:,:]==1) & (prediction_regions_org[:,:]==0)]=3
 
 
-        del mask_lines2
-        del mask_zeros2
-        del prediction_regions_org2
 
         mask_lines_only=(prediction_regions_org[:,:]==3)*1
 
@@ -1528,17 +1413,7 @@ class eynollah:
 
         text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
 
-        del polygons_of_only_texts
-        del polygons_of_only_images
-        del polygons_of_only_lines
-        del mask_images_only
-        del prediction_regions_org
-        del img
-        del mask_zeros_y
 
-        del prediction_regions_org_y
-        del img_org
-        gc.collect()
 
         K.clear_session()
         return text_regions_p_true
@@ -1890,7 +1765,6 @@ class eynollah:
         textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline)
 
         K.clear_session()
-        gc.collect()
         #print(np.unique(textline_mask_tot_ea[:, :]), "textline")
         # plt.imshow(textline_mask_tot_ea)
         # plt.show()
@@ -1954,7 +1828,6 @@ class eynollah:
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
             num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, spliter_y_new_d, seperators_closeup_n_d = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
         K.clear_session()
-        gc.collect()
 
         self.logger.info("num_col_classifier: %s", num_col_classifier)
 
@@ -2002,7 +1875,6 @@ class eynollah:
         text_regions_p[:, :][text_regions_p[:, :] == 4] = 8
 
         K.clear_session()
-        # gc.collect()
         image_page = image_page.astype(np.uint8)
 
         # print(type(image_page))
@@ -2012,7 +1884,6 @@ class eynollah:
         regions_fully_only_drop = put_drop_out_from_only_drop_model(regions_fully_only_drop, text_regions_p)
         regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 4] = 4
         K.clear_session()
-        gc.collect()
 
         # plt.imshow(regions_fully[:,:,0])
         # plt.show()
@@ -2023,7 +1894,6 @@ class eynollah:
         # plt.show()
 
         K.clear_session()
-        gc.collect()
         regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
 
         # plt.imshow(regions_fully_np[:,:,0])
@@ -2038,7 +1908,6 @@ class eynollah:
         # plt.show()
 
         K.clear_session()
-        gc.collect()
 
         # plt.imshow(regions_fully[:,:,0])
         # plt.show()
@@ -2069,7 +1938,6 @@ class eynollah:
         regions_without_seperators = (text_regions_p[:, :] == 1) * 1  # ( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_seperators_new(text_regions_p[:,:,0],img_only_regions)
 
         K.clear_session()
-        gc.collect()
         img_revised_tab = np.copy(text_regions_p[:, :])
         polygons_of_images = return_contours_of_interested_region(img_revised_tab, 5)
         self.logger.debug('exit run_boxes_full_layout')
@@ -2253,7 +2121,6 @@ class eynollah:
         index_of_vertical_text_contours = np.array(range(len(slopes)))[(abs(np.array(slopes)) > 60)]
 
         K.clear_session()
-        gc.collect()
         # print(index_by_text_par_con,'index_by_text_par_con')
 
         if self.full_layout:
@@ -2269,7 +2136,6 @@ class eynollah:
                 self.plotter.save_plot_of_layout_all(text_regions_p, image_page)
 
             K.clear_session()
-            gc.collect()
 
             polygons_of_tabels = []
             pixel_img = 4
