@@ -576,19 +576,14 @@ class eynollah:
         self.logger.debug("enter extract_page")
         model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
         img = cv2.GaussianBlur(self.image, (5, 5), 0)
-
         img_page_prediction = self.do_prediction(False, img, model_page)
-
         imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(imgray, 0, 255, 0)
-
         thresh = cv2.dilate(thresh, KERNEL, iterations=3)
         contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
         cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
         cnt = contours[np.argmax(cnt_size)]
         x, y, w, h = cv2.boundingRect(cnt)
-
         if x <= 30:
             w += x
             x = 0
@@ -602,9 +597,7 @@ class eynollah:
 
         box = [x, y, w, h]
         croped_page, page_coord = crop_image_inside_box(box, self.image)
-
         self.cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
-
         session_page.close()
 
         K.clear_session()
@@ -1071,19 +1064,17 @@ class eynollah:
     def calculate_page_coords(self):
         self.logger.debug('enter calculate_page_coords')
         points_page_print = ""
-        for lmm in range(len(self.cont_page[0])):
-            if len(self.cont_page[0][lmm]) == 2:
-                points_page_print += str(int((self.cont_page[0][lmm][0] ) / self.scale_x))
+        for lmm, contour in enumerate(self.cont_page[0]):
+            if len(contour) == 2:
+                points_page_print += str(int((contour[0]) / self.scale_x))
                 points_page_print += ','
-                points_page_print += str(int((self.cont_page[0][lmm][1] ) / self.scale_y))
+                points_page_print += str(int((contour[1]) / self.scale_y))
             else:
-                points_page_print += str(int((self.cont_page[0][lmm][0][0]) / self.scale_x))
+                points_page_print += str(int((contour[0][0]) / self.scale_x))
                 points_page_print += ','
-                points_page_print += str(int((self.cont_page[0][lmm][0][1] ) / self.scale_y))
-
-            if lmm < len( self.cont_page[0] ) - 1:
-                points_page_print = points_page_print + ' '
-        return points_page_print
+                points_page_print += str(int((contour[0][1] ) / self.scale_y))
+            points_page_print = points_page_print + ' '
+        return points_page_print[:-1]
 
     def xml_reading_order(self, page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals):
         """
@@ -1098,7 +1089,7 @@ class eynollah:
             name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
             name.set('index', str(indexer_region))
             name.set('regionRef', id_of_texts[vj])
-            indexer_region+=1
+            indexer_region += 1
         for vm in range(len(found_polygons_marginals)):
             id_of_marginalia.append('r%s' % indexer_region)
             name = "coord_text_%s" % indexer_region
