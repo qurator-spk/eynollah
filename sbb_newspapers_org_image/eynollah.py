@@ -89,6 +89,8 @@ from .utils.pil_cv2 import check_dpi
 from .plot import EynollahPlotter
 
 SLOPE_THRESHOLD = 0.13
+RATIO_OF_TWO_MODEL_THRESHOLD = 95.50 #98.45:
+DPI_THRESHOLD = 298
 
 class eynollah:
     def __init__(
@@ -384,7 +386,7 @@ class eynollah:
         session_col_classifier.close()
         K.clear_session()
 
-        if dpi < 298:
+        if dpi < DPI_THRESHOLD:
             img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
             image_res = self.predict_enhancement(img_new)
             is_image_enhanced = True
@@ -1379,19 +1381,14 @@ class eynollah:
         prediction_regions_org_copy[(prediction_regions_org_copy[:,:]==1) & (mask_zeros2[:,:]==1)] = 0
         text_sume_second = ((prediction_regions_org_copy[:,:]==1)*1).sum()
 
-        rate_two_models=text_sume_second/float(text_sume_early)*100
+        rate_two_models = text_sume_second / float(text_sume_early) * 100
 
         self.logger.info("ratio_of_two_models: %s", rate_two_models)
-        if not(is_image_enhanced and rate_two_models<95.50):#98.45:
-            prediction_regions_org=np.copy(prediction_regions_org_copy)
+        if not(is_image_enhanced and rate_two_models < RATIO_OF_TWO_MODEL_THRESHOLD):
+            prediction_regions_org = np.copy(prediction_regions_org_copy)
 
-        ##prediction_regions_org[mask_lines2[:,:]==1]=3
         prediction_regions_org[(mask_lines2[:,:]==1) & (prediction_regions_org[:,:]==0)]=3
-
-
-
         mask_lines_only=(prediction_regions_org[:,:]==3)*1
-
         prediction_regions_org = cv2.erode(prediction_regions_org[:,:], self.kernel, iterations=2)
 
         #plt.imshow(text_region2_1st_channel)
@@ -1401,15 +1398,13 @@ class eynollah:
         mask_texts_only=(prediction_regions_org[:,:]==1)*1
         mask_images_only=(prediction_regions_org[:,:]==2)*1
 
-        pixel_img=1
-        min_area_text=0.00001
-        polygons_of_only_texts=return_contours_of_interested_region(mask_texts_only,pixel_img,min_area_text)
-        polygons_of_only_images=return_contours_of_interested_region(mask_images_only,pixel_img)
-        polygons_of_only_lines=return_contours_of_interested_region(mask_lines_only,pixel_img,min_area_text)
+        polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only, 1, 0.00001)
+        polygons_of_only_images = return_contours_of_interested_region(mask_images_only, 1)
+        polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only, 1, 0.00001)
 
-        text_regions_p_true=np.zeros(prediction_regions_org.shape)
-        text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_lines, color=(3,3,3))
-        text_regions_p_true[:,:][mask_images_only[:,:]==1]=2
+        text_regions_p_true = np.zeros(prediction_regions_org.shape)
+        text_regions_p_true = cv2.fillPoly(text_regions_p_true,pts = polygons_of_only_lines, color=(3, 3, 3))
+        text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
 
         text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
 
@@ -1431,7 +1426,6 @@ class eynollah:
                         arg_text_con.append(jj)
                         break
             args_contours = np.array(range(len(arg_text_con)))
-
             arg_text_con_h = []
             for ii in range(len(cx_text_only_h)):
                 for jj in range(len(boxes)):
