@@ -1257,9 +1257,13 @@ class eynollah:
             coord.set('points',points_co)
         return id_indexer_l
 
+    def write_into_page_xml(self, pcgts):
+        self.logger.info("filename stem: '%s'", self.image_filename_stem)
+        tree = ET.ElementTree(pcgts)
+        tree.write(os.path.join(self.dir_out, self.image_filename_stem) + ".xml")
 
-    def write_into_page_xml(self, found_polygons_text_region, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, curved_line, slopes, slopes_marginals):
-        self.logger.debug('enter write_into_page_xml')
+    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, curved_line, slopes, slopes_marginals):
+        self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
         pcgts, page = create_page_xml(self.image_filename, self.height_org, self.width_org)
@@ -1305,12 +1309,10 @@ class eynollah:
                     points_co += ' '
             coord_text.set('points', points_co)
 
-        self.logger.info("filename stem: '%s'", self.image_filename_stem)
-        tree = ET.ElementTree(pcgts)
-        tree.write(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
+        return pcgts
 
-    def write_into_page_xml_full(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, dir_of_image, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals):
-        self.logger.debug('enter write_into_page_xml_full')
+    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals):
+        self.logger.debug('enter build_pagexml_full_layout')
 
         # create the file structure
         pcgts, page = create_page_xml(self.image_filename, self.height_org, self.width_org)
@@ -1381,9 +1383,7 @@ class eynollah:
             coord_text = ET.SubElement(textregion, 'Coords')
             coord_text.set('points', self.calculate_polygon_coords(found_polygons_tables, mm, page_coord))
 
-        self.logger.info("filename stem: '%s'", self.image_filename_stem)
-        tree = ET.ElementTree(pcgts)
-        tree.write(os.path.join(dir_of_image, self.image_filename_stem) + ".xml")
+        return pcgts
 
     def get_regions_from_xy_2models(self,img,is_image_enhanced):
         self.logger.debug("enter get_regions_from_xy_2models")
@@ -2100,7 +2100,7 @@ class eynollah:
 
         if not num_col:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
-            self.write_into_page_xml([], page_coord, self.dir_out, [], [], [], [], [], [], [], [], self.curved_line, [], [])
+            self.write_into_page_xml(self.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], self.curved_line, [], []))
             self.logger.info("Job done in %ss", str(time.time() - t1))
             return
 
@@ -2329,7 +2329,7 @@ class eynollah:
             else:
                 order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
 
-            self.write_into_page_xml_full(contours_only_text_parent, contours_only_text_parent_h, page_coord, self.dir_out, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, polygons_of_tabels, polygons_of_drop_capitals, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals)
+            self.write_into_page_xml(self.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, polygons_of_tabels, polygons_of_drop_capitals, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals))
 
         else:
             contours_only_text_parent_h = None
@@ -2338,6 +2338,6 @@ class eynollah:
             else:
                 contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered)[index_by_text_par_con])
                 order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
-            self.write_into_page_xml(txt_con_org, page_coord, self.dir_out, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, self.curved_line, slopes, slopes_marginals)
+            self.write_into_page_xml(self.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, self.curved_line, slopes, slopes_marginals))
 
         self.logger.info("Job done in %ss", str(time.time() - t1))
