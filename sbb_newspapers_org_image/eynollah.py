@@ -862,7 +862,8 @@ class eynollah:
                     # old method
                     # slope_for_all=self.textline_contours_to_get_slope_correctly(self.all_text_region_raw[mv],denoised,contours[mv])
                     # text_patch_processed=textline_contours_postprocessing(gada)
-                except:
+                except Exception as why:
+                    self.logger.error(why)
                     slope_for_all = 999
 
                 if slope_for_all == 999:
@@ -914,10 +915,9 @@ class eynollah:
                     mask_biggest2 = resize_image(mask_biggest2, int(mask_biggest2.shape[0] * scale_par), int(mask_biggest2.shape[1] * scale_par))
                     cnt_textlines_in_image_ind = return_contours_of_interested_textline(mask_biggest2, pixel_img)
                     try:
-                        # textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0]/scale_par)
                         textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0])
-                    except:
-                        pass
+                    except Exception as why:
+                        self.logger.error(why)
             else:
                 add_boxes_coor_into_textlines = True
                 textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contours_par_per_process[mv], boxes_text[mv], add_boxes_coor_into_textlines)
@@ -973,7 +973,8 @@ class eynollah:
                     slope_for_all = return_deskew_slop(img_int_p, sigma_des, plotter=self.plotter)
                     if abs(slope_for_all) <= 0.5:
                         slope_for_all = [slope_deskew][0]
-                except:
+                except Exception as why:
+                    self.logger.error(why)
                     slope_for_all = 999
 
                 if slope_for_all == 999:
@@ -1043,16 +1044,11 @@ class eynollah:
                 textline_con, hierachy = return_contours_of_image(crop_img)
                 textline_con_fil = filter_contours_area_of_image(crop_img, textline_con, hierachy, max_area=1, min_area=0.0008)
                 y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
-
-                sigma_des = int(y_diff_mean * (4.0 / 40.0))
-
-                if sigma_des < 1:
-                    sigma_des = 1
-
+                sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
                 crop_img[crop_img > 0] = 1
                 slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des, plotter=self.plotter)
-
-            except:
+            except Exception as why:
+                self.logger.error(why)
                 slope_corresponding_textregion = 999
 
             if slope_corresponding_textregion == 999:
@@ -1489,7 +1485,8 @@ class eynollah:
                 tartib_new = np.where(np.array(order_of_texts_tot) == iii)[0][0]
                 order_text_new.append(tartib_new)
 
-        except:
+        except Exception as why:
+            self.logger.error(why)
             arg_text_con = []
             for ii in range(len(cx_text_only)):
                 for jj in range(len(boxes)):
@@ -1615,7 +1612,8 @@ class eynollah:
                 tartib_new = np.where(np.array(order_of_texts_tot) == iii)[0][0]
                 order_text_new.append(tartib_new)
 
-        except:
+        except Exception as why:
+            self.logger.error(why)
             arg_text_con = []
             for ii in range(len(cx_text_only)):
                 for jj in range(len(boxes)):
@@ -1706,7 +1704,8 @@ class eynollah:
             num_col = num_col + 1
             if not num_column_is_classified:
                 num_col_classifier = num_col + 1
-        except:
+        except Exception as why:
+            self.logger.error(why)
             num_col = None
             peaks_neg_fin = []
         return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1
@@ -2016,14 +2015,14 @@ class eynollah:
             cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contoures([contours_biggest_d])
             cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contoures(contours_only_text_parent_d)
             try:
-                cx_bigest_d_last5=cx_bigest_d[-5:]
-                cy_biggest_d_last5=cy_biggest_d[-5:]
-                dists_d = [math.sqrt((cx_bigest_big[0]-cx_bigest_d_last5[j])**2 + (cy_biggest_big[0]-cy_biggest_d_last5[j])**2) for j in range(len(cy_biggest_d_last5))]
-                ind_largest=len(cx_bigest_d)-5+np.argmin(dists_d)
-                cx_bigest_d_big[0]=cx_bigest_d[ind_largest]
-                cy_biggest_d_big[0]=cy_biggest_d[ind_largest]
-            except:
-                pass
+                cx_bigest_d_last5 = cx_bigest_d[-5:]
+                cy_biggest_d_last5 = cy_biggest_d[-5:]
+                dists_d = [math.sqrt((cx_bigest_big[0] - cx_bigest_d_last5[j]) ** 2 + (cy_biggest_big[0] - cy_biggest_d_last5[j]) ** 2) for j in range(len(cy_biggest_d_last5))]
+                ind_largest = len(cx_bigest_d) -5 + np.argmin(dists_d)
+                cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
+                cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
+            except Exception as why:
+                self.logger.error(why)
 
             (h, w) = text_only.shape[:2]
             center = (w // 2.0, h // 2.0)
