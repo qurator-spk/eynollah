@@ -3344,4 +3344,24 @@ def implent_law_head_main_not_parallel(text_regions):
 
     return text_regions
 
+def delete_seperator_around(spliter_y, peaks_neg, image_by_region):
+    # format of subboxes box=[x1, x2 , y1, y2]
+
+    if len(image_by_region.shape) == 3:
+        for i in range(len(spliter_y) - 1):
+            for j in range(1, len(peaks_neg[i]) - 1):
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0] == 6] = 0
+                image_by_region[spliter_y[i] : spliter_y[i + 1], peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 1] == 6] = 0
+                image_by_region[spliter_y[i] : spliter_y[i + 1], peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 2] == 6] = 0
+
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0] == 7] = 0
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 1] == 7] = 0
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 2] == 7] = 0
+    else:
+        for i in range(len(spliter_y) - 1):
+            for j in range(1, len(peaks_neg[i]) - 1):
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])] == 6] = 0
+
+                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])] == 7] = 0
+    return image_by_region
 

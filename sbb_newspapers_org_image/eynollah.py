@@ -1,6 +1,6 @@
 # pylint: disable=no-member,invalid-name,line-too-long,missing-function-docstring
-# pylint: disable=too-many-locals,wrong-import-position,too-many-lines
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-locals,wrong-import-position,too-many-lines,too-many-statements
+# pylint: disable=too-many-public-methods,too-many-arguments,too-many-instance-attributes,too-many-public-methods,
 """
 tool to extract table form data from alto xml data
 """
@@ -67,8 +67,6 @@ from .utils import (
     crop_image_inside_box,
     find_num_col,
     otsu_copy_binary,
-    delete_seperator_around,
-    return_regions_without_seperators,
     put_drop_out_from_only_drop_model,
     putt_bb_of_drop_capitals_of_model_in_patches_in_layout,
     check_any_text_region_in_model_one_is_main_or_header,
@@ -107,7 +105,7 @@ class eynollah:
         allow_scaling=False,
         headers_off=False
     ):
-        self.image_filename = image_filename  # XXX This does not seem to be a directory as the name suggests, but a file
+        self.image_filename = image_filename
         self.cont_page = []
         self.dir_out = dir_out
         self.image_filename_stem = image_filename_stem
@@ -137,7 +135,7 @@ class eynollah:
         self.model_region_dir_fully = dir_models + "/model_3up_new_good_no_augmentation.h5"
         self.model_page_dir = dir_models + "/model_page_mixed_best.h5"
         self.model_region_dir_p_ens = dir_models + "/model_ensemble_s.h5"
-        self.model_textline_dir = dir_models + "/model_textline_newspapers.h5" 
+        self.model_textline_dir = dir_models + "/model_textline_newspapers.h5"
 
         self._imgs = {}
 
