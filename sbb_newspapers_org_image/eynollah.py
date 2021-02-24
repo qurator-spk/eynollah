@@ -75,7 +75,6 @@ from .utils import (
     order_and_id_of_texts,
     order_of_regions,
     implent_law_head_main_not_parallel,
-    return_hor_spliter_by_index,
     find_number_of_columns_in_document,
     return_boxes_of_images_by_order_of_reading_new,
 )
