@@ -1,5 +1,5 @@
 from pathlib import Path
-from sbb_newspapers_org_image.utils.pil_cv2 import check_dpi
+from qurator.eynollah.utils.pil_cv2 import check_dpi
 from tests.base import main
 
 def test_dpi():

@@ -1,5 +1,5 @@
 from lxml import etree as ET
-from sbb_newspapers_org_image.utils.xml import create_page_xml, NAMESPACES
+from qurator.eynollah.utils.xml import create_page_xml, NAMESPACES
 
 def tostring(el):
     return ET.tostring(el).decode('utf-8')

@@ -10,12 +10,13 @@ setup(
     author='Vahid Rezanezhad',
     url='https://github.com/qurator-spk/eynollah',
     license='Apache License 2.0',
-    packages=find_packages(),
+    namespace_packages=['qurator'],
+    packages=find_packages(exclude=['tests']),
     install_requires=install_requires,
     entry_points={
         'console_scripts': [
-            'eynollah=sbb_newspapers_org_image.cli:main',
-            # 'ocrd-eynollah=eynollah.ocrd_cli:cli',
+            'eynollah=qurator.eynollah.cli:main',
+            # 'ocrd-eynollah=qurator.eynollah.ocrd_cli:cli',
         ]
     },
 )
