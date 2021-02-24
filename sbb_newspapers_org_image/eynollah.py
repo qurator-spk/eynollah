@@ -1,6 +1,7 @@
-# pylint: disable=no-member,invalid-name,line-too-long,missing-function-docstring
-# pylint: disable=too-many-locals,wrong-import-position,too-many-lines,too-many-statements
+# pylint: disable=no-member,invalid-name,line-too-long,missing-function-docstring,missing-class-docstring,too-many-branches
+# pylint: disable=too-many-locals,wrong-import-position,too-many-lines,too-many-statements,chained-comparison,fixme,broad-except,c-extension-no-member
 # pylint: disable=too-many-public-methods,too-many-arguments,too-many-instance-attributes,too-many-public-methods,
+# pylint: disable=consider-using-enumerate
 """
 tool to extract table form data from alto xml data
 """
@@ -77,7 +78,7 @@ from .utils import (
     return_boxes_of_images_by_order_of_reading_new,
 )
 
-from .utils.xml import create_page_xml, add_textequiv
+from .utils.xml import create_page_xml, add_textequiv, xml_reading_order
 from .utils.pil_cv2 import check_dpi
 from .plot import EynollahPlotter
 
@@ -384,6 +385,7 @@ class eynollah:
         self.logger.debug("exit resize_and_enhance_image_with_column_classifier")
         return is_image_enhanced, img, image_res, num_col, num_column_is_classified
 
+    # pylint: disable=attribute-defined-outside-init
     def get_image_and_scales(self, img_org, img_res, scale):
         self.logger.debug("enter get_image_and_scales")
         self.image = np.copy(img_res)
@@ -1057,7 +1059,7 @@ class eynollah:
     def calculate_page_coords(self):
         self.logger.debug('enter calculate_page_coords')
         points_page_print = ""
-        for lmm, contour in enumerate(self.cont_page[0]):
+        for _, contour in enumerate(self.cont_page[0]):
             if len(contour) == 2:
                 points_page_print += str(int((contour[0]) / self.scale_x))
                 points_page_print += ','
@@ -1068,28 +1070,6 @@ class eynollah:
                 points_page_print += str(int((contour[0][1] ) / self.scale_y))
             points_page_print = points_page_print + ' '
         return points_page_print[:-1]
-
-    def xml_reading_order(self, page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals):
-        """
-        XXX side-effect: extends id_of_marginalia
-        """
-        region_order = ET.SubElement(page, 'ReadingOrder')
-        region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
-        region_order_sub.set('id', "ro357564684568544579089")
-        indexer_region = 0
-        for vj in order_of_texts:
-            name = "coord_text_%s" % vj
-            name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
-            name.set('index', str(indexer_region))
-            name.set('regionRef', id_of_texts[vj])
-            indexer_region += 1
-        for vm in range(len(found_polygons_marginals)):
-            id_of_marginalia.append('r%s' % indexer_region)
-            name = "coord_text_%s" % indexer_region
-            name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
-            name.set('index', str(indexer_region))
-            name.set('regionRef', 'r%s' % indexer_region)
-            indexer_region += 1
 
     def serialize_lines_in_marginal(self, marginal, all_found_texline_polygons_marginals, marginal_idx, page_coord, all_box_coord_marginals, id_indexer_l):
         for j in range(len(all_found_texline_polygons_marginals[marginal_idx])):
@@ -1187,7 +1167,7 @@ class eynollah:
         id_indexer = 0
         id_indexer_l = 0
         if len(found_polygons_text_region) > 0:
-            self.xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
+            xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
             for mm in range(len(found_polygons_text_region)):
                 textregion = ET.SubElement(page, 'TextRegion')
                 textregion.set('id', 'r%s' % id_indexer)
@@ -1237,7 +1217,7 @@ class eynollah:
         id_of_marginalia = []
 
         if len(found_polygons_text_region) > 0:
-            self.xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
+            xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
             for mm in range(len(found_polygons_text_region)):
                 textregion=ET.SubElement(page, 'TextRegion')
                 textregion.set('id', 'r%s' % id_indexer)
@@ -1561,7 +1541,7 @@ class eynollah:
                 indexes_sorted_main = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 1]
                 indexes_by_type_main = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 1]
 
-                for zahler, mtv in enumerate(args_contours_box):
+                for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
                     tartib = np.where(indexes_sorted == arg_order_v)[0][0]
                     order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
@@ -1666,7 +1646,6 @@ class eynollah:
         except Exception as why:
             self.logger.error(why)
             num_col = None
-            peaks_neg_fin = []
         return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1
 
     def run_enhancement(self):
@@ -1720,11 +1699,8 @@ class eynollah:
         image_page_rotated, textline_mask_tot = image_page[:, :], textline_mask_tot_ea[:, :]
         textline_mask_tot[mask_images[:, :] == 1] = 0
 
-        pixel_img = 1
-        min_area = 0.00001
-        max_area = 0.0006
         text_regions_p_1[mask_lines[:, :] == 1] = 3
-        text_regions_p = text_regions_p_1[:, :]  # long_short_region[:,:]#self.get_regions_from_2_models(image_page)
+        text_regions_p = text_regions_p_1[:, :]
         text_regions_p = np.array(text_regions_p)
 
         if num_col_classifier in (1, 2):
@@ -2025,7 +2001,7 @@ class eynollah:
             scale_param = 1
             all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_curved(txt_con_org, contours_only_text_parent, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_text, text_only, num_col_classifier, scale_param, slope_deskew)
             all_found_texline_polygons = small_textlines_to_parent_adherence2(all_found_texline_polygons, textline_mask_tot_ea, num_col_classifier)
-            all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
+            all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, _ = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
             all_found_texline_polygons_marginals = small_textlines_to_parent_adherence2(all_found_texline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
 
         K.clear_session()
