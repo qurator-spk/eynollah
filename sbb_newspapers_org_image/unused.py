@@ -3166,3 +3166,22 @@ def return_hor_spliter_by_index_for_without_verticals(peaks_neg_fin_t, x_min_hor
         else:
             peaks_true.append(peaks_neg_fin_t[m])
     return indexer_lines, peaks_true, arg_min_hor_sort, indexer_lines_deletions_len, indexr_uniq_ind
+
+def otsu_copy(img):
+    img_r = np.zeros(img.shape)
+    img1 = img[:, :, 0]
+    img2 = img[:, :, 1]
+    img3 = img[:, :, 2]
+    # print(img.min())
+    # print(img[:,:,0].min())
+    # blur = cv2.GaussianBlur(img,(5,5))
+    # ret3,th3 = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    retval1, threshold1 = cv2.threshold(img1, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    retval2, threshold2 = cv2.threshold(img2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    retval3, threshold3 = cv2.threshold(img3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    img_r[:, :, 0] = threshold1
+    img_r[:, :, 1] = threshold1
+    img_r[:, :, 2] = threshold1
+    return img_r
+

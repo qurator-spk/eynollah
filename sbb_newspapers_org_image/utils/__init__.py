@@ -299,24 +299,6 @@ def crop_image_inside_box(box, img_org_copy):
     image_box = img_org_copy[box[1] : box[1] + box[3], box[0] : box[0] + box[2]]
     return image_box, [box[1], box[1] + box[3], box[0], box[0] + box[2]]
 
-def otsu_copy(img):
-    img_r = np.zeros(img.shape)
-    img1 = img[:, :, 0]
-    img2 = img[:, :, 1]
-    img3 = img[:, :, 2]
-    # print(img.min())
-    # print(img[:,:,0].min())
-    # blur = cv2.GaussianBlur(img,(5,5))
-    # ret3,th3 = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    retval1, threshold1 = cv2.threshold(img1, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    retval2, threshold2 = cv2.threshold(img2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    retval3, threshold3 = cv2.threshold(img3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    img_r[:, :, 0] = threshold1
-    img_r[:, :, 1] = threshold1
-    img_r[:, :, 2] = threshold1
-    return img_r
-
 def otsu_copy_binary(img):
     img_r = np.zeros((img.shape[0], img.shape[1], 3))
     img1 = img[:, :, 0]
