@@ -161,11 +161,10 @@ class eynollah:
 
     def predict_enhancement(self, img):
         self.logger.debug("enter predict_enhancement")
-        model_enhancement, session_enhancemnet = self.start_new_session_and_model(self.model_dir_of_enhancemnet)
+        model_enhancement, _ = self.start_new_session_and_model(self.model_dir_of_enhancemnet)
 
         img_height_model = model_enhancement.layers[len(model_enhancement.layers) - 1].output_shape[1]
         img_width_model = model_enhancement.layers[len(model_enhancement.layers) - 1].output_shape[2]
-        # n_classes = model_enhancement.layers[len(model_enhancement.layers) - 1].output_shape[3]
         if img.shape[0] < img_height_model:
             img = cv2.resize(img, (img.shape[1], img_width_model), interpolation=cv2.INTER_NEAREST)
 
@@ -180,7 +179,6 @@ class eynollah:
         img_w = img.shape[1]
 
         prediction_true = np.zeros((img_h, img_w, 3))
-        mask_true = np.zeros((img_h, img_w))
         nxf = img_w / float(width_mid)
         nyf = img_h / float(height_mid)
 
@@ -344,7 +342,7 @@ class eynollah:
         K.clear_session()
         gc.collect()
 
-        img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
+        img_new, _ = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
 
         if img_new.shape[1] > img.shape[1]:
             img_new = self.predict_enhancement(img_new)
@@ -355,7 +353,7 @@ class eynollah:
     def resize_and_enhance_image_with_column_classifier(self):
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
         dpi = check_dpi(self.image_filename)
-        self.logger.info("Detected %s DPI" % dpi)
+        self.logger.info("Detected %s DPI", dpi)
         img = self.imread()
 
         _, page_coord = self.early_page_for_num_of_column_classification()
@@ -459,8 +457,6 @@ class eynollah:
 
         img_height_model = model.layers[len(model.layers) - 1].output_shape[1]
         img_width_model = model.layers[len(model.layers) - 1].output_shape[2]
-        n_classes = model.layers[len(model.layers) - 1].output_shape[3]
-
 
         if not patches:
             img_h_page = img.shape[0]
@@ -1891,7 +1887,7 @@ class eynollah:
     def run_textline(self, image_page):
         scaler_h_textline = 1  # 1.2#1.2
         scaler_w_textline = 1  # 0.9#1
-        textline_mask_tot_ea, textline_mask_tot_long_shot = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline)
+        textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline)
 
         K.clear_session()
         gc.collect()
@@ -1900,7 +1896,7 @@ class eynollah:
         # plt.show()
         if self.plotter:
             self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page)
-        return textline_mask_tot_ea, textline_mask_tot_long_shot
+        return textline_mask_tot_ea
 
     def run_deskew(self, textline_mask_tot_ea):
         sigma = 2
@@ -2105,7 +2101,7 @@ class eynollah:
             return
 
         t1 = time.time()
-        textline_mask_tot_ea, textline_mask_tot_long_shot = self.run_textline(image_page)
+        textline_mask_tot_ea = self.run_textline(image_page)
         self.logger.info("textline detection took %ss", str(time.time() - t1))
 
         t1 = time.time()
@@ -2246,7 +2242,7 @@ class eynollah:
 
         if not self.curved_line:
             slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
-            slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, index_by_text_par_con_marginal = self.get_slopes_and_deskew_new(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
+            slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
 
         else:
             scale_param = 1
@@ -2255,7 +2251,6 @@ class eynollah:
             all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, index_by_text_par_con_marginal, slopes_marginals = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=self.kernel, iterations=1), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
             all_found_texline_polygons_marginals = small_textlines_to_parent_adherence2(all_found_texline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
         index_of_vertical_text_contours = np.array(range(len(slopes)))[(abs(np.array(slopes)) > 60)]
-        contours_text_vertical = [contours_only_text_parent[i] for i in index_of_vertical_text_contours]
 
         K.clear_session()
         gc.collect()
@@ -2264,7 +2259,7 @@ class eynollah:
         if self.full_layout:
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered)[index_by_text_par_con])
-                text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
+                text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, _, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
             else:
                 contours_only_text_parent_d_ordered = None
                 text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
@@ -2286,9 +2281,9 @@ class eynollah:
 
             if not self.headers_off:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    num_col, peaks_neg_fin, matrix_of_lines_ch, spliter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h)
+                    num_col, _, matrix_of_lines_ch, spliter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h)
                 else:
-                    num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, spliter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h_d_ordered)
+                    _, _, matrix_of_lines_ch_d, spliter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h_d_ordered)
             elif self.headers_off:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     num_col, peaks_neg_fin, matrix_of_lines_ch, spliter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
