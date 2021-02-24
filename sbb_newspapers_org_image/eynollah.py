@@ -3,7 +3,6 @@
 tool to extract table form data from alto xml data
 """
 
-import gc
 import math
 import os
 import sys
@@ -91,6 +90,7 @@ from .plot import EynollahPlotter
 SLOPE_THRESHOLD = 0.13
 RATIO_OF_TWO_MODEL_THRESHOLD = 95.50 #98.45:
 DPI_THRESHOLD = 298
+MAX_SLOPE = 999
 
 class eynollah:
     def __init__(
@@ -357,19 +357,13 @@ class eynollah:
 
         _, page_coord = self.early_page_for_num_of_column_classification()
         model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
-
         img_1ch = self.imread(grayscale=True)
-
         width_early = img_1ch.shape[1]
-
         img_1ch = img_1ch[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
-
         # plt.imshow(img_1ch)
         # plt.show()
         img_1ch = img_1ch / 255.0
-
         img_1ch = cv2.resize(img_1ch, (448, 448), interpolation=cv2.INTER_NEAREST)
-
         img_in = np.zeros((1, img_1ch.shape[0], img_1ch.shape[1], 3))
         img_in[0, :, :, 0] = img_1ch[:, :]
         img_in[0, :, :, 1] = img_1ch[:, :]
@@ -380,9 +374,7 @@ class eynollah:
 
         label_p_pred = model_num_classifier.predict(img_in)
         num_col = np.argmax(label_p_pred[0]) + 1
-
         self.logger.info("Found %s columns (%s)", num_col, label_p_pred)
-
         session_col_classifier.close()
         K.clear_session()
 
@@ -430,8 +422,6 @@ class eynollah:
 
         self.scale_y = img_res.shape[0] / float(self.image_org.shape[0])
         self.scale_x = img_res.shape[1] / float(self.image_org.shape[1])
-        
-
 
     def start_new_session_and_model(self, model_dir):
         self.logger.debug("enter start_new_session_and_model (model_dir=%s)", model_dir)
@@ -864,9 +854,9 @@ class eynollah:
                     # text_patch_processed=textline_contours_postprocessing(gada)
                 except Exception as why:
                     self.logger.error(why)
-                    slope_for_all = 999
+                    slope_for_all = MAX_SLOPE
 
-                if slope_for_all == 999:
+                if slope_for_all == MAX_SLOPE:
                     slope_for_all = [slope_deskew][0]
                 slopes_per_each_subprocess.append(slope_for_all)
 
@@ -975,9 +965,9 @@ class eynollah:
                         slope_for_all = [slope_deskew][0]
                 except Exception as why:
                     self.logger.error(why)
-                    slope_for_all = 999
+                    slope_for_all = MAX_SLOPE
 
-                if slope_for_all == 999:
+                if slope_for_all == MAX_SLOPE:
                     slope_for_all = [slope_deskew][0]
                 slopes_per_each_subprocess.append(slope_for_all)
                 mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
@@ -1049,9 +1039,9 @@ class eynollah:
                 slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des, plotter=self.plotter)
             except Exception as why:
                 self.logger.error(why)
-                slope_corresponding_textregion = 999
+                slope_corresponding_textregion = MAX_SLOPE
 
-            if slope_corresponding_textregion == 999:
+            if slope_corresponding_textregion == MAX_SLOPE:
                 slope_corresponding_textregion = slope_biggest
             slopes_sub.append(slope_corresponding_textregion)
 
@@ -1851,28 +1841,21 @@ class eynollah:
         K.clear_session()
         image_page = image_page.astype(np.uint8)
 
-        # print(type(image_page))
         regions_fully, regions_fully_only_drop = self.extract_text_regions(image_page, True, cols=num_col_classifier)
         text_regions_p[:,:][regions_fully[:,:,0]==6]=6
-
         regions_fully_only_drop = put_drop_out_from_only_drop_model(regions_fully_only_drop, text_regions_p)
         regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 4] = 4
         K.clear_session()
 
         # plt.imshow(regions_fully[:,:,0])
         # plt.show()
-
         regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully)
-
         # plt.imshow(regions_fully[:,:,0])
         # plt.show()
-
         K.clear_session()
         regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
-
         # plt.imshow(regions_fully_np[:,:,0])
         # plt.show()
-
         if num_col_classifier > 2:
             regions_fully_np[:, :, 0][regions_fully_np[:, :, 0] == 4] = 0
         else:
@@ -1880,20 +1863,14 @@ class eynollah:
 
         # plt.imshow(regions_fully_np[:,:,0])
         # plt.show()
-
         K.clear_session()
-
         # plt.imshow(regions_fully[:,:,0])
         # plt.show()
-
         regions_fully = boosting_headers_by_longshot_region_segmentation(regions_fully, regions_fully_np, img_only_regions)
-
         # plt.imshow(regions_fully[:,:,0])
         # plt.show()
-
         text_regions_p[:, :][regions_fully[:, :, 0] == 4] = 4
         text_regions_p[:, :][regions_fully_np[:, :, 0] == 4] = 4
-
         #plt.imshow(text_regions_p)
         #plt.show()
 
