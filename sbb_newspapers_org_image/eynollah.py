@@ -1462,20 +1462,15 @@ class eynollah:
                 indexes_sorted_head = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 2]
                 indexes_by_type_head = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 2]
 
-                zahler = 0
-                for mtv in args_contours_box:
+                for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
                     tartib = np.where(indexes_sorted == arg_order_v)[0][0]
                     order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
-                    zahler = zahler + 1
 
-                zahler = 0
-                for mtv in args_contours_box_h:
+                for zahler, _ in enumerate(args_contours_box_h):
                     arg_order_v = indexes_sorted_head[zahler]
                     tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    # print(indexes_sorted,np.where(indexes_sorted==arg_order_v ),arg_order_v,tartib,'inshgalla')
                     order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = tartib + ref_point
-                    zahler = zahler + 1
 
                 for jji in range(len(id_of_texts)):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
@@ -1527,12 +1522,11 @@ class eynollah:
                 con_inter_box = []
                 con_inter_box_h = []
 
-                for i in range(len(args_contours_box)):
+                for box in args_contours_box:
+                    con_inter_box.append(contours_only_text_parent[box])
 
-                    con_inter_box.append(contours_only_text_parent[args_contours_box[i]])
-                for i in range(len(args_contours_box_h)):
-
-                    con_inter_box_h.append(contours_only_text_parent_h[args_contours_box_h[i]])
+                for box in args_contours_box_h:
+                    con_inter_box_h.append(contours_only_text_parent_h[box])
 
                 indexes_sorted, matrix_of_orders, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(textline_mask_tot[int(boxes[iij][2]) : int(boxes[iij][3]), int(boxes[iij][0]) : int(boxes[iij][1])], con_inter_box, con_inter_box_h, boxes[iij][2])
 
@@ -1543,20 +1537,15 @@ class eynollah:
                 indexes_sorted_head = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 2]
                 indexes_by_type_head = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 2]
 
-                zahler = 0
-                for mtv in args_contours_box:
+                for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
                     tartib = np.where(indexes_sorted == arg_order_v)[0][0]
                     order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
-                    zahler = zahler + 1
 
-                zahler = 0
-                for mtv in args_contours_box_h:
+                for zahler, _ in enumerate(args_contours_box_h):
                     arg_order_v = indexes_sorted_head[zahler]
                     tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    # print(indexes_sorted,np.where(indexes_sorted==arg_order_v ),arg_order_v,tartib,'inshgalla')
                     order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = tartib + ref_point
-                    zahler = zahler + 1
 
                 for jji in range(len(id_of_texts)):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
@@ -1588,19 +1577,15 @@ class eynollah:
                         arg_text_con.append(jj)
                         break
             args_contours = np.array(range(len(arg_text_con)))
-
             order_by_con_main = np.zeros(len(arg_text_con))
 
             ref_point = 0
             order_of_texts_tot = []
             id_of_texts_tot = []
             for iij in range(len(boxes)):
-
                 args_contours_box = args_contours[np.array(arg_text_con) == iij]
-
                 con_inter_box = []
                 con_inter_box_h = []
-
                 for i in range(len(args_contours_box)):
                     con_inter_box.append(contours_only_text_parent[args_contours_box[i]])
 
@@ -1611,12 +1596,10 @@ class eynollah:
                 indexes_sorted_main = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 1]
                 indexes_by_type_main = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 1]
 
-                zahler = 0
-                for mtv in args_contours_box:
+                for zahler, mtv in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
                     tartib = np.where(indexes_sorted == arg_order_v)[0][0]
                     order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
-                    zahler = zahler + 1
 
                 for jji in range(len(id_of_texts)):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
@@ -1664,12 +1647,10 @@ class eynollah:
                 indexes_sorted_head = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 2]
                 indexes_by_type_head = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 2]
 
-                zahler = 0
-                for mtv in args_contours_box:
+                for zahler, mtv in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
                     tartib = np.where(indexes_sorted == arg_order_v)[0][0]
                     order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
-                    zahler = zahler + 1
 
                 for jji in range(len(id_of_texts)):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
