@@ -1,3 +1,4 @@
+#check first update from repaired pc
 # ocrd includes opencv, numpy, shapely, click
 ocrd >= 2.20.3
 keras >= 2.3.1, < 2.4
