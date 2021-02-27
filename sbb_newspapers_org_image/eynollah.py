@@ -709,7 +709,7 @@ class Eynollah:
 
     def get_slopes_and_deskew_new(self, contours, contours_par, textline_mask_tot, image_page_rotated, boxes, slope_deskew):
         self.logger.debug("enter get_slopes_and_deskew_new")
-        num_cores = 1#cpu_count()
+        num_cores = cpu_count()
         queue_of_all_params = Queue()
 
         processes = []
