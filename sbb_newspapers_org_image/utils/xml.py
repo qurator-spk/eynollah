@@ -58,4 +58,5 @@ def xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found
         name.set('index', str(indexer_region))
         name.set('regionRef', 'r%s' % indexer_region)
         indexer_region += 1
+    return id_of_marginalia
 

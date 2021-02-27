@@ -43,7 +43,6 @@ def get_text_region_boxes_by_given_contours(contours):
 
 def filter_contours_area_of_image(image, contours, hirarchy, max_area, min_area):
     found_polygons_early = list()
-
     jv = 0
     for c in contours:
         if len(c) < 3:  # A polygon cannot have less than 3 points

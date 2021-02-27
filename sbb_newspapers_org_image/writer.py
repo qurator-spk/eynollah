@@ -36,7 +36,7 @@ class EynollahXmlWriter():
             points_page_print = points_page_print + ' '
         return points_page_print[:-1]
 
-    def serialize_lines_in_marginal(self, marginal, all_found_texline_polygons_marginals, marginal_idx, page_coord, all_box_coord_marginals, id_indexer_l):
+    def serialize_lines_in_marginal(self, marginal, all_found_texline_polygons_marginals, marginal_idx, page_coord, all_box_coord_marginals, slopes_marginals, id_indexer_l):
         for j in range(len(all_found_texline_polygons_marginals[marginal_idx])):
             textline = ET.SubElement(marginal, 'TextLine')
             textline.set('id', 'l%s' % id_indexer_l)
@@ -54,7 +54,7 @@ class EynollahXmlWriter():
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][0] + all_box_coord_marginals[marginal_idx][2] + page_coord[2]) / self.scale_x))
                         points_co += ','
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][1] + all_box_coord_marginals[marginal_idx][0] + page_coord[0])/self.scale_y))
-                else:
+                if self.curved_line and np.abs(slopes_marginals[marginal_idx]) <= 45:
                     if len(all_found_texline_polygons_marginals[marginal_idx][j][l]) == 2:
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0] + page_coord[2]) / self.scale_x))
                         points_co += ','
@@ -63,6 +63,17 @@ class EynollahXmlWriter():
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][0] + page_coord[2]) / self.scale_x))
                         points_co += ','
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][1] + page_coord[0]) / self.scale_y))
+                        
+                elif self.curved_line and np.abs(slopes_marginals[marginal_idx]) > 45:
+                    if len(all_found_texline_polygons_marginals[marginal_idx][j][l]) == 2:
+                        points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0] + all_box_coord_marginals[marginal_idx][2] + page_coord[2]) / self.scale_x))
+                        points_co += ','
+                        points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][1] + all_box_coord_marginals[marginal_idx][0] + page_coord[0]) / self.scale_y))
+                    else:
+                        points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][0] + all_box_coord_marginals[marginal_idx][2] + page_coord[2]) / self.scale_x))
+                        points_co += ','
+                        points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][1] + all_box_coord_marginals[marginal_idx][0] + page_coord[0]) / self.scale_y))
+
                 if l < len(all_found_texline_polygons_marginals[marginal_idx][j]) - 1:
                     points_co += ' '
             coord.set('points',points_co)
@@ -119,7 +130,7 @@ class EynollahXmlWriter():
         tree = ET.ElementTree(pcgts)
         tree.write(os.path.join(self.dir_out, self.image_filename_stem) + ".xml")
 
-    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, cont_page):
+    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page):
         self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
@@ -132,7 +143,7 @@ class EynollahXmlWriter():
         id_indexer = 0
         id_indexer_l = 0
         if len(found_polygons_text_region) > 0:
-            xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
+            id_of_marginalia = xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
             for mm in range(len(found_polygons_text_region)):
                 textregion = ET.SubElement(page, 'TextRegion')
                 textregion.set('id', 'r%s' % id_indexer)
@@ -143,13 +154,13 @@ class EynollahXmlWriter():
                 id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
                 add_textequiv(textregion)
 
-        for marginal_idx in range(len(found_polygons_marginals)):
+        for mm in range(len(found_polygons_marginals)):
             marginal = ET.SubElement(page, 'TextRegion')
             marginal.set('id', id_of_marginalia[mm])
             marginal.set('type', 'marginalia')
             coord_text = ET.SubElement(marginal, 'Coords')
             coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, page_coord))
-            self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, marginal_idx, page_coord, all_box_coord_marginals, id_indexer_l)
+            id_indexer_l = self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, id_indexer_l)
 
         id_indexer = len(found_polygons_text_region) + len(found_polygons_marginals)
         for mm in range(len(found_polygons_text_region_img)):
@@ -168,7 +179,7 @@ class EynollahXmlWriter():
 
         return pcgts
 
-    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, cont_page):
+    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page):
         self.logger.debug('enter build_pagexml_full_layout')
 
         # create the file structure
@@ -182,7 +193,7 @@ class EynollahXmlWriter():
         id_of_marginalia = []
 
         if len(found_polygons_text_region) > 0:
-            xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
+            id_of_marginalia = xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
             for mm in range(len(found_polygons_text_region)):
                 textregion=ET.SubElement(page, 'TextRegion')
                 textregion.set('id', 'r%s' % id_indexer)
@@ -216,14 +227,14 @@ class EynollahXmlWriter():
                 coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, page_coord))
                 add_textequiv(textregion)
 
-        for marginal_idx in range(len(found_polygons_marginals)):
+        for mm in range(len(found_polygons_marginals)):
             marginal = ET.SubElement(page, 'TextRegion')
             add_textequiv(textregion)
             marginal.set('id', id_of_marginalia[mm])
             marginal.set('type', 'marginalia')
             coord_text = ET.SubElement(marginal, 'Coords')
             coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, page_coord))
-            self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, marginal_idx, page_coord, all_box_coord_marginals, id_indexer_l)
+            id_indexer_l = self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, id_indexer_l)
 
         id_indexer = len(found_polygons_text_region) + len(found_polygons_text_region_h) + len(found_polygons_marginals) + len(found_polygons_drop_capitals)
         for mm in range(len(found_polygons_text_region_img)):
