@@ -50,7 +50,7 @@ from .utils.separate_lines import (
     separate_lines_new2,
     return_deskew_slop)
 from .utils.drop_capitals import (
-    adhere_drop_capital_region_into_cprresponding_textline,
+    adhere_drop_capital_region_into_corresponding_textline,
     filter_small_drop_capitals_from_no_patch_layout)
 from .utils.marginals import get_marginals
 from .utils.resize import resize_image
@@ -1753,7 +1753,7 @@ class Eynollah:
             polygons_of_tabels = []
             pixel_img = 4
             polygons_of_drop_capitals = return_contours_of_interested_region_by_min_size(text_regions_p, pixel_img)
-            all_found_texline_polygons = adhere_drop_capital_region_into_cprresponding_textline(text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, kernel=KERNEL, curved_line=self.curved_line)
+            all_found_texline_polygons = adhere_drop_capital_region_into_corresponding_textline(text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, kernel=KERNEL, curved_line=self.curved_line)
 
             # print(len(contours_only_text_parent_h),len(contours_only_text_parent_h_d_ordered),'contours_only_text_parent_h')
             pixel_lines = 6

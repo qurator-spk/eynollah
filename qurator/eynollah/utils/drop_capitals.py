@@ -6,7 +6,7 @@ from .contour import (
     return_parent_contours,
 )
 
-def adhere_drop_capital_region_into_cprresponding_textline(
+def adhere_drop_capital_region_into_corresponding_textline(
     text_regions_p,
     polygons_of_drop_capitals,
     contours_only_text_parent,
