@@ -1340,10 +1340,10 @@ def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
     cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
     imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    contours_imgs = return_parent_contours(contours_imgs, hiearchy)
-    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=max_area, min_area=min_area)
+    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
+    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy, max_area=max_area, min_area=min_area)
 
     cont_final = []
     ###print(add_boxes_coor_into_textlines,'ikki')
