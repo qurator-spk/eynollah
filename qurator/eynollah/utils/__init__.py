@@ -1588,8 +1588,8 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     for itiles in args_big_parts:
         
         
-        regions_without_separators_tile=regions_without_separators[int(splitter_y_new[iteils]):int(splitter_y_new[iteils+1]),:,0]
-        #image_page_background_zero_tile=image_page_background_zero[int(splitter_y_new[iteils]):int(splitter_y_new[iteils+1]),:]
+        regions_without_separators_tile=regions_without_separators[int(splitter_y_new[itiles]):int(splitter_y_new[itiles+1]),:,0]
+        #image_page_background_zero_tile=image_page_background_zero[int(splitter_y_new[itiles]):int(splitter_y_new[itiles+1]),:]
         
         #print(regions_without_separators_tile.shape)
         ##plt.imshow(regions_without_separators_tile)
@@ -1597,7 +1597,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
         
         #num_col, peaks_neg_fin=self.find_num_col(regions_without_separators_tile,multiplier=6.0)
         
-        #regions_without_separators_tile=cv2.erode(regions_without_separators_teil,kernel,iterations = 3)
+        #regions_without_separators_tile=cv2.erode(regions_without_separators_tile,kernel,iterations = 3)
         #
         num_col, peaks_neg_fin=find_num_col(regions_without_separators_tile,multiplier=7.0)
         
