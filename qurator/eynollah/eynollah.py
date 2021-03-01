@@ -1486,10 +1486,10 @@ class Eynollah:
             regions_without_seperators_d = None
         pixel_lines = 3
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-            _, _, matrix_of_lines_ch, spliter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+            _, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
 
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            _, _, matrix_of_lines_ch_d, spliter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+            _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
         K.clear_session()
 
         self.logger.info("num_col_classifier: %s", num_col_classifier)
@@ -1503,11 +1503,11 @@ class Eynollah:
                 regions_without_seperators_d = cv2.erode(regions_without_seperators_d[:, :], KERNEL, iterations=6)
         t1 = time.time()
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-            boxes = return_boxes_of_images_by_order_of_reading_new(spliter_y_new, regions_without_seperators, matrix_of_lines_ch, num_col_classifier)
+            boxes = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_seperators, matrix_of_lines_ch, num_col_classifier)
             boxes_d = None
             self.logger.debug("len(boxes): %s", len(boxes))
         else:
-            boxes_d = return_boxes_of_images_by_order_of_reading_new(spliter_y_new_d, regions_without_seperators_d, matrix_of_lines_ch_d, num_col_classifier)
+            boxes_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_seperators_d, matrix_of_lines_ch_d, num_col_classifier)
             boxes = None
             self.logger.debug("len(boxes): %s", len(boxes_d))
 
@@ -1760,17 +1760,17 @@ class Eynollah:
 
             if not self.headers_off:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    num_col, _, matrix_of_lines_ch, spliter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h)
+                    num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h)
                 else:
-                    _, _, matrix_of_lines_ch_d, spliter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h_d_ordered)
+                    _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h_d_ordered)
             elif self.headers_off:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    num_col, _, matrix_of_lines_ch, spliter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+                    num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
                 else:
-                    _, _, matrix_of_lines_ch_d, spliter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+                    _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
 
             # print(peaks_neg_fin,peaks_neg_fin_d,'num_col2')
-            # print(spliter_y_new,spliter_y_new_d,'num_col_classifier')
+            # print(splitter_y_new,splitter_y_new_d,'num_col_classifier')
             # print(matrix_of_lines_ch.shape,matrix_of_lines_ch_d.shape,'matrix_of_lines_ch')
 
             if num_col_classifier >= 3:
@@ -1790,9 +1790,9 @@ class Eynollah:
                     regions_without_seperators_d[(random_pixels_for_image[:, :] == 1) & (text_regions_p_1_n[:, :] == 5)] = 1
 
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                boxes = return_boxes_of_images_by_order_of_reading_new(spliter_y_new, regions_without_seperators, matrix_of_lines_ch, num_col_classifier)
+                boxes = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_seperators, matrix_of_lines_ch, num_col_classifier)
             else:
-                boxes_d = return_boxes_of_images_by_order_of_reading_new(spliter_y_new_d, regions_without_seperators_d, matrix_of_lines_ch_d, num_col_classifier)
+                boxes_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_seperators_d, matrix_of_lines_ch_d, num_col_classifier)
 
         if self.plotter:
             self.plotter.write_images_into_directory(polygons_of_images, image_page)
