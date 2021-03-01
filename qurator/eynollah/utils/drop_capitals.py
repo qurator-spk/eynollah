@@ -117,7 +117,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     imgray = cv2.cvtColor(img_textlines, cv2.COLOR_BGR2GRAY)
                     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-                    contours_combined, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    contours_combined, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
                     # print(len(contours_combined),'len textlines mixed')
                     areas_cnt_text = np.array([cv2.contourArea(contours_combined[j]) for j in range(len(contours_combined))])
@@ -172,7 +172,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
                 imgray = cv2.cvtColor(img_textlines, cv2.COLOR_BGR2GRAY)
                 ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-                contours_combined, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                contours_combined, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
                 # print(len(contours_combined),'len textlines mixed')
                 areas_cnt_text = np.array([cv2.contourArea(contours_combined[j]) for j in range(len(contours_combined))])
@@ -217,7 +217,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     imgray = cv2.cvtColor(img_textlines, cv2.COLOR_BGR2GRAY)
                     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-                    contours_combined, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    contours_combined, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
                     # print(len(contours_combined),'len textlines mixed')
                     areas_cnt_text = np.array([cv2.contourArea(contours_combined[j]) for j in range(len(contours_combined))])
@@ -267,7 +267,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
             ##imgray = cv2.cvtColor(img_textlines, cv2.COLOR_BGR2GRAY)
             ##ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-            ##contours_combined,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+            ##contours_combined,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
             ##print(len(contours_combined),'len textlines mixed')
             ##areas_cnt_text=np.array([cv2.contourArea(contours_combined[j]) for j in range(len(contours_combined))])
@@ -322,7 +322,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     imgray = cv2.cvtColor(img_textlines, cv2.COLOR_BGR2GRAY)
                     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-                    contours_combined, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    contours_combined, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
                     # print(len(contours_combined),'len textlines mixed')
                     areas_cnt_text = np.array([cv2.contourArea(contours_combined[j]) for j in range(len(contours_combined))])
@@ -377,7 +377,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     imgray = cv2.cvtColor(img_textlines, cv2.COLOR_BGR2GRAY)
                     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-                    contours_combined, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    contours_combined, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
                     # print(len(contours_combined),'len textlines mixed')
                     areas_cnt_text = np.array([cv2.contourArea(contours_combined[j]) for j in range(len(contours_combined))])
@@ -408,7 +408,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
     ######imgray = cv2.cvtColor(img_con, cv2.COLOR_BGR2GRAY)
     ######ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-    ######contours_new,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    ######contours_new,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
     #####contours_new,hir_new=return_contours_of_image(img_con)
     #####contours_new_parent=return_parent_contours( contours_new,hir_new)
@@ -442,7 +442,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
     #####imgray = cv2.cvtColor(img_textlines, cv2.COLOR_BGR2GRAY)
     #####ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-    #####contours_combined,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    #####contours_combined,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
     #####areas_cnt_text=np.array([cv2.contourArea(contours_combined[j]) for j in range(len(contours_combined))])
 

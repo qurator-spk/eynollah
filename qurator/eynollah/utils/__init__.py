@@ -957,7 +957,7 @@ def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col)
                 img_text2 = img_text2.astype(np.uint8)
                 imgray = cv2.cvtColor(img_text2, cv2.COLOR_BGR2GRAY)
                 ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-                cont, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                cont, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
                 # print(cont[0],type(cont))
 
@@ -1187,7 +1187,7 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(im
     imgray = cv2.cvtColor(img_p_in_ver, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-    contours_lines_ver,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    contours_lines_ver,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     
     slope_lines_ver,dist_x_ver, x_min_main_ver ,x_max_main_ver ,cy_main_ver,slope_lines_org_ver,y_min_main_ver, y_max_main_ver, cx_main_ver=find_features_of_lines(contours_lines_ver)
     
@@ -1201,7 +1201,7 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(im
     imgray = cv2.cvtColor(img_in_hor, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-    contours_lines_hor,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    contours_lines_hor,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     
     slope_lines_hor,dist_x_hor, x_min_main_hor ,x_max_main_hor ,cy_main_hor,slope_lines_org_hor,y_min_main_hor, y_max_main_hor, cx_main_hor=find_features_of_lines(contours_lines_hor)
     
@@ -1335,7 +1335,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     ret_e, thresh_e = cv2.threshold(imgray_e, 0, 255, 0)
     
     #print('burda3')
-    contours_line_e,hierachy_e=cv2.findContours(thresh_e,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    contours_line_e,hierarchy_e=cv2.findContours(thresh_e,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     
     #slope_lines_e,dist_x_e, x_min_main_e ,x_max_main_e ,cy_main_e,slope_lines_org_e,y_min_main_e, y_max_main_e, cx_main_e=self.find_features_of_lines(contours_line_e)
     
@@ -1442,7 +1442,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     imgray = cv2.cvtColor(vertical, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
     
-    contours_line_vers,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    contours_line_vers,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     slope_lines,dist_x, x_min_main ,x_max_main ,cy_main,slope_lines_org,y_min_main, y_max_main, cx_main=find_features_of_lines(contours_line_vers)
     #print(slope_lines,'vertical')
     args=np.array( range(len(slope_lines) ))
@@ -1465,7 +1465,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     imgray = cv2.cvtColor(horizontal, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
     
-    contours_line_hors,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    contours_line_hors,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     slope_lines,dist_x, x_min_main ,x_max_main ,cy_main,slope_lines_org,y_min_main, y_max_main, cx_main=find_features_of_lines(contours_line_hors)
     
     slope_lines_org_hor=slope_lines_org[slope_lines==0]

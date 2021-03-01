@@ -102,8 +102,8 @@ def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
             else:
                 peaks_new_tot = peaks_e[:]
 
-            textline_con, hierachy = return_contours_of_image(img_patch)
-            textline_con_fil = filter_contours_area_of_image(img_patch, textline_con, hierachy, max_area=1, min_area=0.0008)
+            textline_con, hierarchy = return_contours_of_image(img_patch)
+            textline_con_fil = filter_contours_area_of_image(img_patch, textline_con, hierarchy, max_area=1, min_area=0.0008)
             y_diff_mean = np.mean(np.diff(peaks_new_tot))  # self.find_contours_mean_y_diff(textline_con_fil)
 
             sigma_gaus = int(y_diff_mean * (7.0 / 40.0))
@@ -219,8 +219,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
                 peaks_new_tot=peaks_e[:]
 
 
-            textline_con,hierachy=return_contours_of_image(img_patch)
-            textline_con_fil=filter_contours_area_of_image(img_patch,textline_con,hierachy,max_area=1,min_area=0.0008)
+            textline_con,hierarchy=return_contours_of_image(img_patch)
+            textline_con_fil=filter_contours_area_of_image(img_patch,textline_con,hierarchy,max_area=1,min_area=0.0008)
             y_diff_mean=np.mean(np.diff(peaks_new_tot))#self.find_contours_mean_y_diff(textline_con_fil)
 
             sigma_gaus=int(  y_diff_mean * (7./40.0) )
@@ -1054,8 +1054,8 @@ def separate_lines_new_inside_tiles2(img_patch, thetha):
             else:
                 peaks_new_tot = peaks_e[:]
 
-            textline_con, hierachy = return_contours_of_image(img_patch)
-            textline_con_fil = filter_contours_area_of_image(img_patch, textline_con, hierachy, max_area=1, min_area=0.0008)
+            textline_con, hierarchy = return_contours_of_image(img_patch)
+            textline_con_fil = filter_contours_area_of_image(img_patch, textline_con, hierarchy, max_area=1, min_area=0.0008)
             y_diff_mean = np.mean(np.diff(peaks_new_tot))  # self.find_contours_mean_y_diff(textline_con_fil)
 
             sigma_gaus = int(y_diff_mean * (7.0 / 40.0))

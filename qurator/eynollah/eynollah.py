@@ -833,8 +833,8 @@ class Eynollah:
                 slope_for_all = [slope_deskew][0]
             else:
                 try:
-                    textline_con, hierachy = return_contours_of_image(img_int_p)
-                    textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.0008)
+                    textline_con, hierarchy = return_contours_of_image(img_int_p)
+                    textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierarchy, max_area=1, min_area=0.0008)
                     y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
                     sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
 
@@ -944,8 +944,8 @@ class Eynollah:
                 bounding_box_of_textregion_per_each_subprocess.append(boxes_text[mv])
             else:
                 try:
-                    textline_con, hierachy = return_contours_of_image(img_int_p)
-                    textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierachy, max_area=1, min_area=0.00008)
+                    textline_con, hierarchy = return_contours_of_image(img_int_p)
+                    textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierarchy, max_area=1, min_area=0.00008)
                     y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
                     sigma_des = int(y_diff_mean * (4.0 / 40.0))
                     if sigma_des < 1:
@@ -1018,8 +1018,8 @@ class Eynollah:
             crop_img = crop_img[:, :, 0]
             crop_img = cv2.erode(crop_img, KERNEL, iterations=2)
             try:
-                textline_con, hierachy = return_contours_of_image(crop_img)
-                textline_con_fil = filter_contours_area_of_image(crop_img, textline_con, hierachy, max_area=1, min_area=0.0008)
+                textline_con, hierarchy = return_contours_of_image(crop_img)
+                textline_con_fil = filter_contours_area_of_image(crop_img, textline_con, hierarchy, max_area=1, min_area=0.0008)
                 y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
                 sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
                 crop_img[crop_img > 0] = 1
