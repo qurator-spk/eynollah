@@ -119,7 +119,7 @@ class Eynollah:
         self.logger = getLogger('eynollah')
         self.dir_models = dir_models
 
-        self.model_dir_of_enhancemnet = dir_models + "/model_enhancement.h5"
+        self.model_dir_of_enhancement = dir_models + "/model_enhancement.h5"
         self.model_dir_of_col_classifier = dir_models + "/model_scale_classifier.h5"
         self.model_region_dir_p = dir_models + "/model_main_covid19_lr5-5_scale_1_1_great.h5"
         self.model_region_dir_p2 = dir_models + "/model_main_home_corona3_rot.h5"
@@ -149,7 +149,7 @@ class Eynollah:
 
     def predict_enhancement(self, img):
         self.logger.debug("enter predict_enhancement")
-        model_enhancement, _ = self.start_new_session_and_model(self.model_dir_of_enhancemnet)
+        model_enhancement, _ = self.start_new_session_and_model(self.model_dir_of_enhancement)
 
         img_height_model = model_enhancement.layers[len(model_enhancement.layers) - 1].output_shape[1]
         img_width_model = model_enhancement.layers[len(model_enhancement.layers) - 1].output_shape[2]
