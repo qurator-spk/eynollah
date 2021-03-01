@@ -353,22 +353,22 @@ def boosting_headers_by_longshot_region_segmentation(textregion_pre_p, textregio
     return textregion_pre_p
 
 
-def find_num_col_deskew(regions_without_seperators, sigma_, multiplier=3.8):
-    regions_without_seperators_0 = regions_without_seperators[:,:].sum(axis=1)
-    z = gaussian_filter1d(regions_without_seperators_0, sigma_)
+def find_num_col_deskew(regions_without_separators, sigma_, multiplier=3.8):
+    regions_without_separators_0 = regions_without_separators[:,:].sum(axis=1)
+    z = gaussian_filter1d(regions_without_separators_0, sigma_)
     return np.std(z)
 
 
-def find_num_col(regions_without_seperators, multiplier=3.8):
-    regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=0)
-    ##plt.plot(regions_without_seperators_0)
+def find_num_col(regions_without_separators, multiplier=3.8):
+    regions_without_separators_0 = regions_without_separators[:, :].sum(axis=0)
+    ##plt.plot(regions_without_separators_0)
     ##plt.show()
     sigma_ = 35  # 70#35
-    meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
-    first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
+    meda_n_updown = regions_without_separators_0[len(regions_without_separators_0) :: -1]
+    first_nonzero = next((i for i, x in enumerate(regions_without_separators_0) if x), 0)
     last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
-    last_nonzero = len(regions_without_seperators_0) - last_nonzero
-    y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
+    last_nonzero = len(regions_without_separators_0) - last_nonzero
+    y = regions_without_separators_0  # [first_nonzero:last_nonzero]
     y_help = np.zeros(len(y) + 20)
     y_help[10 : len(y) + 10] = y
     x = np.array(range(len(y)))
@@ -386,8 +386,8 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
     first_nonzero = first_nonzero + 200
 
     peaks_neg = peaks_neg[(peaks_neg > first_nonzero) & (peaks_neg < last_nonzero)]
-    peaks = peaks[(peaks > 0.06 * regions_without_seperators.shape[1]) & (peaks < 0.94 * regions_without_seperators.shape[1])]
-    peaks_neg = peaks_neg[(peaks_neg > 370) & (peaks_neg < (regions_without_seperators.shape[1] - 370))]
+    peaks = peaks[(peaks > 0.06 * regions_without_separators.shape[1]) & (peaks < 0.94 * regions_without_separators.shape[1])]
+    peaks_neg = peaks_neg[(peaks_neg > 370) & (peaks_neg < (regions_without_separators.shape[1] - 370))]
     interest_pos = z[peaks]
     interest_pos = interest_pos[interest_pos > 10]
     # plt.plot(z)
@@ -517,22 +517,22 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
     ##print(len(peaks_neg_true))
     return len(peaks_neg_true), peaks_neg_true
 
-def find_num_col_only_image(regions_without_seperators, multiplier=3.8):
-    regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=0)
+def find_num_col_only_image(regions_without_separators, multiplier=3.8):
+    regions_without_separators_0 = regions_without_separators[:, :].sum(axis=0)
 
-    ##plt.plot(regions_without_seperators_0)
+    ##plt.plot(regions_without_separators_0)
     ##plt.show()
 
     sigma_ = 15
 
-    meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
+    meda_n_updown = regions_without_separators_0[len(regions_without_separators_0) :: -1]
 
-    first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
+    first_nonzero = next((i for i, x in enumerate(regions_without_separators_0) if x), 0)
     last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
 
-    last_nonzero = len(regions_without_seperators_0) - last_nonzero
+    last_nonzero = len(regions_without_separators_0) - last_nonzero
 
-    y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
+    y = regions_without_separators_0  # [first_nonzero:last_nonzero]
 
     y_help = np.zeros(len(y) + 20)
 
@@ -558,9 +558,9 @@ def find_num_col_only_image(regions_without_seperators, multiplier=3.8):
 
     peaks_neg = peaks_neg[(peaks_neg > first_nonzero) & (peaks_neg < last_nonzero)]
 
-    peaks = peaks[(peaks > 0.09 * regions_without_seperators.shape[1]) & (peaks < 0.91 * regions_without_seperators.shape[1])]
+    peaks = peaks[(peaks > 0.09 * regions_without_separators.shape[1]) & (peaks < 0.91 * regions_without_separators.shape[1])]
 
-    peaks_neg = peaks_neg[(peaks_neg > 500) & (peaks_neg < (regions_without_seperators.shape[1] - 500))]
+    peaks_neg = peaks_neg[(peaks_neg > 500) & (peaks_neg < (regions_without_separators.shape[1] - 500))]
     # print(peaks)
     interest_pos = z[peaks]
 
@@ -703,31 +703,31 @@ def find_num_col_only_image(regions_without_seperators, multiplier=3.8):
 
     return len(peaks_fin_true), peaks_fin_true
 
-def find_num_col_by_vertical_lines(regions_without_seperators, multiplier=3.8):
-    regions_without_seperators_0 = regions_without_seperators[:, :, 0].sum(axis=0)
+def find_num_col_by_vertical_lines(regions_without_separators, multiplier=3.8):
+    regions_without_separators_0 = regions_without_separators[:, :, 0].sum(axis=0)
 
-    ##plt.plot(regions_without_seperators_0)
+    ##plt.plot(regions_without_separators_0)
     ##plt.show()
 
     sigma_ = 35  # 70#35
 
-    z = gaussian_filter1d(regions_without_seperators_0, sigma_)
+    z = gaussian_filter1d(regions_without_separators_0, sigma_)
 
     peaks, _ = find_peaks(z, height=0)
 
     # print(peaks,'peaksnew')
     return peaks
 
-def return_regions_without_seperators(regions_pre):
+def return_regions_without_separators(regions_pre):
     kernel = np.ones((5, 5), np.uint8)
-    regions_without_seperators = ((regions_pre[:, :] != 6) & (regions_pre[:, :] != 0)) * 1
-    # regions_without_seperators=( (image_regions_eraly_p[:,:,:]!=6) & (image_regions_eraly_p[:,:,:]!=0) & (image_regions_eraly_p[:,:,:]!=5) & (image_regions_eraly_p[:,:,:]!=8) & (image_regions_eraly_p[:,:,:]!=7))*1
+    regions_without_separators = ((regions_pre[:, :] != 6) & (regions_pre[:, :] != 0)) * 1
+    # regions_without_separators=( (image_regions_eraly_p[:,:,:]!=6) & (image_regions_eraly_p[:,:,:]!=0) & (image_regions_eraly_p[:,:,:]!=5) & (image_regions_eraly_p[:,:,:]!=8) & (image_regions_eraly_p[:,:,:]!=7))*1
 
-    regions_without_seperators = regions_without_seperators.astype(np.uint8)
+    regions_without_separators = regions_without_separators.astype(np.uint8)
 
-    regions_without_seperators = cv2.erode(regions_without_seperators, kernel, iterations=6)
+    regions_without_separators = cv2.erode(regions_without_separators, kernel, iterations=6)
 
-    return regions_without_seperators
+    return regions_without_separators
 
 
 def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
@@ -1219,7 +1219,7 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(im
         #print(all_args_uniq,'all_args_uniq')
         if len(all_args_uniq)>0:
             if type(all_args_uniq[0]) is list:
-                special_seperators=[]
+                special_separators=[]
                 contours_new=[]
                 for dd in range(len(all_args_uniq)):
                     merged_all=None
@@ -1228,7 +1228,7 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(im
                     some_x_min=x_min_main_hor[all_args_uniq[dd]]
                     some_x_max=x_max_main_hor[all_args_uniq[dd]]
                     
-                    #img_in=np.zeros(seperators_closeup_n[:,:,2].shape)
+                    #img_in=np.zeros(separators_closeup_n[:,:,2].shape)
                     #print(img_p_in_ver.shape[1],some_x_max-some_x_min,'xdiff')
                     diff_x_some=some_x_max-some_x_min
                     for jv in range(len(some_args)):
@@ -1245,14 +1245,14 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(im
                     if diff_max_min_uniques>sum_dis and ( (sum_dis/float(diff_max_min_uniques) ) >0.85 ) and ( (diff_max_min_uniques/float(img_p_in_ver.shape[1]))>0.85 ) and np.std( dist_x_hor[some_args] )<(0.55*np.mean( dist_x_hor[some_args] )):
                         #print(dist_x_hor[some_args],dist_x_hor[some_args].sum(),np.min(x_min_main_hor[some_args]) ,np.max(x_max_main_hor[some_args]),'jalibdi')
                         #print(np.mean( dist_x_hor[some_args] ),np.std( dist_x_hor[some_args] ),np.var( dist_x_hor[some_args] ),'jalibdiha')
-                        special_seperators.append(np.mean(cy_main_hor[some_args]))
+                        special_separators.append(np.mean(cy_main_hor[some_args]))
 
             else:
                 img_p_in=img_in_hor
-                special_seperators=[]
+                special_separators=[]
         else:
             img_p_in=img_in_hor
-            special_seperators=[]
+            special_separators=[]
 
         
         img_p_in_ver[:,:,0][img_p_in_ver[:,:,0]==255]=1
@@ -1275,8 +1275,8 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(im
             
     else:
         img_p_in=np.copy(img_in_hor)
-        special_seperators=[]
-    return img_p_in[:,:,0],special_seperators
+        special_separators=[]
+    return img_p_in[:,:,0],special_separators
 
 def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     peaks_neg_tot = []
@@ -1288,45 +1288,45 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
 
 def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_lines, contours_h=None):
 
-    seperators_closeup=( (region_pre_p[:,:,:]==pixel_lines))*1
+    separators_closeup=( (region_pre_p[:,:,:]==pixel_lines))*1
     
-    seperators_closeup[0:110,:,:]=0
-    seperators_closeup[seperators_closeup.shape[0]-150:,:,:]=0
+    separators_closeup[0:110,:,:]=0
+    separators_closeup[separators_closeup.shape[0]-150:,:,:]=0
     
     kernel = np.ones((5,5),np.uint8)
 
-    seperators_closeup=seperators_closeup.astype(np.uint8)
-    seperators_closeup = cv2.dilate(seperators_closeup,kernel,iterations = 1)
-    seperators_closeup = cv2.erode(seperators_closeup,kernel,iterations = 1)
+    separators_closeup=separators_closeup.astype(np.uint8)
+    separators_closeup = cv2.dilate(separators_closeup,kernel,iterations = 1)
+    separators_closeup = cv2.erode(separators_closeup,kernel,iterations = 1)
     
 
-    seperators_closeup_new=np.zeros((seperators_closeup.shape[0] ,seperators_closeup.shape[1] ))
+    separators_closeup_new=np.zeros((separators_closeup.shape[0] ,separators_closeup.shape[1] ))
     
     
     
-    ##_,seperators_closeup_n=self.combine_hor_lines_and_delete_cross_points_and_get_lines_features_back(region_pre_p[:,:,0])
-    seperators_closeup_n=np.copy(seperators_closeup)
+    ##_,separators_closeup_n=self.combine_hor_lines_and_delete_cross_points_and_get_lines_features_back(region_pre_p[:,:,0])
+    separators_closeup_n=np.copy(separators_closeup)
     
-    seperators_closeup_n=seperators_closeup_n.astype(np.uint8)
-    ##plt.imshow(seperators_closeup_n[:,:,0])
+    separators_closeup_n=separators_closeup_n.astype(np.uint8)
+    ##plt.imshow(separators_closeup_n[:,:,0])
     ##plt.show()
     
-    seperators_closeup_n_binary=np.zeros(( seperators_closeup_n.shape[0],seperators_closeup_n.shape[1]) )
-    seperators_closeup_n_binary[:,:]=seperators_closeup_n[:,:,0]
+    separators_closeup_n_binary=np.zeros(( separators_closeup_n.shape[0],separators_closeup_n.shape[1]) )
+    separators_closeup_n_binary[:,:]=separators_closeup_n[:,:,0]
     
-    seperators_closeup_n_binary[:,:][seperators_closeup_n_binary[:,:]!=0]=1
-    #seperators_closeup_n_binary[:,:][seperators_closeup_n_binary[:,:]==0]=255
-    #seperators_closeup_n_binary[:,:][seperators_closeup_n_binary[:,:]==-255]=0
+    separators_closeup_n_binary[:,:][separators_closeup_n_binary[:,:]!=0]=1
+    #separators_closeup_n_binary[:,:][separators_closeup_n_binary[:,:]==0]=255
+    #separators_closeup_n_binary[:,:][separators_closeup_n_binary[:,:]==-255]=0
     
     
-    #seperators_closeup_n_binary=(seperators_closeup_n_binary[:,:]==2)*1
+    #separators_closeup_n_binary=(separators_closeup_n_binary[:,:]==2)*1
     
-    #gray = cv2.cvtColor(seperators_closeup_n, cv2.COLOR_BGR2GRAY)
+    #gray = cv2.cvtColor(separators_closeup_n, cv2.COLOR_BGR2GRAY)
     
     ###
     
-    #print(seperators_closeup_n_binary.shape)
-    gray_early=np.repeat(seperators_closeup_n_binary[:, :, np.newaxis], 3, axis=2)
+    #print(separators_closeup_n_binary.shape)
+    gray_early=np.repeat(separators_closeup_n_binary[:, :, np.newaxis], 3, axis=2)
     gray_early=gray_early.astype(np.uint8)
     
     #print(gray_early.shape,'burda')
@@ -1364,9 +1364,9 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     
     ###
     
-    seperators_closeup_n_binary=cv2.fillPoly(seperators_closeup_n_binary,pts=cnts_hor_e,color=(0,0,0))
+    separators_closeup_n_binary=cv2.fillPoly(separators_closeup_n_binary,pts=cnts_hor_e,color=(0,0,0))
     
-    gray = cv2.bitwise_not(seperators_closeup_n_binary)
+    gray = cv2.bitwise_not(separators_closeup_n_binary)
     gray=gray.astype(np.uint8)
     
 
@@ -1418,18 +1418,18 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     vertical = cv2.dilate(vertical,kernel,iterations = 1)
     # Show extracted vertical lines
 
-    horizontal,special_seperators=combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(vertical,horizontal,num_col_classifier)
+    horizontal,special_separators=combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(vertical,horizontal,num_col_classifier)
     
     
     #plt.imshow(horizontal)
     #plt.show()
     #print(vertical.shape,np.unique(vertical),'verticalvertical')
-    seperators_closeup_new[:,:][vertical[:,:]!=0]=1
-    seperators_closeup_new[:,:][horizontal[:,:]!=0]=1
+    separators_closeup_new[:,:][vertical[:,:]!=0]=1
+    separators_closeup_new[:,:][horizontal[:,:]!=0]=1
     
-    ##plt.imshow(seperators_closeup_new)
+    ##plt.imshow(separators_closeup_new)
     ##plt.show()
-    ##seperators_closeup_n
+    ##separators_closeup_n
     vertical=np.repeat(vertical[:, :, np.newaxis], 3, axis=2)
     vertical=vertical.astype(np.uint8)
     
@@ -1454,7 +1454,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     x_max_main_ver=x_max_main[slope_lines==1]
     cx_main_ver=cx_main[slope_lines==1]
     dist_y_ver=y_max_main_ver-y_min_main_ver
-    len_y=seperators_closeup.shape[0]/3.0
+    len_y=separators_closeup.shape[0]/3.0
     
     
     #plt.imshow(horizontal)
@@ -1470,7 +1470,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     
     slope_lines_org_hor=slope_lines_org[slope_lines==0]
     args=np.array( range(len(slope_lines) ))
-    len_x=seperators_closeup.shape[1]/5.0
+    len_x=separators_closeup.shape[1]/5.0
 
     dist_y=np.abs(y_max_main-y_min_main)
     
@@ -1551,7 +1551,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     
     cy_main_splitters=cy_main_hor[ (x_min_main_hor<=.16*region_pre_p.shape[1]) & (x_max_main_hor>=.84*region_pre_p.shape[1] )]
     
-    cy_main_splitters=np.array( list(cy_main_splitters)+list(special_seperators))
+    cy_main_splitters=np.array( list(cy_main_splitters)+list(special_separators))
     
     if contours_h is not None:
         try:
@@ -1576,10 +1576,10 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     
     
             
-    regions_without_seperators=return_regions_without_seperators(region_pre_p)
+    regions_without_separators=return_regions_without_separators(region_pre_p)
     
     
-    length_y_threshold=regions_without_seperators.shape[0]/4.0
+    length_y_threshold=regions_without_separators.shape[0]/4.0
     
     num_col_fin=0
     peaks_neg_fin_fin=[]
@@ -1587,18 +1587,18 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     for itiles in args_big_parts:
         
         
-        regions_without_seperators_tile=regions_without_seperators[int(splitter_y_new[iteils]):int(splitter_y_new[iteils+1]),:,0]
+        regions_without_separators_tile=regions_without_separators[int(splitter_y_new[iteils]):int(splitter_y_new[iteils+1]),:,0]
         #image_page_background_zero_tile=image_page_background_zero[int(splitter_y_new[iteils]):int(splitter_y_new[iteils+1]),:]
         
-        #print(regions_without_seperators_tile.shape)
-        ##plt.imshow(regions_without_seperators_tile)
+        #print(regions_without_separators_tile.shape)
+        ##plt.imshow(regions_without_separators_tile)
         ##plt.show()
         
-        #num_col, peaks_neg_fin=self.find_num_col(regions_without_seperators_tile,multiplier=6.0)
+        #num_col, peaks_neg_fin=self.find_num_col(regions_without_separators_tile,multiplier=6.0)
         
-        #regions_without_seperators_tile=cv2.erode(regions_without_seperators_teil,kernel,iterations = 3)
+        #regions_without_separators_tile=cv2.erode(regions_without_separators_teil,kernel,iterations = 3)
         #
-        num_col, peaks_neg_fin=find_num_col(regions_without_seperators_tile,multiplier=7.0)
+        num_col, peaks_neg_fin=find_num_col(regions_without_separators_tile,multiplier=7.0)
         
         if num_col>num_col_fin:
             num_col_fin=num_col
@@ -1614,10 +1614,10 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
         #print(peaks_neg_fin_fin,'peaks_neg_fin_fintaza')
         
     
-    return num_col_fin, peaks_neg_fin_fin,matrix_of_lines_ch,splitter_y_new,seperators_closeup_n
+    return num_col_fin, peaks_neg_fin_fin,matrix_of_lines_ch,splitter_y_new,separators_closeup_n
         
 
-def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_seperators, matrix_of_lines_ch, num_col_classifier):
+def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier):
     boxes=[]
 
 
@@ -1628,11 +1628,11 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
         
         #print(matrix_new[:,8][matrix_new[:,9]==1],'gaddaaa')
         
-        # check to see is there any vertical seperator to find holes.
+        # check to see is there any vertical separator to find holes.
         if 1>0:#len( matrix_new[:,9][matrix_new[:,9]==1] )>0 and np.max(matrix_new[:,8][matrix_new[:,9]==1])>=0.1*(np.abs(splitter_y_new[i+1]-splitter_y_new[i] )):
             
             try:
-                num_col, peaks_neg_fin=find_num_col(regions_without_seperators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=7.)
+                num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=7.)
             except:
                 peaks_neg_fin=[]
             
@@ -1644,28 +1644,28 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                     #print('burda')
                     
                     if len(peaks_neg_fin)==0:
-                        num_col, peaks_neg_fin=find_num_col(regions_without_seperators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=3.)
+                        num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=3.)
                     peaks_neg_fin_early=[]
                     peaks_neg_fin_early.append(0)
                     #print(peaks_neg_fin,'peaks_neg_fin')
                     for p_n in peaks_neg_fin:
                         peaks_neg_fin_early.append(p_n)
-                    peaks_neg_fin_early.append(regions_without_seperators.shape[1]-1)
+                    peaks_neg_fin_early.append(regions_without_separators.shape[1]-1)
                         
                     #print(peaks_neg_fin_early,'burda2')
                     peaks_neg_fin_rev=[]
                     for i_n in range(len(peaks_neg_fin_early)-1):
                         #print(i_n,'i_n')
                         
-                        #plt.plot(regions_without_seperators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]].sum(axis=0) )
+                        #plt.plot(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]].sum(axis=0) )
                         #plt.show()
                         try:
-                            num_col, peaks_neg_fin1=find_num_col(regions_without_seperators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]],multiplier=7.)
+                            num_col, peaks_neg_fin1=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]],multiplier=7.)
                         except:
                             peaks_neg_fin1=[]
                             
                         try:
-                            num_col, peaks_neg_fin2=find_num_col(regions_without_seperators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]],multiplier=5.)
+                            num_col, peaks_neg_fin2=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]],multiplier=5.)
                         except:
                             peaks_neg_fin2=[]
                             
@@ -1698,7 +1698,7 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                     #print(peaks_neg_fin,'peaks_neg_fin')
             except:
                 pass
-            #num_col, peaks_neg_fin=find_num_col(regions_without_seperators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=7.0)
+            #num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=7.0)
             x_min_hor_some=matrix_new[:,2][ (matrix_new[:,9]==0) ]
             x_max_hor_some=matrix_new[:,3][ (matrix_new[:,9]==0) ]
             cy_hor_some=matrix_new[:,5][ (matrix_new[:,9]==0) ]
@@ -1709,7 +1709,7 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
             
             
 
-            peaks_neg_tot=return_points_with_boundies(peaks_neg_fin,0, regions_without_seperators[:,:].shape[1])
+            peaks_neg_tot=return_points_with_boundies(peaks_neg_fin,0, regions_without_separators[:,:].shape[1])
             
             reading_order_type,x_starting,x_ending,y_type_2,y_diff_type_2,y_lines_without_mother,x_start_without_mother,x_end_without_mother,there_is_sep_with_child,y_lines_with_child_without_mother,x_start_with_child_without_mother,x_end_with_child_without_mother=return_x_start_end_mothers_childs_and_type_of_reading_order(x_min_hor_some,x_max_hor_some,cy_hor_some,peaks_neg_tot,cy_hor_diff)
             
@@ -2263,6 +2263,6 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
 
                     
         #else:
-            #boxes.append([ 0, regions_without_seperators[:,:].shape[1] ,splitter_y_new[i],splitter_y_new[i+1]])
+            #boxes.append([ 0, regions_without_separators[:,:].shape[1] ,splitter_y_new[i],splitter_y_new[i+1]])
 
     return boxes
