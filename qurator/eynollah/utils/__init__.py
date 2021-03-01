@@ -299,24 +299,6 @@ def crop_image_inside_box(box, img_org_copy):
     image_box = img_org_copy[box[1] : box[1] + box[3], box[0] : box[0] + box[2]]
     return image_box, [box[1], box[1] + box[3], box[0], box[0] + box[2]]
 
-def otsu_copy(img):
-    img_r = np.zeros(img.shape)
-    img1 = img[:, :, 0]
-    img2 = img[:, :, 1]
-    img3 = img[:, :, 2]
-    # print(img.min())
-    # print(img[:,:,0].min())
-    # blur = cv2.GaussianBlur(img,(5,5))
-    # ret3,th3 = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    retval1, threshold1 = cv2.threshold(img1, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    retval2, threshold2 = cv2.threshold(img2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    retval3, threshold3 = cv2.threshold(img3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    img_r[:, :, 0] = threshold1
-    img_r[:, :, 1] = threshold1
-    img_r[:, :, 2] = threshold1
-    return img_r
-
 def otsu_copy_binary(img):
     img_r = np.zeros((img.shape[0], img.shape[1], 3))
     img1 = img[:, :, 0]
@@ -372,242 +354,42 @@ def boosting_headers_by_longshot_region_segmentation(textregion_pre_p, textregio
 
 
 def find_num_col_deskew(regions_without_seperators, sigma_, multiplier=3.8):
-    regions_without_seperators_0=regions_without_seperators[:,:].sum(axis=1)
+    regions_without_seperators_0 = regions_without_seperators[:,:].sum(axis=1)
+    z = gaussian_filter1d(regions_without_seperators_0, sigma_)
+    return np.std(z)
 
-    ##meda_n_updown=regions_without_seperators_0[len(regions_without_seperators_0)::-1]
-
-    ##first_nonzero=(next((i for i, x in enumerate(regions_without_seperators_0) if x), 0))
-    ##last_nonzero=(next((i for i, x in enumerate(meda_n_updown) if x), 0))
-
-    ##last_nonzero=len(regions_without_seperators_0)-last_nonzero
-
-
-    y=regions_without_seperators_0#[first_nonzero:last_nonzero]
-
-    ##y_help=np.zeros(len(y)+20)
-
-    ##y_help[10:len(y)+10]=y
-
-    ##x=np.array( range(len(y)) )
-
-
-
-
-    ##zneg_rev=-y_help+np.max(y_help)
-
-    ##zneg=np.zeros(len(zneg_rev)+20)
-
-    ##zneg[10:len(zneg_rev)+10]=zneg_rev
-
-    z=gaussian_filter1d(y, sigma_)
-    ###zneg= gaussian_filter1d(zneg, sigma_)
-
-
-    ###peaks_neg, _ = find_peaks(zneg, height=0)
-    ###peaks, _ = find_peaks(z, height=0)
-
-    ###peaks_neg=peaks_neg-10-10
-
-    ####print(np.std(z),'np.std(z)np.std(z)np.std(z)')
-
-    #####plt.plot(z)
-    #####plt.show()
-
-    #####plt.imshow(regions_without_seperators)
-    #####plt.show()
-    ###"""
-    ###last_nonzero=last_nonzero-0#100
-    ###first_nonzero=first_nonzero+0#+100
-
-    ###peaks_neg=peaks_neg[(peaks_neg>first_nonzero) & (peaks_neg<last_nonzero)]
-
-    ###peaks=peaks[(peaks>.06*regions_without_seperators.shape[1]) & (peaks<0.94*regions_without_seperators.shape[1])]
-    ###"""
-    ###interest_pos=z[peaks]
-
-    ###interest_pos=interest_pos[interest_pos>10]
-
-    ###interest_neg=z[peaks_neg]
-
-    ###min_peaks_pos=np.mean(interest_pos)
-    ###min_peaks_neg=0#np.min(interest_neg)
-
-    ###dis_talaei=(min_peaks_pos-min_peaks_neg)/multiplier
-    ####print(interest_pos)
-    ###grenze=min_peaks_pos-dis_talaei#np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
-
-    ###interest_neg_fin=interest_neg[(interest_neg<grenze)]
-    ###peaks_neg_fin=peaks_neg[(interest_neg<grenze)]
-    ###interest_neg_fin=interest_neg[(interest_neg<grenze)]
-
-    ###"""
-    ###if interest_neg[0]<0.1:
-        ###interest_neg=interest_neg[1:]
-    ###if interest_neg[len(interest_neg)-1]<0.1:
-        ###interest_neg=interest_neg[:len(interest_neg)-1]
-
-
-
-    ###min_peaks_pos=np.min(interest_pos)
-    ###min_peaks_neg=0#np.min(interest_neg)
-
-
-    ###dis_talaei=(min_peaks_pos-min_peaks_neg)/multiplier
-    ###grenze=min_peaks_pos-dis_talaei#np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
-    ###"""
-    ####interest_neg_fin=interest_neg#[(interest_neg<grenze)]
-    ####peaks_neg_fin=peaks_neg#[(interest_neg<grenze)]
-    ####interest_neg_fin=interest_neg#[(interest_neg<grenze)]
-
-    ###num_col=(len(interest_neg_fin))+1
-
-
-    ###p_l=0
-    ###p_u=len(y)-1
-    ###p_m=int(len(y)/2.)
-    ###p_g_l=int(len(y)/3.)
-    ###p_g_u=len(y)-int(len(y)/3.)
-
-
-    ###diff_peaks=np.abs( np.diff(peaks_neg_fin) )
-    ###diff_peaks_annormal=diff_peaks[diff_peaks<30]
-
-    #print(len(interest_neg_fin),np.mean(interest_neg_fin))
-    return np.std(z)#interest_neg_fin,np.std(z)
-
-def return_hor_spliter_by_index_for_without_verticals(peaks_neg_fin_t, x_min_hor_some, x_max_hor_some):
-    # print(peaks_neg_fin_t,x_min_hor_some,x_max_hor_some)
-    arg_min_hor_sort = np.argsort(x_min_hor_some)
-    x_min_hor_some_sort = np.sort(x_min_hor_some)
-    x_max_hor_some_sort = x_max_hor_some[arg_min_hor_sort]
-
-    arg_minmax = np.array(range(len(peaks_neg_fin_t)))
-    indexer_lines = []
-    indexes_to_delete = []
-    indexer_lines_deletions_len = []
-    indexr_uniq_ind = []
-    for i in range(len(x_min_hor_some_sort)):
-        min_h = peaks_neg_fin_t - x_min_hor_some_sort[i]
-
-        max_h = peaks_neg_fin_t - x_max_hor_some_sort[i]
-
-        min_h[0] = min_h[0]  # +20
-        max_h[len(max_h) - 1] = max_h[len(max_h) - 1] - 20
-
-        min_h_neg = arg_minmax[(min_h < 0)]
-        min_h_neg_n = min_h[min_h < 0]
-
-        try:
-            min_h_neg = [min_h_neg[np.argmax(min_h_neg_n)]]
-        except:
-            min_h_neg = []
-
-        max_h_neg = arg_minmax[(max_h > 0)]
-        max_h_neg_n = max_h[max_h > 0]
-
-        if len(max_h_neg_n) > 0:
-            max_h_neg = [max_h_neg[np.argmin(max_h_neg_n)]]
-        else:
-            max_h_neg = []
-
-        if len(min_h_neg) > 0 and len(max_h_neg) > 0:
-            deletions = list(range(min_h_neg[0] + 1, max_h_neg[0]))
-            unique_delets_int = []
-            # print(deletions,len(deletions),'delii')
-            if len(deletions) > 0:
-
-                for j in range(len(deletions)):
-                    indexes_to_delete.append(deletions[j])
-                    # print(deletions,indexes_to_delete,'badiii')
-                    unique_delets = np.unique(indexes_to_delete)
-                    # print(min_h_neg[0],unique_delets)
-                    unique_delets_int = unique_delets[unique_delets < min_h_neg[0]]
-
-                indexer_lines_deletions_len.append(len(deletions))
-                indexr_uniq_ind.append([deletions])
-
-            else:
-                indexer_lines_deletions_len.append(0)
-                indexr_uniq_ind.append(-999)
-
-            index_line_true = min_h_neg[0] - len(unique_delets_int)
-            # print(index_line_true)
-            if index_line_true > 0 and min_h_neg[0] >= 2:
-                index_line_true = index_line_true
-            else:
-                index_line_true = min_h_neg[0]
-
-            indexer_lines.append(index_line_true)
-
-            if len(unique_delets_int) > 0:
-                for dd in range(len(unique_delets_int)):
-                    indexes_to_delete.append(unique_delets_int[dd])
-        else:
-            indexer_lines.append(-999)
-            indexer_lines_deletions_len.append(-999)
-            indexr_uniq_ind.append(-999)
-
-    peaks_true = []
-    for m in range(len(peaks_neg_fin_t)):
-        if m in indexes_to_delete:
-            pass
-        else:
-            peaks_true.append(peaks_neg_fin_t[m])
-    return indexer_lines, peaks_true, arg_min_hor_sort, indexer_lines_deletions_len, indexr_uniq_ind
 
 def find_num_col(regions_without_seperators, multiplier=3.8):
     regions_without_seperators_0 = regions_without_seperators[:, :].sum(axis=0)
-
     ##plt.plot(regions_without_seperators_0)
     ##plt.show()
-
     sigma_ = 35  # 70#35
-
     meda_n_updown = regions_without_seperators_0[len(regions_without_seperators_0) :: -1]
-
     first_nonzero = next((i for i, x in enumerate(regions_without_seperators_0) if x), 0)
     last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
-
-    # print(last_nonzero)
-    # print(isNaN(last_nonzero))
-    # last_nonzero=0#halalikh
     last_nonzero = len(regions_without_seperators_0) - last_nonzero
-
     y = regions_without_seperators_0  # [first_nonzero:last_nonzero]
-
     y_help = np.zeros(len(y) + 20)
-
     y_help[10 : len(y) + 10] = y
-
     x = np.array(range(len(y)))
-
     zneg_rev = -y_help + np.max(y_help)
-
     zneg = np.zeros(len(zneg_rev) + 20)
-
     zneg[10 : len(zneg_rev) + 10] = zneg_rev
-
     z = gaussian_filter1d(y, sigma_)
     zneg = gaussian_filter1d(zneg, sigma_)
 
     peaks_neg, _ = find_peaks(zneg, height=0)
     peaks, _ = find_peaks(z, height=0)
-
     peaks_neg = peaks_neg - 10 - 10
 
     last_nonzero = last_nonzero - 100
     first_nonzero = first_nonzero + 200
 
     peaks_neg = peaks_neg[(peaks_neg > first_nonzero) & (peaks_neg < last_nonzero)]
-
     peaks = peaks[(peaks > 0.06 * regions_without_seperators.shape[1]) & (peaks < 0.94 * regions_without_seperators.shape[1])]
     peaks_neg = peaks_neg[(peaks_neg > 370) & (peaks_neg < (regions_without_seperators.shape[1] - 370))]
-
-    # print(peaks)
     interest_pos = z[peaks]
-
     interest_pos = interest_pos[interest_pos > 10]
-
     # plt.plot(z)
     # plt.show()
     interest_neg = z[peaks_neg]
@@ -621,9 +403,7 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
     min_peaks_neg = 0  # np.min(interest_neg)
 
     # print(np.min(interest_pos),np.max(interest_pos),np.max(interest_pos)/np.min(interest_pos),'minmax')
-    # $print(min_peaks_pos)
     dis_talaei = (min_peaks_pos - min_peaks_neg) / multiplier
-    # print(interest_pos)
     grenze = min_peaks_pos - dis_talaei  # np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
 
     # print(interest_neg,'interest_neg')
@@ -650,15 +430,11 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
         if (peaks_neg_fin[0] > p_g_u and peaks_neg_fin[1] > p_g_u) or (peaks_neg_fin[0] < p_g_l and peaks_neg_fin[1] < p_g_l) or ((peaks_neg_fin[0] + 200) < p_m and peaks_neg_fin[1] < p_m) or ((peaks_neg_fin[0] - 200) > p_m and peaks_neg_fin[1] > p_m):
             num_col = 1
             peaks_neg_fin = []
-        else:
-            pass
 
     if num_col == 2:
         if (peaks_neg_fin[0] > p_g_u) or (peaks_neg_fin[0] < p_g_l):
             num_col = 1
             peaks_neg_fin = []
-        else:
-            pass
 
     ##print(len(peaks_neg_fin))
 
@@ -673,7 +449,7 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
     for i in range(len(peaks_neg_fin)):
         if i == 0:
             forest.append(peaks_neg_fin[i])
-        if i < (len(peaks_neg_fin) - 1):
+        if i < len(peaks_neg_fin) - 1:
             if diff_peaks[i] <= cut_off:
                 forest.append(peaks_neg_fin[i + 1])
             if diff_peaks[i] > cut_off:
@@ -687,7 +463,7 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
             if not isNaN(forest[np.argmin(z[forest])]):
                 peaks_neg_true.append(forest[np.argmin(z[forest])])
 
-    num_col = (len(peaks_neg_true)) + 1
+    num_col = len(peaks_neg_true) + 1
     p_l = 0
     p_u = len(y) - 1
     p_m = int(len(y) / 2.0)
@@ -706,15 +482,11 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
             peaks_neg_true = [peaks_neg_true[0]]
         elif (peaks_neg_true[1] < p_g_u and peaks_neg_true[1] > p_g_l) and (peaks_neg_true[0] < p_quarter):
             peaks_neg_true = [peaks_neg_true[1]]
-        else:
-            pass
 
     if num_col == 2:
         if (peaks_neg_true[0] > p_g_u) or (peaks_neg_true[0] < p_g_l):
             num_col = 1
             peaks_neg_true = []
-        else:
-            pass
 
     diff_peaks_annormal = diff_peaks[diff_peaks < 360]
 
@@ -732,9 +504,7 @@ def find_num_col(regions_without_seperators, multiplier=3.8):
                 else:
                     peaks_neg_fin_new.append(peaks_neg_fin[ii + 1])
 
-            elif (ii - 1) in arg_help_ann:
-                pass
-            else:
+            elif (ii - 1) not in arg_help_ann:
                 peaks_neg_fin_new.append(peaks_neg_fin[ii])
     else:
         peaks_neg_fin_new = peaks_neg_fin
@@ -947,28 +717,6 @@ def find_num_col_by_vertical_lines(regions_without_seperators, multiplier=3.8):
 
     # print(peaks,'peaksnew')
     return peaks
-
-
-def delete_seperator_around(spliter_y, peaks_neg, image_by_region):
-    # format of subboxes box=[x1, x2 , y1, y2]
-
-    if len(image_by_region.shape) == 3:
-        for i in range(len(spliter_y) - 1):
-            for j in range(1, len(peaks_neg[i]) - 1):
-                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0] == 6] = 0
-                image_by_region[spliter_y[i] : spliter_y[i + 1], peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 1] == 6] = 0
-                image_by_region[spliter_y[i] : spliter_y[i + 1], peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 2] == 6] = 0
-
-                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0] == 7] = 0
-                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 1] == 7] = 0
-                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 0][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j]), 2] == 7] = 0
-    else:
-        for i in range(len(spliter_y) - 1):
-            for j in range(1, len(peaks_neg[i]) - 1):
-                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])] == 6] = 0
-
-                image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])][image_by_region[int(spliter_y[i]) : int(spliter_y[i + 1]), peaks_neg[i][j] - int(1.0 / 20.0 * peaks_neg[i][j]) : peaks_neg[i][j] + int(1.0 / 20.0 * peaks_neg[i][j])] == 7] = 0
-    return image_by_region
 
 def return_regions_without_seperators(regions_pre):
     kernel = np.ones((5, 5), np.uint8)
@@ -1431,166 +1179,6 @@ def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
     # print(final_index_type,'final_index_type')
 
     return final_indexers_sorted, matrix_of_orders, final_types, final_index_type
-
-def implent_law_head_main_not_parallel(text_regions):
-    # print(text_regions.shape)
-    text_indexes = [1, 2]  # 1: main text , 2: header , 3: comments
-
-    for t_i in text_indexes:
-        textline_mask = text_regions[:, :] == t_i
-        textline_mask = textline_mask * 255.0
-
-        textline_mask = textline_mask.astype(np.uint8)
-        textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2)
-        kernel = np.ones((5, 5), np.uint8)
-
-        # print(type(textline_mask),np.unique(textline_mask),textline_mask.shape)
-        imgray = cv2.cvtColor(textline_mask, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-
-        if t_i == 1:
-            contours_main, hirarchy = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            # print(type(contours_main))
-            areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
-            M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-            cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-            cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-            x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-            x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-
-            y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-            y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-            # print(contours_main[0],np.shape(contours_main[0]),contours_main[0][:,0,0])
-        elif t_i == 2:
-            contours_header, hirarchy = cv2.findContours(thresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            # print(type(contours_header))
-            areas_header = np.array([cv2.contourArea(contours_header[j]) for j in range(len(contours_header))])
-            M_header = [cv2.moments(contours_header[j]) for j in range(len(contours_header))]
-            cx_header = [(M_header[j]["m10"] / (M_header[j]["m00"] + 1e-32)) for j in range(len(M_header))]
-            cy_header = [(M_header[j]["m01"] / (M_header[j]["m00"] + 1e-32)) for j in range(len(M_header))]
-
-            x_min_header = np.array([np.min(contours_header[j][:, 0, 0]) for j in range(len(contours_header))])
-            x_max_header = np.array([np.max(contours_header[j][:, 0, 0]) for j in range(len(contours_header))])
-
-            y_min_header = np.array([np.min(contours_header[j][:, 0, 1]) for j in range(len(contours_header))])
-            y_max_header = np.array([np.max(contours_header[j][:, 0, 1]) for j in range(len(contours_header))])
-
-    args = np.array(range(1, len(cy_header) + 1))
-    args_main = np.array(range(1, len(cy_main) + 1))
-    for jj in range(len(contours_main)):
-        headers_in_main = [(cy_header > y_min_main[jj]) & ((cy_header < y_max_main[jj]))]
-        mains_in_main = [(cy_main > y_min_main[jj]) & ((cy_main < y_max_main[jj]))]
-        args_log = args * headers_in_main
-        res = args_log[args_log > 0]
-        res_true = res - 1
-
-        args_log_main = args_main * mains_in_main
-        res_main = args_log_main[args_log_main > 0]
-        res_true_main = res_main - 1
-
-        if len(res_true) > 0:
-            sum_header = np.sum(areas_header[res_true])
-            sum_main = np.sum(areas_main[res_true_main])
-            if sum_main > sum_header:
-                cnt_int = [contours_header[j] for j in res_true]
-                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(1, 1, 1))
-            else:
-                cnt_int = [contours_main[j] for j in res_true_main]
-                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(2, 2, 2))
-
-    for jj in range(len(contours_header)):
-        main_in_header = [(cy_main > y_min_header[jj]) & ((cy_main < y_max_header[jj]))]
-        header_in_header = [(cy_header > y_min_header[jj]) & ((cy_header < y_max_header[jj]))]
-        args_log = args_main * main_in_header
-        res = args_log[args_log > 0]
-        res_true = res - 1
-
-        args_log_header = args * header_in_header
-        res_header = args_log_header[args_log_header > 0]
-        res_true_header = res_header - 1
-
-        if len(res_true) > 0:
-
-            sum_header = np.sum(areas_header[res_true_header])
-            sum_main = np.sum(areas_main[res_true])
-
-            if sum_main > sum_header:
-
-                cnt_int = [contours_header[j] for j in res_true_header]
-                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(1, 1, 1))
-            else:
-                cnt_int = [contours_main[j] for j in res_true]
-                text_regions = cv2.fillPoly(text_regions, pts=cnt_int, color=(2, 2, 2))
-
-    return text_regions
-
-
-def return_hor_spliter_by_index(peaks_neg_fin_t, x_min_hor_some, x_max_hor_some):
-
-    arg_min_hor_sort = np.argsort(x_min_hor_some)
-    x_min_hor_some_sort = np.sort(x_min_hor_some)
-    x_max_hor_some_sort = x_max_hor_some[arg_min_hor_sort]
-
-    arg_minmax = np.array(range(len(peaks_neg_fin_t)))
-    indexer_lines = []
-    indexes_to_delete = []
-    indexer_lines_deletions_len = []
-    indexr_uniq_ind = []
-    for i in range(len(x_min_hor_some_sort)):
-        min_h = peaks_neg_fin_t - x_min_hor_some_sort[i]
-        max_h = peaks_neg_fin_t - x_max_hor_some_sort[i]
-
-        min_h[0] = min_h[0]  # +20
-        max_h[len(max_h) - 1] = max_h[len(max_h) - 1]  ##-20
-
-        min_h_neg = arg_minmax[(min_h < 0) & (np.abs(min_h) < 360)]
-        max_h_neg = arg_minmax[(max_h >= 0) & (np.abs(max_h) < 360)]
-
-        if len(min_h_neg) > 0 and len(max_h_neg) > 0:
-            deletions = list(range(min_h_neg[0] + 1, max_h_neg[0]))
-            unique_delets_int = []
-            # print(deletions,len(deletions),'delii')
-            if len(deletions) > 0:
-                # print(deletions,len(deletions),'delii2')
-
-                for j in range(len(deletions)):
-                    indexes_to_delete.append(deletions[j])
-                    # print(deletions,indexes_to_delete,'badiii')
-                    unique_delets = np.unique(indexes_to_delete)
-                    # print(min_h_neg[0],unique_delets)
-                    unique_delets_int = unique_delets[unique_delets < min_h_neg[0]]
-
-                indexer_lines_deletions_len.append(len(deletions))
-                indexr_uniq_ind.append([deletions])
-
-            else:
-                indexer_lines_deletions_len.append(0)
-                indexr_uniq_ind.append(-999)
-
-            index_line_true = min_h_neg[0] - len(unique_delets_int)
-            # print(index_line_true)
-            if index_line_true > 0 and min_h_neg[0] >= 2:
-                index_line_true = index_line_true
-            else:
-                index_line_true = min_h_neg[0]
-
-            indexer_lines.append(index_line_true)
-
-            if len(unique_delets_int) > 0:
-                for dd in range(len(unique_delets_int)):
-                    indexes_to_delete.append(unique_delets_int[dd])
-        else:
-            indexer_lines.append(-999)
-            indexer_lines_deletions_len.append(-999)
-            indexr_uniq_ind.append(-999)
-
-    peaks_true = []
-    for m in range(len(peaks_neg_fin_t)):
-        if m in indexes_to_delete:
-            pass
-        else:
-            peaks_true.append(peaks_neg_fin_t[m])
-    return indexer_lines, peaks_true, arg_min_hor_sort, indexer_lines_deletions_len, indexr_uniq_ind
 
 def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(img_p_in_ver, img_in_hor,num_col_classifier):
     #img_p_in_ver = cv2.erode(img_p_in_ver, self.kernel, iterations=2)

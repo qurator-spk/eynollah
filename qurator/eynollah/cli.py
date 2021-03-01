@@ -1,16 +1,23 @@
+import sys
 import click
-from sbb_newspapers_org_image.eynollah import eynollah
+from ocrd_utils import initLogging, setOverrideLogLevel
+from qurator.eynollah.eynollah import Eynollah
 
 
 @click.command()
 @click.option(
-    "--image", "-i", help="image filename", type=click.Path(exists=True, dir_okay=False)
+    "--image",
+    "-i",
+    help="image filename",
+    type=click.Path(exists=True, dir_okay=False),
+    required=True,
 )
 @click.option(
     "--out",
     "-o",
     help="directory to write output xml data",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
 @click.option(
     "--model",
@@ -43,34 +50,46 @@ from sbb_newspapers_org_image.eynollah import eynollah
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
-    "--allow_enhancement",
-    "-ae",
+    "--enable-plotting/--disable-plotting",
+    "-ep/-noep",
+    is_flag=True,
+    help="If set, will plot intermediary files and images",
+)
+@click.option(
+    "--allow-enhancement/--no-allow-enhancement",
+    "-ae/-noae",
     is_flag=True,
     help="if this parameter set to true, this tool would check that input image need resizing and enhancement or not. If so output of resized and enhanced image and corresponding layout data will be written in out directory",
 )
 @click.option(
-    "--curved_line",
-    "-cl",
+    "--curved-line/--no-curvedline",
+    "-cl/-nocl",
     is_flag=True,
     help="if this parameter set to true, this tool will try to return contoure of textlines instead of rectabgle bounding box of textline. This should be taken into account that with this option the tool need more time to do process.",
 )
 @click.option(
-    "--full_layout",
-    "-fl",
+    "--full-layout/--no-full-layout",
+    "-fl/-nofl",
     is_flag=True,
     help="if this parameter set to true, this tool will try to return all elements of layout.",
 )
 @click.option(
-    "--allow_scaling",
-    "-as",
+    "--allow_scaling/--no-allow-scaling",
+    "-as/-noas",
     is_flag=True,
     help="if this parameter set to true, this tool would check the scale and if needed it will scale it to perform better layout detection",
 )
 @click.option(
-    "--headers_off",
-    "-ho",
+    "--headers-off/--headers-on",
+    "-ho/-noho",
     is_flag=True,
     help="if this parameter set to true, this tool would ignore headers role in reading order",
+)
+@click.option(
+    "--log-level",
+    "-l",
+    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
+    help="Override log level globally to this",
 )
 def main(
     image,
@@ -80,13 +99,24 @@ def main(
     save_layout,
     save_deskewed,
     save_all,
+    enable_plotting,
     allow_enhancement,
     curved_line,
     full_layout,
     allow_scaling,
     headers_off,
+    log_level
 ):
-    eynollah(
+    if log_level:
+        setOverrideLogLevel(log_level)
+    initLogging()
+    if not enable_plotting and (save_layout or save_deskewed or save_all or save_images):
+        print("Error: You used one of -sl, -sd, -sa or -si but did not enable plotting with -ep")
+        sys.exit(1)
+    elif enable_plotting and not (save_layout or save_deskewed or save_all or save_images):
+        print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa or -si")
+        sys.exit(1)
+    eynollah = Eynollah(
         image,
         None,
         out,
@@ -95,13 +125,15 @@ def main(
         save_layout,
         save_deskewed,
         save_all,
+        enable_plotting,
         allow_enhancement,
         curved_line,
         full_layout,
         allow_scaling,
         headers_off,
-    ).run()
-
+    )
+    pcgts = eynollah.run()
+    eynollah.writer.write_pagexml(pcgts)
 
 if __name__ == "__main__":
     main()

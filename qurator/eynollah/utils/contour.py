@@ -26,39 +26,6 @@ def find_contours_mean_y_diff(contours_main):
     cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
     return np.mean(np.diff(np.sort(np.array(cy_main))))
 
-def find_features_of_contours(contours_main):
-
-    areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
-    M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-    cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-    cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-    x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-    x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
-
-    y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-    y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
-
-    return y_min_main, y_max_main, areas_main
-
-def return_contours_of_interested_region_and_bounding_box(region_pre_p, pixel):
-
-    # pixels of images are identified by 5
-    cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    contours_imgs = return_parent_contours(contours_imgs, hiearchy)
-    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.0003)
-
-    boxes = []
-
-    for jj in range(len(contours_imgs)):
-        x, y, w, h = cv2.boundingRect(contours_imgs[jj])
-        boxes.append([int(x), int(y), int(w), int(h)])
-    return contours_imgs, boxes
 
 def get_text_region_boxes_by_given_contours(contours):
 
@@ -76,7 +43,6 @@ def get_text_region_boxes_by_given_contours(contours):
 
 def filter_contours_area_of_image(image, contours, hirarchy, max_area, min_area):
     found_polygons_early = list()
-
     jv = 0
     for c in contours:
         if len(c) < 3:  # A polygon cannot have less than 3 points
@@ -88,23 +54,6 @@ def filter_contours_area_of_image(image, contours, hirarchy, max_area, min_area)
             found_polygons_early.append(np.array([[point] for point in polygon.exterior.coords], dtype=np.uint))
         jv += 1
     return found_polygons_early
-
-def filter_contours_area_of_image_interiors(image, contours, hirarchy, max_area, min_area):
-    found_polygons_early = list()
-
-    jv = 0
-    for c in contours:
-        if len(c) < 3:  # A polygon cannot have less than 3 points
-            continue
-
-        polygon = geometry.Polygon([point[0] for point in c])
-        area = polygon.area
-        if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]) and hirarchy[0][jv][3] != -1:
-            # print(c[0][0][1])
-            found_polygons_early.append(np.array([point for point in polygon.exterior.coords], dtype=np.uint))
-        jv += 1
-    return found_polygons_early
-
 
 def filter_contours_area_of_image_tables(image, contours, hirarchy, max_area, min_area):
     found_polygons_early = list()
@@ -235,15 +184,6 @@ def return_contours_of_interested_textline(region_pre_p, pixel):
     contours_imgs = return_parent_contours(contours_imgs, hiearchy)
     contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.000000003)
     return contours_imgs
-
-def return_bonding_box_of_contours(cnts):
-    boxes_tot = []
-    for i in range(len(cnts)):
-        x, y, w, h = cv2.boundingRect(cnts[i])
-
-        box = [x, y, w, h]
-        boxes_tot.append(box)
-    return boxes_tot
 
 def return_contours_of_image(image):
 
