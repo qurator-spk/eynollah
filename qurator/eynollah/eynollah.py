@@ -32,7 +32,7 @@ warnings.filterwarnings("ignore")
 from .utils.contour import (
     filter_contours_area_of_image,
     find_contours_mean_y_diff,
-    find_new_features_of_contoures,
+    find_new_features_of_contours,
     get_text_region_boxes_by_given_contours,
     get_textregion_contours_in_org_image,
     return_contours_of_image,
@@ -1124,8 +1124,8 @@ class Eynollah:
 
     def do_order_of_regions_full_layout(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
         self.logger.debug("enter do_order_of_regions_full_layout")
-        cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = find_new_features_of_contoures(contours_only_text_parent)
-        cx_text_only_h, cy_text_only_h, x_min_text_only_h, _, _, _, y_cor_x_min_main_h = find_new_features_of_contoures(contours_only_text_parent_h)
+        cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = find_new_features_of_contours(contours_only_text_parent)
+        cx_text_only_h, cy_text_only_h, x_min_text_only_h, _, _, _, y_cor_x_min_main_h = find_new_features_of_contours(contours_only_text_parent_h)
 
         try:
             arg_text_con = []
@@ -1274,7 +1274,7 @@ class Eynollah:
 
     def do_order_of_regions_no_full_layout(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
         self.logger.debug("enter do_order_of_regions_no_full_layout")
-        cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = find_new_features_of_contoures(contours_only_text_parent)
+        cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = find_new_features_of_contours(contours_only_text_parent)
 
         try:
             arg_text_con = []
@@ -1655,8 +1655,8 @@ class Eynollah:
             contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
             areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
 
-            cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contoures([contours_biggest])
-            cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contoures(contours_only_text_parent)
+            cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
+            cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
 
             contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
             contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
@@ -1669,8 +1669,8 @@ class Eynollah:
             contours_only_text_parent_d=list(np.array(contours_only_text_parent_d)[index_con_parents_d] )
             areas_cnt_text_d=list(np.array(areas_cnt_text_d)[index_con_parents_d] )
 
-            cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contoures([contours_biggest_d])
-            cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contoures(contours_only_text_parent_d)
+            cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest_d])
+            cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent_d)
             try:
                 cx_bigest_d_last5 = cx_bigest_d[-5:]
                 cy_biggest_d_last5 = cy_biggest_d[-5:]
@@ -1715,8 +1715,8 @@ class Eynollah:
             contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
             areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
 
-            cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contoures([contours_biggest])
-            cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contoures(contours_only_text_parent)
+            cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
+            cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
             self.logger.debug('areas_cnt_text_parent %s', areas_cnt_text_parent)
             # self.logger.debug('areas_cnt_text_parent_d %s', areas_cnt_text_parent_d)
             # self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))

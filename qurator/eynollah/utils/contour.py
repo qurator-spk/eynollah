@@ -75,7 +75,7 @@ def filter_contours_area_of_image_tables(image, contours, hirarchy, max_area, mi
         jv += 1
     return found_polygons_early
 
-def find_new_features_of_contoures(contours_main):
+def find_new_features_of_contours(contours_main):
 
     areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
     M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]

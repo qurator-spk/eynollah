@@ -153,10 +153,10 @@ class EynollahPlotter():
             plt.legend(loc='best')
             plt.savefig(os.path.join(self.dir_of_all, self.image_filename_stem+'_rotation_angle.png'))
 
-    def write_images_into_directory(self, img_contoures, image_page):
+    def write_images_into_directory(self, img_contours, image_page):
         if self.dir_of_cropped_images is not None:
             index = 0
-            for cont_ind in img_contoures:
+            for cont_ind in img_contours:
                 x, y, w, h = cv2.boundingRect(cont_ind)
                 box = [x, y, w, h]
                 croped_page, page_coord = crop_image_inside_box(box, image_page)

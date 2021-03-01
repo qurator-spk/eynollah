@@ -10,7 +10,7 @@ from scipy.ndimage import gaussian_filter1d
 
 from .is_nan import isNaN
 from .contour import (contours_in_same_horizon,
-                      find_new_features_of_contoures,
+                      find_new_features_of_contours,
                       return_contours_of_image,
                       return_parent_contours)
 
@@ -783,7 +783,7 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch):
     return layout_in_patch
 
 def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions_model_full,contours_only_text_parent,all_box_coord,all_found_texline_polygons,slopes,contours_only_text_parent_d_ordered):
-    cx_main,cy_main ,x_min_main , x_max_main, y_min_main ,y_max_main,y_corr_x_min_from_argmin=find_new_features_of_contoures(contours_only_text_parent)
+    cx_main,cy_main ,x_min_main , x_max_main, y_min_main ,y_max_main,y_corr_x_min_from_argmin=find_new_features_of_contours(contours_only_text_parent)
 
     length_con=x_max_main-x_min_main
     height_con=y_max_main-y_min_main
@@ -1267,7 +1267,7 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(im
         ret, thresh = cv2.threshold(imgray, 0, 255, 0)
         contours_cross,_=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
         
-        cx_cross,cy_cross ,_ , _, _ ,_,_=find_new_features_of_contoures(contours_cross)
+        cx_cross,cy_cross ,_ , _, _ ,_,_=find_new_features_of_contours(contours_cross)
         
         for ii in range(len(cx_cross)):
             img_p_in[int(cy_cross[ii])-30:int(cy_cross[ii])+30,int(cx_cross[ii])+5:int(cx_cross[ii])+40,0]=0
