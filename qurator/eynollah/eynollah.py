@@ -47,7 +47,7 @@ from .utils.rotate import (
     rotation_not_90_func_full_layout)
 from .utils.separate_lines import (
     textline_contours_postprocessing,
-    seperate_lines_new2,
+    separate_lines_new2,
     return_deskew_slop)
 from .utils.drop_capitals import (
     adhere_drop_capital_region_into_cprresponding_textline,
@@ -816,7 +816,7 @@ class Eynollah:
         all_box_coord_per_process = []
         index_by_text_region_contours = []
 
-        textline_cnt_seperated = np.zeros(textline_mask_tot_ea.shape)
+        textline_cnt_separated = np.zeros(textline_mask_tot_ea.shape)
 
         for mv in range(len(boxes_text)):
 
@@ -868,19 +868,19 @@ class Eynollah:
                 textline_biggest_region = mask_biggest * textline_mask_tot_ea
 
                 # print(slope_for_all,'slope_for_all')
-                textline_rotated_seperated = seperate_lines_new2(textline_biggest_region[y : y + h, x : x + w], 0, num_col, slope_for_all, plotter=self.plotter)
+                textline_rotated_separated = separate_lines_new2(textline_biggest_region[y : y + h, x : x + w], 0, num_col, slope_for_all, plotter=self.plotter)
 
                 # new line added
-                ##print(np.shape(textline_rotated_seperated),np.shape(mask_biggest))
-                textline_rotated_seperated[mask_region_in_patch_region[:, :] != 1] = 0
+                ##print(np.shape(textline_rotated_separated),np.shape(mask_biggest))
+                textline_rotated_separated[mask_region_in_patch_region[:, :] != 1] = 0
                 # till here
 
-                textline_cnt_seperated[y : y + h, x : x + w] = textline_rotated_seperated
-                textline_region_in_image[y : y + h, x : x + w] = textline_rotated_seperated
+                textline_cnt_separated[y : y + h, x : x + w] = textline_rotated_separated
+                textline_region_in_image[y : y + h, x : x + w] = textline_rotated_separated
 
                 # plt.imshow(textline_region_in_image)
                 # plt.show()
-                # plt.imshow(textline_cnt_seperated)
+                # plt.imshow(textline_cnt_separated)
                 # plt.show()
 
                 pixel_img = 1

@@ -125,7 +125,7 @@ def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
 
     return x, y, x_d, y_d, xv, x_min_cont, y_min_cont, x_max_cont, y_max_cont, first_nonzero, y_padded_up_to_down_padded, y_padded_smoothed, peaks, peaks_neg, rotation_matrix
 
-def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
+def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 
     (h, w) = img_patch.shape[:2]
     center = (w // 2, h // 2)
@@ -671,7 +671,7 @@ def seperate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 
     return peaks, textline_boxes_rot
 
-def seperate_lines_vertical(img_patch, contour_text_interest, thetha):
+def separate_lines_vertical(img_patch, contour_text_interest, thetha):
 
     thetha = thetha + 90
     contour_text_interest_copy = contour_text_interest.copy()
@@ -968,7 +968,7 @@ def seperate_lines_vertical(img_patch, contour_text_interest, thetha):
 
     return peaks, textline_boxes_rot
 
-def seperate_lines_new_inside_teils2(img_patch, thetha):
+def separate_lines_new_inside_teils2(img_patch, thetha):
 
     (h, w) = img_patch.shape[:2]
     center = (w // 2, h // 2)
@@ -1183,7 +1183,7 @@ def seperate_lines_new_inside_teils2(img_patch, thetha):
     img_patch = cv2.erode(img_patch, kernel, iterations=1)
     return img_patch
 
-def seperate_lines_new_inside_teils(img_path, thetha):
+def separate_lines_new_inside_teils(img_path, thetha):
     (h, w) = img_path.shape[:2]
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
@@ -1326,7 +1326,7 @@ def seperate_lines_new_inside_teils(img_path, thetha):
     img_path = cv2.erode(img_path, kernel, iterations=2)
     return img_path
 
-def seperate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_ind, add_boxes_coor_into_textlines):
+def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_ind, add_boxes_coor_into_textlines):
     kernel = np.ones((5, 5), np.uint8)
     pixel = 255
     min_area = 0
@@ -1451,9 +1451,9 @@ def textline_contours_postprocessing(textline_mask, slope, contour_text_interest
         # print('juzaa')
         if abs(slope) > 45:
             # print(add_boxes_coor_into_textlines,'avval')
-            _, contours_rotated_clean = seperate_lines_vertical_cont(textline_mask, contours_text_rot[ind_big_con], box_ind, slope, add_boxes_coor_into_textlines=add_boxes_coor_into_textlines)
+            _, contours_rotated_clean = separate_lines_vertical_cont(textline_mask, contours_text_rot[ind_big_con], box_ind, slope, add_boxes_coor_into_textlines=add_boxes_coor_into_textlines)
         else:
-            _, contours_rotated_clean = seperate_lines(dst, contours_text_rot[ind_big_con], slope, x_help, y_help)
+            _, contours_rotated_clean = separate_lines(dst, contours_text_rot[ind_big_con], slope, x_help, y_help)
 
     except:
 
@@ -1461,7 +1461,7 @@ def textline_contours_postprocessing(textline_mask, slope, contour_text_interest
 
     return contours_rotated_clean
 
-def seperate_lines_new2(img_path, thetha, num_col, slope_region, plotter=None):
+def separate_lines_new2(img_path, thetha, num_col, slope_region, plotter=None):
 
     if num_col == 1:
         num_patches = int(img_path.shape[1] / 200.0)
@@ -1555,15 +1555,15 @@ def seperate_lines_new2(img_path, thetha, num_col, slope_region, plotter=None):
         img_line_rotated = rotate_image(img_resized, slopes_tile_wise[i])
         img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
 
-        img_patch_seperated = seperate_lines_new_inside_teils2(img_line_rotated, 0)
+        img_patch_separated = separate_lines_new_inside_teils2(img_line_rotated, 0)
 
-        img_patch_seperated_returned = rotate_image(img_patch_seperated, -slopes_tile_wise[i])
-        img_patch_seperated_returned[:, :][img_patch_seperated_returned[:, :] != 0] = 1
+        img_patch_separated_returned = rotate_image(img_patch_separated, -slopes_tile_wise[i])
+        img_patch_separated_returned[:, :][img_patch_separated_returned[:, :] != 0] = 1
 
-        img_patch_seperated_returned_true_size = img_patch_seperated_returned[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0], int(img_int.shape[1] * (1)) : int(img_int.shape[1] * (1)) + img_int.shape[1]]
+        img_patch_separated_returned_true_size = img_patch_separated_returned[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0], int(img_int.shape[1] * (1)) : int(img_int.shape[1] * (1)) + img_int.shape[1]]
 
-        img_patch_seperated_returned_true_size = img_patch_seperated_returned_true_size[:, margin : length_x - margin]
-        img_patch_ineterst_revised[:, index_x_d + margin : index_x_u - margin] = img_patch_seperated_returned_true_size
+        img_patch_separated_returned_true_size = img_patch_separated_returned_true_size[:, margin : length_x - margin]
+        img_patch_ineterst_revised[:, index_x_d + margin : index_x_u - margin] = img_patch_separated_returned_true_size
 
     # plt.imshow(img_patch_ineterst_revised)
     # plt.show()

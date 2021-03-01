@@ -1723,7 +1723,7 @@ def return_boxes_of_images_by_order_of_reading_new(spliter_y_new, regions_withou
                     
                     
                     
-                    #check if there is a big seperater in this y_mains_sep_ohne_grenzen
+                    #check if there is a big separater in this y_mains_sep_ohne_grenzen
                     
                     args_early_ys=np.array(range(len(y_type_2)))
                     
