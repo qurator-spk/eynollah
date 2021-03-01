@@ -6,7 +6,7 @@ import cv2
 from scipy.ndimage import gaussian_filter1d
 
 from .utils import crop_image_inside_box
-from .utils.rotate import rotyate_image_different
+from .utils.rotate import rotate_image_different
 from .utils.resize import resize_image
 
 class EynollahPlotter():
@@ -121,7 +121,7 @@ class EynollahPlotter():
         if self.dir_of_all is not None:
             cv2.imwrite(os.path.join(self.dir_of_all, self.image_filename_stem + "_org.png"), self.image_org)
         if self.dir_of_deskewed is not None:
-            img_rotated = rotyate_image_different(self.image_org, slope_deskew)
+            img_rotated = rotate_image_different(self.image_org, slope_deskew)
             cv2.imwrite(os.path.join(self.dir_of_deskewed, self.image_filename_stem + "_deskewed.png"), img_rotated)
 
     def save_page_image(self, image_page):
