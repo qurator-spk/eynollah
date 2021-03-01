@@ -968,7 +968,7 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
 
     return peaks, textline_boxes_rot
 
-def separate_lines_new_inside_teils2(img_patch, thetha):
+def separate_lines_new_inside_tiles2(img_patch, thetha):
 
     (h, w) = img_patch.shape[:2]
     center = (w // 2, h // 2)
@@ -1183,7 +1183,7 @@ def separate_lines_new_inside_teils2(img_patch, thetha):
     img_patch = cv2.erode(img_patch, kernel, iterations=1)
     return img_patch
 
-def separate_lines_new_inside_teils(img_path, thetha):
+def separate_lines_new_inside_tiles(img_path, thetha):
     (h, w) = img_path.shape[:2]
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
@@ -1555,7 +1555,7 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, plotter=None):
         img_line_rotated = rotate_image(img_resized, slopes_tile_wise[i])
         img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
 
-        img_patch_separated = separate_lines_new_inside_teils2(img_line_rotated, 0)
+        img_patch_separated = separate_lines_new_inside_tiles2(img_line_rotated, 0)
 
         img_patch_separated_returned = rotate_image(img_patch_separated, -slopes_tile_wise[i])
         img_patch_separated_returned[:, :][img_patch_separated_returned[:, :] != 0] = 1

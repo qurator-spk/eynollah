@@ -1584,21 +1584,21 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     num_col_fin=0
     peaks_neg_fin_fin=[]
     
-    for iteils in args_big_parts:
+    for itiles in args_big_parts:
         
         
-        regions_without_seperators_teil=regions_without_seperators[int(spliter_y_new[iteils]):int(spliter_y_new[iteils+1]),:,0]
-        #image_page_background_zero_teil=image_page_background_zero[int(spliter_y_new[iteils]):int(spliter_y_new[iteils+1]),:]
+        regions_without_seperators_tile=regions_without_seperators[int(spliter_y_new[iteils]):int(spliter_y_new[iteils+1]),:,0]
+        #image_page_background_zero_tile=image_page_background_zero[int(spliter_y_new[iteils]):int(spliter_y_new[iteils+1]),:]
         
-        #print(regions_without_seperators_teil.shape)
-        ##plt.imshow(regions_without_seperators_teil)
+        #print(regions_without_seperators_tile.shape)
+        ##plt.imshow(regions_without_seperators_tile)
         ##plt.show()
         
-        #num_col, peaks_neg_fin=self.find_num_col(regions_without_seperators_teil,multiplier=6.0)
+        #num_col, peaks_neg_fin=self.find_num_col(regions_without_seperators_tile,multiplier=6.0)
         
-        #regions_without_seperators_teil=cv2.erode(regions_without_seperators_teil,kernel,iterations = 3)
+        #regions_without_seperators_tile=cv2.erode(regions_without_seperators_teil,kernel,iterations = 3)
         #
-        num_col, peaks_neg_fin=find_num_col(regions_without_seperators_teil,multiplier=7.0)
+        num_col, peaks_neg_fin=find_num_col(regions_without_seperators_tile,multiplier=7.0)
         
         if num_col>num_col_fin:
             num_col_fin=num_col
