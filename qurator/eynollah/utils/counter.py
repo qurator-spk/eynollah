@@ -7,6 +7,8 @@ class EynollahIdCounter():
 
     def __init__(self, region_idx=0, line_idx=0):
         self._counter = Counter()
+        self.set('region', region_idx)
+        self.set('line', line_idx)
 
     def inc(self, name, val=1):
         self._counter.update({name: val})
