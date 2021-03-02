@@ -158,7 +158,7 @@ class EynollahXmlWriter():
             textregion.set('id', counter_textregions.next_region_id)
             textregion.set('type', 'paragraph')
             coord_text = ET.SubElement(textregion, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, page_coord))
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord))
             id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
             add_textequiv(textregion)
 
@@ -167,7 +167,7 @@ class EynollahXmlWriter():
             marginal.set('id', id_of_marginalia[idx_marginal])
             marginal.set('type', 'marginalia')
             coord_text = ET.SubElement(marginal, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, page_coord))
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals[mm], page_coord))
             id_indexer_l = self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, id_indexer_l)
 
         for mm in range(len(found_polygons_text_region_img)):
@@ -179,9 +179,8 @@ class EynollahXmlWriter():
                 points_co += str(int((found_polygons_text_region_img[mm][lmm,0,0] + page_coord[2]) / self.scale_x))
                 points_co += ','
                 points_co += str(int((found_polygons_text_region_img[mm][lmm,0,1] + page_coord[0]) / self.scale_y))
-                if lmm < len(found_polygons_text_region_img[mm]) - 1:
-                    points_co += ' '
-            coord_text.set('points', points_co)
+                points_co += ' '
+            coord_text.set('points', points_co[:-1])
 
         return pcgts
 
@@ -208,7 +207,7 @@ class EynollahXmlWriter():
             textregion.set('id', counter_textregions.next_region_id)
             textregion.set('type', 'paragraph')
             coord_text = ET.SubElement(textregion, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, page_coord))
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord))
             id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
             add_textequiv(textregion)
 
@@ -218,7 +217,7 @@ class EynollahXmlWriter():
             textregion.set('id', counter_textregions.next_region_id)
             textregion.set('type','header')
             coord_text = ET.SubElement(textregion, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_h, mm, page_coord))
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_h[mm], page_coord))
             id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord_h, slopes, id_indexer_l)
             add_textequiv(textregion)
 
@@ -227,7 +226,7 @@ class EynollahXmlWriter():
             textregion.set('id', counter_textregions.next_region_id)
             textregion.set('type', 'drop-capital')
             coord_text = ET.SubElement(textregion, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, page_coord))
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals[mm], page_coord))
             add_textequiv(textregion)
 
         for mm in range(len(found_polygons_marginals)):
@@ -236,7 +235,7 @@ class EynollahXmlWriter():
             marginal.set('id', id_of_marginalia[mm])
             marginal.set('type', 'marginalia')
             coord_text = ET.SubElement(marginal, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals, mm, page_coord))
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals[mm], page_coord))
             id_indexer_l = self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, id_indexer_l)
         counter_textregions.inc('region', counter_marginals.get('region'))
 
@@ -244,30 +243,28 @@ class EynollahXmlWriter():
             textregion=ET.SubElement(page, 'ImageRegion')
             textregion.set('id', counter_textregions.next_region_id)
             coord_text = ET.SubElement(textregion, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_img, mm, page_coord))
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_img[mm], page_coord))
 
         for mm in range(len(found_polygons_tables)):
             textregion = ET.SubElement(page, 'TableRegion')
             textregion.set('id', counter_textregions.next_region_id)
             coord_text = ET.SubElement(textregion, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(found_polygons_tables, mm, page_coord))
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_tables[mm], page_coord))
 
         return pcgts
 
-    def calculate_polygon_coords(self, contour_list, i, page_coord):
+    def calculate_polygon_coords(self, contour, page_coord):
         self.logger.debug('enter calculate_polygon_coords')
         coords = ''
-        for j in range(len(contour_list[i])):
-            if len(contour_list[i][j]) == 2:
-                coords += str(int((contour_list[i][j][0] + page_coord[2]) / self.scale_x))
+        for value_bbox in contour:
+            if len(value_bbox) == 2:
+                coords += str(int((value_bbox[0] + page_coord[2]) / self.scale_x))
                 coords += ','
-                coords += str(int((contour_list[i][j][1] + page_coord[0]) / self.scale_y))
+                coords += str(int((value_bbox[1] + page_coord[0]) / self.scale_y))
             else:
-                coords += str(int((contour_list[i][j][0][0] + page_coord[2]) / self.scale_x))
+                coords += str(int((value_bbox[0][0] + page_coord[2]) / self.scale_x))
                 coords += ','
-                coords += str(int((contour_list[i][j][0][1] + page_coord[0]) / self.scale_y))
-
-            if j < len(contour_list[i]) - 1:
-                coords=coords + ' '
-        return coords
+                coords += str(int((value_bbox[0][1] + page_coord[0]) / self.scale_y))
+            coords=coords + ' '
+        return coords[:-1]
 
