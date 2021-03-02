@@ -63,11 +63,11 @@ from .utils import (
     putt_bb_of_drop_capitals_of_model_in_patches_in_layout,
     check_any_text_region_in_model_one_is_main_or_header,
     small_textlines_to_parent_adherence2,
-    order_and_id_of_texts,
     order_of_regions,
     find_number_of_columns_in_document,
     return_boxes_of_images_by_order_of_reading_new)
 from .utils.pil_cv2 import check_dpi
+from .utils.xml import order_and_id_of_texts
 from .plot import EynollahPlotter
 from .writer import EynollahXmlWriter
 
@@ -1308,7 +1308,7 @@ class Eynollah:
                     tartib = np.where(indexes_sorted == arg_order_v)[0][0]
                     order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
 
-                for jji in range(len(id_of_texts)):
+                for jji, _ in range(len(id_of_texts)):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
                     id_of_texts_tot.append(id_of_texts[jji])
                 ref_point = ref_point + len(id_of_texts)
