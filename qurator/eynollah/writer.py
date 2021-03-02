@@ -140,10 +140,14 @@ class EynollahXmlWriter():
         coord_page.set('points', self.calculate_page_coords(cont_page))
 
         id_of_marginalia = []
+        for  idx_marginal, _ in enumerate(found_polygons_marginals):
+            id_of_marginalia.append('r%s' % len(order_of_texts) + idx_marginal)
+
         id_indexer = 0
         id_indexer_l = 0
+
         if len(found_polygons_text_region) > 0:
-            id_of_marginalia = xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
+            xml_reading_order(page, order_of_texts, id_of_texts, found_polygons_marginals)
             for mm in range(len(found_polygons_text_region)):
                 textregion = ET.SubElement(page, 'TextRegion')
                 textregion.set('id', 'r%s' % id_indexer)
@@ -191,9 +195,11 @@ class EynollahXmlWriter():
         id_indexer = 0
         id_indexer_l = 0
         id_of_marginalia = []
+        for  idx_marginal, _ in enumerate(found_polygons_marginals):
+            id_of_marginalia.append('r%s' % len(order_of_texts) + idx_marginal)
 
         if len(found_polygons_text_region) > 0:
-            id_of_marginalia = xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals)
+            xml_reading_order(page, order_of_texts, id_of_texts, found_polygons_marginals)
             for mm in range(len(found_polygons_text_region)):
                 textregion=ET.SubElement(page, 'TextRegion')
                 textregion.set('id', 'r%s' % id_indexer)
