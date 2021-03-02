@@ -140,8 +140,9 @@ class EynollahXmlWriter():
         counter_textregions = EynollahIdCounter()
         counter_marginals = EynollahIdCounter(region_idx=len(order_of_texts))
 
+        id_of_marginalia = [counter_marginals.next_region_id for _ in found_polygons_marginals]
         if len(found_polygons_text_region) > 0:
-            xml_reading_order(page, order_of_texts, id_of_texts, [counter_marginals.next_region_id for _ in found_polygons_marginals])
+            xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia)
 
         for mm in range(len(found_polygons_text_region)):
             textregion = ET.SubElement(page, 'TextRegion')
@@ -152,12 +153,12 @@ class EynollahXmlWriter():
             self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, counter_textregions)
             add_textequiv(textregion)
 
-        for idx_marginal, _ in enumerate(found_polygons_marginals):
+        for idx_marginal, marginal_polygon in enumerate(found_polygons_marginals):
             marginal = ET.SubElement(page, 'TextRegion')
             marginal.set('id', id_of_marginalia[idx_marginal])
             marginal.set('type', 'marginalia')
             coord_text = ET.SubElement(marginal, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals[mm], page_coord))
+            coord_text.set('points', self.calculate_polygon_coords(marginal_polygon, page_coord))
             self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter_textregions)
 
         for mm in range(len(found_polygons_text_region_img)):
@@ -183,10 +184,11 @@ class EynollahXmlWriter():
         coord_page = ET.SubElement(page_print_sub, "Coords")
         coord_page.set('points', self.calculate_page_coords(cont_page))
 
-        counter_marginals = EynollahIdCounter(region_idx=len(order_of_texts))
         counter_textregions = EynollahIdCounter()
+        counter_marginals = EynollahIdCounter(region_idx=len(order_of_texts))
 
-        xml_reading_order(page, order_of_texts, id_of_texts, [counter_marginals.next_region_id for _ in found_polygons_marginals])
+        id_of_marginalia = [counter_marginals.next_region_id for _ in found_polygons_marginals]
+        xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia)
 
         for mm in range(len(found_polygons_text_region)):
             textregion=ET.SubElement(page, 'TextRegion')
