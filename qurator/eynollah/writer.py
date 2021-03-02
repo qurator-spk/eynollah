@@ -140,12 +140,8 @@ class EynollahXmlWriter():
         counter_textregions = EynollahIdCounter()
         counter_marginals = EynollahIdCounter(region_idx=len(order_of_texts))
 
-        id_of_marginalia = []
-        for  _ in found_polygons_marginals:
-            id_of_marginalia.append(counter_marginals.next_region_id)
-
         if len(found_polygons_text_region) > 0:
-            xml_reading_order(page, order_of_texts, id_of_texts, found_polygons_marginals)
+            xml_reading_order(page, order_of_texts, id_of_texts, [counter_marginals.next_region_id for _ in found_polygons_marginals])
 
         for mm in range(len(found_polygons_text_region)):
             textregion = ET.SubElement(page, 'TextRegion')
@@ -190,11 +186,8 @@ class EynollahXmlWriter():
         counter_marginals = EynollahIdCounter(region_idx=len(order_of_texts))
         counter_textregions = EynollahIdCounter()
 
-        id_of_marginalia = []
-        for  _ in found_polygons_marginals:
-            id_of_marginalia.append(counter_marginals.next_region_id)
+        xml_reading_order(page, order_of_texts, id_of_texts, [counter_marginals.next_region_id for _ in found_polygons_marginals])
 
-        xml_reading_order(page, order_of_texts, id_of_texts, found_polygons_marginals)
         for mm in range(len(found_polygons_text_region)):
             textregion=ET.SubElement(page, 'TextRegion')
             textregion.set('id', counter_textregions.next_region_id)

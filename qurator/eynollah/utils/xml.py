@@ -41,21 +41,20 @@ def add_textequiv(parent, text=''):
     unireg = ET.SubElement(textequiv, 'Unicode')
     unireg.text = text
 
-def xml_reading_order(page, order_of_texts, id_of_texts, found_polygons_marginals):
+def xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia):
     region_order = ET.SubElement(page, 'ReadingOrder')
     region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
     region_order_sub.set('id', "ro357564684568544579089")
     indexer_region = 0
-    for idx_text in order_of_texts:
+    for id_of_textregion in order_of_texts:
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
         name.set('index', str(indexer_region))
-        name.set('regionRef', id_of_texts[idx_text])
+        name.set('regionRef', id_of_textregion)
         indexer_region += 1
-    for  _ in found_polygons_marginals:
+    for id_marginal in id_of_marginalia:
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
         name.set('index', str(indexer_region))
-        name.set('regionRef', 'r%s' % indexer_region)
-        indexer_region += 1
+        name.set('regionRef', id_marginal)
 
 def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region_h, matrix_of_orders, indexes_sorted, index_of_types, kind_of_texts, ref_point):
     indexes_sorted = np.array(indexes_sorted)
