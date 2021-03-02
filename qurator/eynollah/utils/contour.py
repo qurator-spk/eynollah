@@ -41,7 +41,7 @@ def get_text_region_boxes_by_given_contours(contours):
     del contours
     return boxes, contours_new
 
-def filter_contours_area_of_image(image, contours, hirarchy, max_area, min_area):
+def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area):
     found_polygons_early = list()
     jv = 0
     for c in contours:
@@ -50,12 +50,12 @@ def filter_contours_area_of_image(image, contours, hirarchy, max_area, min_area)
 
         polygon = geometry.Polygon([point[0] for point in c])
         area = polygon.area
-        if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]) and hirarchy[0][jv][3] == -1:  # and hirarchy[0][jv][3]==-1 :
+        if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]) and hierarchy[0][jv][3] == -1:  # and hierarchy[0][jv][3]==-1 :
             found_polygons_early.append(np.array([[point] for point in polygon.exterior.coords], dtype=np.uint))
         jv += 1
     return found_polygons_early
 
-def filter_contours_area_of_image_tables(image, contours, hirarchy, max_area, min_area):
+def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, min_area):
     found_polygons_early = list()
 
     jv = 0
@@ -68,14 +68,14 @@ def filter_contours_area_of_image_tables(image, contours, hirarchy, max_area, mi
         area = polygon.area
         ##print(np.prod(thresh.shape[:2]))
         # Check that polygon has area greater than minimal area
-        # print(hirarchy[0][jv][3],hirarchy )
-        if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]):  # and hirarchy[0][jv][3]==-1 :
+        # print(hierarchy[0][jv][3],hierarchy )
+        if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]):  # and hierarchy[0][jv][3]==-1 :
             # print(c[0][0][1])
             found_polygons_early.append(np.array([[point] for point in polygon.exterior.coords], dtype=np.int32))
         jv += 1
     return found_polygons_early
 
-def find_new_features_of_contoures(contours_main):
+def find_new_features_of_contours(contours_main):
 
     areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
     M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
@@ -126,10 +126,10 @@ def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
     imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-    contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    contours_imgs = return_parent_contours(contours_imgs, hiearchy)
-    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=min_area)
+    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
+    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy, max_area=1, min_area=min_area)
 
     return contours_imgs
 
@@ -179,10 +179,10 @@ def return_contours_of_interested_textline(region_pre_p, pixel):
     cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
     imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    contours_imgs = return_parent_contours(contours_imgs, hiearchy)
-    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=0.000000003)
+    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
+    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy, max_area=1, min_area=0.000000003)
     return contours_imgs
 
 def return_contours_of_image(image):
@@ -194,8 +194,8 @@ def return_contours_of_image(image):
         image = image.astype(np.uint8)
     imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours, hierachy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    return contours, hierachy
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    return contours, hierarchy
 
 def return_contours_of_interested_region_by_min_size(region_pre_p, pixel, min_size=0.00003):
 
@@ -209,10 +209,10 @@ def return_contours_of_interested_region_by_min_size(region_pre_p, pixel, min_si
     imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-    contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    contours_imgs = return_parent_contours(contours_imgs, hiearchy)
-    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=1, min_area=min_size)
+    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
+    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy, max_area=1, min_area=min_size)
 
     return contours_imgs
 
@@ -227,10 +227,10 @@ def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, 
     cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
     imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours_imgs, hiearchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    contours_imgs = return_parent_contours(contours_imgs, hiearchy)
-    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hiearchy, max_area=max_area, min_area=min_area)
+    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
+    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy, max_area=max_area, min_area=min_area)
 
     img_ret = np.zeros((region_pre_p.shape[0], region_pre_p.shape[1], 3))
     img_ret = cv2.fillPoly(img_ret, pts=contours_imgs, color=(1, 1, 1))

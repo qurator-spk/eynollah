@@ -4,7 +4,7 @@ from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 
 
-from .contour import find_new_features_of_contoures, return_contours_of_interested_region
+from .contour import find_new_features_of_contours, return_contours_of_interested_region
 from .resize import resize_image
 from .rotate import rotate_image
 
@@ -185,7 +185,7 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, kernel=N
         min_area_text=0.00001
         polygons_of_marginals=return_contours_of_interested_region(text_regions,pixel_img,min_area_text)
 
-        cx_text_only,cy_text_only ,x_min_text_only,x_max_text_only, y_min_text_only ,y_max_text_only,y_cor_x_min_main=find_new_features_of_contoures(polygons_of_marginals)
+        cx_text_only,cy_text_only ,x_min_text_only,x_max_text_only, y_min_text_only ,y_max_text_only,y_cor_x_min_main=find_new_features_of_contours(polygons_of_marginals)
 
         text_regions[(text_regions[:,:]==4)]=1
 
