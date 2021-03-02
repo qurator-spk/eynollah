@@ -141,7 +141,7 @@ class EynollahXmlWriter():
 
         id_of_marginalia = []
         for  idx_marginal, _ in enumerate(found_polygons_marginals):
-            id_of_marginalia.append('r%s' % len(order_of_texts) + idx_marginal)
+            id_of_marginalia.append('r%s' % (len(order_of_texts) + idx_marginal) )
 
         id_indexer = 0
         id_indexer_l = 0
@@ -191,12 +191,12 @@ class EynollahXmlWriter():
         page_print_sub = ET.SubElement(page, "Border")
         coord_page = ET.SubElement(page_print_sub, "Coords")
         coord_page.set('points', self.calculate_page_coords(cont_page))
-
+        
         id_indexer = 0
         id_indexer_l = 0
         id_of_marginalia = []
         for  idx_marginal, _ in enumerate(found_polygons_marginals):
-            id_of_marginalia.append('r%s' % len(order_of_texts) + idx_marginal)
+            id_of_marginalia.append('r%s' % ( len(order_of_texts) + idx_marginal) )
 
         if len(found_polygons_text_region) > 0:
             xml_reading_order(page, order_of_texts, id_of_texts, found_polygons_marginals)
