@@ -8,6 +8,8 @@ def test_counter_string():
     assert c.next_line_id == 'region_0002_line_0001'
     assert c.next_region_id == 'region_0003'
     assert c.next_line_id == 'region_0003_line_0001'
+    assert c.region_id(999) == 'region_0999'
+    assert c.line_id(999, 888) == 'region_0999_line_0888'
 
 def test_counter_init():
     c = EynollahIdCounter(region_idx=2)

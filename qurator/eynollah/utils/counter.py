@@ -19,13 +19,25 @@ class EynollahIdCounter():
     def set(self, name, val):
         self._counter[name] = val
 
+    def region_id(self, region_idx=None):
+        if not region_idx:
+            region_idx = self._counter['region']
+        return REGION_ID_TEMPLATE % region_idx
+
+    def line_id(self, region_idx=None, line_idx=None):
+        if not region_idx:
+            region_idx = self._counter['region']
+        if not line_idx:
+            line_idx = self._counter['line']
+        return LINE_ID_TEMPLATE % (region_idx, line_idx)
+
     @property
     def next_region_id(self):
         self.inc('region')
         self.set('line', 0)
-        return REGION_ID_TEMPLATE % self._counter['region']
+        return self.region_id()
 
     @property
     def next_line_id(self):
         self.inc('line')
-        return LINE_ID_TEMPLATE % (self._counter['region'], self._counter['line'])
+        return self.line_id()
