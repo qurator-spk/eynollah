@@ -152,14 +152,15 @@ class EynollahXmlWriter():
 
         if len(found_polygons_text_region) > 0:
             xml_reading_order(page, order_of_texts, id_of_texts, found_polygons_marginals)
-            for mm in range(len(found_polygons_text_region)):
-                textregion = ET.SubElement(page, 'TextRegion')
-                textregion.set('id', counter_textregions.next_region_id)
-                textregion.set('type', 'paragraph')
-                coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, page_coord))
-                id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
-                add_textequiv(textregion)
+
+        for mm in range(len(found_polygons_text_region)):
+            textregion = ET.SubElement(page, 'TextRegion')
+            textregion.set('id', counter_textregions.next_region_id)
+            textregion.set('type', 'paragraph')
+            coord_text = ET.SubElement(textregion, 'Coords')
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, page_coord))
+            id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
+            add_textequiv(textregion)
 
         for idx_marginal, _ in enumerate(found_polygons_marginals):
             marginal = ET.SubElement(page, 'TextRegion')
@@ -201,36 +202,33 @@ class EynollahXmlWriter():
         for  _ in found_polygons_marginals:
             id_of_marginalia.append(counter_marginals.next_region_id)
 
-        if len(found_polygons_text_region) > 0:
-            xml_reading_order(page, order_of_texts, id_of_texts, found_polygons_marginals)
-            for mm in range(len(found_polygons_text_region)):
-                textregion=ET.SubElement(page, 'TextRegion')
-                textregion.set('id', counter_textregions.next_region_id)
-                textregion.set('type', 'paragraph')
-                coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, page_coord))
-                id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
-                add_textequiv(textregion)
+        xml_reading_order(page, order_of_texts, id_of_texts, found_polygons_marginals)
+        for mm in range(len(found_polygons_text_region)):
+            textregion=ET.SubElement(page, 'TextRegion')
+            textregion.set('id', counter_textregions.next_region_id)
+            textregion.set('type', 'paragraph')
+            coord_text = ET.SubElement(textregion, 'Coords')
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region, mm, page_coord))
+            id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, id_indexer_l)
+            add_textequiv(textregion)
 
         self.logger.debug('len(found_polygons_text_region_h) %s', len(found_polygons_text_region_h))
-        if len(found_polygons_text_region_h) > 0:
-            for mm in range(len(found_polygons_text_region_h)):
-                textregion=ET.SubElement(page, 'TextRegion')
-                textregion.set('id', counter_textregions.next_region_id)
-                textregion.set('type','header')
-                coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_h, mm, page_coord))
-                id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord_h, slopes, id_indexer_l)
-                add_textequiv(textregion)
+        for mm in range(len(found_polygons_text_region_h)):
+            textregion=ET.SubElement(page, 'TextRegion')
+            textregion.set('id', counter_textregions.next_region_id)
+            textregion.set('type','header')
+            coord_text = ET.SubElement(textregion, 'Coords')
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_h, mm, page_coord))
+            id_indexer_l = self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord_h, slopes, id_indexer_l)
+            add_textequiv(textregion)
 
-        if len(found_polygons_drop_capitals) > 0:
-            for mm in range(len(found_polygons_drop_capitals)):
-                textregion=ET.SubElement(page, 'TextRegion')
-                textregion.set('id', counter_textregions.next_region_id)
-                textregion.set('type', 'drop-capital')
-                coord_text = ET.SubElement(textregion, 'Coords')
-                coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, page_coord))
-                add_textequiv(textregion)
+        for mm in range(len(found_polygons_drop_capitals)):
+            textregion=ET.SubElement(page, 'TextRegion')
+            textregion.set('id', counter_textregions.next_region_id)
+            textregion.set('type', 'drop-capital')
+            coord_text = ET.SubElement(textregion, 'Coords')
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals, mm, page_coord))
+            add_textequiv(textregion)
 
         for mm in range(len(found_polygons_marginals)):
             marginal = ET.SubElement(page, 'TextRegion')
