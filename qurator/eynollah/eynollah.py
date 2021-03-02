@@ -1173,18 +1173,16 @@ class Eynollah:
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
+                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for zahler, _ in enumerate(args_contours_box_h):
                     arg_order_v = indexes_sorted_head[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = tartib + ref_point
+                    order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for jji in range(len(id_of_texts)):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
                     id_of_texts_tot.append(id_of_texts[jji])
-                ref_point = ref_point + len(id_of_texts)
+                ref_point += len(id_of_texts)
 
             order_of_texts_tot = []
             for tj1 in range(len(contours_only_text_parent)):
@@ -1247,18 +1245,16 @@ class Eynollah:
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
+                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for zahler, _ in enumerate(args_contours_box_h):
                     arg_order_v = indexes_sorted_head[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = tartib + ref_point
+                    order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for jji, _ in enumerate(id_of_texts):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
                     id_of_texts_tot.append(id_of_texts[jji])
-                ref_point = ref_point + len(id_of_texts)
+                ref_point += len(id_of_texts)
 
             order_of_texts_tot = []
             for tj1 in range(len(contours_only_text_parent)):
@@ -1305,13 +1301,12 @@ class Eynollah:
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
+                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for jji, _ in range(len(id_of_texts)):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
                     id_of_texts_tot.append(id_of_texts[jji])
-                ref_point = ref_point + len(id_of_texts)
+                ref_point += len(id_of_texts)
 
             order_of_texts_tot = []
             for tj1 in range(len(contours_only_text_parent)):
@@ -1353,13 +1348,12 @@ class Eynollah:
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
+                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for jji, _ in enumerate(id_of_texts):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
                     id_of_texts_tot.append(id_of_texts[jji])
-                ref_point = ref_point + len(id_of_texts)
+                ref_point += len(id_of_texts)
 
             order_of_texts_tot = []
             for tj1 in range(len(contours_only_text_parent)):
