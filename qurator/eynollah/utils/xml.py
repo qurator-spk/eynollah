@@ -1,4 +1,5 @@
 # pylint: disable=too-many-locals,wrong-import-position,too-many-lines,too-many-statements,chained-comparison,fixme,broad-except,c-extension-no-member
+# pylint: disable=invalid-name
 from lxml import etree as ET
 import numpy as np
 
@@ -47,15 +48,13 @@ def xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found
     region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
     region_order_sub.set('id', "ro357564684568544579089")
     indexer_region = 0
-    for vj in order_of_texts:
-        name = "coord_text_%s" % vj
+    for idx_text in order_of_texts:
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
         name.set('index', str(indexer_region))
-        name.set('regionRef', id_of_texts[vj])
+        name.set('regionRef', id_of_texts[idx_text])
         indexer_region += 1
-    for vm in range(len(found_polygons_marginals)):
+    for  _ in found_polygons_marginals:
         id_of_marginalia.append('r%s' % indexer_region)
-        name = "coord_text_%s" % indexer_region
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
         name.set('index', str(indexer_region))
         name.set('regionRef', 'r%s' % indexer_region)
