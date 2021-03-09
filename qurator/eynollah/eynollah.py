@@ -1672,10 +1672,17 @@ class Eynollah:
             cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest_d])
             cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent_d)
             try:
-                cx_bigest_d_last5 = cx_bigest_d[-5:]
-                cy_biggest_d_last5 = cy_biggest_d[-5:]
-                dists_d = [math.sqrt((cx_bigest_big[0] - cx_bigest_d_last5[j]) ** 2 + (cy_biggest_big[0] - cy_biggest_d_last5[j]) ** 2) for j in range(len(cy_biggest_d_last5))]
-                ind_largest = len(cx_bigest_d) -5 + np.argmin(dists_d)
+                if len(cx_bigest_d) >= 5:
+                    cx_bigest_d_last5 = cx_bigest_d[-5:]
+                    cy_biggest_d_last5 = cy_biggest_d[-5:]
+                    dists_d = [math.sqrt((cx_bigest_big[0] - cx_bigest_d_last5[j]) ** 2 + (cy_biggest_big[0] - cy_biggest_d_last5[j]) ** 2) for j in range(len(cy_biggest_d_last5))]
+                    ind_largest = len(cx_bigest_d) -5 + np.argmin(dists_d)
+                 else:
+                    cx_bigest_d_last5 = cx_bigest_d[-len(cx_bigest_d):]
+                    cy_biggest_d_last5 = cy_biggest_d[-len(cx_bigest_d):]
+                    dists_d = [math.sqrt((cx_bigest_big[0]-cx_bigest_d_last5[j])**2 + (cy_biggest_big[0]-cy_biggest_d_last5[j])**2) for j in range(len(cy_biggest_d_last5))]
+                    ind_largest = len(cx_bigest_d) - len(cx_bigest_d) + np.argmin(dists_d)
+                    
                 cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
                 cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
             except Exception as why:
