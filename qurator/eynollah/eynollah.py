@@ -1677,7 +1677,7 @@ class Eynollah:
                     cy_biggest_d_last5 = cy_biggest_d[-5:]
                     dists_d = [math.sqrt((cx_bigest_big[0] - cx_bigest_d_last5[j]) ** 2 + (cy_biggest_big[0] - cy_biggest_d_last5[j]) ** 2) for j in range(len(cy_biggest_d_last5))]
                     ind_largest = len(cx_bigest_d) -5 + np.argmin(dists_d)
-                 else:
+                else:
                     cx_bigest_d_last5 = cx_bigest_d[-len(cx_bigest_d):]
                     cy_biggest_d_last5 = cy_biggest_d[-len(cx_bigest_d):]
                     dists_d = [math.sqrt((cx_bigest_big[0]-cx_bigest_d_last5[j])**2 + (cy_biggest_big[0]-cy_biggest_d_last5[j])**2) for j in range(len(cy_biggest_d_last5))]

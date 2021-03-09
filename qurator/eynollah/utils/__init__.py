@@ -2161,7 +2161,7 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                     for dj in range(len(x_starting)):
                         if set( list(np.array(range(x_starting[dj],x_ending[dj])) ) ) == set(all_columns):
                             pass
-                         else:
+                        else:
                             columns_covered_by_lines_covered_more_than_2col=columns_covered_by_lines_covered_more_than_2col+list(np.array(range(x_starting[dj],x_ending[dj])) )
                     columns_covered_by_lines_covered_more_than_2col=list(set(columns_covered_by_lines_covered_more_than_2col))
                     
