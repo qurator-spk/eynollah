@@ -89,7 +89,7 @@ class EynollahXmlWriter():
             region_bboxes = all_box_coord[region_idx]
 
             points_co = ''
-            for idx_contour_textline, contour_textline in all_found_texline_polygons[region_idx][j]:
+            for idx_contour_textline, contour_textline in enumerate(all_found_texline_polygons[region_idx][j]):
                 if not self.curved_line:
                     if len(contour_textline) == 2:
                         textline_x_coord = max(0, int((contour_textline[0] + region_bboxes[2] + page_coord[2]) / self.scale_x))

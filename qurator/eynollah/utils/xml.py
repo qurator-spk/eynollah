@@ -45,11 +45,12 @@ def xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia):
     region_order = ET.SubElement(page, 'ReadingOrder')
     region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
     region_order_sub.set('id', "ro357564684568544579089")
+    region_counter = EynollahIdCounter()
     indexer_region = 0
-    for id_of_textregion in order_of_texts:
+    for idx_textregion, _ in enumerate(order_of_texts):
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
         name.set('index', str(indexer_region))
-        name.set('regionRef', id_of_textregion)
+        name.set('regionRef', region_counter.region_id(order_of_texts[idx_textregion]))
         indexer_region += 1
     for id_marginal in id_of_marginalia:
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
