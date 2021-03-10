@@ -46,16 +46,15 @@ def xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia):
     region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
     region_order_sub.set('id', "ro357564684568544579089")
     region_counter = EynollahIdCounter()
-    indexer_region = 0
     for idx_textregion, _ in enumerate(order_of_texts):
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
-        name.set('index', str(indexer_region))
+        name.set('index', str(region_counter.get('region')))
         name.set('regionRef', region_counter.region_id(order_of_texts[idx_textregion]))
-        indexer_region += 1
     for id_marginal in id_of_marginalia:
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
-        name.set('index', str(indexer_region))
+        name.set('index', str(region_counter.get('region')))
         name.set('regionRef', id_marginal)
+        region_counter.inc('region')
 
 def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region_h, matrix_of_orders, indexes_sorted, index_of_types, kind_of_texts, ref_point):
     indexes_sorted = np.array(indexes_sorted)

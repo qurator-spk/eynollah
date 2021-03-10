@@ -2116,13 +2116,17 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                 x_start_by_order=[]
                 x_end_by_order=[]
                 if len(x_starting)>0:
+                    all_columns = np.array(range(len(peaks_neg_tot)-1))
                     columns_covered_by_lines_covered_more_than_2col=[]
                     
                     for dj in range(len(x_starting)):
-                        columns_covered_by_lines_covered_more_than_2col=columns_covered_by_lines_covered_more_than_2col+list(np.array(range(x_starting[dj],x_ending[dj])) )
+                        if set( list(np.array(range(x_starting[dj],x_ending[dj])) ) ) == set(all_columns):
+                            pass
+                        else:
+                            columns_covered_by_lines_covered_more_than_2col=columns_covered_by_lines_covered_more_than_2col+list(np.array(range(x_starting[dj],x_ending[dj])) )
                     columns_covered_by_lines_covered_more_than_2col=list(set(columns_covered_by_lines_covered_more_than_2col))
                     
-                    all_columns=np.array(range(len(peaks_neg_tot)-1))
+                    
                     
                     columns_not_covered=list( set(all_columns)-set(columns_covered_by_lines_covered_more_than_2col) )
                     
