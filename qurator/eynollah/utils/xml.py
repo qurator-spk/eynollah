@@ -50,6 +50,7 @@ def xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia):
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
         name.set('index', str(region_counter.get('region')))
         name.set('regionRef', region_counter.region_id(order_of_texts[idx_textregion]))
+        region_counter.inc('region')
     for id_marginal in id_of_marginalia:
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
         name.set('index', str(region_counter.get('region')))
