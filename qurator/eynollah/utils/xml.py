@@ -41,7 +41,7 @@ def add_textequiv(parent, text=''):
     unireg = ET.SubElement(textequiv, 'Unicode')
     unireg.text = text
 
-def xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia):
+def xml_reading_order(page, order_of_texts, id_of_marginalia):
     region_order = ET.SubElement(page, 'ReadingOrder')
     region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
     region_order_sub.set('id', "ro357564684568544579089")
@@ -49,7 +49,7 @@ def xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia):
     for idx_textregion, _ in enumerate(order_of_texts):
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
         name.set('index', str(region_counter.get('region')))
-        name.set('regionRef', region_counter.region_id(order_of_texts[idx_textregion]))
+        name.set('regionRef', region_counter.region_id(order_of_texts[idx_textregion] + 1))
         region_counter.inc('region')
     for id_marginal in id_of_marginalia:
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
