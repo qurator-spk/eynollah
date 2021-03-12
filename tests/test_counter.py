@@ -14,6 +14,10 @@ def test_counter_string():
 def test_counter_init():
     c = EynollahIdCounter(region_idx=2)
     assert c.get('region') == 2
+    c.inc('region')
+    assert c.get('region') == 3
+    c.reset()
+    assert c.get('region') == 2
 
 def test_counter_methods():
     c = EynollahIdCounter()
