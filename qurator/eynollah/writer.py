@@ -152,12 +152,12 @@ class EynollahXmlWriter():
             self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, counter)
             add_textequiv(textregion)
 
-        for  marginal_polygon in found_polygons_marginals:
+        for mm in range(len(found_polygons_marginals)):
             marginal = ET.SubElement(page, 'TextRegion')
             marginal.set('id', counter.next_region_id)
             marginal.set('type', 'marginalia')
             coord_text = ET.SubElement(marginal, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(marginal_polygon, page_coord))
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals[mm], page_coord))
             self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter)
 
         for mm in range(len(found_polygons_text_region_img)):
@@ -194,7 +194,7 @@ class EynollahXmlWriter():
             textregion.set('type', 'paragraph')
             coord_text = ET.SubElement(textregion, 'Coords')
             coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord))
-            self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, counter_textregions)
+            self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, counter)
             add_textequiv(textregion)
 
         self.logger.debug('len(found_polygons_text_region_h) %s', len(found_polygons_text_region_h))
@@ -204,15 +204,7 @@ class EynollahXmlWriter():
             textregion.set('type','header')
             coord_text = ET.SubElement(textregion, 'Coords')
             coord_text.set('points', self.calculate_polygon_coords(found_polygons_text_region_h[mm], page_coord))
-            self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord_h, slopes, counter_textregions)
-            add_textequiv(textregion)
-
-        for mm in range(len(found_polygons_drop_capitals)):
-            textregion=ET.SubElement(page, 'TextRegion')
-            textregion.set('id', counter.next_region_id)
-            textregion.set('type', 'drop-capital')
-            coord_text = ET.SubElement(textregion, 'Coords')
-            coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals[mm], page_coord))
+            self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord_h, slopes, counter)
             add_textequiv(textregion)
 
         for mm in range(len(found_polygons_marginals)):
@@ -223,6 +215,14 @@ class EynollahXmlWriter():
             coord_text = ET.SubElement(marginal, 'Coords')
             coord_text.set('points', self.calculate_polygon_coords(found_polygons_marginals[mm], page_coord))
             self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter)
+            
+        for mm in range(len(found_polygons_drop_capitals)):
+            textregion=ET.SubElement(page, 'TextRegion')
+            textregion.set('id', counter.next_region_id)
+            textregion.set('type', 'drop-capital')
+            coord_text = ET.SubElement(textregion, 'Coords')
+            coord_text.set('points', self.calculate_polygon_coords(found_polygons_drop_capitals[mm], page_coord))
+            add_textequiv(textregion)
 
         for mm in range(len(found_polygons_text_region_img)):
             textregion=ET.SubElement(page, 'ImageRegion')
