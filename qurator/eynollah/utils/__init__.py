@@ -977,45 +977,6 @@ def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col)
             textlines_con_changed.append(textlines_big_org_form)
     return textlines_con_changed
 
-def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region_h, matrix_of_orders, indexes_sorted, index_of_types, kind_of_texts, ref_point):
-    indexes_sorted = np.array(indexes_sorted)
-    index_of_types = np.array(index_of_types)
-    kind_of_texts = np.array(kind_of_texts)
-
-    id_of_texts = []
-    order_of_texts = []
-
-    index_of_types_1 = index_of_types[kind_of_texts == 1]
-    indexes_sorted_1 = indexes_sorted[kind_of_texts == 1]
-
-    index_of_types_2 = index_of_types[kind_of_texts == 2]
-    indexes_sorted_2 = indexes_sorted[kind_of_texts == 2]
-
-    ##print(index_of_types,'index_of_types')
-    ##print(kind_of_texts,'kind_of_texts')
-    ##print(len(found_polygons_text_region),'found_polygons_text_region')
-    ##print(index_of_types_1,'index_of_types_1')
-    ##print(indexes_sorted_1,'indexes_sorted_1')
-    index_b = 0 + ref_point
-    for mm in range(len(found_polygons_text_region)):
-
-        id_of_texts.append("r" + str(index_b))
-        interest = indexes_sorted_1[indexes_sorted_1 == index_of_types_1[mm]]
-
-        if len(interest) > 0:
-            order_of_texts.append(interest[0])
-            index_b += 1
-        else:
-            pass
-
-    for mm in range(len(found_polygons_text_region_h)):
-        id_of_texts.append("r" + str(index_b))
-        interest = indexes_sorted_2[index_of_types_2[mm]]
-        order_of_texts.append(interest)
-        index_b += 1
-
-    return order_of_texts, id_of_texts
-
 def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
 
     ##plt.imshow(textline_mask)

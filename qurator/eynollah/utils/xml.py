@@ -1,4 +1,8 @@
+# pylint: disable=too-many-locals,wrong-import-position,too-many-lines,too-many-statements,chained-comparison,fixme,broad-except,c-extension-no-member
+# pylint: disable=invalid-name
 from lxml import etree as ET
+from .counter import EynollahIdCounter
+import numpy as np
 
 NAMESPACES = {}
 NAMESPACES['page'] = "http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15"
@@ -37,26 +41,46 @@ def add_textequiv(parent, text=''):
     unireg = ET.SubElement(textequiv, 'Unicode')
     unireg.text = text
 
-def xml_reading_order(page, order_of_texts, id_of_texts, id_of_marginalia, found_polygons_marginals):
-    """
-    XXX side-effect: extends id_of_marginalia
-    """
+def xml_reading_order(page, order_of_texts, id_of_marginalia):
     region_order = ET.SubElement(page, 'ReadingOrder')
     region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
     region_order_sub.set('id', "ro357564684568544579089")
-    indexer_region = 0
-    for vj in order_of_texts:
-        name = "coord_text_%s" % vj
+    region_counter = EynollahIdCounter()
+    for idx_textregion, _ in enumerate(order_of_texts):
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
-        name.set('index', str(indexer_region))
-        name.set('regionRef', id_of_texts[vj])
-        indexer_region += 1
-    for vm in range(len(found_polygons_marginals)):
-        id_of_marginalia.append('r%s' % indexer_region)
-        name = "coord_text_%s" % indexer_region
+        name.set('index', str(region_counter.get('region')))
+        name.set('regionRef', region_counter.region_id(order_of_texts[idx_textregion] + 1))
+        region_counter.inc('region')
+    for id_marginal in id_of_marginalia:
         name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
-        name.set('index', str(indexer_region))
-        name.set('regionRef', 'r%s' % indexer_region)
-        indexer_region += 1
-    return id_of_marginalia
+        name.set('index', str(region_counter.get('region')))
+        name.set('regionRef', id_marginal)
+        region_counter.inc('region')
 
+def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region_h, matrix_of_orders, indexes_sorted, index_of_types, kind_of_texts, ref_point):
+    indexes_sorted = np.array(indexes_sorted)
+    index_of_types = np.array(index_of_types)
+    kind_of_texts = np.array(kind_of_texts)
+
+    id_of_texts = []
+    order_of_texts = []
+
+    index_of_types_1 = index_of_types[kind_of_texts == 1]
+    indexes_sorted_1 = indexes_sorted[kind_of_texts == 1]
+
+    index_of_types_2 = index_of_types[kind_of_texts == 2]
+    indexes_sorted_2 = indexes_sorted[kind_of_texts == 2]
+
+    counter = EynollahIdCounter(region_idx=ref_point)
+    for idx_textregion, _ in enumerate(found_polygons_text_region):
+        id_of_texts.append(counter.next_region_id)
+        interest = indexes_sorted_1[indexes_sorted_1 == index_of_types_1[idx_textregion]]
+        if len(interest) > 0:
+            order_of_texts.append(interest[0])
+
+    for idx_headerregion, _ in enumerate(found_polygons_text_region_h):
+        id_of_texts.append(counter.next_region_id)
+        interest = indexes_sorted_2[index_of_types_2[idx_headerregion]]
+        order_of_texts.append(interest)
+
+    return order_of_texts, id_of_texts

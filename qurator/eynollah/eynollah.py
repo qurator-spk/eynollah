@@ -13,11 +13,10 @@ import time
 import warnings
 from pathlib import Path
 from multiprocessing import Process, Queue, cpu_count
-
+import gc
 from ocrd_utils import getLogger
 import cv2
 import numpy as np
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 stderr = sys.stderr
 sys.stderr = open(os.devnull, "w")
@@ -63,11 +62,11 @@ from .utils import (
     putt_bb_of_drop_capitals_of_model_in_patches_in_layout,
     check_any_text_region_in_model_one_is_main_or_header,
     small_textlines_to_parent_adherence2,
-    order_and_id_of_texts,
     order_of_regions,
     find_number_of_columns_in_document,
     return_boxes_of_images_by_order_of_reading_new)
 from .utils.pil_cv2 import check_dpi
+from .utils.xml import order_and_id_of_texts
 from .plot import EynollahPlotter
 from .writer import EynollahXmlWriter
 
@@ -149,7 +148,7 @@ class Eynollah:
 
     def predict_enhancement(self, img):
         self.logger.debug("enter predict_enhancement")
-        model_enhancement, _ = self.start_new_session_and_model(self.model_dir_of_enhancement)
+        model_enhancement, session_enhancement = self.start_new_session_and_model(self.model_dir_of_enhancement)
 
         img_height_model = model_enhancement.layers[len(model_enhancement.layers) - 1].output_shape[1]
         img_width_model = model_enhancement.layers[len(model_enhancement.layers) - 1].output_shape[2]
@@ -230,6 +229,10 @@ class Eynollah:
                     prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg
 
         prediction_true = prediction_true.astype(int)
+        session_enhancement.close()
+        del model_enhancement
+        del session_enhancement
+        gc.collect()
 
         return prediction_true
 
@@ -324,8 +327,14 @@ class Eynollah:
         self.logger.info("Found %s columns (%s)", num_col, label_p_pred)
 
         session_col_classifier.close()
-
+        
+        del model_num_classifier
+        del session_col_classifier
+        
         K.clear_session()
+        gc.collect()
+
+
 
         img_new, _ = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
 
@@ -375,7 +384,10 @@ class Eynollah:
             is_image_enhanced = False
             num_column_is_classified = True
             image_res = np.copy(img)
+            
+        session_col_classifier.close()
 
+        
         self.logger.debug("exit resize_and_enhance_image_with_column_classifier")
         return is_image_enhanced, img, image_res, num_col, num_column_is_classified
 
@@ -438,13 +450,17 @@ class Eynollah:
         model = load_model(model_dir, compile=False)
 
         return model, session
+
+    
     def start_new_session_and_model(self, model_dir):
         self.logger.debug("enter start_new_session_and_model (model_dir=%s)", model_dir)
-        gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=7.7, allow_growth=True)
+        gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+        #gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=7.7, allow_growth=True)
         session = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
         model = load_model(model_dir, compile=False)
 
         return model, session
+
     def do_prediction(self, patches, img, model, marginal_of_patch_percent=0.1):
         self.logger.debug("enter do_prediction")
 
@@ -560,6 +576,8 @@ class Eynollah:
                         prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg_color
 
             prediction_true = prediction_true.astype(np.uint8)
+        del model
+        gc.collect()
         return prediction_true
 
     def early_page_for_num_of_column_classification(self):
@@ -580,7 +598,10 @@ class Eynollah:
         box = [x, y, w, h]
         croped_page, page_coord = crop_image_inside_box(box, img)
         session_page.close()
-
+        del model_page
+        del session_page
+        gc.collect()
+        K.clear_session()
         self.logger.debug("exit early_page_for_num_of_column_classification")
         return croped_page, page_coord
 
@@ -612,7 +633,9 @@ class Eynollah:
         croped_page, page_coord = crop_image_inside_box(box, self.image)
         cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
         session_page.close()
-
+        del model_page
+        del session_page
+        gc.collect()
         K.clear_session()
         self.logger.debug("exit extract_page")
         return croped_page, page_coord, cont_page
@@ -710,6 +733,10 @@ class Eynollah:
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
 
         session_region.close()
+        del model_region
+        del session_region
+        gc.collect()
+        
         self.logger.debug("exit extract_text_regions")
         return prediction_regions, prediction_regions2
 
@@ -1006,10 +1033,9 @@ class Eynollah:
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
         prediction_textline_longshot = self.do_prediction(False, img, model_textline)
         prediction_textline_longshot_true_size = resize_image(prediction_textline_longshot, img_h, img_w)
-        ##plt.imshow(prediction_textline_streched[:,:,0])
-        ##plt.show()
 
         session_textline.close()
+
 
         return prediction_textline[:, :, 0], prediction_textline_longshot_true_size[:, :, 0]
 
@@ -1077,18 +1103,22 @@ class Eynollah:
         ##plt.show()
         prediction_regions_org=prediction_regions_org[:,:,0]
         prediction_regions_org[(prediction_regions_org[:,:]==1) & (mask_zeros_y[:,:]==1)]=0
+        
         session_region.close()
+        del model_region
+        del session_region
+        gc.collect()
 
         model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
         img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]))
         prediction_regions_org2 = self.do_prediction(True, img, model_region, 0.2)
         prediction_regions_org2=resize_image(prediction_regions_org2, img_height_h, img_width_h )
 
-        #plt.imshow(prediction_regions_org2[:,:,0])
-        #plt.show()
-        ##prediction_regions_org=prediction_regions_org[:,:,0]
 
         session_region.close()
+        del model_region
+        del session_region
+        gc.collect()
 
         mask_zeros2 = (prediction_regions_org2[:,:,0] == 0)
         mask_lines2 = (prediction_regions_org2[:,:,0] == 3)
@@ -1179,18 +1209,16 @@ class Eynollah:
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
+                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for zahler, _ in enumerate(args_contours_box_h):
                     arg_order_v = indexes_sorted_head[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = tartib + ref_point
+                    order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for jji in range(len(id_of_texts)):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
                     id_of_texts_tot.append(id_of_texts[jji])
-                ref_point = ref_point + len(id_of_texts)
+                ref_point += len(id_of_texts)
 
             order_of_texts_tot = []
             for tj1 in range(len(contours_only_text_parent)):
@@ -1253,18 +1281,16 @@ class Eynollah:
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
+                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for zahler, _ in enumerate(args_contours_box_h):
                     arg_order_v = indexes_sorted_head[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = tartib + ref_point
+                    order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for jji, _ in enumerate(id_of_texts):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
                     id_of_texts_tot.append(id_of_texts[jji])
-                ref_point = ref_point + len(id_of_texts)
+                ref_point += len(id_of_texts)
 
             order_of_texts_tot = []
             for tj1 in range(len(contours_only_text_parent)):
@@ -1311,13 +1337,12 @@ class Eynollah:
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
+                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
-                for jji in range(len(id_of_texts)):
+                for jji, _ in enumerate(id_of_texts):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
                     id_of_texts_tot.append(id_of_texts[jji])
-                ref_point = ref_point + len(id_of_texts)
+                ref_point += len(id_of_texts)
 
             order_of_texts_tot = []
             for tj1 in range(len(contours_only_text_parent)):
@@ -1326,7 +1351,7 @@ class Eynollah:
             order_text_new = []
             for iii in range(len(order_of_texts_tot)):
                 order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
-
+        
         except Exception as why:
             self.logger.error(why)
             arg_text_con = []
@@ -1359,13 +1384,12 @@ class Eynollah:
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
-                    tartib = np.where(indexes_sorted == arg_order_v)[0][0]
-                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = tartib + ref_point
+                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for jji, _ in enumerate(id_of_texts):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
                     id_of_texts_tot.append(id_of_texts[jji])
-                ref_point = ref_point + len(id_of_texts)
+                ref_point += len(id_of_texts)
 
             order_of_texts_tot = []
             for tj1 in range(len(contours_only_text_parent)):
@@ -1374,7 +1398,7 @@ class Eynollah:
             order_text_new = []
             for iii in range(len(order_of_texts_tot)):
                 order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
-
+        
         return order_text_new, id_of_texts_tot
 
     def do_order_of_regions(self, *args, **kwargs):
