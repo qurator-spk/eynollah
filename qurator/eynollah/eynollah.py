@@ -450,6 +450,7 @@ class Eynollah:
         model = load_model(model_dir, compile=False)
 
         return model, session
+
     
     def start_new_session_and_model(self, model_dir):
         self.logger.debug("enter start_new_session_and_model (model_dir=%s)", model_dir)
