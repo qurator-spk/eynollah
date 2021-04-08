@@ -1639,7 +1639,7 @@ class Eynollah:
 
         if not num_col:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
-            pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], cont_page)
+            pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [], cont_page)
             self.logger.info("Job done in %ss", str(time.time() - t1))
             return pcgts
 
