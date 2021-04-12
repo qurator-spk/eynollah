@@ -1,60 +1,63 @@
 # pylint: disable=too-many-locals,wrong-import-position,too-many-lines,too-many-statements,chained-comparison,fixme,broad-except,c-extension-no-member
 # pylint: disable=invalid-name
-from lxml import etree as ET
 from .counter import EynollahIdCounter
 import numpy as np
+from datetime import datetime
 
-NAMESPACES = {}
-NAMESPACES['page'] = "http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15"
-NAMESPACES['xsi'] = "http://www.w3.org/2001/XMLSchema-instance"
-NAMESPACES[None] = NAMESPACES['page']
+from ocrd_models.ocrd_page import (
+    CoordsType,
+    GlyphType,
+    ImageRegionType,
+    MathsRegionType,
+    MetadataType,
+    MetadataItemType,
+    NoiseRegionType,
+    OrderedGroupIndexedType,
+    OrderedGroupType,
+    PcGtsType,
+    PageType,
+    ReadingOrderType,
+    RegionRefIndexedType,
+    RegionRefType,
+    SeparatorRegionType,
+    TableRegionType,
+    TextEquivType,
+    TextLineType,
+    TextRegionType,
+    UnorderedGroupIndexedType,
+    UnorderedGroupType,
+    WordType,
+
+    to_xml)
 
 def create_page_xml(imageFilename, height, width):
-    pcgts = ET.Element("PcGts", nsmap=NAMESPACES)
-
-    pcgts.set("{%s}schemaLocation" % NAMESPACES['xsi'], NAMESPACES['page'])
-
-    metadata = ET.SubElement(pcgts, "Metadata")
-
-    author = ET.SubElement(metadata, "Creator")
-    author.text = "SBB_QURATOR"
-
-    created = ET.SubElement(metadata, "Created")
-    created.text = "2019-06-17T18:15:12"
-
-    changetime = ET.SubElement(metadata, "LastChange")
-    changetime.text = "2019-06-17T18:15:12"
-
-    page = ET.SubElement(pcgts, "Page")
-
-    page.set("imageFilename", imageFilename)
-    page.set("imageHeight", str(height))
-    page.set("imageWidth", str(width))
-    page.set("type", "content")
-    page.set("readingDirection", "left-to-right")
-    page.set("textLineOrder", "top-to-bottom")
-
-    return pcgts, page
-
-def add_textequiv(parent, text=''):
-    textequiv = ET.SubElement(parent, 'TextEquiv')
-    unireg = ET.SubElement(textequiv, 'Unicode')
-    unireg.text = text
+    now = datetime.now()
+    pcgts = PcGtsType(
+        Metadata=MetadataType(
+            Creator='SBB_QURATOR',
+            Created=now,
+            LastChange=now
+        ),
+        Page=PageType(
+            imageWidth=str(width),
+            imageHeight=str(height),
+            imageFilename=imageFilename,
+            readingDirection='left-to-right',
+            textLineOrder='top-to-bottom'
+        ))
+    return pcgts
 
 def xml_reading_order(page, order_of_texts, id_of_marginalia):
-    region_order = ET.SubElement(page, 'ReadingOrder')
-    region_order_sub = ET.SubElement(region_order, 'OrderedGroup')
-    region_order_sub.set('id', "ro357564684568544579089")
+    region_order = ReadingOrderType()
+    og = OrderedGroupType(id="ro357564684568544579089")
+    page.set_ReadingOrder(region_order)
+    region_order.set_OrderedGroup(og)
     region_counter = EynollahIdCounter()
     for idx_textregion, _ in enumerate(order_of_texts):
-        name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
-        name.set('index', str(region_counter.get('region')))
-        name.set('regionRef', region_counter.region_id(order_of_texts[idx_textregion] + 1))
+        og.add_RegionRefIndexed(RegionRefIndexedType(index=str(region_counter.get('region')), regionRef=region_counter.region_id(order_of_texts[idx_textregion] + 1)))
         region_counter.inc('region')
     for id_marginal in id_of_marginalia:
-        name = ET.SubElement(region_order_sub, 'RegionRefIndexed')
-        name.set('index', str(region_counter.get('region')))
-        name.set('regionRef', id_marginal)
+        og.add_RegionRefIndexed(RegionRefIndexedType(index=str(region_counter.get('region')), regionRef=id_marginal))
         region_counter.inc('region')
 
 def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region_h, matrix_of_orders, indexes_sorted, index_of_types, kind_of_texts, ref_point):
