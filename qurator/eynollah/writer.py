@@ -54,7 +54,7 @@ class EynollahXmlWriter():
     def serialize_lines_in_marginal(self, marginal_region, all_found_texline_polygons_marginals, marginal_idx, page_coord, all_box_coord_marginals, slopes_marginals, counter):
         for j in range(len(all_found_texline_polygons_marginals[marginal_idx])):
             coords = CoordsType()
-            textline = TextLineType(id=counter.next_line_id, coords=coords)
+            textline = TextLineType(id=counter.next_line_id, Coords=coords)
             marginal_region.add_TextLine(textline)
             textline.add_TextEquiv(TextEquivType(Unicode=''))
             points_co = ''
@@ -94,7 +94,7 @@ class EynollahXmlWriter():
         self.logger.debug('enter serialize_lines_in_region')
         for j in range(len(all_found_texline_polygons[region_idx])):
             coords = CoordsType()
-            textline = TextLineType(id=counter.next_line_id, coords=coords, TextEquiv=[TextEquivType(index=0, Unicode='')])
+            textline = TextLineType(id=counter.next_line_id, Coords=coords, TextEquiv=[TextEquivType(index=0, Unicode='')])
             text_region.add_TextLine(textline)
             region_bboxes = all_box_coord[region_idx]
             points_co = ''
