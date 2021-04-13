@@ -117,20 +117,19 @@ def main(
         print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa or -si")
         sys.exit(1)
     eynollah = Eynollah(
-        image,
-        None,
-        out,
-        model,
-        save_images,
-        save_layout,
-        save_deskewed,
-        save_all,
-        enable_plotting,
-        allow_enhancement,
-        curved_line,
-        full_layout,
-        allow_scaling,
-        headers_off,
+        image_filename=image,
+        dir_out=out,
+        dir_models=model,
+        dir_of_cropped_images=save_images,
+        dir_of_layout=save_layout,
+        dir_of_deskewed=save_deskewed,
+        dir_of_all=save_all,
+        enable_plotting=enable_plotting,
+        allow_enhancement=allow_enhancement,
+        curved_line=curved_line,
+        full_layout=full_layout,
+        allow_scaling=allow_scaling,
+        headers_off=headers_off,
     )
     pcgts = eynollah.run()
     eynollah.writer.write_pagexml(pcgts)
