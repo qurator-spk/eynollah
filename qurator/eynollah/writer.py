@@ -152,14 +152,14 @@ class EynollahXmlWriter():
             xml_reading_order(page, order_of_texts, id_of_marginalia)
 
         for mm in range(len(found_polygons_text_region)):
-            textregion = TextRegionType(id=counter.next_region_id, type='paragraph',
+            textregion = TextRegionType(id=counter.next_region_id, type_='paragraph',
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord)),
                     TextEquiv=[TextEquivType(index=0, Unicode='')])
             page.add_TextRegion(textregion)
             self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, counter)
 
         for mm in range(len(found_polygons_marginals)):
-            marginal = TextRegionType(id=counter.next_region_id, type='marginalia',
+            marginal = TextRegionType(id=counter.next_region_id, type_='marginalia',
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_marginals[mm], page_coord)))
             page.add_TextRegion(marginal)
             self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter)
@@ -191,7 +191,7 @@ class EynollahXmlWriter():
         xml_reading_order(page, order_of_texts, id_of_marginalia)
 
         for mm in range(len(found_polygons_text_region)):
-            textregion = TextRegionType(id=counter.next_region_id, type='paragraph',
+            textregion = TextRegionType(id=counter.next_region_id, type_='paragraph',
                     TextEquiv=[TextEquivType(index=0, Unicode='')],
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord)))
             page.add_TextRegion(textregion)
@@ -199,21 +199,21 @@ class EynollahXmlWriter():
 
         self.logger.debug('len(found_polygons_text_region_h) %s', len(found_polygons_text_region_h))
         for mm in range(len(found_polygons_text_region_h)):
-            textregion = TextRegionType(id=counter.next_region_id, type='header',
+            textregion = TextRegionType(id=counter.next_region_id, type_='header',
                     TextEquiv=[TextEquivType(index=0, Unicode='')],
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region_h[mm], page_coord)))
             page.add_TextRegion(textregion)
             self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord_h, slopes, counter)
 
         for mm in range(len(found_polygons_marginals)):
-            marginal = TextRegionType(id=counter.next_region_id, type='marginalia',
+            marginal = TextRegionType(id=counter.next_region_id, type_='marginalia',
                     TextEquiv=[TextEquivType(index=0, Unicode='')],
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_marginals[mm], page_coord)))
             page.add_TextRegion(marginal)
             self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter)
 
         for mm in range(len(found_polygons_drop_capitals)):
-            page.add_TextRegion(TextRegionType(id=counter.next_region_id, type='drop-capital',
+            page.add_TextRegion(TextRegionType(id=counter.next_region_id, type_='drop-capital',
                     TextEquiv=[TextEquivType(index=0, Unicode='')],
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_drop_capitals[mm], page_coord))))
 
