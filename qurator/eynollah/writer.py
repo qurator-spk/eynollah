@@ -87,7 +87,7 @@ class EynollahXmlWriter():
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][0] + all_box_coord_marginals[marginal_idx][2] + page_coord[2]) / self.scale_x))
                         points_co += ','
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][1] + all_box_coord_marginals[marginal_idx][0] + page_coord[0]) / self.scale_y))
-                points += ' '
+                points_co += ' '
             coords.set_points(points_co[:-1])
 
     def serialize_lines_in_region(self, text_region, all_found_texline_polygons, region_idx, page_coord, all_box_coord, slopes, counter):
