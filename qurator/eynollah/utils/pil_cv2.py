@@ -15,10 +15,12 @@ def pil2cv(img):
     return cvtColor(pil_as_np_array, color_conversion)
 
 def check_dpi(image_filename):
-    exif = OcrdExif(Image.open(image_filename))
-    print(exif.to_xml())
-    resolution = exif.resolution
-    if exif.resolutionUnit == 'cm':
-        resolution /= 2.54
-    return int(resolution)
+    try:
+        exif = OcrdExif(Image.open(image_filename))
+        resolution = exif.resolution
+        if exif.resolutionUnit == 'cm':
+            resolution /= 2.54
+        return int(resolution)
+    except:
+        return 230
 

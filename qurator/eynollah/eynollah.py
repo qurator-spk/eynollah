@@ -92,7 +92,8 @@ class Eynollah:
         curved_line=False,
         full_layout=False,
         allow_scaling=False,
-        headers_off=False
+        headers_off=False,
+        override_dpi=None,
     ):
         self.image_filename = image_filename
         self.dir_out = dir_out
@@ -102,6 +103,7 @@ class Eynollah:
         self.full_layout = full_layout
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
+        self.override_dpi = override_dpi
         if not self.image_filename_stem:
             self.image_filename_stem = Path(Path(image_filename).name).stem
         self.plotter = None if not enable_plotting else EynollahPlotter(
@@ -346,10 +348,9 @@ class Eynollah:
 
     def resize_and_enhance_image_with_column_classifier(self):
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
-        try:
-            dpi = check_dpi(self.image_filename)
-        except:
-            dpi = 230
+        if self.override_dpi:
+            return self.override_dpi
+        dpi = check_dpi(self.image_filename)
         self.logger.info("Detected %s DPI", dpi)
         img = self.imread()
 
