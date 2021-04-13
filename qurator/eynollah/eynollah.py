@@ -80,9 +80,9 @@ class Eynollah:
     def __init__(
         self,
         image_filename,
-        image_filename_stem,
-        dir_out,
         dir_models,
+        image_filename_stem=None,
+        dir_out=None,
         dir_of_cropped_images=None,
         dir_of_layout=None,
         dir_of_deskewed=None,
@@ -94,6 +94,7 @@ class Eynollah:
         allow_scaling=False,
         headers_off=False,
         override_dpi=None,
+        logger=None,
     ):
         self.image_filename = image_filename
         self.dir_out = dir_out
@@ -117,7 +118,7 @@ class Eynollah:
             dir_out=self.dir_out,
             image_filename=self.image_filename,
             curved_line=self.curved_line)
-        self.logger = getLogger('eynollah')
+        self.logger = logger if logger else getLogger('eynollah')
         self.dir_models = dir_models
 
         self.model_dir_of_enhancement = dir_models + "/model_enhancement.h5"

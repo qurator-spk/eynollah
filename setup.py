@@ -16,7 +16,7 @@ setup(
     entry_points={
         'console_scripts': [
             'eynollah=qurator.eynollah.cli:main',
-            # 'ocrd-eynollah=qurator.eynollah.ocrd_cli:cli',
+            'ocrd-eynollah-segment=qurator.eynollah.ocrd_cli:main',
         ]
     },
 )
