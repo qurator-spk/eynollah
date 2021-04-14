@@ -141,7 +141,7 @@ class EynollahXmlWriter():
         self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
-        pcgts = create_page_xml(self.image_filename, self.height_org, self.width_org)
+        pcgts = self.pcgts if self.pcgts else create_page_xml(self.image_filename, self.height_org, self.width_org)
         page = pcgts.get_Page()
         page.set_Border(BorderType(Coords=CoordsType(points=self.calculate_page_coords(cont_page))))
 
@@ -181,7 +181,7 @@ class EynollahXmlWriter():
         self.logger.debug('enter build_pagexml_full_layout')
 
         # create the file structure
-        pcgts = create_page_xml(self.image_filename, self.height_org, self.width_org)
+        pcgts = self.pcgts if self.pcgts else create_page_xml(self.image_filename, self.height_org, self.width_org)
         page = pcgts.get_Page()
         page.set_Border(BorderType(Coords=CoordsType(points=self.calculate_page_coords(cont_page))))
 

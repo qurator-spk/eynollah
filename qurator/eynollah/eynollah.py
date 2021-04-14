@@ -95,6 +95,7 @@ class Eynollah:
         headers_off=False,
         override_dpi=None,
         logger=None,
+        pcgts=None,
     ):
         self.image_filename = image_filename
         self.dir_out = dir_out
@@ -117,7 +118,8 @@ class Eynollah:
         self.writer = EynollahXmlWriter(
             dir_out=self.dir_out,
             image_filename=self.image_filename,
-            curved_line=self.curved_line)
+            curved_line=self.curved_line,
+            pcgts=pcgts)
         self.logger = logger if logger else getLogger('eynollah')
         self.dir_models = dir_models
 

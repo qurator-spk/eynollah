@@ -30,10 +30,10 @@ class EynollahProcessor(Processor):
         assert_file_grp_cardinality(self.output_file_grp, 1)
         for n, input_file in enumerate(self.input_files):
             page_id = input_file.pageId or input_file.ID
-            LOG.info("INPUT FILE %s / %s ", page_id, len(self.input_files))
-            pcgts_in = page_from_file(self.workspace.download_file(input_file))
-            self.add_metadata(pcgts_in)
-            page = pcgts_in.get_Page()
+            LOG.info("INPUT FILE %s (%d/%d) ", page_id, n + 1, len(self.input_files))
+            pcgts = page_from_file(self.workspace.download_file(input_file))
+            self.add_metadata(pcgts)
+            page = pcgts.get_Page()
             page_image, _, _ = self.workspace.image_from_page(page, page_id, feature_filter='binarized')
             file_id = make_file_id(input_file, self.output_file_grp)
             with NamedTemporaryFile(buffering=0, suffix='.tif') as f:
@@ -47,13 +47,13 @@ class EynollahProcessor(Processor):
                     'headers_off': self.parameter['headers_off'],
                     'override_dpi': self.parameter['dpi'] if self.parameter['dpi'] > 0 else None,
                     'logger': LOG,
+                    'pcgts': pcgts,
                     'image_filename': f.name}
-                pcgts_out = Eynollah(**eynollah_kwargs).run()
-                pcgts_out.get_Page().imageFilename = pcgts_in.get_Page().imageFilename
+                Eynollah(**eynollah_kwargs).run()
                 self.workspace.add_file(
                     ID=file_id,
                     file_grp=self.output_file_grp,
                     pageId=page_id,
                     mimetype=MIMETYPE_PAGE,
                     local_filename=join(self.output_file_grp, file_id) + '.xml',
-                    content=to_xml(pcgts_out))
+                    content=to_xml(pcgts))
