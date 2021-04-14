@@ -18,9 +18,10 @@ def check_dpi(image_filename):
     try:
         exif = OcrdExif(Image.open(image_filename))
         resolution = exif.resolution
+        if resolution == 1:
+            raise Exception()
         if exif.resolutionUnit == 'cm':
             resolution /= 2.54
         return int(resolution)
     except:
         return 230
-
