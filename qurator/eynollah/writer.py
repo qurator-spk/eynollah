@@ -30,7 +30,7 @@ class EynollahXmlWriter():
         self.image_filename = image_filename
         self.image_filename_stem = Path(Path(image_filename).name).stem
         self.curved_line = curved_line
-        self.pcgts = pcgts if pcgts else PcGtsType()
+        self.pcgts = pcgts
         self.scale_x = None # XXX set outside __init__
         self.scale_y = None # XXX set outside __init__
         self.height_org = None # XXX set outside __init__
