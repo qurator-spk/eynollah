@@ -20,23 +20,23 @@
         "dpi": {
           "type": "number",
           "format": "float",
-          "description": "pixel density in dots per inch (overrides any meta-data in the images); disabled when <= 0",
-          "default": -1
+          "description": "pixel density in dots per inch (overrides any meta-data in the images); ignored if <= 0 (with fall-back 230)",
+          "default": 0
         },
         "full_layout": {
           "type": "boolean",
           "default": true,
-          "description": "Try to detect all elements, including drop-caps and marginalia"
+          "description": "Try to detect all element subtypes, including drop-caps and headings"
         },
         "curved_line": {
           "type": "boolean",
           "default": false,
-          "description": "if this parameter set to true, this tool will try to return contoure of textlines instead of rectabgle bounding box of textline. This should be taken into account that with this option the tool need more time to do process."
+          "description": "try to return contour of textlines instead of just rectangle bounding box. Needs more processing time"
         },
         "allow_enhancement": {
           "type": "boolean",
           "default": true,
-          "description": "if this parameter set to true, this tool would check that input image need resizing and enhancement or not. If so output of resized and enhanced image and corresponding layout data will be written in out directory"
+          "description": "if the input image has less than 300 DPI, then upscale and enhance"
         },
         "allow_scaling": {
           "type": "boolean",
@@ -46,7 +46,7 @@
         "headers_off": {
           "type": "boolean",
           "default": false,
-          "description": "if this parameter set to true, this tool would ignore headers role in reading order"
+          "description": "ignore the special role of headings during reading order detection"
         }
       }
     }
