@@ -6,7 +6,7 @@ from cv2 import COLOR_GRAY2BGR, COLOR_RGB2BGR, cvtColor, imread
 # from sbb_binarization
 
 def cv2pil(img):
-    return Image.fromarray(img.astype('uint8'))
+    return Image.fromarray(img)
 
 def pil2cv(img):
     # from ocrd/workspace.py
@@ -14,14 +14,15 @@ def pil2cv(img):
     pil_as_np_array = np.array(img).astype('uint8') if img.mode == '1' else np.array(img)
     return cvtColor(pil_as_np_array, color_conversion)
 
-def check_dpi(image_filename):
+def check_dpi(img):
     try:
-        exif = OcrdExif(Image.open(image_filename))
+        exif = OcrdExif(cv2pil(img))
         resolution = exif.resolution
         if resolution == 1:
             raise Exception()
         if exif.resolutionUnit == 'cm':
             resolution /= 2.54
         return int(resolution)
-    except:
+    except Exception as e:
+        print(e)
         return 230

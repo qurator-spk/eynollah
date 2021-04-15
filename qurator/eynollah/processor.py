@@ -14,6 +14,7 @@ from ocrd_utils import (
 )
 
 from .eynollah import Eynollah
+from .utils.pil_cv2 import pil2cv
 
 OCRD_TOOL = loads(resource_string(__name__, 'ocrd-tool.json').decode('utf8'))
 
@@ -35,25 +36,24 @@ class EynollahProcessor(Processor):
             self.add_metadata(pcgts)
             page = pcgts.get_Page()
             page_image, _, _ = self.workspace.image_from_page(page, page_id, feature_filter='binarized')
+            eynollah_kwargs = {
+                'dir_models': self.resolve_resource(self.parameter['models']),
+                'allow_enhancement': self.parameter['allow_enhancement'],
+                'curved_line': self.parameter['curved_line'],
+                'full_layout': self.parameter['full_layout'],
+                'allow_scaling': self.parameter['allow_scaling'],
+                'headers_off': self.parameter['headers_off'],
+                'override_dpi': self.parameter['dpi'] if self.parameter['dpi'] > 0 else None,
+                'logger': LOG,
+                'pcgts': pcgts,
+                'image_pil': page_image,
+                'image_filename': None}
+            Eynollah(**eynollah_kwargs).run()
             file_id = make_file_id(input_file, self.output_file_grp)
-            with NamedTemporaryFile(buffering=0, suffix='.tif') as f:
-                page_image.save(f.name)
-                eynollah_kwargs = {
-                    'dir_models': self.resolve_resource(self.parameter['models']),
-                    'allow_enhancement': self.parameter['allow_enhancement'],
-                    'curved_line': self.parameter['curved_line'],
-                    'full_layout': self.parameter['full_layout'],
-                    'allow_scaling': self.parameter['allow_scaling'],
-                    'headers_off': self.parameter['headers_off'],
-                    'override_dpi': self.parameter['dpi'] if self.parameter['dpi'] > 0 else None,
-                    'logger': LOG,
-                    'pcgts': pcgts,
-                    'image_filename': f.name}
-                Eynollah(**eynollah_kwargs).run()
-                self.workspace.add_file(
-                    ID=file_id,
-                    file_grp=self.output_file_grp,
-                    pageId=page_id,
-                    mimetype=MIMETYPE_PAGE,
-                    local_filename=join(self.output_file_grp, file_id) + '.xml',
-                    content=to_xml(pcgts))
+            self.workspace.add_file(
+                ID=file_id,
+                file_grp=self.output_file_grp,
+                pageId=page_id,
+                mimetype=MIMETYPE_PAGE,
+                local_filename=join(self.output_file_grp, file_id) + '.xml',
+                content=to_xml(pcgts))

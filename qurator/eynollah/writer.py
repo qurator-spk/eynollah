@@ -28,13 +28,16 @@ class EynollahXmlWriter():
         self.counter = EynollahIdCounter()
         self.dir_out = dir_out
         self.image_filename = image_filename
-        self.image_filename_stem = Path(Path(image_filename).name).stem
         self.curved_line = curved_line
         self.pcgts = pcgts
         self.scale_x = None # XXX set outside __init__
         self.scale_y = None # XXX set outside __init__
         self.height_org = None # XXX set outside __init__
         self.width_org = None # XXX set outside __init__
+
+    @property
+    def image_filename_stem(self):
+        return Path(Path(self.image_filename).name).stem
 
     def calculate_page_coords(self, cont_page):
         self.logger.debug('enter calculate_page_coords')

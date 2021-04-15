@@ -21,7 +21,6 @@ class EynollahPlotter():
         dir_of_deskewed,
         dir_of_layout,
         dir_of_cropped_images,
-        image_filename,
         image_filename_stem,
         image_org=None,
         scale_x=1,
@@ -31,7 +30,6 @@ class EynollahPlotter():
         self.dir_of_layout = dir_of_layout
         self.dir_of_cropped_images = dir_of_cropped_images
         self.dir_of_deskewed = dir_of_deskewed
-        self.image_filename = image_filename
         self.image_filename_stem = image_filename_stem
         # XXX TODO hacky these cannot be set at init time
         self.image_org = image_org
