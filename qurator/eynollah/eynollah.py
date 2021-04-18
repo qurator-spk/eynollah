@@ -1073,8 +1073,9 @@ class Eynollah:
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new)
 
-    def get_regions_from_xy_2models(self,img,is_image_enhanced):
+    def get_regions_from_xy_2models(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_from_xy_2models")
+        erosion_hurts = False
         img_org = np.copy(img)
         img_height_h = img_org.shape[0]
         img_width_h = img_org.shape[1]
@@ -1093,70 +1094,119 @@ class Eynollah:
         #plt.show()
         prediction_regions_org_y = prediction_regions_org_y[:,:,0]
         mask_zeros_y = (prediction_regions_org_y[:,:]==0)*1
-
-        img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]*(1.2 if is_image_enhanced else 1)))
-
-        prediction_regions_org = self.do_prediction(True, img, model_region)
-        prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
-
-        ##plt.imshow(prediction_regions_org[:,:,0])
-        ##plt.show()
-        prediction_regions_org=prediction_regions_org[:,:,0]
-        prediction_regions_org[(prediction_regions_org[:,:]==1) & (mask_zeros_y[:,:]==1)]=0
         
-        session_region.close()
-        del model_region
-        del session_region
-        gc.collect()
+        img_only_regions_with_sep = ( (prediction_regions_org_y[:,:] != 3) & (prediction_regions_org_y[:,:] != 0) )*1
+        img_only_regions_with_sep = img_only_regions_with_sep.astype(np.uint8)
+        
+        try:
+            img_only_regions = cv2.erode(img_only_regions_with_sep[:,:], KERNEL, iterations=6)
+            _, _ = find_num_col(img_only_regions, multiplier=6.0)
+            
+            img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]*(1.2 if is_image_enhanced else 1)))
 
-        model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
-        img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]))
-        prediction_regions_org2 = self.do_prediction(True, img, model_region, 0.2)
-        prediction_regions_org2=resize_image(prediction_regions_org2, img_height_h, img_width_h )
+            prediction_regions_org = self.do_prediction(True, img, model_region)
+            prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
 
+            ##plt.imshow(prediction_regions_org[:,:,0])
+            ##plt.show()
+            prediction_regions_org=prediction_regions_org[:,:,0]
+            prediction_regions_org[(prediction_regions_org[:,:]==1) & (mask_zeros_y[:,:]==1)]=0
+            
+            session_region.close()
+            del model_region
+            del session_region
+            gc.collect()
 
-        session_region.close()
-        del model_region
-        del session_region
-        gc.collect()
-
-        mask_zeros2 = (prediction_regions_org2[:,:,0] == 0)
-        mask_lines2 = (prediction_regions_org2[:,:,0] == 3)
-        text_sume_early = (prediction_regions_org[:,:] == 1).sum()
-        prediction_regions_org_copy = np.copy(prediction_regions_org)
-        prediction_regions_org_copy[(prediction_regions_org_copy[:,:]==1) & (mask_zeros2[:,:]==1)] = 0
-        text_sume_second = ((prediction_regions_org_copy[:,:]==1)*1).sum()
-
-        rate_two_models = text_sume_second / float(text_sume_early) * 100
-
-        self.logger.info("ratio_of_two_models: %s", rate_two_models)
-        if not(is_image_enhanced and rate_two_models < RATIO_OF_TWO_MODEL_THRESHOLD):
-            prediction_regions_org = np.copy(prediction_regions_org_copy)
-
-        prediction_regions_org[(mask_lines2[:,:]==1) & (prediction_regions_org[:,:]==0)]=3
-        mask_lines_only=(prediction_regions_org[:,:]==3)*1
-        prediction_regions_org = cv2.erode(prediction_regions_org[:,:], KERNEL, iterations=2)
-
-        #plt.imshow(text_region2_1st_channel)
-        #plt.show()
-
-        prediction_regions_org = cv2.dilate(prediction_regions_org[:,:], KERNEL, iterations=2)
-        mask_texts_only=(prediction_regions_org[:,:]==1)*1
-        mask_images_only=(prediction_regions_org[:,:]==2)*1
-
-        polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only, 1, 0.00001)
-        polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only, 1, 0.00001)
-
-        text_regions_p_true = np.zeros(prediction_regions_org.shape)
-        text_regions_p_true = cv2.fillPoly(text_regions_p_true,pts = polygons_of_only_lines, color=(3, 3, 3))
-        text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
-
-        text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
+            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
+            img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]))
+            prediction_regions_org2 = self.do_prediction(True, img, model_region, 0.2)
+            prediction_regions_org2=resize_image(prediction_regions_org2, img_height_h, img_width_h )
 
 
+            session_region.close()
+            del model_region
+            del session_region
+            gc.collect()
 
-        K.clear_session()
-        return text_regions_p_true
+            mask_zeros2 = (prediction_regions_org2[:,:,0] == 0)
+            mask_lines2 = (prediction_regions_org2[:,:,0] == 3)
+            text_sume_early = (prediction_regions_org[:,:] == 1).sum()
+            prediction_regions_org_copy = np.copy(prediction_regions_org)
+            prediction_regions_org_copy[(prediction_regions_org_copy[:,:]==1) & (mask_zeros2[:,:]==1)] = 0
+            text_sume_second = ((prediction_regions_org_copy[:,:]==1)*1).sum()
+
+            rate_two_models = text_sume_second / float(text_sume_early) * 100
+
+            self.logger.info("ratio_of_two_models: %s", rate_two_models)
+            if not(is_image_enhanced and rate_two_models < RATIO_OF_TWO_MODEL_THRESHOLD):
+                prediction_regions_org = np.copy(prediction_regions_org_copy)
+
+            prediction_regions_org[(mask_lines2[:,:]==1) & (prediction_regions_org[:,:]==0)]=3
+            mask_lines_only=(prediction_regions_org[:,:]==3)*1
+            prediction_regions_org = cv2.erode(prediction_regions_org[:,:], KERNEL, iterations=2)
+
+            #plt.imshow(text_region2_1st_channel)
+            #plt.show()
+
+            prediction_regions_org = cv2.dilate(prediction_regions_org[:,:], KERNEL, iterations=2)
+            mask_texts_only=(prediction_regions_org[:,:]==1)*1
+            mask_images_only=(prediction_regions_org[:,:]==2)*1
+
+            polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only, 1, 0.00001)
+            polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only, 1, 0.00001)
+
+            text_regions_p_true = np.zeros(prediction_regions_org.shape)
+            text_regions_p_true = cv2.fillPoly(text_regions_p_true,pts = polygons_of_only_lines, color=(3, 3, 3))
+            text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
+
+            text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
+
+
+
+            K.clear_session()
+            return text_regions_p_true, erosion_hurts
+        except:
+            
+            img = resize_image(img_org, int(img_org.shape[0]*1), int(img_org.shape[1]*1))
+            
+            prediction_regions_org = self.do_prediction(True, img, model_region)
+            
+            prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
+            
+            prediction_regions_org = prediction_regions_org[:,:,0]
+            
+            prediction_regions_org[(prediction_regions_org[:,:] == 1) & (mask_zeros_y[:,:] == 1)]=0
+            session_region.close()
+            del model_region
+            del session_region
+            gc.collect()
+            
+            
+            
+            
+            mask_lines_only = (prediction_regions_org[:,:] ==3)*1
+            
+            mask_texts_only = (prediction_regions_org[:,:] ==1)*1
+            
+            mask_images_only=(prediction_regions_org[:,:] ==2)*1
+            
+
+            polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
+            
+            polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
+            
+            
+            text_regions_p_true = np.zeros(prediction_regions_org.shape)
+            
+            text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_lines, color=(3,3,3))
+            
+            text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
+            
+            text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
+            
+            erosion_hurts = True
+            K.clear_session()
+            return text_regions_p_true, erosion_hurts
 
     def do_order_of_regions_full_layout(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
         self.logger.debug("enter do_order_of_regions_full_layout")
@@ -1406,7 +1456,7 @@ class Eynollah:
             return self.do_order_of_regions_full_layout(*args, **kwargs)
         return self.do_order_of_regions_no_full_layout(*args, **kwargs)
 
-    def run_graphics_and_columns(self, text_regions_p_1, num_col_classifier, num_column_is_classified):
+    def run_graphics_and_columns(self, text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts):
         img_g = self.imread(grayscale=True, uint8=True)
 
         img_g3 = np.zeros((img_g.shape[0], img_g.shape[1], 3))
@@ -1427,7 +1477,14 @@ class Eynollah:
         mask_lines = mask_lines.astype(np.uint8)
         img_only_regions_with_sep = ((text_regions_p_1[:, :] != 3) & (text_regions_p_1[:, :] != 0)) * 1
         img_only_regions_with_sep = img_only_regions_with_sep.astype(np.uint8)
-        img_only_regions = cv2.erode(img_only_regions_with_sep[:, :], KERNEL, iterations=6)
+        
+        
+        if erosion_hurts:
+            img_only_regions = np.copy(img_only_regions_with_sep[:,:])
+        else:
+            img_only_regions = cv2.erode(img_only_regions_with_sep[:,:], KERNEL, iterations=6)
+            
+        
         try:
             num_col, _ = find_num_col(img_only_regions, multiplier=6.0)
             num_col = num_col + 1
@@ -1628,12 +1685,12 @@ class Eynollah:
         self.logger.info("Enhancing took %ss ", str(time.time() - t0))
 
         t1 = time.time()
-        text_regions_p_1 = self.get_regions_from_xy_2models(img_res, is_image_enhanced)
+        text_regions_p_1 ,erosion_hurts = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
         self.logger.info("Textregion detection took %ss ", str(time.time() - t1))
 
         t1 = time.time()
         num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page = \
-                self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified)
+                self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts)
         self.logger.info("Graphics detection took %ss ", str(time.time() - t1))
         self.logger.info('cont_page %s', cont_page)
 
