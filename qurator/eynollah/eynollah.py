@@ -354,9 +354,7 @@ class Eynollah:
 
     def resize_and_enhance_image_with_column_classifier(self):
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
-        if self.override_dpi:
-            return self.override_dpi
-        dpi = check_dpi(self.imread())
+        dpi = self.override_dpi if self.override_dpi else check_dpi(self.imread())
         self.logger.info("Detected %s DPI", dpi)
         img = self.imread()
 

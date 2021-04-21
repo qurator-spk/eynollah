@@ -1,10 +1,14 @@
 from json import loads
 from pkg_resources import resource_string
 from tempfile import NamedTemporaryFile
+from pathlib import Path
 from os.path import join
 
+from PIL import Image
+
 from ocrd import Processor
-from ocrd_modelfactory import page_from_file
+from ocrd_modelfactory import page_from_file, exif_from_filename
+from ocrd_models import OcrdFile, OcrdExif
 from ocrd_models.ocrd_page import to_xml
 from ocrd_utils import (
     getLogger,
@@ -35,7 +39,15 @@ class EynollahProcessor(Processor):
             pcgts = page_from_file(self.workspace.download_file(input_file))
             self.add_metadata(pcgts)
             page = pcgts.get_Page()
-            page_image, _, _ = self.workspace.image_from_page(page, page_id, feature_filter='binarized')
+            # XXX loses DPI information
+            # page_image, _, _ = self.workspace.image_from_page(page, page_id, feature_filter='binarized')
+            self.workspace.download_file(next(self.workspace.mets.find_files(url=page.imageFilename)))
+            if self.parameter['dpi'] <= 0:
+                exif = exif_from_filename(page.imageFilename)
+                dpi = exif.resolution
+                if exif.resolutionUnit == 'cm':
+                    dpi /= 2.54
+                self.parameter['dpi'] = dpi
             eynollah_kwargs = {
                 'dir_models': self.resolve_resource(self.parameter['models']),
                 'allow_enhancement': self.parameter['allow_enhancement'],
@@ -43,11 +55,11 @@ class EynollahProcessor(Processor):
                 'full_layout': self.parameter['full_layout'],
                 'allow_scaling': self.parameter['allow_scaling'],
                 'headers_off': self.parameter['headers_off'],
-                'override_dpi': self.parameter['dpi'] if self.parameter['dpi'] > 0 else None,
+                'override_dpi': self.parameter['dpi'],
                 'logger': LOG,
                 'pcgts': pcgts,
-                'image_pil': page_image,
-                'image_filename': None}
+                'image_filename': page.imageFilename
+                }
             Eynollah(**eynollah_kwargs).run()
             file_id = make_file_id(input_file, self.output_file_grp)
             self.workspace.add_file(
