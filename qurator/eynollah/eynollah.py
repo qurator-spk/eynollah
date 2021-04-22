@@ -26,7 +26,6 @@ sys.stderr = stderr
 import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
-import matplotlib.pyplot as plt
 
 from .utils.contour import (
     filter_contours_area_of_image,
