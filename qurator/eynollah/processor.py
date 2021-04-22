@@ -41,7 +41,7 @@ class EynollahProcessor(Processor):
             page = pcgts.get_Page()
             # XXX loses DPI information
             # page_image, _, _ = self.workspace.image_from_page(page, page_id, feature_filter='binarized')
-            self.workspace.download_file(next(self.workspace.mets.find_files(url=page.imageFilename)))
+            image_filename = self.workspace.download_file(next(self.workspace.mets.find_files(url=page.imageFilename))).local_filename
             eynollah_kwargs = {
                 'dir_models': self.resolve_resource(self.parameter['models']),
                 'allow_enhancement': self.parameter['allow_enhancement'],
@@ -52,7 +52,7 @@ class EynollahProcessor(Processor):
                 'override_dpi': self.parameter['dpi'],
                 'logger': LOG,
                 'pcgts': pcgts,
-                'image_filename': page.imageFilename
+                'image_filename': image_filename
                 }
             Eynollah(**eynollah_kwargs).run()
             file_id = make_file_id(input_file, self.output_file_grp)
