@@ -42,12 +42,6 @@ class EynollahProcessor(Processor):
             # XXX loses DPI information
             # page_image, _, _ = self.workspace.image_from_page(page, page_id, feature_filter='binarized')
             self.workspace.download_file(next(self.workspace.mets.find_files(url=page.imageFilename)))
-            if self.parameter['dpi'] <= 0:
-                exif = exif_from_filename(page.imageFilename)
-                dpi = exif.resolution
-                if exif.resolutionUnit == 'cm':
-                    dpi /= 2.54
-                self.parameter['dpi'] = dpi if dpi != 1 else 230
             eynollah_kwargs = {
                 'dir_models': self.resolve_resource(self.parameter['models']),
                 'allow_enhancement': self.parameter['allow_enhancement'],

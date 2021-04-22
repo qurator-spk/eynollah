@@ -102,6 +102,8 @@ class Eynollah:
             self._imgs = self._cache_images(image_pil=image_pil)
         else:
             self._imgs = self._cache_images(image_filename=image_filename)
+        if override_dpi:
+            self.dpi = override_dpi
         self.image_filename = image_filename
         self.dir_out = dir_out
         self.allow_enhancement = allow_enhancement
@@ -109,7 +111,6 @@ class Eynollah:
         self.full_layout = full_layout
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
-        self.override_dpi = override_dpi
         self.plotter = None if not enable_plotting else EynollahPlotter(
             dir_of_all=dir_of_all,
             dir_of_deskewed=dir_of_deskewed,
@@ -138,8 +139,10 @@ class Eynollah:
         ret = {}
         if image_filename:
             ret['img'] = cv2.imread(image_filename)
+            self.dpi = check_dpi(image_filename)
         else:
             ret['img'] = pil2cv(image_pil)
+            self.dpi = check_dpi(image_pil)
         ret['img_grayscale'] = cv2.cvtColor(ret['img'], cv2.COLOR_BGR2GRAY)
         for prefix in ('',  '_grayscale'):
             ret[f'img{prefix}_uint8'] = ret[f'img{prefix}'].astype(np.uint8)
@@ -354,7 +357,7 @@ class Eynollah:
 
     def resize_and_enhance_image_with_column_classifier(self):
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
-        dpi = self.override_dpi if self.override_dpi else check_dpi(self.imread())
+        dpi = self.dpi
         self.logger.info("Detected %s DPI", dpi)
         img = self.imread()
 
