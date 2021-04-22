@@ -26,7 +26,7 @@ sys.stderr = stderr
 import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
-
+import matplotlib.pyplot as plt
 
 from .utils.contour import (
     filter_contours_area_of_image,
@@ -1103,11 +1103,13 @@ class Eynollah:
         prediction_regions_org_y = prediction_regions_org_y[:,:,0]
         mask_zeros_y = (prediction_regions_org_y[:,:]==0)*1
         
-        img_only_regions_with_sep = ( (prediction_regions_org_y[:,:] != 3) & (prediction_regions_org_y[:,:] != 0) )*1
+        ##img_only_regions_with_sep = ( (prediction_regions_org_y[:,:] != 3) & (prediction_regions_org_y[:,:] != 0) )*1
+        img_only_regions_with_sep = ( prediction_regions_org_y[:,:] == 1 )*1
         img_only_regions_with_sep = img_only_regions_with_sep.astype(np.uint8)
         
         try:
-            img_only_regions = cv2.erode(img_only_regions_with_sep[:,:], KERNEL, iterations=6)
+            img_only_regions = cv2.erode(img_only_regions_with_sep[:,:], KERNEL, iterations=20)
+
             _, _ = find_num_col(img_only_regions, multiplier=6.0)
             
             img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]*(1.2 if is_image_enhanced else 1)))
@@ -1693,6 +1695,7 @@ class Eynollah:
 
         t1 = time.time()
         text_regions_p_1 ,erosion_hurts = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
+        
         self.logger.info("Textregion detection took %ss ", str(time.time() - t1))
 
         t1 = time.time()
