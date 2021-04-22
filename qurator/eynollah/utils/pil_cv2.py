@@ -15,13 +15,13 @@ def pil2cv(img):
     return cvtColor(pil_as_np_array, color_conversion)
 
 def check_dpi(img):
-    if isinstance(img, Image.__class__):
-        pil_image = img
-    elif isinstance(img, str):
-        pil_image = Image.open(img)
-    else:
-        pil_image = cv2pil(img)
     try:
+        if isinstance(img, Image.__class__):
+            pil_image = img
+        elif isinstance(img, str):
+            pil_image = Image.open(img)
+        else:
+            pil_image = cv2pil(img)
         exif = OcrdExif(pil_image)
         resolution = exif.resolution
         if resolution == 1:
