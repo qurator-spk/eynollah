@@ -1,0 +1,54 @@
+{
+  "version": "0.0.1",
+  "git_url": "https://github.com/qurator-spk/eynollah",
+  "tools": {
+    "ocrd-eynollah-segment": {
+      "executable": "ocrd-eynollah-segment",
+      "categories": ["Layout analysis"],
+      "description": "Segment page into regions and lines and do reading order detection with eynollah",
+      "input_file_grp": ["OCR-D-IMG", "OCR-D-SEG-PAGE", "OCR-D-GT-SEG-PAGE"],
+      "output_file_grp": ["OCR-D-SEG-LINE"],
+      "steps": ["layout/segmentation/region", "layout/segmentation/line"],
+      "parameters": {
+        "models": {
+          "type": "string",
+          "format": "file",
+          "cacheable": true,
+          "description": "Path to directory containing models to be used (See https://qurator-data.de/eynollah)",
+          "required": true
+        },
+        "dpi": {
+          "type": "number",
+          "format": "float",
+          "description": "pixel density in dots per inch (overrides any meta-data in the images); ignored if <= 0 (with fall-back 230)",
+          "default": 0
+        },
+        "full_layout": {
+          "type": "boolean",
+          "default": true,
+          "description": "Try to detect all element subtypes, including drop-caps and headings"
+        },
+        "curved_line": {
+          "type": "boolean",
+          "default": false,
+          "description": "try to return contour of textlines instead of just rectangle bounding box. Needs more processing time"
+        },
+        "allow_enhancement": {
+          "type": "boolean",
+          "default": true,
+          "description": "if the input image has less than 300 DPI, then upscale and enhance"
+        },
+        "allow_scaling": {
+          "type": "boolean",
+          "default": false,
+          "description": "check the resolution against the number of detected columns and if needed, scale the image up or down during layout detection (heuristic to improve quality and performance)"
+        },
+        "headers_off": {
+          "type": "boolean",
+          "default": false,
+          "description": "ignore the special role of headings during reading order detection"
+        }
+      }
+    }
+  }
+}

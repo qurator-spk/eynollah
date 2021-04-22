@@ -65,7 +65,7 @@ from .utils import (
     order_of_regions,
     find_number_of_columns_in_document,
     return_boxes_of_images_by_order_of_reading_new)
-from .utils.pil_cv2 import check_dpi
+from .utils.pil_cv2 import check_dpi, pil2cv
 from .utils.xml import order_and_id_of_texts
 from .plot import EynollahPlotter
 from .writer import EynollahXmlWriter
@@ -79,10 +79,11 @@ KERNEL = np.ones((5, 5), np.uint8)
 class Eynollah:
     def __init__(
         self,
-        image_filename,
-        image_filename_stem,
-        dir_out,
         dir_models,
+        image_filename,
+        image_pil=None,
+        image_filename_stem=None,
+        dir_out=None,
         dir_of_cropped_images=None,
         dir_of_layout=None,
         dir_of_deskewed=None,
@@ -92,30 +93,36 @@ class Eynollah:
         curved_line=False,
         full_layout=False,
         allow_scaling=False,
-        headers_off=False
+        headers_off=False,
+        override_dpi=None,
+        logger=None,
+        pcgts=None,
     ):
+        if image_pil:
+            self._imgs = self._cache_images(image_pil=image_pil)
+        else:
+            self._imgs = self._cache_images(image_filename=image_filename)
+        if override_dpi:
+            self.dpi = override_dpi
         self.image_filename = image_filename
         self.dir_out = dir_out
-        self.image_filename_stem = image_filename_stem
         self.allow_enhancement = allow_enhancement
         self.curved_line = curved_line
         self.full_layout = full_layout
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
-        if not self.image_filename_stem:
-            self.image_filename_stem = Path(Path(image_filename).name).stem
         self.plotter = None if not enable_plotting else EynollahPlotter(
             dir_of_all=dir_of_all,
             dir_of_deskewed=dir_of_deskewed,
             dir_of_cropped_images=dir_of_cropped_images,
             dir_of_layout=dir_of_layout,
-            image_filename=image_filename,
-            image_filename_stem=self.image_filename_stem)
+            image_filename_stem=Path(Path(image_filename).name).stem)
         self.writer = EynollahXmlWriter(
             dir_out=self.dir_out,
             image_filename=self.image_filename,
-            curved_line=self.curved_line)
-        self.logger = getLogger('eynollah')
+            curved_line=self.curved_line,
+            pcgts=pcgts)
+        self.logger = logger if logger else getLogger('eynollah')
         self.dir_models = dir_models
 
         self.model_dir_of_enhancement = dir_models + "/model_enhancement.h5"
@@ -128,7 +135,18 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/model_ensemble_s.h5"
         self.model_textline_dir = dir_models + "/model_textline_newspapers.h5"
 
-        self._imgs = {}
+    def _cache_images(self, image_filename=None, image_pil=None):
+        ret = {}
+        if image_filename:
+            ret['img'] = cv2.imread(image_filename)
+            self.dpi = check_dpi(image_filename)
+        else:
+            ret['img'] = pil2cv(image_pil)
+            self.dpi = check_dpi(image_pil)
+        ret['img_grayscale'] = cv2.cvtColor(ret['img'], cv2.COLOR_BGR2GRAY)
+        for prefix in ('',  '_grayscale'):
+            ret[f'img{prefix}_uint8'] = ret[f'img{prefix}'].astype(np.uint8)
+        return ret
 
     def imread(self, grayscale=False, uint8=True):
         key = 'img'
@@ -136,15 +154,8 @@ class Eynollah:
             key += '_grayscale'
         if uint8:
             key += '_uint8'
-        if key not in self._imgs:
-            if grayscale:
-                img = cv2.imread(self.image_filename, cv2.IMREAD_GRAYSCALE)
-            else:
-                img = cv2.imread(self.image_filename)
-            if uint8:
-                img = img.astype(np.uint8)
-            self._imgs[key] = img
         return self._imgs[key].copy()
+
 
     def predict_enhancement(self, img):
         self.logger.debug("enter predict_enhancement")
@@ -346,10 +357,7 @@ class Eynollah:
 
     def resize_and_enhance_image_with_column_classifier(self):
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
-        try:
-            dpi = check_dpi(self.image_filename)
-        except:
-            dpi = 230
+        dpi = self.dpi
         self.logger.info("Detected %s DPI", dpi)
         img = self.imread()
 
@@ -1503,7 +1511,6 @@ class Eynollah:
         scale = 1
         if is_image_enhanced:
             if self.allow_enhancement:
-                cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem) + ".tif", img_res)
                 img_res = img_res.astype(np.uint8)
                 self.get_image_and_scales(img_org, img_res, scale)
             else:

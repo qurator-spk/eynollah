@@ -28,13 +28,16 @@ class EynollahXmlWriter():
         self.counter = EynollahIdCounter()
         self.dir_out = dir_out
         self.image_filename = image_filename
-        self.image_filename_stem = Path(Path(image_filename).name).stem
         self.curved_line = curved_line
-        self.pcgts = pcgts if pcgts else PcGtsType()
+        self.pcgts = pcgts
         self.scale_x = None # XXX set outside __init__
         self.scale_y = None # XXX set outside __init__
         self.height_org = None # XXX set outside __init__
         self.width_org = None # XXX set outside __init__
+
+    @property
+    def image_filename_stem(self):
+        return Path(Path(self.image_filename).name).stem
 
     def calculate_page_coords(self, cont_page):
         self.logger.debug('enter calculate_page_coords')
@@ -141,7 +144,7 @@ class EynollahXmlWriter():
         self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
-        pcgts = create_page_xml(self.image_filename, self.height_org, self.width_org)
+        pcgts = self.pcgts if self.pcgts else create_page_xml(self.image_filename, self.height_org, self.width_org)
         page = pcgts.get_Page()
         page.set_Border(BorderType(Coords=CoordsType(points=self.calculate_page_coords(cont_page))))
 
@@ -181,7 +184,7 @@ class EynollahXmlWriter():
         self.logger.debug('enter build_pagexml_full_layout')
 
         # create the file structure
-        pcgts = create_page_xml(self.image_filename, self.height_org, self.width_org)
+        pcgts = self.pcgts if self.pcgts else create_page_xml(self.image_filename, self.height_org, self.width_org)
         page = pcgts.get_Page()
         page.set_Border(BorderType(Coords=CoordsType(points=self.calculate_page_coords(cont_page))))
 
