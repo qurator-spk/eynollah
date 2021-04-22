@@ -47,7 +47,7 @@ class EynollahProcessor(Processor):
                 dpi = exif.resolution
                 if exif.resolutionUnit == 'cm':
                     dpi /= 2.54
-                self.parameter['dpi'] = dpi
+                self.parameter['dpi'] = dpi if dpi != 1 else 230
             eynollah_kwargs = {
                 'dir_models': self.resolve_resource(self.parameter['models']),
                 'allow_enhancement': self.parameter['allow_enhancement'],
