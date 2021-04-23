@@ -1579,7 +1579,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     return num_col_fin, peaks_neg_fin_fin,matrix_of_lines_ch,splitter_y_new,separators_closeup_n
         
 
-def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier):
+def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts):
     boxes=[]
 
 
@@ -1594,11 +1594,14 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
         if 1>0:#len( matrix_new[:,9][matrix_new[:,9]==1] )>0 and np.max(matrix_new[:,8][matrix_new[:,9]==1])>=0.1*(np.abs(splitter_y_new[i+1]-splitter_y_new[i] )):
             
             try:
-                num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=7.)
+                if erosion_hurts:
+                    num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=3.)
+                else:
+                    num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=7.)
             except:
                 peaks_neg_fin=[]
             
-            #print(peaks_neg_fin,'peaks_neg_fin0')
+            print(peaks_neg_fin,'peaks_neg_fin0')
             
             try:
                 peaks_neg_fin_org=np.copy(peaks_neg_fin)
