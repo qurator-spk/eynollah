@@ -1,5 +1,5 @@
 # ocrd includes opencv, numpy, shapely, click
-ocrd >= 2.20.3
+ocrd >= 2.23.3
 keras >= 2.3.1, < 2.4
 scikit-learn >= 0.23.2
 tensorflow-gpu >= 1.15, < 2
