@@ -1595,13 +1595,12 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
             
             try:
                 if erosion_hurts:
-                    num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=3.)
+                    num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=6.)
                 else:
                     num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=7.)
             except:
                 peaks_neg_fin=[]
-            
-            print(peaks_neg_fin,'peaks_neg_fin0')
+
             
             try:
                 peaks_neg_fin_org=np.copy(peaks_neg_fin)

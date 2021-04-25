@@ -27,6 +27,7 @@ import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
 
+
 from .utils.contour import (
     filter_contours_area_of_image,
     find_contours_mean_y_diff,
@@ -91,6 +92,7 @@ class Eynollah:
         allow_enhancement=False,
         curved_line=False,
         full_layout=False,
+        input_binary=False,
         allow_scaling=False,
         headers_off=False,
         override_dpi=None,
@@ -108,6 +110,7 @@ class Eynollah:
         self.allow_enhancement = allow_enhancement
         self.curved_line = curved_line
         self.full_layout = full_layout
+        self.input_binary = input_binary
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
         self.plotter = None if not enable_plotting else EynollahPlotter(
@@ -125,6 +128,7 @@ class Eynollah:
         self.dir_models = dir_models
 
         self.model_dir_of_enhancement = dir_models + "/model_enhancement.h5"
+        self.model_dir_of_binarization = dir_models + "/model_bin_sbb_ens.h5"
         self.model_dir_of_col_classifier = dir_models + "/model_scale_classifier.h5"
         self.model_region_dir_p = dir_models + "/model_main_covid19_lr5-5_scale_1_1_great.h5"
         self.model_region_dir_p2 = dir_models + "/model_main_home_corona3_rot.h5"
@@ -133,7 +137,7 @@ class Eynollah:
         self.model_page_dir = dir_models + "/model_page_mixed_best.h5"
         self.model_region_dir_p_ens = dir_models + "/model_ensemble_s.h5"
         self.model_textline_dir = dir_models + "/model_textline_newspapers.h5"
-
+        
     def _cache_images(self, image_filename=None, image_pil=None):
         ret = {}
         if image_filename:
@@ -309,27 +313,36 @@ class Eynollah:
 
         return img_new, num_column_is_classified
 
-    def resize_image_with_column_classifier(self, is_image_enhanced):
+    def resize_image_with_column_classifier(self, is_image_enhanced, img_bin):
         self.logger.debug("enter resize_image_with_column_classifier")
-        img = self.imread()
+        if self.input_binary:
+            img = np.copy(img_bin)
+        else:
+            img = self.imread()
 
-        _, page_coord = self.early_page_for_num_of_column_classification()
+        _, page_coord = self.early_page_for_num_of_column_classification(img)
         model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
+        if self.input_binary:
+            img_in = np.copy(img)
+            img_in = img_in / 255.0
+            width_early = img_in.shape[1]
+            img_in = cv2.resize(img_in, (448, 448), interpolation=cv2.INTER_NEAREST)
+            img_in = img_in.reshape(1, 448, 448, 3)
+        else:
+            img_1ch = self.imread(grayscale=True, uint8=False)
+            width_early = img_1ch.shape[1]
+            img_1ch = img_1ch[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
 
-        img_1ch = self.imread(grayscale=True, uint8=False)
-        width_early = img_1ch.shape[1]
-        img_1ch = img_1ch[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
+            # plt.imshow(img_1ch)
+            # plt.show()
+            img_1ch = img_1ch / 255.0
 
-        # plt.imshow(img_1ch)
-        # plt.show()
-        img_1ch = img_1ch / 255.0
+            img_1ch = cv2.resize(img_1ch, (448, 448), interpolation=cv2.INTER_NEAREST)
 
-        img_1ch = cv2.resize(img_1ch, (448, 448), interpolation=cv2.INTER_NEAREST)
-
-        img_in = np.zeros((1, img_1ch.shape[0], img_1ch.shape[1], 3))
-        img_in[0, :, :, 0] = img_1ch[:, :]
-        img_in[0, :, :, 1] = img_1ch[:, :]
-        img_in[0, :, :, 2] = img_1ch[:, :]
+            img_in = np.zeros((1, img_1ch.shape[0], img_1ch.shape[1], 3))
+            img_in[0, :, :, 0] = img_1ch[:, :]
+            img_in[0, :, :, 1] = img_1ch[:, :]
+            img_in[0, :, :, 2] = img_1ch[:, :]
 
         label_p_pred = model_num_classifier.predict(img_in)
         num_col = np.argmax(label_p_pred[0]) + 1
@@ -358,24 +371,51 @@ class Eynollah:
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
         dpi = self.dpi
         self.logger.info("Detected %s DPI", dpi)
-        img = self.imread()
+        if self.input_binary:
+            img = self.imread()
+            model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+            prediction_bin = self.do_prediction(True, img, model_bin)
+            
+            prediction_bin=prediction_bin[:,:,0]
+            prediction_bin = (prediction_bin[:,:]==0)*1
+            prediction_bin = prediction_bin*255
+            
+            prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
 
-        _, page_coord = self.early_page_for_num_of_column_classification()
+            session_bin.close()
+            del model_bin
+            del session_bin
+            gc.collect()
+            
+            prediction_bin = prediction_bin.astype(np.uint8)
+            img= np.copy(prediction_bin)
+            img_bin = np.copy(prediction_bin)
+        else:
+            img = self.imread()
+            img_bin = None
+
+        _, page_coord = self.early_page_for_num_of_column_classification(img_bin)
         model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
-        img_1ch = self.imread(grayscale=True)
-        width_early = img_1ch.shape[1]
-        img_1ch = img_1ch[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
-        # plt.imshow(img_1ch)
-        # plt.show()
-        img_1ch = img_1ch / 255.0
-        img_1ch = cv2.resize(img_1ch, (448, 448), interpolation=cv2.INTER_NEAREST)
-        img_in = np.zeros((1, img_1ch.shape[0], img_1ch.shape[1], 3))
-        img_in[0, :, :, 0] = img_1ch[:, :]
-        img_in[0, :, :, 1] = img_1ch[:, :]
-        img_in[0, :, :, 2] = img_1ch[:, :]
+        
+        if self.input_binary:
+            img_in = np.copy(img)
+            width_early = img_in.shape[1]
+            img_in = img_in / 255.0
+            img_in = cv2.resize(img_in, (448, 448), interpolation=cv2.INTER_NEAREST)
+            img_in = img_in.reshape(1, 448, 448, 3)
+        else:
+            img_1ch = self.imread(grayscale=True)
+            width_early = img_1ch.shape[1]
+            img_1ch = img_1ch[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
 
-        # plt.imshow(img_in[0,:,:,:])
-        # plt.show()
+            img_1ch = img_1ch / 255.0
+            img_1ch = cv2.resize(img_1ch, (448, 448), interpolation=cv2.INTER_NEAREST)
+            img_in = np.zeros((1, img_1ch.shape[0], img_1ch.shape[1], 3))
+            img_in[0, :, :, 0] = img_1ch[:, :]
+            img_in[0, :, :, 1] = img_1ch[:, :]
+            img_in[0, :, :, 2] = img_1ch[:, :]
+
+
 
         label_p_pred = model_num_classifier.predict(img_in)
         num_col = np.argmax(label_p_pred[0]) + 1
@@ -396,7 +436,7 @@ class Eynollah:
 
         
         self.logger.debug("exit resize_and_enhance_image_with_column_classifier")
-        return is_image_enhanced, img, image_res, num_col, num_column_is_classified
+        return is_image_enhanced, img, image_res, num_col, num_column_is_classified, img_bin
 
     # pylint: disable=attribute-defined-outside-init
     def get_image_and_scales(self, img_org, img_res, scale):
@@ -587,9 +627,13 @@ class Eynollah:
         gc.collect()
         return prediction_true
 
-    def early_page_for_num_of_column_classification(self):
+    def early_page_for_num_of_column_classification(self,img_bin):
         self.logger.debug("enter early_page_for_num_of_column_classification")
-        img = self.imread()
+        if self.input_binary:
+            img =np.copy(img_bin)
+            img = img.astype(np.uint8)
+        else:
+            img = self.imread()
         model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
         img = cv2.GaussianBlur(img, (5, 5), 0)
 
@@ -1149,6 +1193,8 @@ class Eynollah:
             self.logger.info("ratio_of_two_models: %s", rate_two_models)
             if not(is_image_enhanced and rate_two_models < RATIO_OF_TWO_MODEL_THRESHOLD):
                 prediction_regions_org = np.copy(prediction_regions_org_copy)
+                
+            
 
             prediction_regions_org[(mask_lines2[:,:]==1) & (prediction_regions_org[:,:]==0)]=3
             mask_lines_only=(prediction_regions_org[:,:]==3)*1
@@ -1158,6 +1204,47 @@ class Eynollah:
             #plt.show()
 
             prediction_regions_org = cv2.dilate(prediction_regions_org[:,:], KERNEL, iterations=2)
+            
+            
+            if rate_two_models<=40:
+                if self.input_binary:
+                    prediction_bin = np.copy(img_org)
+                else:
+                    model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+                    prediction_bin = self.do_prediction(True, img_org, model_bin)
+                    prediction_bin = resize_image(prediction_bin, img_height_h, img_width_h )
+                    
+                    prediction_bin=prediction_bin[:,:,0]
+                    prediction_bin = (prediction_bin[:,:]==0)*1
+                    prediction_bin = prediction_bin*255
+                    
+                    prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
+
+                    session_bin.close()
+                    del model_bin
+                    del session_bin
+                    gc.collect()
+                
+                
+                
+                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+                ratio_y=1
+                ratio_x=1
+
+
+                img = resize_image(prediction_bin, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
+
+                prediction_regions_org = self.do_prediction(True, img, model_region)
+                prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
+                prediction_regions_org=prediction_regions_org[:,:,0]
+                
+                mask_lines_only=(prediction_regions_org[:,:]==3)*1
+                session_region.close()
+                del model_region
+                del session_region
+                gc.collect()
+                
+                
             mask_texts_only=(prediction_regions_org[:,:]==1)*1
             mask_images_only=(prediction_regions_org[:,:]==2)*1
 
@@ -1170,25 +1257,70 @@ class Eynollah:
 
             text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
 
-
+            
 
             K.clear_session()
             return text_regions_p_true, erosion_hurts
         except:
             
-            img = resize_image(img_org, int(img_org.shape[0]*1), int(img_org.shape[1]*1))
+            if self.input_binary:
+                prediction_bin = np.copy(img_org)
+            else:
+                session_region.close()
+                del model_region
+                del session_region
+                gc.collect()
+                
+                model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+                prediction_bin = self.do_prediction(True, img_org, model_bin)
+                prediction_bin = resize_image(prediction_bin, img_height_h, img_width_h )
+                prediction_bin=prediction_bin[:,:,0]
+                
+                prediction_bin = (prediction_bin[:,:]==0)*1
+                
+                prediction_bin = prediction_bin*255
+                
+                prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
+
+                
+                
+                session_bin.close()
+                del model_bin
+                del session_bin
+                gc.collect()
             
+            
+            
+                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+            ratio_y=1
+            ratio_x=1
+
+
+            img = resize_image(prediction_bin, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
+
             prediction_regions_org = self.do_prediction(True, img, model_region)
-            
             prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
+            prediction_regions_org=prediction_regions_org[:,:,0]
             
-            prediction_regions_org = prediction_regions_org[:,:,0]
-            
-            prediction_regions_org[(prediction_regions_org[:,:] == 1) & (mask_zeros_y[:,:] == 1)]=0
+            #mask_lines_only=(prediction_regions_org[:,:]==3)*1
             session_region.close()
             del model_region
             del session_region
             gc.collect()
+            
+            #img = resize_image(img_org, int(img_org.shape[0]*1), int(img_org.shape[1]*1))
+            
+            #prediction_regions_org = self.do_prediction(True, img, model_region)
+            
+            #prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
+            
+            #prediction_regions_org = prediction_regions_org[:,:,0]
+            
+            #prediction_regions_org[(prediction_regions_org[:,:] == 1) & (mask_zeros_y[:,:] == 1)]=0
+            #session_region.close()
+            #del model_region
+            #del session_region
+            #gc.collect()
             
             
             
@@ -1506,7 +1638,7 @@ class Eynollah:
 
     def run_enhancement(self):
         self.logger.info("resize and enhance image")
-        is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified = self.resize_and_enhance_image_with_column_classifier()
+        is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified, img_bin = self.resize_and_enhance_image_with_column_classifier()
         self.logger.info("Image is %senhanced", '' if is_image_enhanced else 'not ')
         K.clear_session()
         scale = 1
@@ -1522,7 +1654,7 @@ class Eynollah:
             else:
                 self.get_image_and_scales(img_org, img_res, scale)
             if self.allow_scaling:
-                img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced)
+                img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced, img_bin)
                 self.get_image_and_scales_after_enhancing(img_org, img_res)
         return img_res, is_image_enhanced, num_col_classifier, num_column_is_classified
 
@@ -1688,13 +1820,10 @@ class Eynollah:
         t0 = time.time()
         img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement()
         
-        
-        
         self.logger.info("Enhancing took %ss ", str(time.time() - t0))
 
         t1 = time.time()
         text_regions_p_1 ,erosion_hurts = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
-        
         self.logger.info("Textregion detection took %ss ", str(time.time() - t1))
 
         t1 = time.time()

@@ -64,13 +64,14 @@ class EynollahXmlWriter():
             for l in range(len(all_found_texline_polygons_marginals[marginal_idx][j])):
                 if not self.curved_line:
                     if len(all_found_texline_polygons_marginals[marginal_idx][j][l]) == 2:
-                        points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0] + all_box_coord_marginals[marginal_idx][2] + page_coord[2]) / self.scale_x))
-                        points_co += ','
-                        points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][1] + all_box_coord_marginals[marginal_idx][0] + page_coord[0]) / self.scale_y))
+                        textline_x_coord = max(0, int((all_found_texline_polygons_marginals[marginal_idx][j][l][0] + all_box_coord_marginals[marginal_idx][2] + page_coord[2]) / self.scale_x) )
+                        textline_y_coord = max(0, int((all_found_texline_polygons_marginals[marginal_idx][j][l][1] + all_box_coord_marginals[marginal_idx][0] + page_coord[0]) / self.scale_y) )
                     else:
-                        points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][0] + all_box_coord_marginals[marginal_idx][2] + page_coord[2]) / self.scale_x))
-                        points_co += ','
-                        points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][1] + all_box_coord_marginals[marginal_idx][0] + page_coord[0])/self.scale_y))
+                        textline_x_coord = max(0, int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][0] + all_box_coord_marginals[marginal_idx][2] + page_coord[2]) / self.scale_x) )
+                        textline_y_coord = max(0, int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][1] + all_box_coord_marginals[marginal_idx][0] + page_coord[0]) / self.scale_y) )
+                    points_co += str(textline_x_coord)
+                    points_co += ','
+                    points_co += str(textline_y_coord)
                 if self.curved_line and np.abs(slopes_marginals[marginal_idx]) <= 45:
                     if len(all_found_texline_polygons_marginals[marginal_idx][j][l]) == 2:
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0] + page_coord[2]) / self.scale_x))

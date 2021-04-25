@@ -74,6 +74,12 @@ from qurator.eynollah.eynollah import Eynollah
     help="if this parameter set to true, this tool will try to return all elements of layout.",
 )
 @click.option(
+    "--input_binary/--input-RGB",
+    "-ib/-irgb",
+    is_flag=True,
+    help="in general, eynollah uses RGB as input but if the input document is strongly dark, bright or for any other reason you can turn binarized input on. This option does not mean that you have to provide a binary image, otherwise this means that the tool itself will binarized the RGB input document.",
+)
+@click.option(
     "--allow_scaling/--no-allow-scaling",
     "-as/-noas",
     is_flag=True,
@@ -103,6 +109,7 @@ def main(
     allow_enhancement,
     curved_line,
     full_layout,
+    input_binary,
     allow_scaling,
     headers_off,
     log_level
@@ -128,6 +135,7 @@ def main(
         allow_enhancement=allow_enhancement,
         curved_line=curved_line,
         full_layout=full_layout,
+        input_binary=input_binary,
         allow_scaling=allow_scaling,
         headers_off=headers_off,
     )
