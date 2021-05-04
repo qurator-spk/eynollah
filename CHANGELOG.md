@@ -11,6 +11,7 @@ Fixed:
 
   * prevent negative coordinates for textlines in marginals
   * fix a bug in the contour logic, #8
+  * the binarization model is added into the models and now binarization of input can be done at the first stage of eynollah's pipline. This option can be turned on by -ib (-input_binary) argument. This is suggested for very dark or bright documents
 
 ## [0.0.1] - 2021-04-22
 
