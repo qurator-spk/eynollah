@@ -1,10 +1,13 @@
 from setuptools import setup, find_packages
+from json import load
 
 install_requires = open('requirements.txt').read().split('\n')
+with open('ocrd-tool.json', 'r', encoding='utf-8') as f:
+    version = load(f)['version']
 
 setup(
     name='eynollah',
-    version='0.0.1',
+    version=version,
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     author='Vahid Rezanezhad',
