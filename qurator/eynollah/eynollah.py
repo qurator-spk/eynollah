@@ -1869,89 +1869,98 @@ class Eynollah:
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
             contours_only_text, hir_on_text = return_contours_of_image(text_only)
             contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
-            areas_cnt_text = np.array([cv2.contourArea(contours_only_text_parent[j]) for j in range(len(contours_only_text_parent))])
-            areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
-            self.logger.info('areas_cnt_text %s', areas_cnt_text)
-            contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
-            contours_only_text_parent = [contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz] > min_con_area]
-            areas_cnt_text_parent = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > min_con_area]
+                        
+            if len(contours_only_text_parent) > 0:
+                areas_cnt_text = np.array([cv2.contourArea(contours_only_text_parent[j]) for j in range(len(contours_only_text_parent))])
+                areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
+                self.logger.info('areas_cnt_text %s', areas_cnt_text)
+                contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
+                contours_only_text_parent = [contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz] > min_con_area]
+                areas_cnt_text_parent = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > min_con_area]
 
-            index_con_parents = np.argsort(areas_cnt_text_parent)
-            contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
-            areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
+                index_con_parents = np.argsort(areas_cnt_text_parent)
+                contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
+                areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
 
-            cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
-            cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
+                cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
+                cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
 
-            contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
-            contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
+                contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
+                contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
 
-            areas_cnt_text_d = np.array([cv2.contourArea(contours_only_text_parent_d[j]) for j in range(len(contours_only_text_parent_d))])
-            areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
+                areas_cnt_text_d = np.array([cv2.contourArea(contours_only_text_parent_d[j]) for j in range(len(contours_only_text_parent_d))])
+                areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
 
-            contours_biggest_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
-            index_con_parents_d=np.argsort(areas_cnt_text_d)
-            contours_only_text_parent_d=list(np.array(contours_only_text_parent_d)[index_con_parents_d] )
-            areas_cnt_text_d=list(np.array(areas_cnt_text_d)[index_con_parents_d] )
+                contours_biggest_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
+                index_con_parents_d=np.argsort(areas_cnt_text_d)
+                contours_only_text_parent_d=list(np.array(contours_only_text_parent_d)[index_con_parents_d] )
+                areas_cnt_text_d=list(np.array(areas_cnt_text_d)[index_con_parents_d] )
 
-            cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest_d])
-            cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent_d)
-            try:
-                if len(cx_bigest_d) >= 5:
-                    cx_bigest_d_last5 = cx_bigest_d[-5:]
-                    cy_biggest_d_last5 = cy_biggest_d[-5:]
-                    dists_d = [math.sqrt((cx_bigest_big[0] - cx_bigest_d_last5[j]) ** 2 + (cy_biggest_big[0] - cy_biggest_d_last5[j]) ** 2) for j in range(len(cy_biggest_d_last5))]
-                    ind_largest = len(cx_bigest_d) -5 + np.argmin(dists_d)
-                else:
-                    cx_bigest_d_last5 = cx_bigest_d[-len(cx_bigest_d):]
-                    cy_biggest_d_last5 = cy_biggest_d[-len(cx_bigest_d):]
-                    dists_d = [math.sqrt((cx_bigest_big[0]-cx_bigest_d_last5[j])**2 + (cy_biggest_big[0]-cy_biggest_d_last5[j])**2) for j in range(len(cy_biggest_d_last5))]
-                    ind_largest = len(cx_bigest_d) - len(cx_bigest_d) + np.argmin(dists_d)
-                    
-                cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
-                cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
-            except Exception as why:
-                self.logger.error(why)
+                cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest_d])
+                cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent_d)
+                try:
+                    if len(cx_bigest_d) >= 5:
+                        cx_bigest_d_last5 = cx_bigest_d[-5:]
+                        cy_biggest_d_last5 = cy_biggest_d[-5:]
+                        dists_d = [math.sqrt((cx_bigest_big[0] - cx_bigest_d_last5[j]) ** 2 + (cy_biggest_big[0] - cy_biggest_d_last5[j]) ** 2) for j in range(len(cy_biggest_d_last5))]
+                        ind_largest = len(cx_bigest_d) -5 + np.argmin(dists_d)
+                    else:
+                        cx_bigest_d_last5 = cx_bigest_d[-len(cx_bigest_d):]
+                        cy_biggest_d_last5 = cy_biggest_d[-len(cx_bigest_d):]
+                        dists_d = [math.sqrt((cx_bigest_big[0]-cx_bigest_d_last5[j])**2 + (cy_biggest_big[0]-cy_biggest_d_last5[j])**2) for j in range(len(cy_biggest_d_last5))]
+                        ind_largest = len(cx_bigest_d) - len(cx_bigest_d) + np.argmin(dists_d)
+                        
+                    cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
+                    cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
+                except Exception as why:
+                    self.logger.error(why)
 
-            (h, w) = text_only.shape[:2]
-            center = (w // 2.0, h // 2.0)
-            M = cv2.getRotationMatrix2D(center, slope_deskew, 1.0)
-            M_22 = np.array(M)[:2, :2]
-            p_big = np.dot(M_22, [cx_bigest_big, cy_biggest_big])
-            x_diff = p_big[0] - cx_bigest_d_big
-            y_diff = p_big[1] - cy_biggest_d_big
+                (h, w) = text_only.shape[:2]
+                center = (w // 2.0, h // 2.0)
+                M = cv2.getRotationMatrix2D(center, slope_deskew, 1.0)
+                M_22 = np.array(M)[:2, :2]
+                p_big = np.dot(M_22, [cx_bigest_big, cy_biggest_big])
+                x_diff = p_big[0] - cx_bigest_d_big
+                y_diff = p_big[1] - cy_biggest_d_big
 
-            contours_only_text_parent_d_ordered = []
-            for i in range(len(contours_only_text_parent)):
-                p = np.dot(M_22, [cx_bigest[i], cy_biggest[i]])
-                p[0] = p[0] - x_diff[0]
-                p[1] = p[1] - y_diff[0]
-                dists = [math.sqrt((p[0] - cx_bigest_d[j]) ** 2 + (p[1] - cy_biggest_d[j]) ** 2) for j in range(len(cx_bigest_d))]
-                contours_only_text_parent_d_ordered.append(contours_only_text_parent_d[np.argmin(dists)])
-                # img2=np.zeros((text_only.shape[0],text_only.shape[1],3))
-                # img2=cv2.fillPoly(img2,pts=[contours_only_text_parent_d[np.argmin(dists)]] ,color=(1,1,1))
-                # plt.imshow(img2[:,:,0])
-                # plt.show()
+                contours_only_text_parent_d_ordered = []
+                for i in range(len(contours_only_text_parent)):
+                    p = np.dot(M_22, [cx_bigest[i], cy_biggest[i]])
+                    p[0] = p[0] - x_diff[0]
+                    p[1] = p[1] - y_diff[0]
+                    dists = [math.sqrt((p[0] - cx_bigest_d[j]) ** 2 + (p[1] - cy_biggest_d[j]) ** 2) for j in range(len(cx_bigest_d))]
+                    contours_only_text_parent_d_ordered.append(contours_only_text_parent_d[np.argmin(dists)])
+                    # img2=np.zeros((text_only.shape[0],text_only.shape[1],3))
+                    # img2=cv2.fillPoly(img2,pts=[contours_only_text_parent_d[np.argmin(dists)]] ,color=(1,1,1))
+                    # plt.imshow(img2[:,:,0])
+                    # plt.show()
+            else:
+                contours_only_text_parent_d_ordered = []
+                contours_only_text_parent_d = []
+                
         else:
             contours_only_text, hir_on_text = return_contours_of_image(text_only)
             contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
+            
+            if len(contours_only_text_parent) > 0:
+                areas_cnt_text = np.array([cv2.contourArea(contours_only_text_parent[j]) for j in range(len(contours_only_text_parent))])
+                areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
 
-            areas_cnt_text = np.array([cv2.contourArea(contours_only_text_parent[j]) for j in range(len(contours_only_text_parent))])
-            areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
+                contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
+                contours_only_text_parent = [contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz] > min_con_area]
+                areas_cnt_text_parent = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > min_con_area]
 
-            contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
-            contours_only_text_parent = [contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz] > min_con_area]
-            areas_cnt_text_parent = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > min_con_area]
+                index_con_parents = np.argsort(areas_cnt_text_parent)
+                contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
+                areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
 
-            index_con_parents = np.argsort(areas_cnt_text_parent)
-            contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
-            areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
-
-            cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
-            cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
-            self.logger.debug('areas_cnt_text_parent %s', areas_cnt_text_parent)
-            # self.logger.debug('areas_cnt_text_parent_d %s', areas_cnt_text_parent_d)
-            # self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))
+                cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
+                cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
+                self.logger.debug('areas_cnt_text_parent %s', areas_cnt_text_parent)
+                # self.logger.debug('areas_cnt_text_parent_d %s', areas_cnt_text_parent_d)
+                # self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))
+            else:
+                pass
         txt_con_org = get_textregion_contours_in_org_image(contours_only_text_parent, self.image, slope_first)
         boxes_text, _ = get_text_region_boxes_by_given_contours(contours_only_text_parent)
         boxes_marginals, _ = get_text_region_boxes_by_given_contours(polygons_of_marginals)

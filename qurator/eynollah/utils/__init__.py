@@ -1560,7 +1560,11 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
         
         #regions_without_separators_tile=cv2.erode(regions_without_separators_tile,kernel,iterations = 3)
         #
-        num_col, peaks_neg_fin=find_num_col(regions_without_separators_tile,multiplier=7.0)
+        try:
+            num_col, peaks_neg_fin = find_num_col(regions_without_separators_tile,multiplier=7.0)
+        except:
+            num_col = 0
+            peaks_neg_fin = []
         
         if num_col>num_col_fin:
             num_col_fin=num_col
