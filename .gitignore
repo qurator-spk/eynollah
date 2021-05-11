@@ -3,3 +3,5 @@ __pycache__
 sbb_newspapers_org_image/pylint.log
 models_eynollah*
 output.html
+/build
+/dist
