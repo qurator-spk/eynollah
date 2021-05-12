@@ -646,10 +646,13 @@ class Eynollah:
         _, thresh = cv2.threshold(imgray, 0, 255, 0)
         thresh = cv2.dilate(thresh, KERNEL, iterations=3)
         contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-        cnt = contours[np.argmax(cnt_size)]
-        x, y, w, h = cv2.boundingRect(cnt)
-        box = [x, y, w, h]
+        if len(contours)>0:
+            cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
+            cnt = contours[np.argmax(cnt_size)]
+            x, y, w, h = cv2.boundingRect(cnt)
+            box = [x, y, w, h]
+        else:
+            box = [0, 0, img.shape[1], img.shape[0]]
         croped_page, page_coord = crop_image_inside_box(box, img)
         session_page.close()
         del model_page
@@ -669,21 +672,25 @@ class Eynollah:
         _, thresh = cv2.threshold(imgray, 0, 255, 0)
         thresh = cv2.dilate(thresh, KERNEL, iterations=3)
         contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-        cnt = contours[np.argmax(cnt_size)]
-        x, y, w, h = cv2.boundingRect(cnt)
-        if x <= 30:
-            w += x
-            x = 0
-        if (self.image.shape[1] - (x + w)) <= 30:
-            w = w + (self.image.shape[1] - (x + w))
-        if y <= 30:
-            h = h + y
-            y = 0
-        if (self.image.shape[0] - (y + h)) <= 30:
-            h = h + (self.image.shape[0] - (y + h))
+        
+        if len(contours)>0:
+            cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
+            cnt = contours[np.argmax(cnt_size)]
+            x, y, w, h = cv2.boundingRect(cnt)
+            if x <= 30:
+                w += x
+                x = 0
+            if (self.image.shape[1] - (x + w)) <= 30:
+                w = w + (self.image.shape[1] - (x + w))
+            if y <= 30:
+                h = h + y
+                y = 0
+            if (self.image.shape[0] - (y + h)) <= 30:
+                h = h + (self.image.shape[0] - (y + h))
 
-        box = [x, y, w, h]
+            box = [x, y, w, h]
+        else:
+            box = [0, 0, img.shape[1], img.shape[0]]
         croped_page, page_coord = crop_image_inside_box(box, self.image)
         cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
         session_page.close()
@@ -1253,6 +1260,11 @@ class Eynollah:
                 
             mask_texts_only=(prediction_regions_org[:,:]==1)*1
             mask_images_only=(prediction_regions_org[:,:]==2)*1
+            
+            
+            
+            polygons_lines_xml, hir_lines_xml = return_contours_of_image(mask_lines_only)
+            polygons_lines_xml = textline_con_fil = filter_contours_area_of_image(mask_lines_only, polygons_lines_xml, hir_lines_xml, max_area=1, min_area=0.00001)
 
             polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only, 1, 0.00001)
             polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only, 1, 0.00001)
@@ -1266,7 +1278,7 @@ class Eynollah:
             
 
             K.clear_session()
-            return text_regions_p_true, erosion_hurts
+            return text_regions_p_true, erosion_hurts, polygons_lines_xml
         except:
             
             if self.input_binary:
@@ -1337,7 +1349,10 @@ class Eynollah:
             
             mask_images_only=(prediction_regions_org[:,:] ==2)*1
             
-
+            polygons_lines_xml, hir_lines_xml = return_contours_of_image(mask_lines_only)
+            polygons_lines_xml = textline_con_fil = filter_contours_area_of_image(mask_lines_only, polygons_lines_xml, hir_lines_xml, max_area=1, min_area=0.00001)
+            
+            
             polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
             
             polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
@@ -1353,7 +1368,7 @@ class Eynollah:
             
             erosion_hurts = True
             K.clear_session()
-            return text_regions_p_true, erosion_hurts
+            return text_regions_p_true, erosion_hurts, polygons_lines_xml
 
     def do_order_of_regions_full_layout(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
         self.logger.debug("enter do_order_of_regions_full_layout")
@@ -1829,7 +1844,7 @@ class Eynollah:
         self.logger.info("Enhancing took %ss ", str(time.time() - t0))
 
         t1 = time.time()
-        text_regions_p_1 ,erosion_hurts = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
+        text_regions_p_1 ,erosion_hurts, polygons_lines_xml = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
         self.logger.info("Textregion detection took %ss ", str(time.time() - t1))
 
         t1 = time.time()
@@ -1840,7 +1855,7 @@ class Eynollah:
 
         if not num_col:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
-            pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [], cont_page)
+            pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [], cont_page, [])
             self.logger.info("Job done in %ss", str(time.time() - t1))
             return pcgts
 
@@ -2056,7 +2071,7 @@ class Eynollah:
             else:
                 order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
 
-            pcgts = self.writer.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, polygons_of_tabels, polygons_of_drop_capitals, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page)
+            pcgts = self.writer.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, polygons_of_tabels, polygons_of_drop_capitals, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_xml)
             self.logger.info("Job done in %ss", str(time.time() - t0))
             return pcgts
         else:
@@ -2066,6 +2081,6 @@ class Eynollah:
             else:
                 contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered)[index_by_text_par_con])
                 order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
-            pcgts = self.writer.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page)
+            pcgts = self.writer.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_xml)
             self.logger.info("Job done in %ss", str(time.time() - t0))
             return pcgts

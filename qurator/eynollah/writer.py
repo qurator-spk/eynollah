@@ -16,7 +16,7 @@ from ocrd_models.ocrd_page import (
         TextRegionType,
         ImageRegionType,
         TableRegionType,
-
+        SeparatorRegionType,
         to_xml
         )
 import numpy as np
@@ -141,7 +141,7 @@ class EynollahXmlWriter():
         with open(out_fname, 'w') as f:
             f.write(to_xml(pcgts))
 
-    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page):
+    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml):
         self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
@@ -178,10 +178,21 @@ class EynollahXmlWriter():
                 points_co += str(int((found_polygons_text_region_img[mm][lmm,0,1] + page_coord[0]) / self.scale_y))
                 points_co += ' '
             img_region.get_Coords().set_points(points_co[:-1])
+            
+        for mm in range(len(polygons_lines_to_be_written_in_xml)):
+            sep_hor = SeparatorRegionType(id=counter.next_region_id, Coords=CoordsType())
+            page.add_SeparatorRegion(sep_hor)
+            points_co = ''
+            for lmm in range(len(polygons_lines_to_be_written_in_xml[mm])):
+                points_co += str(int((polygons_lines_to_be_written_in_xml[mm][lmm,0,0] ) / self.scale_x))
+                points_co += ','
+                points_co += str(int((polygons_lines_to_be_written_in_xml[mm][lmm,0,1] ) / self.scale_y))
+                points_co += ' '
+            sep_hor.get_Coords().set_points(points_co[:-1])
 
         return pcgts
 
-    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page):
+    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml):
         self.logger.debug('enter build_pagexml_full_layout')
 
         # create the file structure
@@ -223,7 +234,10 @@ class EynollahXmlWriter():
 
         for mm in range(len(found_polygons_text_region_img)):
             page.add_ImageRegion(ImageRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region_img[mm], page_coord))))
-
+            
+        for mm in range(len(polygons_lines_to_be_written_in_xml)):
+            page.add_SeparatorRegion(ImageRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(polygons_lines_to_be_written_in_xml[mm], [0 , 0, 0, 0]))))
+            
         for mm in range(len(found_polygons_tables)):
             page.add_TableRegion(TableRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_tables[mm], page_coord))))
 
