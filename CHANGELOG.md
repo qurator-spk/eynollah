@@ -7,6 +7,10 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## [0.0.3] - 2021-05-11
 
+  * fix contour bug, #40
+
+## [0.0.3] - 2021-05-11
+
   * fix NaN bug, #38
 
 ## [0.0.2] - 2021-05-04
@@ -22,6 +26,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
-[0.0.2]: ../../compare/v0.0.3...v0.0.2
+[0.0.4]: ../../compare/v0.0.4...v0.0.3
+[0.0.3]: ../../compare/v0.0.3...v0.0.2
 [0.0.2]: ../../compare/v0.0.2...v0.0.1
 [0.0.1]: ../../compare/HEAD...v0.0.1
