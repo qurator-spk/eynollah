@@ -33,11 +33,6 @@
           "default": false,
           "description": "try to return contour of textlines instead of just rectangle bounding box. Needs more processing time"
         },
-        "allow_enhancement": {
-          "type": "boolean",
-          "default": true,
-          "description": "if the input image has less than 300 DPI, then upscale and enhance"
-        },
         "allow_scaling": {
           "type": "boolean",
           "default": false,
