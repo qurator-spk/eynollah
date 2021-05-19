@@ -37,7 +37,7 @@ class EynollahProcessor(Processor):
             page_id = input_file.pageId or input_file.ID
             LOG.info("INPUT FILE %s (%d/%d) ", page_id, n + 1, len(self.input_files))
             pcgts = page_from_file(self.workspace.download_file(input_file))
-            print('width %s height %s' % (pcgts.get_Page().imageWidth, pcgts.get_Page().imageHeight))
+            LOG.debug('width %s height %s', pcgts.get_Page().imageWidth, pcgts.get_Page().imageHeight)
             self.add_metadata(pcgts)
             page = pcgts.get_Page()
             # XXX loses DPI information
