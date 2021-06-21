@@ -888,7 +888,7 @@ class Eynollah:
             slopes_for_sub_process = list_all_par[6]
             for j in range(len(polys_for_sub_process)):
                 slopes.append(slopes_for_sub_process[j])
-                all_found_texline_polygons.append(polys_for_sub_process[j])
+                all_found_texline_polygons.append(polys_for_sub_process[j][::-1])
                 boxes.append(boxes_for_sub_process[j])
                 all_found_text_regions.append(contours_for_subprocess[j])
                 all_found_text_regions_par.append(contours_par_for_subprocess[j])
