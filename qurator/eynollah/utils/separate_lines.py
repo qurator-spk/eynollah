@@ -386,8 +386,9 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 
             if point_down_narrow >= img_patch.shape[0]:
                 point_down_narrow = img_patch.shape[0] - 2
+            
 
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True)
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
                             for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -448,8 +449,7 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
         pass
 
     elif len(peaks) == 1:
-        
-        distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[0] + first_nonzero), True)
+        distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[0] + first_nonzero])), True)
                         for mj in range(len(xv))]
         distances = np.array(distances)
 
@@ -529,8 +529,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
                     point_up = peaks_neg[2] + first_nonzero#peaks[jj] + first_nonzero - int(1. / 1.8 * dis_to_next)
                 except:
                     point_up =peaks[jj] + first_nonzero - int(1. / 1.8 * dis_to_next)
-
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True)
+                    
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
                             for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -611,8 +611,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 
                 point_up = peaks[jj] + first_nonzero - int(1. / 1.9 * dis_to_next_up)
                 point_down = peaks[jj] + first_nonzero + int(1. / 1.9 * dis_to_next_down)
-
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True)
+                
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
                             for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -788,8 +788,8 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
 
             if point_down_narrow >= img_patch.shape[0]:
                 point_down_narrow = img_patch.shape[0] - 2
-
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True) for mj in range(len(xv))]
+            
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True) for mj in range(len(xv))]
             distances = np.array(distances)
 
             xvinside = xv[distances >= 0]
@@ -870,8 +870,8 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
                 if point_down >= img_patch.shape[0]:
                     point_down = img_patch.shape[0] - 2
                 point_up = peaks[jj] + first_nonzero - int(1.0 / 1.8 * dis_to_next)
-
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True) for mj in range(len(xv))]
+            
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True) for mj in range(len(xv))]
             distances = np.array(distances)
 
             xvinside = xv[distances >= 0]
@@ -930,8 +930,8 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
 
                 point_up = peaks[jj] + first_nonzero - int(1.0 / 1.9 * dis_to_next_up)
                 point_down = peaks[jj] + first_nonzero + int(1.0 / 1.9 * dis_to_next_down)
-
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, (xv[mj], peaks[jj] + first_nonzero), True) for mj in range(len(xv))]
+            
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True) for mj in range(len(xv))]
             distances = np.array(distances)
 
             xvinside = xv[distances >= 0]
@@ -1382,82 +1382,82 @@ def textline_contours_postprocessing(textline_mask, slope, contour_text_interest
     # textline_mask = cv2.erode(textline_mask, kernel, iterations=1)
 
     # print(textline_mask.shape[0]/float(textline_mask.shape[1]),'miz')
-    try:
-        # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
-        # plt.imshow(textline_mask)
-        # plt.show()
+    #try:
+    # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
+    # plt.imshow(textline_mask)
+    # plt.show()
 
-        # if abs(slope)>1:
-        # x_help=30
-        # y_help=2
-        # else:
-        # x_help=2
-        # y_help=2
+    # if abs(slope)>1:
+    # x_help=30
+    # y_help=2
+    # else:
+    # x_help=2
+    # y_help=2
 
-        x_help = 30
-        y_help = 2
+    x_help = 30
+    y_help = 2
 
-        textline_mask_help = np.zeros((textline_mask.shape[0] + int(2 * y_help), textline_mask.shape[1] + int(2 * x_help), 3))
-        textline_mask_help[y_help : y_help + textline_mask.shape[0], x_help : x_help + textline_mask.shape[1], :] = np.copy(textline_mask[:, :, :])
+    textline_mask_help = np.zeros((textline_mask.shape[0] + int(2 * y_help), textline_mask.shape[1] + int(2 * x_help), 3))
+    textline_mask_help[y_help : y_help + textline_mask.shape[0], x_help : x_help + textline_mask.shape[1], :] = np.copy(textline_mask[:, :, :])
 
-        dst = rotate_image(textline_mask_help, slope)
-        dst = dst[:, :, 0]
-        dst[dst != 0] = 1
+    dst = rotate_image(textline_mask_help, slope)
+    dst = dst[:, :, 0]
+    dst[dst != 0] = 1
 
-        # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
-        # plt.imshow(dst)
-        # plt.show()
+    # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
+    # plt.imshow(dst)
+    # plt.show()
 
-        contour_text_copy = contour_text_interest.copy()
+    contour_text_copy = contour_text_interest.copy()
 
-        contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[0]
-        contour_text_copy[:, 0, 1] = contour_text_copy[:, 0, 1] - box_ind[1]
+    contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[0]
+    contour_text_copy[:, 0, 1] = contour_text_copy[:, 0, 1] - box_ind[1]
 
-        img_contour = np.zeros((box_ind[3], box_ind[2], 3))
-        img_contour = cv2.fillPoly(img_contour, pts=[contour_text_copy], color=(255, 255, 255))
+    img_contour = np.zeros((box_ind[3], box_ind[2], 3))
+    img_contour = cv2.fillPoly(img_contour, pts=[contour_text_copy], color=(255, 255, 255))
 
-        # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
-        # plt.imshow(img_contour)
-        # plt.show()
+    # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
+    # plt.imshow(img_contour)
+    # plt.show()
 
-        img_contour_help = np.zeros((img_contour.shape[0] + int(2 * y_help), img_contour.shape[1] + int(2 * x_help), 3))
+    img_contour_help = np.zeros((img_contour.shape[0] + int(2 * y_help), img_contour.shape[1] + int(2 * x_help), 3))
 
-        img_contour_help[y_help : y_help + img_contour.shape[0], x_help : x_help + img_contour.shape[1], :] = np.copy(img_contour[:, :, :])
+    img_contour_help[y_help : y_help + img_contour.shape[0], x_help : x_help + img_contour.shape[1], :] = np.copy(img_contour[:, :, :])
 
-        img_contour_rot = rotate_image(img_contour_help, slope)
+    img_contour_rot = rotate_image(img_contour_help, slope)
 
-        # plt.imshow(img_contour_rot_help)
-        # plt.show()
+    # plt.imshow(img_contour_rot_help)
+    # plt.show()
 
-        # plt.imshow(dst_help)
-        # plt.show()
+    # plt.imshow(dst_help)
+    # plt.show()
 
-        # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
-        # plt.imshow(img_contour_rot_help)
-        # plt.show()
+    # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
+    # plt.imshow(img_contour_rot_help)
+    # plt.show()
 
-        # plt.imshow(dst_help)
-        # plt.show()
+    # plt.imshow(dst_help)
+    # plt.show()
 
-        img_contour_rot = img_contour_rot.astype(np.uint8)
-        # dst_help = dst_help.astype(np.uint8)
-        imgrayrot = cv2.cvtColor(img_contour_rot, cv2.COLOR_BGR2GRAY)
-        _, threshrot = cv2.threshold(imgrayrot, 0, 255, 0)
-        contours_text_rot, _ = cv2.findContours(threshrot.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    img_contour_rot = img_contour_rot.astype(np.uint8)
+    # dst_help = dst_help.astype(np.uint8)
+    imgrayrot = cv2.cvtColor(img_contour_rot, cv2.COLOR_BGR2GRAY)
+    _, threshrot = cv2.threshold(imgrayrot, 0, 255, 0)
+    contours_text_rot, _ = cv2.findContours(threshrot.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        len_con_text_rot = [len(contours_text_rot[ib]) for ib in range(len(contours_text_rot))]
-        ind_big_con = np.argmax(len_con_text_rot)
+    len_con_text_rot = [len(contours_text_rot[ib]) for ib in range(len(contours_text_rot))]
+    ind_big_con = np.argmax(len_con_text_rot)
 
-        # print('juzaa')
-        if abs(slope) > 45:
-            # print(add_boxes_coor_into_textlines,'avval')
-            _, contours_rotated_clean = separate_lines_vertical_cont(textline_mask, contours_text_rot[ind_big_con], box_ind, slope, add_boxes_coor_into_textlines=add_boxes_coor_into_textlines)
-        else:
-            _, contours_rotated_clean = separate_lines(dst, contours_text_rot[ind_big_con], slope, x_help, y_help)
+    # print('juzaa')
+    if abs(slope) > 45:
+        # print(add_boxes_coor_into_textlines,'avval')
+        _, contours_rotated_clean = separate_lines_vertical_cont(textline_mask, contours_text_rot[ind_big_con], box_ind, slope, add_boxes_coor_into_textlines=add_boxes_coor_into_textlines)
+    else:
+        _, contours_rotated_clean = separate_lines(dst, contours_text_rot[ind_big_con], slope, x_help, y_help)
 
-    except:
+    #except:
 
-        contours_rotated_clean = []
+        #contours_rotated_clean = []
 
     return contours_rotated_clean
 
