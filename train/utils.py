@@ -374,9 +374,7 @@ def provide_patches(dir_img,dir_seg,dir_flow_train_imgs,
     
     indexer=0
     for im, seg_i in tqdm(zip(imgs_cv_train,segs_cv_train)):
-        #print(im, seg_i)
         img_name=im.split('.')[0]
-        print(img_name,'img_name')
         if not patches:
             cv2.imwrite(dir_flow_train_imgs+'/img_'+str(indexer)+'.png', resize_image(cv2.imread(dir_img+'/'+im),input_height,input_width ) )
             cv2.imwrite(dir_flow_train_labels+'/img_'+str(indexer)+'.png' ,  resize_image(cv2.imread(dir_seg+'/'+img_name+'.png'),input_height,input_width ) )
