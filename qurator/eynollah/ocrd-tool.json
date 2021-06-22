@@ -1,5 +1,5 @@
 {
-  "version": "0.0.5",
+  "version": "0.0.6",
   "git_url": "https://github.com/qurator-spk/eynollah",
   "tools": {
     "ocrd-eynollah-segment": {

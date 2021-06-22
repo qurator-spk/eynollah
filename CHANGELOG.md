@@ -5,6 +5,12 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.0.6] - 2021-06-22
+
+Fixed:
+
+  * Cast arguments to opencv2 to python native types, #43, #44, opencv/opencv#20186
+
 ## [0.0.5] - 2021-05-19
 
 Changed:
@@ -32,6 +38,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.0.6]: ../../compare/v0.0.6...v0.0.5
 [0.0.5]: ../../compare/v0.0.5...v0.0.4
 [0.0.4]: ../../compare/v0.0.4...v0.0.3
 [0.0.3]: ../../compare/v0.0.3...v0.0.2
