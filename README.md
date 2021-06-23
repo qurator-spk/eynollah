@@ -39,12 +39,15 @@ If you have an image label with height and width of 10, for a binary case the fi
 The train and evaluation folders should contain subfolders of images and labels.
 The output folder should be an empty folder where the output model will be written to.
     
-### Patches
-If you want to train your model with patches, the height and width of
-the patches should be defined and also the number of batches (how many patches 
-should be seen by the model in each iteration).
-
-In the case that the model should see the image once, like page extraction,
-patches should be set to ``false``.
+### Parameter configuration
+* patches: If you want to break input images into smaller patches (input size of the model) you need to set this parameter to ``true``. In the case that the model should see the image once, like page extraction, patches should be set to ``false``.
+* n_batch: Number of batches at each iteration.
+* n_classes: Number of classes. In the case of binary classification this should be 2.
+* n_epochs: Number of epochs.
+* input_height: This indicates the height of model's input.
+* input_width: This indicates the width of model's input.
+* weight_decay: Weight decay of l2 regularization of model layers.
+* augmentation: If you want to apply any kind of augmentation this parameter should first set to ``true``.
+* flip_aug: If ``true``, different types of filp will applied on image. Type of flips is given by "flip_index" in train.py file.
     
 
