@@ -23,14 +23,16 @@ be ``0`` and ``1`` for each class and pixel.
 In the case of multiclass, just set ``n_classes`` to the number of classes 
 you have and the try to produce the labels by pixels set from ``0 , 1 ,2 .., n_classes-1``.
 The labels format should be png. 
+Our lables are 3 channel png images but only information of first channel is used. 
+If you have an image label with height and width of 10, for a binary case the first channel should look like this:
     
-If you have an image label for a binary case it should look like this:
+    Label: [ [1, 0, 0, 1, 1, 0, 0, 1, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             ...,
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] ] 
     
-    Label: [ [[1 0 0 1], [1 0 0 1] ,[1 0 0 1]], 
-    [[1 0 0 1], [1 0 0 1] ,[1 0 0 1]] ,
-    [[1 0 0 1], [1 0 0 1] ,[1 0 0 1]] ] 
-    
- This means that you have an image by `3*4*3` and `pixel[0,0]` belongs
+ This means that you have an image by `10*10*3` and `pixel[0,0]` belongs
  to class `1` and `pixel[0,1]` belongs to class `0`.
     
 ### Training , evaluation and output 
