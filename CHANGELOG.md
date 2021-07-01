@@ -5,6 +5,12 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.0.7] - 2021-07-01
+
+Fixed:
+
+  * `slopes`/`slopes_h` retval/arguments mixed up, #45, #46
+
 ## [0.0.6] - 2021-06-22
 
 Fixed:
@@ -38,6 +44,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.0.7]: ../../compare/v0.0.7...v0.0.6
 [0.0.6]: ../../compare/v0.0.6...v0.0.5
 [0.0.5]: ../../compare/v0.0.5...v0.0.4
 [0.0.4]: ../../compare/v0.0.4...v0.0.3
