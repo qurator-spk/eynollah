@@ -1585,7 +1585,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
 
 def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts):
     boxes=[]
-
+    peaks_neg_tot_tables = []
 
     for i in range(len(splitter_y_new)-1):
         #print(splitter_y_new[i],splitter_y_new[i+1])
@@ -1678,6 +1678,8 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
             
 
             peaks_neg_tot=return_points_with_boundies(peaks_neg_fin,0, regions_without_separators[:,:].shape[1])
+            
+            peaks_neg_tot_tables.append(peaks_neg_tot)
             
             reading_order_type,x_starting,x_ending,y_type_2,y_diff_type_2,y_lines_without_mother,x_start_without_mother,x_end_without_mother,there_is_sep_with_child,y_lines_with_child_without_mother,x_start_with_child_without_mother,x_end_with_child_without_mother=return_x_start_end_mothers_childs_and_type_of_reading_order(x_min_hor_some,x_max_hor_some,cy_hor_some,peaks_neg_tot,cy_hor_diff)
             
@@ -2237,4 +2239,4 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
         #else:
             #boxes.append([ 0, regions_without_separators[:,:].shape[1] ,splitter_y_new[i],splitter_y_new[i+1]])
 
-    return boxes
+    return boxes, peaks_neg_tot_tables

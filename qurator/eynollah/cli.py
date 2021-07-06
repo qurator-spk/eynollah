@@ -74,6 +74,12 @@ from qurator.eynollah.eynollah import Eynollah
     help="if this parameter set to true, this tool will try to return all elements of layout.",
 )
 @click.option(
+    "--tables/--no-tables",
+    "-tab/-notab",
+    is_flag=True,
+    help="if this parameter set to true, this tool will try to detect tables.",
+)
+@click.option(
     "--input_binary/--input-RGB",
     "-ib/-irgb",
     is_flag=True,
@@ -109,6 +115,7 @@ def main(
     allow_enhancement,
     curved_line,
     full_layout,
+    tables,
     input_binary,
     allow_scaling,
     headers_off,
@@ -135,6 +142,7 @@ def main(
         allow_enhancement=allow_enhancement,
         curved_line=curved_line,
         full_layout=full_layout,
+        tables=tables,
         input_binary=input_binary,
         allow_scaling=allow_scaling,
         headers_off=headers_off,
