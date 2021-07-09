@@ -194,9 +194,9 @@ class EynollahXmlWriter():
             page.add_TableRegion(tab_region)
             points_co = ''
             for lmm in range(len(found_polygons_tables[mm])):
-                points_co += str(int((found_polygons_tables[mm][lmm,0,0] ) / self.scale_x))
+                points_co += str(int((found_polygons_tables[mm][lmm,0,0] + page_coord[2]) / self.scale_x))
                 points_co += ','
-                points_co += str(int((found_polygons_tables[mm][lmm,0,1] ) / self.scale_y))
+                points_co += str(int((found_polygons_tables[mm][lmm,0,1] + page_coord[0]) / self.scale_y))
                 points_co += ' '
             tab_region.get_Coords().set_points(points_co[:-1])
 

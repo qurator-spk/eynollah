@@ -28,6 +28,7 @@ tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter1d
 
 from .utils.contour import (
     filter_contours_area_of_image,
@@ -119,6 +120,7 @@ class Eynollah:
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
         self.plotter = None if not enable_plotting else EynollahPlotter(
+            dir_out=self.dir_out,
             dir_of_all=dir_of_all,
             dir_of_deskewed=dir_of_deskewed,
             dir_of_cropped_images=dir_of_cropped_images,
@@ -1636,7 +1638,7 @@ class Eynollah:
             x, y, w, h = cv2.boundingRect(contours[i])
             iou = cnt_size[i] /float(w*h) *100
             
-            if iou<60:
+            if iou<80:
                 layout_contour = np.zeros((layout_org.shape[0], layout_org.shape[1]))
                 layout_contour= cv2.fillPoly(layout_contour,pts=[contours[i]] ,color=(1,1,1))
                 
@@ -1670,8 +1672,9 @@ class Eynollah:
                         only_recent_contour_image= cv2.fillPoly(only_recent_contour_image,pts=[contours_sep[ji]] ,color=(1,1,1))
                         table_pixels_masked_from_early_pre = only_recent_contour_image[:,:]*table_prediction_early[:,:]
                         iou_in = table_pixels_masked_from_early_pre.sum() /float(only_recent_contour_image.sum()) *100
+                        #print(iou_in,'iou_in_in1')
                         
-                        if iou_in>20:
+                        if iou_in>30:
                             layout_org= cv2.fillPoly(layout_org,pts=[contours_sep[ji]] ,color=(pixel_tabel,pixel_tabel,pixel_tabel))
                         else:
                             pass
@@ -1687,8 +1690,8 @@ class Eynollah:
                     
                     table_pixels_masked_from_early_pre = only_recent_contour_image[:,:]*table_prediction_early[:,:]
                     iou_in = table_pixels_masked_from_early_pre.sum() /float(only_recent_contour_image.sum()) *100
-                    
-                    if iou_in>20:
+                    #print(iou_in,'iou_in')
+                    if iou_in>30:
                         layout_org= cv2.fillPoly(layout_org,pts=[contours[i]] ,color=(pixel_tabel,pixel_tabel,pixel_tabel))
                     else:
                         pass
@@ -1719,6 +1722,13 @@ class Eynollah:
     def add_tables_heuristic_to_layout(self, image_regions_eraly_p,boxes, slope_mean_hor, spliter_y,peaks_neg_tot, image_revised, num_col_classifier, min_area, pixel_line):
         pixel_table =10
         image_revised_1 = self.delete_separator_around(spliter_y, peaks_neg_tot, image_revised, pixel_line, pixel_table)
+        
+        try:
+            image_revised_1[:,:30][image_revised_1[:,:30]==pixel_line] = 0
+            image_revised_1[:,image_revised_1.shape[1]-30:][image_revised_1[:,image_revised_1.shape[1]-30:]==pixel_line] = 0
+        except:
+            pass
+        
         img_comm_e = np.zeros(image_revised_1.shape)
         img_comm = np.repeat(img_comm_e[:, :, np.newaxis], 3, axis=2)
 
@@ -1840,6 +1850,12 @@ class Eynollah:
         
         if num_col_classifier < 4 and num_col_classifier > 2:
             prediction_table = self.do_prediction(patches, img, model_region)
+            pre_updown = self.do_prediction(patches, cv2.flip(img[:,:,:], -1), model_region)
+            pre_updown = cv2.flip(pre_updown, -1)
+            
+            prediction_table[:,:,0][pre_updown[:,:,0]==1]=1
+            prediction_table = prediction_table.astype(np.int16)
+            
         elif num_col_classifier ==2:
             height_ext = 0#int( img.shape[0]/4. )
             h_start = int(height_ext/2.)
@@ -1853,8 +1869,14 @@ class Eynollah:
             img_new[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ] =img[:,:,:]
             
             prediction_ext = self.do_prediction(patches, img_new, model_region)
-            prediction_table = prediction_ext[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
             
+            pre_updown = self.do_prediction(patches, cv2.flip(img_new[:,:,:], -1), model_region)
+            pre_updown = cv2.flip(pre_updown, -1)
+            
+            prediction_table = prediction_ext[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
+            prediction_table_updown = pre_updown[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
+            
+            prediction_table[:,:,0][prediction_table_updown[:,:,0]==1]=1
             prediction_table = prediction_table.astype(np.int16)
 
         elif num_col_classifier ==1:
@@ -1870,26 +1892,16 @@ class Eynollah:
             img_new[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ] =img[:,:,:]
             
             prediction_ext = self.do_prediction(patches, img_new, model_region)
+            
+            pre_updown = self.do_prediction(patches, cv2.flip(img_new[:,:,:], -1), model_region)
+            pre_updown = cv2.flip(pre_updown, -1)
+            
             prediction_table = prediction_ext[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
+            prediction_table_updown = pre_updown[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
+            
+            prediction_table[:,:,0][prediction_table_updown[:,:,0]==1]=1
             prediction_table = prediction_table.astype(np.int16)
 
-        elif num_col_classifier ==60:
-            prediction_table = np.zeros(img.shape)
-            img_w_half = int(img.shape[1]/2.)
-            img_h_half = int(img.shape[0]/2.)
-            
-            pre1 = self.do_prediction(patches, img[0:img_h_half,0:img_w_half,:], model_region)
-            pre2 = self.do_prediction(patches, img[0:img_h_half,img_w_half:,:], model_region)
-            
-            pre3 = self.do_prediction(patches, img[img_h_half:,0:img_w_half,:], model_region)
-            pre4 = self.do_prediction(patches, img[img_h_half:,img_w_half:,:], model_region)
-            
-            prediction_table[0:img_h_half,0:img_w_half,:] = pre1[:,:,:]
-            prediction_table[0:img_h_half,img_w_half:,:] = pre2[:,:,:]
-            
-            prediction_table[img_h_half:,0:img_w_half,:] = pre3[:,:,:]
-            prediction_table[img_h_half:,img_w_half:,:] = pre4[:,:,:]
-            prediction_table = prediction_table.astype(np.int16)
         else:
             prediction_table = np.zeros(img.shape)
             img_w_half = int(img.shape[1]/2.)
@@ -1898,15 +1910,21 @@ class Eynollah:
             pre2 = self.do_prediction(patches, img[:,img_w_half:,:], model_region)
             
             pre_full = self.do_prediction(patches, img[:,:,:], model_region)
-
+            
+            pre_updown = self.do_prediction(patches, cv2.flip(img[:,:,:], -1), model_region)
+            pre_updown = cv2.flip(pre_updown, -1)
             
             prediction_table_full_erode = cv2.erode(pre_full[:,:,0], KERNEL, iterations=4)
             prediction_table_full_erode = cv2.dilate(prediction_table_full_erode, KERNEL, iterations=4)
+            
+            prediction_table_full_updown_erode = cv2.erode(pre_updown[:,:,0], KERNEL, iterations=4)
+            prediction_table_full_updown_erode = cv2.dilate(prediction_table_full_updown_erode, KERNEL, iterations=4)
 
             prediction_table[:,0:img_w_half,:] = pre1[:,:,:]
             prediction_table[:,img_w_half:,:] = pre2[:,:,:]
             
             prediction_table[:,:,0][prediction_table_full_erode[:,:]==1]=1
+            prediction_table[:,:,0][prediction_table_full_updown_erode[:,:]==1]=1
             prediction_table = prediction_table.astype(np.int16)
             
         #prediction_table_erode = cv2.erode(prediction_table[:,:,0], self.kernel, iterations=6)
@@ -1977,6 +1995,8 @@ class Eynollah:
             if self.allow_enhancement:
                 img_res = img_res.astype(np.uint8)
                 self.get_image_and_scales(img_org, img_res, scale)
+                if self.plotter:
+                    self.plotter.save_enhanced_image(img_res)
             else:
                 self.get_image_and_scales_after_enhancing(img_org, img_res)
         else:
@@ -2100,6 +2120,7 @@ class Eynollah:
         if self.tables:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                 img_revised_tab = np.copy(img_revised_tab2[:,:,0])
+                img_revised_tab[:,:][(text_regions_p[:,:] == 1) & (img_revised_tab[:,:] != 10)] = 1
             else:
                 img_revised_tab = np.copy(text_regions_p[:,:])
                 img_revised_tab[:,:][img_revised_tab[:,:] == 10] = 0
@@ -2310,7 +2331,6 @@ class Eynollah:
         textline_mask_tot, text_regions_p, image_page_rotated = self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines, num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
         self.logger.info("detection of marginals took %ss", str(time.time() - t1))
         t1 = time.time()
-
         if not self.full_layout:
             polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, boxes, boxes_d, polygons_of_marginals, contours_tables = self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, table_prediction, erosion_hurts)
         
