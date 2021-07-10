@@ -125,10 +125,10 @@ def main(
         setOverrideLogLevel(log_level)
     initLogging()
     if not enable_plotting and (save_layout or save_deskewed or save_all or save_images or allow_enhancement):
-        print("Error: You used one of -sl, -sd, -sa or -si or -ae but did not enable plotting with -ep")
+        print("Error: You used one of -sl, -sd, -sa, -si or -ae but did not enable plotting with -ep")
         sys.exit(1)
     elif enable_plotting and not (save_layout or save_deskewed or save_all or save_images or allow_enhancement):
-        print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa or -si or -ae")
+        print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa, -si or -ae")
         sys.exit(1)
     eynollah = Eynollah(
         image_filename=image,
