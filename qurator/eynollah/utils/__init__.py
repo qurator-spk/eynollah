@@ -360,7 +360,7 @@ def find_num_col_deskew(regions_without_separators, sigma_, multiplier=3.8):
     return np.std(z)
 
 
-def find_num_col(regions_without_separators, multiplier=3.8):
+def find_num_col(regions_without_separators, num_col_classifier, tables, multiplier=3.8):
     regions_without_separators_0 = regions_without_separators[:, :].sum(axis=0)
     ##plt.plot(regions_without_separators_0)
     ##plt.show()
@@ -416,6 +416,19 @@ def find_num_col(regions_without_separators, multiplier=3.8):
     interest_neg_fin = interest_neg[(interest_neg < grenze)]
     peaks_neg_fin = peaks_neg[(interest_neg < grenze)]
     # interest_neg_fin=interest_neg[(interest_neg<grenze)]
+    
+    if not tables:
+        if ( num_col_classifier - ( (len(interest_neg_fin))+1 ) ) >= 3:
+            index_sort_interest_neg_fin= np.argsort(interest_neg_fin)
+            peaks_neg_sorted = np.array(peaks_neg)[index_sort_interest_neg_fin]
+            interest_neg_fin_sorted = np.array(interest_neg_fin)[index_sort_interest_neg_fin]
+            
+            if len(index_sort_interest_neg_fin)>=num_col_classifier:
+                peaks_neg_fin = list( peaks_neg_sorted[:num_col_classifier] )
+                interest_neg_fin = list( interest_neg_fin_sorted[:num_col_classifier] )
+            else:
+                peaks_neg_fin = peaks_neg[:]
+                interest_neg_fin = interest_neg[:]
 
     num_col = (len(interest_neg_fin)) + 1
 
@@ -489,9 +502,9 @@ def find_num_col(regions_without_separators, multiplier=3.8):
             num_col = 1
             peaks_neg_true = []
 
-    diff_peaks_annormal = diff_peaks[diff_peaks < 360]
+    diff_peaks_abnormal = diff_peaks[diff_peaks < 360]
 
-    if len(diff_peaks_annormal) > 0:
+    if len(diff_peaks_abnormal) > 0:
         arg_help = np.array(range(len(diff_peaks)))
         arg_help_ann = arg_help[diff_peaks < 360]
 
@@ -1248,7 +1261,7 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     peaks_neg_tot.append(last_point)
     return peaks_neg_tot
 
-def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_lines, contours_h=None):
+def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, pixel_lines, contours_h=None):
 
     separators_closeup=( (region_pre_p[:,:,:]==pixel_lines))*1
     
@@ -1561,7 +1574,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
         #regions_without_separators_tile=cv2.erode(regions_without_separators_tile,kernel,iterations = 3)
         #
         try:
-            num_col, peaks_neg_fin = find_num_col(regions_without_separators_tile,multiplier=7.0)
+            num_col, peaks_neg_fin = find_num_col(regions_without_separators_tile, num_col_classifier, tables, multiplier=7.0)
         except:
             num_col = 0
             peaks_neg_fin = []
@@ -1583,7 +1596,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, pixel_l
     return num_col_fin, peaks_neg_fin_fin,matrix_of_lines_ch,splitter_y_new,separators_closeup_n
         
 
-def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts):
+def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, tables):
     boxes=[]
     peaks_neg_tot_tables = []
 
@@ -1599,20 +1612,21 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
             
             try:
                 if erosion_hurts:
-                    num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=6.)
+                    num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:], num_col_classifier, tables, multiplier=6.)
                 else:
-                    num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=7.)
+                    num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],num_col_classifier, tables, multiplier=7.)
             except:
                 peaks_neg_fin=[]
+                num_col = 0
 
             
             try:
                 peaks_neg_fin_org=np.copy(peaks_neg_fin)
-                if (len(peaks_neg_fin)+1)<num_col_classifier:
+                if (len(peaks_neg_fin)+1)<num_col_classifier or num_col_classifier==6:
                     #print('burda')
                     
                     if len(peaks_neg_fin)==0:
-                        num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=3.)
+                        num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],num_col_classifier, tables, multiplier=3.)
                     peaks_neg_fin_early=[]
                     peaks_neg_fin_early.append(0)
                     #print(peaks_neg_fin,'peaks_neg_fin')
@@ -1628,12 +1642,12 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                         #plt.plot(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]].sum(axis=0) )
                         #plt.show()
                         try:
-                            num_col, peaks_neg_fin1=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]],multiplier=7.)
+                            num_col, peaks_neg_fin1=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]],num_col_classifier,tables, multiplier=7.)
                         except:
                             peaks_neg_fin1=[]
                             
                         try:
-                            num_col, peaks_neg_fin2=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]],multiplier=5.)
+                            num_col, peaks_neg_fin2=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]],num_col_classifier,tables, multiplier=5.)
                         except:
                             peaks_neg_fin2=[]
                             
@@ -2238,5 +2252,4 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                     
         #else:
             #boxes.append([ 0, regions_without_separators[:,:].shape[1] ,splitter_y_new[i],splitter_y_new[i+1]])
-
     return boxes, peaks_neg_tot_tables

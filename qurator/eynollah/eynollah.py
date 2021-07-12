@@ -1174,7 +1174,7 @@ class Eynollah:
         try:
             img_only_regions = cv2.erode(img_only_regions_with_sep[:,:], KERNEL, iterations=20)
 
-            _, _ = find_num_col(img_only_regions, multiplier=6.0)
+            _, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
             
             img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]*(1.2 if is_image_enhanced else 1)))
 
@@ -1976,7 +1976,7 @@ class Eynollah:
             
         
         try:
-            num_col, _ = find_num_col(img_only_regions, multiplier=6.0)
+            num_col, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
             num_col = num_col + 1
             if not num_column_is_classified:
                 num_col_classifier = num_col + 1
@@ -2071,10 +2071,10 @@ class Eynollah:
             regions_without_separators_d = None
         pixel_lines = 3
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-            _, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+            _, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines)
 
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+            _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines)
         K.clear_session()
 
         self.logger.info("num_col_classifier: %s", num_col_classifier)
@@ -2088,7 +2088,7 @@ class Eynollah:
                 regions_without_separators_d = cv2.erode(regions_without_separators_d[:, :], KERNEL, iterations=6)
         t1 = time.time()
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-            boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts)
+            boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
             boxes_d = None
             self.logger.debug("len(boxes): %s", len(boxes))
             
@@ -2098,7 +2098,7 @@ class Eynollah:
             img_revised_tab2 = self.add_tables_heuristic_to_layout(text_regions_p_tables, boxes, 0, splitter_y_new, peaks_neg_tot_tables, text_regions_p_tables , num_col_classifier , 0.000005, pixel_line)
             img_revised_tab2, contoures_tables = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2,table_prediction, 10, num_col_classifier)
         else:
-            boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts)
+            boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)
             boxes = None
             self.logger.debug("len(boxes): %s", len(boxes_d))
             
@@ -2156,34 +2156,34 @@ class Eynollah:
                 textline_mask_tot_d = resize_image(textline_mask_tot_d,text_regions_p.shape[0],text_regions_p.shape[1])
                 table_prediction_n = resize_image(table_prediction_n,text_regions_p.shape[0],text_regions_p.shape[1])
                 
-                regions_without_seperators_d=(text_regions_p_1_n[:,:] == 1)*1
-                regions_without_seperators_d[table_prediction_n[:,:] == 1] = 1
+                regions_without_separators_d=(text_regions_p_1_n[:,:] == 1)*1
+                regions_without_separators_d[table_prediction_n[:,:] == 1] = 1
                 
-            regions_without_seperators = (text_regions_p[:,:] == 1)*1#( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_seperators_new(text_regions_p[:,:,0],img_only_regions)
-            regions_without_seperators[table_prediction == 1] = 1
+            regions_without_separators = (text_regions_p[:,:] == 1)*1#( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_seperators_new(text_regions_p[:,:,0],img_only_regions)
+            regions_without_separators[table_prediction == 1] = 1
             
             pixel_lines=3
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                num_col, peaks_neg_fin, matrix_of_lines_ch, splitter_y_new, seperators_closeup_n = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+                num_col, peaks_neg_fin, matrix_of_lines_ch, splitter_y_new, seperators_closeup_n = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines)
             
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, splitter_y_new_d, seperators_closeup_n_d = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2),num_col_classifier,pixel_lines)
+                num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, splitter_y_new_d, seperators_closeup_n_d = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2),num_col_classifier, self.tables, pixel_lines)
             K.clear_session()
             gc.collect()
 
             if num_col_classifier>=3:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    regions_without_seperators = regions_without_seperators.astype(np.uint8)
-                    regions_without_seperators = cv2.erode(regions_without_seperators[:,:], KERNEL, iterations=6)
+                    regions_without_separators = regions_without_separators.astype(np.uint8)
+                    regions_without_separators = cv2.erode(regions_without_separators[:,:], KERNEL, iterations=6)
                 
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                    regions_without_seperators_d = regions_without_seperators_d.astype(np.uint8)
-                    regions_without_seperators_d = cv2.erode(regions_without_seperators_d[:,:], KERNEL, iterations=6)
+                    regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
+                    regions_without_separators_d = cv2.erode(regions_without_separators_d[:,:], KERNEL, iterations=6)
             else:
                 pass
             
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_seperators, matrix_of_lines_ch, num_col_classifier, erosion_hurts)
+                boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
                 text_regions_p_tables = np.copy(text_regions_p)
                 text_regions_p_tables[:,:][(table_prediction[:,:]==1)] = 10
                 pixel_line = 3
@@ -2192,7 +2192,7 @@ class Eynollah:
                 img_revised_tab2,contoures_tables = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2, table_prediction, 10, num_col_classifier)
                 
             else:
-                boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_seperators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts)
+                boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)
                 text_regions_p_tables = np.copy(text_regions_p_1_n)
                 text_regions_p_tables = np.round(text_regions_p_tables)
                 text_regions_p_tables[:,:][(text_regions_p_tables[:,:]!=3) & (table_prediction_n[:,:]==1)] = 10
@@ -2271,20 +2271,20 @@ class Eynollah:
         text_regions_p[:, :][regions_fully_np[:, :, 0] == 4] = 4
         #plt.imshow(text_regions_p)
         #plt.show()
+        if not self.tables:
+            if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+                _, textline_mask_tot_d, text_regions_p_1_n, regions_fully_n = rotation_not_90_func_full_layout(image_page, textline_mask_tot, text_regions_p, regions_fully, slope_deskew)
 
-        if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            _, textline_mask_tot_d, text_regions_p_1_n, regions_fully_n = rotation_not_90_func_full_layout(image_page, textline_mask_tot, text_regions_p, regions_fully, slope_deskew)
+                text_regions_p_1_n = resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
+                textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
+                regions_fully_n = resize_image(regions_fully_n, text_regions_p.shape[0], text_regions_p.shape[1])
+                regions_without_separators_d = (text_regions_p_1_n[:, :] == 1) * 1
+            else:
+                text_regions_p_1_n = None
+                textline_mask_tot_d = None
+                regions_without_separators_d = None
 
-            text_regions_p_1_n = resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
-            textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
-            regions_fully_n = resize_image(regions_fully_n, text_regions_p.shape[0], text_regions_p.shape[1])
-            regions_without_separators_d = (text_regions_p_1_n[:, :] == 1) * 1
-        else:
-            text_regions_p_1_n = None
-            textline_mask_tot_d = None
-            regions_without_separators_d = None
-
-        regions_without_separators = (text_regions_p[:, :] == 1) * 1  # ( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_separators_new(text_regions_p[:,:,0],img_only_regions)
+            regions_without_separators = (text_regions_p[:, :] == 1) * 1
 
         K.clear_session()
         img_revised_tab = np.copy(text_regions_p[:, :])
@@ -2327,6 +2327,8 @@ class Eynollah:
         slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
         self.logger.info("deskewing took %ss", str(time.time() - t1))
         t1 = time.time()
+        #plt.imshow(table_prediction)
+        #plt.show()
 
         textline_mask_tot, text_regions_p, image_page_rotated = self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines, num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
         self.logger.info("detection of marginals took %ss", str(time.time() - t1))
@@ -2482,14 +2484,14 @@ class Eynollah:
 
             if not self.headers_off:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h)
+                    num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables,  pixel_lines, contours_only_text_parent_h)
                 else:
-                    _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines, contours_only_text_parent_h_d_ordered)
+                    _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines, contours_only_text_parent_h_d_ordered)
             elif self.headers_off:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+                    num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables,  pixel_lines)
                 else:
-                    _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, pixel_lines)
+                    _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines)
 
             # print(peaks_neg_fin,peaks_neg_fin_d,'num_col2')
             # print(splitter_y_new,splitter_y_new_d,'num_col_classifier')
@@ -2499,22 +2501,42 @@ class Eynollah:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     regions_without_separators = regions_without_separators.astype(np.uint8)
                     regions_without_separators = cv2.erode(regions_without_separators[:, :], KERNEL, iterations=6)
-                    random_pixels_for_image = np.random.randn(regions_without_separators.shape[0], regions_without_separators.shape[1])
-                    random_pixels_for_image[random_pixels_for_image < -0.5] = 0
-                    random_pixels_for_image[random_pixels_for_image != 0] = 1
-                    regions_without_separators[(random_pixels_for_image[:, :] == 1) & (text_regions_p[:, :] == 5)] = 1
+                    
+                    #regions_without_separators_0 = regions_without_separators[:, :].sum(axis=0)
+                    #meda_n_updown = regions_without_separators_0[len(regions_without_separators_0) :: -1]
+                    #first_nonzero = next((i for i, x in enumerate(regions_without_separators_0) if x), 0)
+                    #last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
+                    #last_nonzero = len(regions_without_separators_0) - last_nonzero
+                    
+                    #random_pixels_for_image = np.random.randn(regions_without_separators.shape[0], regions_without_separators.shape[1])
+                    #random_pixels_for_image[random_pixels_for_image < -0.5] = 0
+                    #random_pixels_for_image[random_pixels_for_image != 0] = 1
+                    #regions_without_separators[(random_pixels_for_image[:, :] == 1) & (text_regions_p[:, :] == 5)] = 1
+                    
+                    #regions_without_separators[:, 0:first_nonzero] = 0
+                    #regions_without_separators[:, last_nonzero:] = 0
                 else:
                     regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
                     regions_without_separators_d = cv2.erode(regions_without_separators_d[:, :], KERNEL, iterations=6)
-                    random_pixels_for_image = np.random.randn(regions_without_separators_d.shape[0], regions_without_separators_d.shape[1])
-                    random_pixels_for_image[random_pixels_for_image < -0.5] = 0
-                    random_pixels_for_image[random_pixels_for_image != 0] = 1
-                    regions_without_separators_d[(random_pixels_for_image[:, :] == 1) & (text_regions_p_1_n[:, :] == 5)] = 1
+                    
+                    #regions_without_separators_0 = regions_without_separators_d[:, :].sum(axis=0)
+                    #meda_n_updown = regions_without_separators_0[len(regions_without_separators_0) :: -1]
+                    #first_nonzero = next((i for i, x in enumerate(regions_without_separators_0) if x), 0)
+                    #last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
+                    #last_nonzero = len(regions_without_separators_0) - last_nonzero
+                    
+                    #random_pixels_for_image = np.random.randn(regions_without_separators_d.shape[0], regions_without_separators_d.shape[1])
+                    #random_pixels_for_image[random_pixels_for_image < -0.5] = 0
+                    #random_pixels_for_image[random_pixels_for_image != 0] = 1
+                    ##regions_without_separators_d[(random_pixels_for_image[:, :] == 1) & (text_regions_p_1_n[:, :] == 5)] = 1
+                    
+                    #regions_without_separators_d[:, 0:first_nonzero] = 0
+                    #regions_without_separators_d[:, last_nonzero:] = 0
 
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts)
+                boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
             else:
-                boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts)
+                boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)
 
         if self.plotter:
             self.plotter.write_images_into_directory(polygons_of_images, image_page)
