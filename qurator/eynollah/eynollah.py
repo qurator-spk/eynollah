@@ -2158,6 +2158,10 @@ class Eynollah:
                 
                 regions_without_separators_d=(text_regions_p_1_n[:,:] == 1)*1
                 regions_without_separators_d[table_prediction_n[:,:] == 1] = 1
+            else:
+                text_regions_p_1_n = None
+                textline_mask_tot_d = None
+                regions_without_separators_d = None
                 
             regions_without_separators = (text_regions_p[:,:] == 1)*1#( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_seperators_new(text_regions_p[:,:,0],img_only_regions)
             regions_without_separators[table_prediction == 1] = 1
