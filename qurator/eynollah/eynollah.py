@@ -2275,19 +2275,20 @@ class Eynollah:
         text_regions_p[:, :][regions_fully_np[:, :, 0] == 4] = 4
         #plt.imshow(text_regions_p)
         #plt.show()
-        if not self.tables:
-            if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                _, textline_mask_tot_d, text_regions_p_1_n, regions_fully_n = rotation_not_90_func_full_layout(image_page, textline_mask_tot, text_regions_p, regions_fully, slope_deskew)
+        ####if not self.tables:
+        if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+            _, textline_mask_tot_d, text_regions_p_1_n, regions_fully_n = rotation_not_90_func_full_layout(image_page, textline_mask_tot, text_regions_p, regions_fully, slope_deskew)
 
-                text_regions_p_1_n = resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
-                textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
-                regions_fully_n = resize_image(regions_fully_n, text_regions_p.shape[0], text_regions_p.shape[1])
+            text_regions_p_1_n = resize_image(text_regions_p_1_n, text_regions_p.shape[0], text_regions_p.shape[1])
+            textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
+            regions_fully_n = resize_image(regions_fully_n, text_regions_p.shape[0], text_regions_p.shape[1])
+            if not self.tables:
                 regions_without_separators_d = (text_regions_p_1_n[:, :] == 1) * 1
-            else:
-                text_regions_p_1_n = None
-                textline_mask_tot_d = None
-                regions_without_separators_d = None
-
+        else:
+            text_regions_p_1_n = None
+            textline_mask_tot_d = None
+            regions_without_separators_d = None
+        if not self.tables:
             regions_without_separators = (text_regions_p[:, :] == 1) * 1
 
         K.clear_session()
@@ -2342,7 +2343,6 @@ class Eynollah:
         
         if self.full_layout:
             polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts)
-
         text_only = ((img_revised_tab[:, :] == 1)) * 1
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
             text_only_d = ((text_regions_p_1_n[:, :] == 1)) * 1
@@ -2485,6 +2485,7 @@ class Eynollah:
 
             # print(len(contours_only_text_parent_h),len(contours_only_text_parent_h_d_ordered),'contours_only_text_parent_h')
             pixel_lines = 6
+            
 
             if not self.headers_off:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
