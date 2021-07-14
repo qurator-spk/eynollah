@@ -35,7 +35,7 @@ If you have an image label with height and width of 10, for a binary case the fi
  This means that you have an image by `10*10*3` and `pixel[0,0]` belongs
  to class `1` and `pixel[0,1]` belongs to class `0`.
  
- A small sample of training data for binarization experiment can be found here, [Training data sample](https://qurator-data.de/binarization_training_data_sample/), which contains images and lables folders.
+ A small sample of training data for binarization experiment can be found here, [Training data sample](https://qurator-data.de/~vahid.rezanezhad/binarization_training_data_sample/), which contains images and lables folders.
     
 ### Training , evaluation and output 
 The train and evaluation folders should contain subfolders of images and labels.
