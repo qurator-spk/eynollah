@@ -5,6 +5,12 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.0.7] - 2021-07-27
+
+Fixed:
+
+  * `pc:PcGts/@pcGtsId` was not set, #49
+
 ## [0.0.7] - 2021-07-01
 
 Fixed:
@@ -44,6 +50,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.0.8]: ../../compare/v0.0.8...v0.0.7
 [0.0.7]: ../../compare/v0.0.7...v0.0.6
 [0.0.6]: ../../compare/v0.0.6...v0.0.5
 [0.0.5]: ../../compare/v0.0.5...v0.0.4
