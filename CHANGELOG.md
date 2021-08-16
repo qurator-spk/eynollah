@@ -5,7 +5,17 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-## [0.0.7] - 2021-07-27
+## [0.0.9] - 2021-08-16
+
+Added:
+
+  * Table detection, #48
+
+Fixed:
+
+  * Catch exception, #47
+
+## [0.0.8] - 2021-07-27
 
 Fixed:
 
@@ -50,6 +60,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.0.9]: ../../compare/v0.0.9...v0.0.8
 [0.0.8]: ../../compare/v0.0.8...v0.0.7
 [0.0.7]: ../../compare/v0.0.7...v0.0.6
 [0.0.6]: ../../compare/v0.0.6...v0.0.5
