@@ -141,7 +141,7 @@ class EynollahXmlWriter():
         with open(out_fname, 'w') as f:
             f.write(to_xml(pcgts))
 
-    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml):
+    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_texline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, found_polygons_tables):
         self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
@@ -189,6 +189,16 @@ class EynollahXmlWriter():
                 points_co += str(int((polygons_lines_to_be_written_in_xml[mm][lmm,0,1] ) / self.scale_y))
                 points_co += ' '
             sep_hor.get_Coords().set_points(points_co[:-1])
+        for mm in range(len(found_polygons_tables)):
+            tab_region = TableRegionType(id=counter.next_region_id, Coords=CoordsType())
+            page.add_TableRegion(tab_region)
+            points_co = ''
+            for lmm in range(len(found_polygons_tables[mm])):
+                points_co += str(int((found_polygons_tables[mm][lmm,0,0] + page_coord[2]) / self.scale_x))
+                points_co += ','
+                points_co += str(int((found_polygons_tables[mm][lmm,0,1] + page_coord[0]) / self.scale_y))
+                points_co += ' '
+            tab_region.get_Coords().set_points(points_co[:-1])
 
         return pcgts
 

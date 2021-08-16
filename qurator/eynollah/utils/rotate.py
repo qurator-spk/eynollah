@@ -52,20 +52,21 @@ def rotate_image_different( img, slope):
     img_rotation = cv2.warpAffine(img, rotation_matrix, (num_cols, num_rows))
     return img_rotation
 
-def rotate_max_area(image, rotated, rotated_textline, rotated_layout, angle):
+def rotate_max_area(image, rotated, rotated_textline, rotated_layout, rotated_table_prediction, angle):
     wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
     h, w, _ = rotated.shape
     y1 = h // 2 - int(hr / 2)
     y2 = y1 + int(hr)
     x1 = w // 2 - int(wr / 2)
     x2 = x1 + int(wr)
-    return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2]
+    return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2], rotated_table_prediction[y1:y2, x1:x2]
 
-def rotation_not_90_func(img, textline, text_regions_p_1, thetha):
+def rotation_not_90_func(img, textline, text_regions_p_1, table_prediction, thetha):
     rotated = imutils.rotate(img, thetha)
     rotated_textline = imutils.rotate(textline, thetha)
     rotated_layout = imutils.rotate(text_regions_p_1, thetha)
-    return rotate_max_area(img, rotated, rotated_textline, rotated_layout, thetha)
+    rotated_table_prediction = imutils.rotate(table_prediction, thetha)
+    return rotate_max_area(img, rotated, rotated_textline, rotated_layout, rotated_table_prediction, thetha)
 
 def rotation_not_90_func_full_layout(img, textline, text_regions_p_1, text_regions_p_fully, thetha):
     rotated = imutils.rotate(img, thetha)

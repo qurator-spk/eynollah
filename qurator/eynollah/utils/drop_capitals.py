@@ -142,53 +142,54 @@ def adhere_drop_capital_region_into_corresponding_textline(
                 # areas_main=np.array([cv2.contourArea(all_found_texline_polygons[int(region_final)][0][j] ) for j in range(len(all_found_texline_polygons[int(region_final)]))])
 
                 # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                try:
+                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                    # print(all_box_coord[j_cont])
+                    # print(cx_t)
+                    # print(cy_t)
+                    # print(cx_d[i_drop])
+                    # print(cy_d[i_drop])
+                    y_lines = np.array(cy_t)  # all_box_coord[int(region_final)][0]+np.array(cy_t)
 
-                cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
-                # print(all_box_coord[j_cont])
-                # print(cx_t)
-                # print(cy_t)
-                # print(cx_d[i_drop])
-                # print(cy_d[i_drop])
-                y_lines = np.array(cy_t)  # all_box_coord[int(region_final)][0]+np.array(cy_t)
+                    y_lines[y_lines < y_min_d[i_drop]] = 0
+                    # print(y_lines)
 
-                y_lines[y_lines < y_min_d[i_drop]] = 0
-                # print(y_lines)
+                    arg_min = np.argmin(np.abs(y_lines - y_min_d[i_drop]))
+                    # print(arg_min)
 
-                arg_min = np.argmin(np.abs(y_lines - y_min_d[i_drop]))
-                # print(arg_min)
+                    cnt_nearest = np.copy(all_found_texline_polygons[int(region_final)][arg_min])
+                    cnt_nearest[:, 0, 0] = all_found_texline_polygons[int(region_final)][arg_min][:, 0, 0]  # +all_box_coord[int(region_final)][2]
+                    cnt_nearest[:, 0, 1] = all_found_texline_polygons[int(region_final)][arg_min][:, 0, 1]  # +all_box_coord[int(region_final)][0]
 
-                cnt_nearest = np.copy(all_found_texline_polygons[int(region_final)][arg_min])
-                cnt_nearest[:, 0, 0] = all_found_texline_polygons[int(region_final)][arg_min][:, 0, 0]  # +all_box_coord[int(region_final)][2]
-                cnt_nearest[:, 0, 1] = all_found_texline_polygons[int(region_final)][arg_min][:, 0, 1]  # +all_box_coord[int(region_final)][0]
+                    img_textlines = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1], 3))
+                    img_textlines = cv2.fillPoly(img_textlines, pts=[cnt_nearest], color=(255, 255, 255))
+                    img_textlines = cv2.fillPoly(img_textlines, pts=[polygons_of_drop_capitals[i_drop]], color=(255, 255, 255))
 
-                img_textlines = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1], 3))
-                img_textlines = cv2.fillPoly(img_textlines, pts=[cnt_nearest], color=(255, 255, 255))
-                img_textlines = cv2.fillPoly(img_textlines, pts=[polygons_of_drop_capitals[i_drop]], color=(255, 255, 255))
+                    img_textlines = img_textlines.astype(np.uint8)
 
-                img_textlines = img_textlines.astype(np.uint8)
+                    # plt.imshow(img_textlines)
+                    # plt.show()
+                    imgray = cv2.cvtColor(img_textlines, cv2.COLOR_BGR2GRAY)
+                    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
-                # plt.imshow(img_textlines)
-                # plt.show()
-                imgray = cv2.cvtColor(img_textlines, cv2.COLOR_BGR2GRAY)
-                ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+                    contours_combined, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-                contours_combined, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    # print(len(contours_combined),'len textlines mixed')
+                    areas_cnt_text = np.array([cv2.contourArea(contours_combined[j]) for j in range(len(contours_combined))])
 
-                # print(len(contours_combined),'len textlines mixed')
-                areas_cnt_text = np.array([cv2.contourArea(contours_combined[j]) for j in range(len(contours_combined))])
+                    contours_biggest = contours_combined[np.argmax(areas_cnt_text)]
 
-                contours_biggest = contours_combined[np.argmax(areas_cnt_text)]
+                    # print(np.shape(contours_biggest))
+                    # print(contours_biggest[:])
+                    # contours_biggest[:,0,0]=contours_biggest[:,0,0]#-all_box_coord[int(region_final)][2]
+                    # contours_biggest[:,0,1]=contours_biggest[:,0,1]#-all_box_coord[int(region_final)][0]
+                    # print(np.shape(contours_biggest),'contours_biggest')
+                    # print(np.shape(all_found_texline_polygons[int(region_final)][arg_min]))
+                    ##contours_biggest=contours_biggest.reshape(np.shape(contours_biggest)[0],np.shape(contours_biggest)[2])
+                    all_found_texline_polygons[int(region_final)][arg_min] = contours_biggest
+                except:
+                    pass
 
-                # print(np.shape(contours_biggest))
-                # print(contours_biggest[:])
-                # contours_biggest[:,0,0]=contours_biggest[:,0,0]#-all_box_coord[int(region_final)][2]
-                # contours_biggest[:,0,1]=contours_biggest[:,0,1]#-all_box_coord[int(region_final)][0]
-                # print(np.shape(contours_biggest),'contours_biggest')
-                # print(np.shape(all_found_texline_polygons[int(region_final)][arg_min]))
-                ##contours_biggest=contours_biggest.reshape(np.shape(contours_biggest)[0],np.shape(contours_biggest)[2])
-                all_found_texline_polygons[int(region_final)][arg_min] = contours_biggest
-
-                # print(cx_t,'print')
                 try:
                     # print(all_found_texline_polygons[j_cont][0])
                     cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
