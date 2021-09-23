@@ -3,7 +3,7 @@
 
 ![](https://user-images.githubusercontent.com/952378/102350683-8a74db80-3fa5-11eb-8c7e-f743f7d6eae2.jpg)
 
-## Introductionss
+## Introduction
 This tool performs document layout analysis (segmentation) from image data and returns the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
 
 It can currently detect the following layout classes/elements:
