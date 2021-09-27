@@ -5,6 +5,12 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.0.10] - 2021-09-27
+
+Fixed:
+
+  * call to `uild_pagexml_no_full_layout` for empty pages, #52
+
 ## [0.0.9] - 2021-08-16
 
 Added:
@@ -60,6 +66,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.0.10]: ../../compare/v0.0.10...v0.0.9
 [0.0.9]: ../../compare/v0.0.9...v0.0.8
 [0.0.8]: ../../compare/v0.0.8...v0.0.7
 [0.0.7]: ../../compare/v0.0.7...v0.0.6
