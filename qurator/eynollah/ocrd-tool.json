@@ -13,6 +13,7 @@
         "models": {
           "type": "string",
           "format": "file",
+          "content-type": "text/directory",
           "cacheable": true,
           "description": "Path to directory containing models to be used (See https://qurator-data.de/eynollah)",
           "required": true
