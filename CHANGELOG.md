@@ -5,6 +5,12 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.0.11] - 2022-02-02
+
+Fixed:
+
+  * `models` parameter should have `content-type`, #61, OCR-D/core#777
+
 ## [0.0.10] - 2021-09-27
 
 Fixed:
@@ -66,6 +72,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.0.11]: ../../compare/v0.0.11...v0.0.10
 [0.0.10]: ../../compare/v0.0.10...v0.0.9
 [0.0.9]: ../../compare/v0.0.9...v0.0.8
 [0.0.8]: ../../compare/v0.0.8...v0.0.7
