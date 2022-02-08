@@ -1738,7 +1738,7 @@ class Eynollah:
             boxes = None
             self.logger.debug("len(boxes): %s", len(boxes_d))
 
-        self.logger.info("detecting boxes took %ss", str(time.time() - t1))
+        self.logger.info("detecting boxes took %.1fs", time.time() - t1)
         img_revised_tab = text_regions_p[:, :]
         polygons_of_images = return_contours_of_interested_region(img_revised_tab, 2)
 
@@ -1820,16 +1820,16 @@ class Eynollah:
         t0 = time.time()
         img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement()
         
-        self.logger.info("Enhancing took %ss ", str(time.time() - t0))
+        self.logger.info("Enhancing took %.1fs ", time.time() - t0)
 
         t1 = time.time()
         text_regions_p_1 ,erosion_hurts = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
-        self.logger.info("Textregion detection took %ss ", str(time.time() - t1))
+        self.logger.info("Textregion detection took %.1fs ", time.time() - t1)
 
         t1 = time.time()
         num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page = \
                 self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts)
-        self.logger.info("Graphics detection took %ss ", str(time.time() - t1))
+        self.logger.info("Graphics detection took %.1fs ", time.time() - t1))
         self.logger.info('cont_page %s', cont_page)
 
         if not num_col:
@@ -1840,15 +1840,15 @@ class Eynollah:
 
         t1 = time.time()
         textline_mask_tot_ea = self.run_textline(image_page)
-        self.logger.info("textline detection took %ss", str(time.time() - t1))
+        self.logger.info("textline detection took %.1fs", time.time() - t1)
 
         t1 = time.time()
         slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
-        self.logger.info("deskewing took %ss", str(time.time() - t1))
+        self.logger.info("deskewing took %.1fs", time.time() - t1)
         t1 = time.time()
 
         textline_mask_tot, text_regions_p, image_page_rotated = self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines, num_col_classifier, slope_deskew, text_regions_p_1)
-        self.logger.info("detection of marginals took %ss", str(time.time() - t1))
+        self.logger.info("detection of marginals took %.1fs", time.time() - t1)
         t1 = time.time()
 
         if not self.full_layout:
