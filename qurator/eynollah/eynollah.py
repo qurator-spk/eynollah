@@ -2115,7 +2115,7 @@ class Eynollah:
             img_revised_tab2_d_rotated = img_revised_tab2_d_rotated.astype(np.int8)
             img_revised_tab2_d_rotated = resize_image(img_revised_tab2_d_rotated, text_regions_p.shape[0], text_regions_p.shape[1])
 
-        self.logger.info("detecting boxes took %ss", str(time.time() - t1))
+        self.logger.info("detecting boxes took %.1fs", time.time() - t1)
         
         if self.tables:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
@@ -2306,37 +2306,37 @@ class Eynollah:
         t0 = time.time()
         img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement()
         
-        self.logger.info("Enhancing took %ss ", str(time.time() - t0))
+        self.logger.info("Enhancing took %.1fs ", time.time() - t0)
 
         t1 = time.time()
         text_regions_p_1 ,erosion_hurts, polygons_lines_xml = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
-        self.logger.info("Textregion detection took %ss ", str(time.time() - t1))
+        self.logger.info("Textregion detection took %.1fs ", time.time() - t1)
 
         t1 = time.time()
         num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction = \
                 self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts)
-        self.logger.info("Graphics detection took %ss ", str(time.time() - t1))
+        self.logger.info("Graphics detection took %.1fs ", time.time() - t1)
         self.logger.info('cont_page %s', cont_page)
 
         if not num_col:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
             pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [], cont_page, [], [])
-            self.logger.info("Job done in %ss", str(time.time() - t1))
+            self.logger.info("Job done in %.1fs", time.time() - t1)
             return pcgts
 
         t1 = time.time()
         textline_mask_tot_ea = self.run_textline(image_page)
-        self.logger.info("textline detection took %ss", str(time.time() - t1))
+        self.logger.info("textline detection took %.1fs", time.time() - t1)
 
         t1 = time.time()
         slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
-        self.logger.info("deskewing took %ss", str(time.time() - t1))
+        self.logger.info("deskewing took %.1fs", time.time() - t1)
         t1 = time.time()
         #plt.imshow(table_prediction)
         #plt.show()
 
         textline_mask_tot, text_regions_p, image_page_rotated = self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines, num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
-        self.logger.info("detection of marginals took %ss", str(time.time() - t1))
+        self.logger.info("detection of marginals took %.1fs", time.time() - t1)
         t1 = time.time()
         if not self.full_layout:
             polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, boxes, boxes_d, polygons_of_marginals, contours_tables = self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, table_prediction, erosion_hurts)
