@@ -439,10 +439,10 @@ class Eynollah:
             image_res = self.predict_enhancement(img_new)
             is_image_enhanced = True
         else:
-            is_image_enhanced = False
             num_column_is_classified = True
             image_res = np.copy(img)
-            
+            is_image_enhanced = False
+
         session_col_classifier.close()
 
         
@@ -1986,9 +1986,9 @@ class Eynollah:
         return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction
 
     def run_enhancement(self):
-        self.logger.info("resize and enhance image")
+        self.logger.info("Resizing and enhancing image...")
         is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified, img_bin = self.resize_and_enhance_image_with_column_classifier()
-        self.logger.info("Image is %senhanced", '' if is_image_enhanced else 'not ')
+        self.logger.info("Image was %senhanced.", '' if is_image_enhanced else 'not ')
         K.clear_session()
         scale = 1
         if is_image_enhanced:
