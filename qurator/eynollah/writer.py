@@ -10,7 +10,6 @@ from ocrd_utils import getLogger
 from ocrd_models.ocrd_page import (
         BorderType,
         CoordsType,
-        TextEquivType,
         PcGtsType,
         TextLineType,
         TextRegionType,
@@ -59,7 +58,6 @@ class EynollahXmlWriter():
             coords = CoordsType()
             textline = TextLineType(id=counter.next_line_id, Coords=coords)
             marginal_region.add_TextLine(textline)
-            textline.add_TextEquiv(TextEquivType(Unicode=''))
             points_co = ''
             for l in range(len(all_found_texline_polygons_marginals[marginal_idx][j])):
                 if not self.curved_line:
@@ -98,7 +96,7 @@ class EynollahXmlWriter():
         self.logger.debug('enter serialize_lines_in_region')
         for j in range(len(all_found_texline_polygons[region_idx])):
             coords = CoordsType()
-            textline = TextLineType(id=counter.next_line_id, Coords=coords, TextEquiv=[TextEquivType(index=0, Unicode='')])
+            textline = TextLineType(id=counter.next_line_id, Coords=coords)
             text_region.add_TextLine(textline)
             region_bboxes = all_box_coord[region_idx]
             points_co = ''
@@ -158,7 +156,7 @@ class EynollahXmlWriter():
         for mm in range(len(found_polygons_text_region)):
             textregion = TextRegionType(id=counter.next_region_id, type_='paragraph',
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord)),
-                    TextEquiv=[TextEquivType(index=0, Unicode='')])
+                    )
             page.add_TextRegion(textregion)
             self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, counter)
 
@@ -217,7 +215,6 @@ class EynollahXmlWriter():
 
         for mm in range(len(found_polygons_text_region)):
             textregion = TextRegionType(id=counter.next_region_id, type_='paragraph',
-                    TextEquiv=[TextEquivType(index=0, Unicode='')],
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord)))
             page.add_TextRegion(textregion)
             self.serialize_lines_in_region(textregion, all_found_texline_polygons, mm, page_coord, all_box_coord, slopes, counter)
@@ -225,21 +222,18 @@ class EynollahXmlWriter():
         self.logger.debug('len(found_polygons_text_region_h) %s', len(found_polygons_text_region_h))
         for mm in range(len(found_polygons_text_region_h)):
             textregion = TextRegionType(id=counter.next_region_id, type_='header',
-                    TextEquiv=[TextEquivType(index=0, Unicode='')],
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region_h[mm], page_coord)))
             page.add_TextRegion(textregion)
             self.serialize_lines_in_region(textregion, all_found_texline_polygons_h, mm, page_coord, all_box_coord_h, slopes_h, counter)
 
         for mm in range(len(found_polygons_marginals)):
             marginal = TextRegionType(id=counter.next_region_id, type_='marginalia',
-                    TextEquiv=[TextEquivType(index=0, Unicode='')],
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_marginals[mm], page_coord)))
             page.add_TextRegion(marginal)
             self.serialize_lines_in_marginal(marginal, all_found_texline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter)
 
         for mm in range(len(found_polygons_drop_capitals)):
             page.add_TextRegion(TextRegionType(id=counter.next_region_id, type_='drop-capital',
-                    TextEquiv=[TextEquivType(index=0, Unicode='')],
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_drop_capitals[mm], page_coord))))
 
         for mm in range(len(found_polygons_text_region_img)):

@@ -21,7 +21,6 @@ from ocrd_models.ocrd_page import (
     RegionRefType,
     SeparatorRegionType,
     TableRegionType,
-    TextEquivType,
     TextLineType,
     TextRegionType,
     UnorderedGroupIndexedType,
