@@ -53,6 +53,9 @@ Some heuristic methods are also employed to further improve the model prediction
 * After deskewing, a calculation of the pixel distribution on the X-axis allows the separation of textlines (foreground) and background pixels.
 * Finally, using the derived coordinates, bounding boxes are determined for each textline.
 
+## Light version
+layout detection is implemented in lower scale and with only one model.
+
 ## Installation
 `pip install .` or 
 
