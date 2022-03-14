@@ -100,6 +100,7 @@ class Eynollah:
         input_binary=False,
         allow_scaling=False,
         headers_off=False,
+        light_version=False,
         override_dpi=None,
         logger=None,
         pcgts=None,
@@ -119,6 +120,7 @@ class Eynollah:
         self.input_binary = input_binary
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
+        self.light_version = light_version
         self.plotter = None if not enable_plotting else EynollahPlotter(
             dir_out=self.dir_out,
             dir_of_all=dir_of_all,
@@ -2778,16 +2780,15 @@ class Eynollah:
         """
         Get image and scales, then extract the page of scanned image
         """
-        light_version = True
         self.logger.debug("enter run")
 
         t0 = time.time()
-        img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(light_version)
+        img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
         
         self.logger.info("Enhancing took %.1fs ", time.time() - t0)
 
         t1 = time.time()
-        if light_version:
+        if self.light_version:
             text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea = self.get_regions_from_xy_2models_light(img_res, is_image_enhanced, num_col_classifier)
             
             slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
@@ -2811,7 +2812,7 @@ class Eynollah:
             return pcgts
 
         t1 = time.time()
-        if not light_version:
+        if not self.light_version:
             textline_mask_tot_ea = self.run_textline(image_page)
             self.logger.info("textline detection took %.1fs", time.time() - t1)
 
@@ -2942,7 +2943,7 @@ class Eynollah:
         boxes_marginals, _ = get_text_region_boxes_by_given_contours(polygons_of_marginals)
         
         if not self.curved_line:
-            if light_version:
+            if self.light_version:
                 slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
                 slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
             else:

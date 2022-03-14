@@ -92,10 +92,16 @@ from qurator.eynollah.eynollah import Eynollah
     help="if this parameter set to true, this tool would check the scale and if needed it will scale it to perform better layout detection",
 )
 @click.option(
-    "--headers-off/--headers-on",
+    "--headers_off/--headers-on",
     "-ho/-noho",
     is_flag=True,
     help="if this parameter set to true, this tool would ignore headers role in reading order",
+)
+@click.option(
+    "--light_version/--original",
+    "-light/-org",
+    is_flag=True,
+    help="if this parameter set to true, this tool would use lighter version",
 )
 @click.option(
     "--log-level",
@@ -119,6 +125,7 @@ def main(
     input_binary,
     allow_scaling,
     headers_off,
+    light_version,
     log_level
 ):
     if log_level:
@@ -146,6 +153,7 @@ def main(
         input_binary=input_binary,
         allow_scaling=allow_scaling,
         headers_off=headers_off,
+        light_version=light_version,
     )
     pcgts = eynollah.run()
     eynollah.writer.write_pagexml(pcgts)
