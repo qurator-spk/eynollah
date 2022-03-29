@@ -797,6 +797,76 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch):
     return layout_in_patch
 
 def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions_model_full,contours_only_text_parent,all_box_coord,all_found_texline_polygons,slopes,contours_only_text_parent_d_ordered):
+    
+    cx_main,cy_main ,x_min_main , x_max_main, y_min_main ,y_max_main,y_corr_x_min_from_argmin=find_new_features_of_contours(contours_only_text_parent)
+
+    length_con=x_max_main-x_min_main
+    height_con=y_max_main-y_min_main
+
+
+
+    all_found_texline_polygons_main=[]
+    all_found_texline_polygons_head=[]
+
+    all_box_coord_main=[]
+    all_box_coord_head=[]
+
+    slopes_main=[]
+    slopes_head=[]
+
+    contours_only_text_parent_main=[]
+    contours_only_text_parent_head=[]
+
+    contours_only_text_parent_main_d=[]
+    contours_only_text_parent_head_d=[]
+
+    for ii in range(len(contours_only_text_parent)):
+        con=contours_only_text_parent[ii]
+        img=np.zeros((regions_model_1.shape[0],regions_model_1.shape[1],3))
+        img = cv2.fillPoly(img, pts=[con], color=(255, 255, 255))
+
+
+
+        all_pixels=((img[:,:,0]==255)*1).sum()
+
+        pixels_header=( ( (img[:,:,0]==255) & (regions_model_full[:,:,0]==2) )*1 ).sum()
+        pixels_main=all_pixels-pixels_header
+
+
+        if (pixels_header>=pixels_main) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ):
+            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=2
+            contours_only_text_parent_head.append(con)
+            if contours_only_text_parent_d_ordered is not None:
+                contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
+            all_box_coord_head.append(all_box_coord[ii])
+            slopes_head.append(slopes[ii])
+            all_found_texline_polygons_head.append(all_found_texline_polygons[ii])
+        else:
+            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=1
+            contours_only_text_parent_main.append(con)
+            if contours_only_text_parent_d_ordered is not None:
+                contours_only_text_parent_main_d.append(contours_only_text_parent_d_ordered[ii])
+            all_box_coord_main.append(all_box_coord[ii])
+            slopes_main.append(slopes[ii])
+            all_found_texline_polygons_main.append(all_found_texline_polygons[ii])
+
+        #print(all_pixels,pixels_main,pixels_header)
+
+    return regions_model_1,contours_only_text_parent_main,contours_only_text_parent_head,all_box_coord_main,all_box_coord_head,all_found_texline_polygons_main,all_found_texline_polygons_head,slopes_main,slopes_head,contours_only_text_parent_main_d,contours_only_text_parent_head_d
+
+
+def check_any_text_region_in_model_one_is_main_or_header_light(regions_model_1,regions_model_full,contours_only_text_parent,all_box_coord,all_found_texline_polygons,slopes,contours_only_text_parent_d_ordered):
+    
+    ### to make it faster
+    h_o = regions_model_1.shape[0]
+    w_o = regions_model_1.shape[1]
+    
+    regions_model_1 = cv2.resize(regions_model_1, (int(regions_model_1.shape[1]/3.), int(regions_model_1.shape[0]/3.)), interpolation=cv2.INTER_NEAREST)
+    regions_model_full = cv2.resize(regions_model_full, (int(regions_model_full.shape[1]/3.), int(regions_model_full.shape[0]/3.)), interpolation=cv2.INTER_NEAREST)
+    contours_only_text_parent = [ (i/3.).astype(np.int32) for i in  contours_only_text_parent]
+
+    ###
+    
     cx_main,cy_main ,x_min_main , x_max_main, y_min_main ,y_max_main,y_corr_x_min_from_argmin=find_new_features_of_contours(contours_only_text_parent)
 
     length_con=x_max_main-x_min_main
@@ -853,8 +923,14 @@ def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions
 
 
 
-        #plt.imshow(img[:,:,0])
-        #plt.show()
+    ### to make it faster
+    
+    regions_model_1 = cv2.resize(regions_model_1, (w_o, h_o), interpolation=cv2.INTER_NEAREST)
+    #regions_model_full = cv2.resize(img, (int(regions_model_full.shape[1]/3.), int(regions_model_full.shape[0]/3.)), interpolation=cv2.INTER_NEAREST)
+    contours_only_text_parent_head = [ (i*3.).astype(np.int32) for i in  contours_only_text_parent_head]
+    contours_only_text_parent_main = [ (i*3.).astype(np.int32) for i in  contours_only_text_parent_main]
+    ###
+    
     return regions_model_1,contours_only_text_parent_main,contours_only_text_parent_head,all_box_coord_main,all_box_coord_head,all_found_texline_polygons_main,all_found_texline_polygons_head,slopes_main,slopes_head,contours_only_text_parent_main_d,contours_only_text_parent_head_d
 
 def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col):

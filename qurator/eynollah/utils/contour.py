@@ -3,7 +3,8 @@ import numpy as np
 from shapely import geometry
 
 from .rotate import rotate_image, rotation_image_new
-
+from multiprocessing import Process, Queue, cpu_count
+from multiprocessing import Pool
 def contours_in_same_horizon(cy_main_hor):
     X1 = np.zeros((len(cy_main_hor), len(cy_main_hor)))
     X2 = np.zeros((len(cy_main_hor), len(cy_main_hor)))
@@ -147,6 +148,96 @@ def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
 
     return contours_imgs
 
+def do_work_of_contours_in_image(queue_of_all_params, contours_per_process, indexes_r_con_per_pro, img, slope_first):
+    cnts_org_per_each_subprocess = []
+    index_by_text_region_contours = []
+    for mv in range(len(contours_per_process)):
+        index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
+        
+        img_copy = np.zeros(img.shape)
+        img_copy = cv2.fillPoly(img_copy, pts=[contours_per_process[mv]], color=(1, 1, 1))
+
+        img_copy = rotation_image_new(img_copy, -slope_first)
+
+        img_copy = img_copy.astype(np.uint8)
+        imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+        cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
+        cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
+
+
+        cnts_org_per_each_subprocess.append(cont_int[0])
+
+    queue_of_all_params.put([ cnts_org_per_each_subprocess, index_by_text_region_contours])
+
+
+def get_textregion_contours_in_org_image_multi(cnts, img, slope_first):
+    
+    num_cores = cpu_count()
+    queue_of_all_params = Queue()
+
+    processes = []
+    nh = np.linspace(0, len(cnts), num_cores + 1)
+    indexes_by_text_con = np.array(range(len(cnts)))
+    for i in range(num_cores):
+        contours_per_process = cnts[int(nh[i]) : int(nh[i + 1])]
+        indexes_text_con_per_process = indexes_by_text_con[int(nh[i]) : int(nh[i + 1])]
+
+        processes.append(Process(target=do_work_of_contours_in_image, args=(queue_of_all_params, contours_per_process, indexes_text_con_per_process, img,slope_first )))
+    for i in range(num_cores):
+        processes[i].start()
+    cnts_org = []
+    all_index_text_con = []
+    for i in range(num_cores):
+        list_all_par = queue_of_all_params.get(True)
+        contours_for_sub_process = list_all_par[0]
+        indexes_for_sub_process = list_all_par[1]
+        for j in range(len(contours_for_sub_process)):
+            cnts_org.append(contours_for_sub_process[j])
+            all_index_text_con.append(indexes_for_sub_process[j])
+    for i in range(num_cores):
+        processes[i].join()
+
+    print(all_index_text_con)
+    return cnts_org
+def loop_contour_image(index_l, cnts,img, slope_first):
+    img_copy = np.zeros(img.shape)
+    img_copy = cv2.fillPoly(img_copy, pts=[cnts[index_l]], color=(1, 1, 1))
+
+    # plt.imshow(img_copy)
+    # plt.show()
+
+    # print(img.shape,'img')
+    img_copy = rotation_image_new(img_copy, -slope_first)
+    ##print(img_copy.shape,'img_copy')
+    # plt.imshow(img_copy)
+    # plt.show()
+
+    img_copy = img_copy.astype(np.uint8)
+    imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+    cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
+    cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
+    # print(np.shape(cont_int[0]))
+    return cont_int[0]
+
+def get_textregion_contours_in_org_image_multi2(cnts, img, slope_first):
+
+    cnts_org = []
+    # print(cnts,'cnts')
+    with Pool(cpu_count()) as p:
+        cnts_org = p.starmap(loop_contour_image, [(index_l,cnts, img,slope_first) for index_l in range(len(cnts))])
+        
+    print(len(cnts_org),'lendiha')
+
+    return cnts_org
+
 def get_textregion_contours_in_org_image(cnts, img, slope_first):
 
     cnts_org = []
@@ -175,11 +266,43 @@ def get_textregion_contours_in_org_image(cnts, img, slope_first):
         # print(np.shape(cont_int[0]))
         cnts_org.append(cont_int[0])
 
-    # print(cnts_org,'cnts_org')
+    return cnts_org
 
-    # sys.exit()
-    # self.y_shift = np.abs(img_copy.shape[0] - img.shape[0])
-    # self.x_shift = np.abs(img_copy.shape[1] - img.shape[1])
+def get_textregion_contours_in_org_image_light(cnts, img, slope_first):
+    
+    h_o = img.shape[0]
+    w_o = img.shape[1]
+    
+    img = cv2.resize(img, (int(img.shape[1]/3.), int(img.shape[0]/3.)), interpolation=cv2.INTER_NEAREST)
+    ##cnts = list( (np.array(cnts)/2).astype(np.int16) )
+    #cnts = cnts/2
+    cnts = [(i/ 3).astype(np.int32) for i in cnts]
+    cnts_org = []
+    #print(cnts,'cnts')
+    for i in range(len(cnts)):
+        img_copy = np.zeros(img.shape)
+        img_copy = cv2.fillPoly(img_copy, pts=[cnts[i]], color=(1, 1, 1))
+
+        # plt.imshow(img_copy)
+        # plt.show()
+
+        # print(img.shape,'img')
+        img_copy = rotation_image_new(img_copy, -slope_first)
+        ##print(img_copy.shape,'img_copy')
+        # plt.imshow(img_copy)
+        # plt.show()
+
+        img_copy = img_copy.astype(np.uint8)
+        imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+        cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
+        cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
+        # print(np.shape(cont_int[0]))
+        cnts_org.append(cont_int[0]*3)
+
     return cnts_org
 
 def return_contours_of_interested_textline(region_pre_p, pixel):
