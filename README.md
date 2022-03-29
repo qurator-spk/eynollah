@@ -55,7 +55,7 @@ The tool performs better with RGB images than greyscale/binarized images.
 <details>
   <summary>click to expand/collapse</summary>
 
-## Region types  
+### Region types  
 
   <details>
   <summary>click to expand/collapse</summary><br/>
@@ -73,7 +73,7 @@ In addition, the tool can detect the [ReadingOrder](https://ocr-d.de/en/gt-guide
     
   </details>
 
-## Method description
+### Method description
 
   <details>
   <summary>click to expand/collapse</summary><br/>
@@ -90,19 +90,19 @@ The first three stages are based on [pixel-wise segmentation](https://github.com
 
 ![](https://user-images.githubusercontent.com/952378/100619946-1936f680-331e-11eb-9297-6e8b4cab3c16.png)
 
-### Border detection
+#### Border detection
 For the purpose of text recognition (OCR) and in order to avoid noise being introduced from texts outside the printspace, one first needs to detect the border of the printed frame. This is done by a binary pixel-wise-segmentation model trained on a dataset of 2,000 documents where about 1,200 of them come from the [dhSegment](https://github.com/dhlab-epfl/dhSegment/) project (you can download the dataset from [here](https://github.com/dhlab-epfl/dhSegment/releases/download/v0.2/pages.zip)) and the remainder having been annotated in SBB. For border detection, the model needs to be fed with the whole image at once rather than separated in patches.
 
 ### Layout detection
 As a next step, text regions need to be identified by means of layout detection. Again a pixel-wise segmentation model was trained on 131 labeled images from the SBB digital collections, including some data augmentation. Since the target of this tool are historical documents, we consider as main region types text regions, separators, images, tables and background - each with their own subclasses, e.g. in the case of text regions, subclasses like header/heading, drop capital, main body text etc. While it would be desirable to detect and classify each of these classes in a granular way, there are also limitations due to having a suitably large and balanced training set. Accordingly, the current version of this tool is focussed on the main region types background, text region, image and separator. 
 
-### Textline detection
+#### Textline detection
 In a subsequent step, binary pixel-wise segmentation is used again to classify pixels in a document that constitute textlines. For textline segmentation, a model was initially trained on documents with only one column/block of text and some augmentation with regard to scaling. By fine-tuning the parameters also for multi-column documents, additional training data was produced that resulted in a much more robust textline detection model.
 
-### Image enhancement
+#### Image enhancement
 This is an image to image model which input was low quality of an image and label was actually the original image. For this one we did not have any GT, so we decreased the quality of documents in SBB and then feed them into model.
 
-### Scale classification
+#### Scale classification
 This is simply an image classifier which classifies images based on their scales or better to say based on their number of columns.
 
 ### Heuristic methods
@@ -116,7 +116,7 @@ Some heuristic methods are also employed to further improve the model prediction
 
   </details>
     
-## Model description
+### Model description
 
   <details>
   <summary>click to expand/collapse</summary><br/>
@@ -125,7 +125,7 @@ TODO
 
   </details>
     
-## How to use
+### How to use
 
   <details>
   <summary>click to expand/collapse</summary><br/>
@@ -146,7 +146,7 @@ First, this model makes use of up to 9 trained models which are responsible for 
 
 * This tool is actively being developed. If problems occur, or the performance does not meet your expectations, we welcome your feedback via [issues](https://github.com/qurator-spk/eynollah/issues).
 
-### `--full-layout` vs `--no-full-layout`
+#### `--full-layout` vs `--no-full-layout`
 
 Here are the difference in elements detected depending on the `--full-layout`/`--no-full-layout` command line flags:
 
@@ -161,13 +161,13 @@ Here are the difference in elements detected depending on the `--full-layout`/`-
 | marginals / text line    | x               | x                  |
 | image region             | x               | x                  |
 
-### Use as OCR-D processor
+#### Use as OCR-D processor
 
 Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) processor. In this case, the source image file group with (preferably) RGB images should be used as input (the image provided by `@imageFilename` is passed on directly):
 
 `ocrd-eynollah-segment -I OCR-D-IMG -O SEG-LINE -P models`
 
- ### Eynollah "light"
+ #### Eynollah "light"
     
  TODO
     
