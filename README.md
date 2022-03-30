@@ -163,9 +163,15 @@ Here are the difference in elements detected depending on the `--full-layout`/`-
 
 #### Use as OCR-D processor
 
-Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) processor. In this case, the source image file group with (preferably) RGB images should be used as input (the image provided by `@imageFilename` is passed on directly):
+Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) processor. In this case, the source image file group with (preferably) RGB images should be used as input like this:
 
 `ocrd-eynollah-segment -I OCR-D-IMG -O SEG-LINE -P models`
+    
+In fact, the image referenced by `@imageFilename` in PAGE-XML is passed on directly to Eynollah as a processor, so that e.g. calling
+
+`ocrd-eynollah-segment -I OCR-D-IMG-BIN -O SEG-LINE -P models`
+    
+would still use the original (RGB) image despite any binarization that may have occured in previous OCR-D processing steps
 
  #### Eynollah "light"
     
