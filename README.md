@@ -94,6 +94,8 @@ eynollah \
 -ho <if true, this tool would ignore headers role in reading order detection> \
 -sl <if a directory is given, plot of layout will be saved there> \
 -ep <if true, the tool will be enabled to save desired plot. This should be true alongside with -sl, -sd, -sa , -si or -ae options>
+-light <if true, the tool will be apply a faster method for main regions detection and moreover deskewing will not occur locally for each region in return it is done once for the whole document>
+-di <directory of images. In this case the images in the directory will be flowed one by one. This option will accelerate the process significantly>
 
 ```
 
