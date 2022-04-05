@@ -546,7 +546,7 @@ class Eynollah:
             if img.shape[1] < img_width_model:
                 img = resize_image(img, img.shape[0], img_width_model)
 
-            self.logger.info("Image dimensions: %sx%s", img_height_model, img_width_model)
+            self.logger.info("Patch size: %sx%s", img_height_model, img_width_model)
             margin = int(marginal_of_patch_percent * img_height_model)
             width_mid = img_width_model - 2 * margin
             height_mid = img_height_model - 2 * margin
@@ -2316,7 +2316,7 @@ class Eynollah:
         num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction = \
                 self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts)
         self.logger.info("Graphics detection took %.1fs ", time.time() - t1)
-        self.logger.info('cont_page %s', cont_page)
+        #self.logger.info('cont_page %s', cont_page)
 
         if not num_col:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
@@ -2355,7 +2355,7 @@ class Eynollah:
             if len(contours_only_text_parent) > 0:
                 areas_cnt_text = np.array([cv2.contourArea(contours_only_text_parent[j]) for j in range(len(contours_only_text_parent))])
                 areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
-                self.logger.info('areas_cnt_text %s', areas_cnt_text)
+                #self.logger.info('areas_cnt_text %s', areas_cnt_text)
                 contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
                 contours_only_text_parent = [contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz] > min_con_area]
                 areas_cnt_text_parent = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > min_con_area]
@@ -2445,7 +2445,7 @@ class Eynollah:
 
                 cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
                 cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
-                self.logger.debug('areas_cnt_text_parent %s', areas_cnt_text_parent)
+                #self.logger.debug('areas_cnt_text_parent %s', areas_cnt_text_parent)
                 # self.logger.debug('areas_cnt_text_parent_d %s', areas_cnt_text_parent_d)
                 # self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))
             else:
