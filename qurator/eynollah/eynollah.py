@@ -144,18 +144,18 @@ class Eynollah:
         self.logger = logger if logger else getLogger('eynollah')
         self.dir_models = dir_models
 
-        self.model_dir_of_enhancement = dir_models + "/model_enhancement.h5"
-        self.model_dir_of_binarization = dir_models + "/model_bin_sbb_ens.h5"
-        self.model_dir_of_col_classifier = dir_models + "/model_scale_classifier.h5"
-        self.model_region_dir_p = dir_models + "/model_main_covid19_lr5-5_scale_1_1_great.h5"
-        self.model_region_dir_p2 = dir_models + "/model_main_home_corona3_rot.h5"
-        self.model_region_dir_fully_np = dir_models + "/model_no_patches_class0_30eopch.h5"
-        self.model_region_dir_fully = dir_models + "/model_3up_new_good_no_augmentation.h5"
-        self.model_page_dir = dir_models + "/model_page_mixed_best.h5"
-        self.model_region_dir_p_ens = dir_models + "/model_ensemble_s.h5"
-        self.model_region_dir_p_ens_light = dir_models + "/model_11.h5"
-        self.model_textline_dir = dir_models + "/model_textline_newspapers.h5"
-        self.model_tables = dir_models + "/model_tables_ens_mixed_new_2.h5"
+        self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425.h5"
+        self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425.h5"
+        self.model_dir_of_col_classifier = dir_models + "/eynollah-column-classifier_20210425.h5"
+        self.model_region_dir_p = dir_models + "/eynollah-main-regions-aug-scaling_20210425.h5"
+        self.model_region_dir_p2 = dir_models + "/eynollah-main-regions-aug-rotation_20210425.h5"
+        self.model_region_dir_fully_np = dir_models + "/eynollah-full-regions-1column_20210425.h5"
+        self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425.h5"
+        self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425.h5"
+        self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425.h5"
+        self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314.h5"
+        self.model_textline_dir = dir_models + "/eynollah-textline_20210425.h5"
+        self.model_tables = dir_models + "/eynollah-tables_20210319.h5"
         
         if dir_in and light_version:
             config = tf.compat.v1.ConfigProto()
