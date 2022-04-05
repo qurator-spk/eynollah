@@ -25,7 +25,7 @@ models_eynollah: models_eynollah.tar.gz
 	tar xf models_eynollah.tar.gz
 
 models_eynollah.tar.gz:
-	wget 'https://qurator-data.de/eynollah/models_eynollah.tar.gz'
+	wget 'https://qurator-data.de/eynollah/2021-04-25/models_eynollah.tar.gz'
 
 # Install with pip
 install:
