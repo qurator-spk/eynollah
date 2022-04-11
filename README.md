@@ -123,7 +123,24 @@ Some heuristic methods are also employed to further improve the model prediction
   <details>
   <summary>click to expand/collapse</summary><br/>
   
-TODO
+#### Enhancement model:
+The image enhancement model is again an image-to-image model, trained on document images with low quality and GT of corresponding images with higher quality. For training the image enhancement model, a total of 1127 document images underwent 11 different downscaling processes and consequently 11 different qualities for each image were derived. The resulting images were cropped into patches of 672*672 pixels. Adam is used as an optimizer and the learning rate is 1e-4. Scaling is the only augmentation applied for training. The model is trained with a batch size of 2 and for 5 epochs.
+
+#### Classifier model:
+In order to obtain high quality results, it is beneficial to scale the document image to the same scale of the images in the training dataset that the models were trained on. The classifier model predicts the number of columns in a document by creating a training set for that purpose with manual classification of all documents into six classes with either one, two, three, four, five, or six and more columns respectively. Classifier model is a ResNet50+2 dense layers on top. The input size of model is 448*448 and Adam is used as an optimizer and the learning rate is 1e-4. Model is trained for 300 epochs.
+
+#### Page extractor model: 
+This a deep learning model which helps to crop the page borders by using a pixel-wise segmentation method. In case of page extraction it is necessary to train the model on the entire (document) image, i.e. full images are resized to the input size of the model (no patches). For training, the model is fed with entire images from the 2820 samples of the extended training set. The input size of the the page extraction model is 448*448 pixels. Adam is used as an optimizer and the learning rate is 1e-6. The model is trained with a batch size of 4 and for 30 epochs.
+
+#### Early layout model: 
+The early layout detection model detects only the main and recursive regions in a document like background, text regions, separators and images. In the case of early layout segmentation, we used 381 pages to train the model. The model is fed with patches of size 448*672 pixels. Adam is used as an optimizer and the learning rate is 1e-4. Two models were trained, one with scale augmentation and another one without any augmentation. Both models were trained for 12 epochs and with a batch size of 3. Categorical cross entropy is used as a loss function.
+
+#### Full layout model:
+By full layout detection we have added two more elements of a document structure, drop capitals and headings, onto early layout elements. For the secondary layout segmentation we have trained two models. One is trained with 355 pages containing 3 or more columns and in patches with a size of 896*896 pixels. The other model is trained on 634 pages  that have only one column. The second model is fed with the entire image with input size 
+of 896 * 896 pixels (not in patches). Adam is used as an optimizer and the learning rate is 1e-4. Then both models are trained for 8 epochs with a batch size of 1. Soft dice is used as the loss function.
+
+#### Text line segmentation model: 
+For text line segmentation, 342 pages were used for training. The model is trained in patches with the size of 448*672. Adam is used as an optimizer and the learning rate is 1e-4. The training set is augmented with scaling and rotation. The model is trained only for 1 epoch with a batch size of 3. Soft dice is again used as the loss function.
 
   </details>
     
@@ -177,7 +194,7 @@ would still use the original (RGB) image despite any binarization that may have 
 
  #### Eynollah "light"
     
- TODO
+ Eynollah light has used a faster method to predict and extract early layout. On other hand with light version deskewing is not applied for any text region and in return it is done for the whole document once. The other option that users have with light version is that instead of image name a folder of images can be given as input and in this case all models will be loaded and then processing for all images will be implemented. This step accelerates process of document analysis. 
     
   </details>
     
