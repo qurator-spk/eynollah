@@ -74,8 +74,8 @@ class EynollahPlotter():
         if self.dir_of_layout is not None:
             values = np.unique(text_regions_p[:, :])
             # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-            pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator"]
-            values_indexes = [0, 1, 2, 8, 4, 5, 6]
+            pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator", "Tables"]
+            values_indexes = [0, 1, 2, 8, 4, 5, 6, 10]
             plt.figure(figsize=(40, 40))
             plt.rcParams["font.size"] = "40"
             im = plt.imshow(text_regions_p[:, :])
@@ -88,8 +88,8 @@ class EynollahPlotter():
         if self.dir_of_all is not None:
             values = np.unique(text_regions_p[:, :])
             # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-            pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator"]
-            values_indexes = [0, 1, 2, 8, 4, 5, 6]
+            pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator", "Tables"]
+            values_indexes = [0, 1, 2, 8, 4, 5, 6, 10]
             plt.figure(figsize=(80, 40))
             plt.rcParams["font.size"] = "40"
             plt.subplot(1, 2, 1)

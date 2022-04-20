@@ -119,6 +119,12 @@ class Eynollah:
             self.image_filename = image_filename
         self.dir_out = dir_out
         self.dir_in = dir_in
+        self.dir_of_all = dir_of_all
+        self.dir_of_deskewed = dir_of_deskewed
+        self.dir_of_deskewed =  dir_of_deskewed
+        self.dir_of_cropped_images=dir_of_cropped_images
+        self.dir_of_layout=dir_of_layout
+        self.enable_plotting = enable_plotting
         self.allow_enhancement = allow_enhancement
         self.curved_line = curved_line
         self.full_layout = full_layout
@@ -128,14 +134,14 @@ class Eynollah:
         self.headers_off = headers_off
         self.light_version = light_version
         self.pcgts = pcgts
-        self.plotter = None if not enable_plotting else EynollahPlotter(
-            dir_out=self.dir_out,
-            dir_of_all=dir_of_all,
-            dir_of_deskewed=dir_of_deskewed,
-            dir_of_cropped_images=dir_of_cropped_images,
-            dir_of_layout=dir_of_layout,
-            image_filename_stem=Path(Path(image_filename).name).stem)
         if not dir_in:
+            self.plotter = None if not enable_plotting else EynollahPlotter(
+                dir_out=self.dir_out,
+                dir_of_all=dir_of_all,
+                dir_of_deskewed=dir_of_deskewed,
+                dir_of_cropped_images=dir_of_cropped_images,
+                dir_of_layout=dir_of_layout,
+                image_filename_stem=Path(Path(image_filename).name).stem)
             self.writer = EynollahXmlWriter(
                 dir_out=self.dir_out,
                 image_filename=self.image_filename,
@@ -207,6 +213,14 @@ class Eynollah:
     def reset_file_name_dir(self, image_filename):
         self._imgs = self._cache_images(image_filename=image_filename)
         self.image_filename = image_filename
+        
+        self.plotter = None if not self.enable_plotting else EynollahPlotter(
+            dir_out=self.dir_out,
+            dir_of_all=self.dir_of_all,
+            dir_of_deskewed=self.dir_of_deskewed,
+            dir_of_cropped_images=self.dir_of_cropped_images,
+            dir_of_layout=self.dir_of_layout,
+            image_filename_stem=Path(Path(image_filename).name).stem)
         
         self.writer = EynollahXmlWriter(
             dir_out=self.dir_out,
@@ -1396,7 +1410,7 @@ class Eynollah:
 
         queue_of_all_params.put([textlines_rectangles_per_each_subprocess, bounding_box_of_textregion_per_each_subprocess, contours_textregion_per_each_subprocess, contours_textregion_par_per_each_subprocess, all_box_coord_per_process, index_by_text_region_contours, slopes_per_each_subprocess])
     def do_work_of_slopes_new_light(self, queue_of_all_params, boxes_text, textline_mask_tot_ea, contours_per_process, contours_par_per_process, indexes_r_con_per_pro, image_page_rotated, slope_deskew):
-        self.logger.debug('enter do_work_of_slopes_new')
+        self.logger.debug('enter do_work_of_slopes_new_light')
         slopes_per_each_subprocess = []
         bounding_box_of_textregion_per_each_subprocess = []
         textlines_rectangles_per_each_subprocess = []
@@ -1566,8 +1580,8 @@ class Eynollah:
         q.put(slopes_sub)
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new)
-    def get_regions_from_xy_2models_light(self,img,is_image_enhanced, num_col_classifier):
-        self.logger.debug("enter get_regions_from_xy_2models")
+    def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
+        self.logger.debug("enter get_regions_light_v")
         erosion_hurts = False
         img_org = np.copy(img)
         img_height_h = img_org.shape[0]
@@ -2929,7 +2943,7 @@ class Eynollah:
             
             t1 = time.time()
             if self.light_version:
-                text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea = self.get_regions_from_xy_2models_light(img_res, is_image_enhanced, num_col_classifier)
+                text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea = self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
                 slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
                 #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
                 num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea = \
@@ -3179,4 +3193,5 @@ class Eynollah:
                 ##return pcgts
             self.writer.write_pagexml(pcgts)
             #self.logger.info("Job done in %.1fs", time.time() - t0)
-        self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
+        if self.dir_in:
+            self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
