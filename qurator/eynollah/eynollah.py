@@ -20,10 +20,10 @@ import numpy as np
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 stderr = sys.stderr
 sys.stderr = open(os.devnull, "w")
-from keras import backend as K
-from keras.models import load_model
-sys.stderr = stderr
 import tensorflow as tf
+from tensorflow.python.keras import backend as K
+from tensorflow.keras.models load_model
+sys.stderr = stderr
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
 from scipy.signal import find_peaks
