@@ -22,7 +22,7 @@ stderr = sys.stderr
 sys.stderr = open(os.devnull, "w")
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
-from tensorflow.keras.models load_model
+from tensorflow.keras.models import load_model
 sys.stderr = stderr
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
