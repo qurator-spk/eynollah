@@ -105,6 +105,7 @@ class Eynollah:
         allow_scaling=False,
         headers_off=False,
         light_version=False,
+        ignore_page_extraction=False,
         override_dpi=None,
         logger=None,
         pcgts=None,
@@ -133,6 +134,7 @@ class Eynollah:
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
         self.light_version = light_version
+        self.ignore_page_extraction = ignore_page_extraction
         self.pcgts = pcgts
         if not dir_in:
             self.plotter = None if not enable_plotting else EynollahPlotter(
@@ -886,169 +888,100 @@ class Eynollah:
         gc.collect()
         return prediction_true
 
-    def early_page_for_num_of_column_classification(self,img_bin):
-        self.logger.debug("enter early_page_for_num_of_column_classification")
-        if self.input_binary:
-            img =np.copy(img_bin)
-            img = img.astype(np.uint8)
-        else:
-            img = self.imread()
-        if not self.dir_in:
-            model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-        img = cv2.GaussianBlur(img, (5, 5), 0)
-        if self.dir_in:
-            img_page_prediction = self.do_prediction(False, img, self.model_page)
-        else:
-            img_page_prediction = self.do_prediction(False, img, model_page)
-
-        imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(imgray, 0, 255, 0)
-        thresh = cv2.dilate(thresh, KERNEL, iterations=3)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours)>0:
-            cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-            cnt = contours[np.argmax(cnt_size)]
-            x, y, w, h = cv2.boundingRect(cnt)
-            box = [x, y, w, h]
-        else:
-            box = [0, 0, img.shape[1], img.shape[0]]
-        croped_page, page_coord = crop_image_inside_box(box, img)
-        if not self.dir_in:
-            session_page.close()
-            del model_page
-            del session_page
-            K.clear_session()
-        gc.collect()
-        self.logger.debug("exit early_page_for_num_of_column_classification")
-        return croped_page, page_coord
-
     def extract_page(self):
         self.logger.debug("enter extract_page")
         cont_page = []
-        if not self.dir_in:
-            model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-        img = cv2.GaussianBlur(self.image, (5, 5), 0)
-        if not self.dir_in:
-            img_page_prediction = self.do_prediction(False, img, model_page)
-        else:
-            img_page_prediction = self.do_prediction(False, img, self.model_page)
-        imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(imgray, 0, 255, 0)
-        thresh = cv2.dilate(thresh, KERNEL, iterations=3)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        
-        if len(contours)>0:
-            cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-            cnt = contours[np.argmax(cnt_size)]
-            x, y, w, h = cv2.boundingRect(cnt)
-            if x <= 30:
-                w += x
-                x = 0
-            if (self.image.shape[1] - (x + w)) <= 30:
-                w = w + (self.image.shape[1] - (x + w))
-            if y <= 30:
-                h = h + y
-                y = 0
-            if (self.image.shape[0] - (y + h)) <= 30:
-                h = h + (self.image.shape[0] - (y + h))
+        if not self.ignore_page_extraction:
+            if not self.dir_in:
+                model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
+            img = cv2.GaussianBlur(self.image, (5, 5), 0)
+            if not self.dir_in:
+                img_page_prediction = self.do_prediction(False, img, model_page)
+            else:
+                img_page_prediction = self.do_prediction(False, img, self.model_page)
+            imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(imgray, 0, 255, 0)
+            thresh = cv2.dilate(thresh, KERNEL, iterations=3)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            
+            if len(contours)>0:
+                cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
+                cnt = contours[np.argmax(cnt_size)]
+                x, y, w, h = cv2.boundingRect(cnt)
+                if x <= 30:
+                    w += x
+                    x = 0
+                if (self.image.shape[1] - (x + w)) <= 30:
+                    w = w + (self.image.shape[1] - (x + w))
+                if y <= 30:
+                    h = h + y
+                    y = 0
+                if (self.image.shape[0] - (y + h)) <= 30:
+                    h = h + (self.image.shape[0] - (y + h))
 
-            box = [x, y, w, h]
+                box = [x, y, w, h]
+            else:
+                box = [0, 0, img.shape[1], img.shape[0]]
+            croped_page, page_coord = crop_image_inside_box(box, self.image)
+            cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
+            if not self.dir_in:
+                session_page.close()
+                del model_page
+                del session_page
+                K.clear_session()
+            gc.collect()
+            self.logger.debug("exit extract_page")
         else:
-            box = [0, 0, img.shape[1], img.shape[0]]
-        croped_page, page_coord = crop_image_inside_box(box, self.image)
-        cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
-        if not self.dir_in:
-            session_page.close()
-            del model_page
-            del session_page
-            K.clear_session()
-        gc.collect()
-        self.logger.debug("exit extract_page")
+            box = [0, 0, self.image.shape[1], self.image.shape[0]]
+            croped_page, page_coord = crop_image_inside_box(box, self.image)
+            cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
         return croped_page, page_coord, cont_page
 
     def early_page_for_num_of_column_classification(self,img_bin):
-        self.logger.debug("enter early_page_for_num_of_column_classification")
-        if self.input_binary:
-            img =np.copy(img_bin)
-            img = img.astype(np.uint8)
+        if not self.ignore_page_extraction:
+            self.logger.debug("enter early_page_for_num_of_column_classification")
+            if self.input_binary:
+                img =np.copy(img_bin)
+                img = img.astype(np.uint8)
+            else:
+                img = self.imread()
+            if not self.dir_in:
+                model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
+            img = cv2.GaussianBlur(img, (5, 5), 0)
+            
+            if self.dir_in:
+                img_page_prediction = self.do_prediction(False, img, self.model_page)
+            else:
+                img_page_prediction = self.do_prediction(False, img, model_page)
+
+            imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(imgray, 0, 255, 0)
+            thresh = cv2.dilate(thresh, KERNEL, iterations=3)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            if len(contours)>0:
+                cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
+                cnt = contours[np.argmax(cnt_size)]
+                x, y, w, h = cv2.boundingRect(cnt)
+                box = [x, y, w, h]
+            else:
+                box = [0, 0, img.shape[1], img.shape[0]]
+            croped_page, page_coord = crop_image_inside_box(box, img)
+            
+            if not self.dir_in:
+                session_page.close()
+                del model_page
+                del session_page
+                K.clear_session()
+            
+            gc.collect()
+            
+            self.logger.debug("exit early_page_for_num_of_column_classification")
         else:
             img = self.imread()
-        if not self.dir_in:
-            model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-        img = cv2.GaussianBlur(img, (5, 5), 0)
-        
-        if self.dir_in:
-            img_page_prediction = self.do_prediction(False, img, self.model_page)
-        else:
-            img_page_prediction = self.do_prediction(False, img, model_page)
-
-        imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(imgray, 0, 255, 0)
-        thresh = cv2.dilate(thresh, KERNEL, iterations=3)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours)>0:
-            cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-            cnt = contours[np.argmax(cnt_size)]
-            x, y, w, h = cv2.boundingRect(cnt)
-            box = [x, y, w, h]
-        else:
             box = [0, 0, img.shape[1], img.shape[0]]
-        croped_page, page_coord = crop_image_inside_box(box, img)
-        
-        if not self.dir_in:
-            session_page.close()
-            del model_page
-            del session_page
-            K.clear_session()
-        
-        gc.collect()
-        
-        self.logger.debug("exit early_page_for_num_of_column_classification")
+            croped_page, page_coord = crop_image_inside_box(box, img)
         return croped_page, page_coord
 
-    def extract_page(self):
-        self.logger.debug("enter extract_page")
-        cont_page = []
-        if not self.dir_in:
-            model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-        img = cv2.GaussianBlur(self.image, (5, 5), 0)
-        if not self.dir_in:
-            img_page_prediction = self.do_prediction(False, img, model_page)
-        else:
-            img_page_prediction = self.do_prediction(False, img, self.model_page)
-        imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(imgray, 0, 255, 0)
-        thresh = cv2.dilate(thresh, KERNEL, iterations=3)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        
-        if len(contours)>0:
-            cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-            cnt = contours[np.argmax(cnt_size)]
-            x, y, w, h = cv2.boundingRect(cnt)
-            if x <= 30:
-                w += x
-                x = 0
-            if (self.image.shape[1] - (x + w)) <= 30:
-                w = w + (self.image.shape[1] - (x + w))
-            if y <= 30:
-                h = h + y
-                y = 0
-            if (self.image.shape[0] - (y + h)) <= 30:
-                h = h + (self.image.shape[0] - (y + h))
-
-            box = [x, y, w, h]
-        else:
-            box = [0, 0, img.shape[1], img.shape[0]]
-        croped_page, page_coord = crop_image_inside_box(box, self.image)
-        cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
-        if not self.dir_in:
-            session_page.close()
-            del model_page
-            del session_page
-            K.clear_session()
-        gc.collect()
-        self.logger.debug("exit extract_page")
-        return croped_page, page_coord, cont_page
 
     def extract_text_regions(self, img, patches, cols):
         self.logger.debug("enter extract_text_regions")
@@ -2960,10 +2893,15 @@ class Eynollah:
                 #self.logger.info('cont_page %s', cont_page)
             
             if not num_col:
+                print('buraya galir??')
                 self.logger.info("No columns detected, outputting an empty PAGE-XML")
                 pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [], cont_page, [], [])
                 self.logger.info("Job done in %.1fs", time.time() - t1)
-                return pcgts
+                if self.dir_in:
+                    self.writer.write_pagexml(pcgts)
+                    continue
+                else:
+                    return pcgts
 
             t1 = time.time()
             if not self.light_version:

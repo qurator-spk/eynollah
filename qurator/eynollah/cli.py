@@ -109,6 +109,12 @@ from qurator.eynollah.eynollah import Eynollah
     help="if this parameter set to true, this tool would use lighter version",
 )
 @click.option(
+    "--ignore_page_extraction/--extract_page_included",
+    "-ipe/-epi",
+    is_flag=True,
+    help="if this parameter set to true, this tool would ignore page extraction",
+)
+@click.option(
     "--log-level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
@@ -132,6 +138,7 @@ def main(
     allow_scaling,
     headers_off,
     light_version,
+    ignore_page_extraction,
     log_level
 ):
     if log_level:
@@ -161,6 +168,7 @@ def main(
         allow_scaling=allow_scaling,
         headers_off=headers_off,
         light_version=light_version,
+        ignore_page_extraction=ignore_page_extraction,
     )
     eynollah.run()
     #pcgts = eynollah.run()
