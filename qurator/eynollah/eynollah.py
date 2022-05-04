@@ -96,6 +96,7 @@ class Eynollah:
         dir_of_layout=None,
         dir_of_deskewed=None,
         dir_of_all=None,
+        dir_save_page=None,
         enable_plotting=False,
         allow_enhancement=False,
         curved_line=False,
@@ -121,6 +122,7 @@ class Eynollah:
         self.dir_out = dir_out
         self.dir_in = dir_in
         self.dir_of_all = dir_of_all
+        self.dir_save_page = dir_save_page
         self.dir_of_deskewed = dir_of_deskewed
         self.dir_of_deskewed =  dir_of_deskewed
         self.dir_of_cropped_images=dir_of_cropped_images
@@ -140,6 +142,7 @@ class Eynollah:
             self.plotter = None if not enable_plotting else EynollahPlotter(
                 dir_out=self.dir_out,
                 dir_of_all=dir_of_all,
+                dir_save_page=dir_save_page,
                 dir_of_deskewed=dir_of_deskewed,
                 dir_of_cropped_images=dir_of_cropped_images,
                 dir_of_layout=dir_of_layout,
@@ -219,6 +222,7 @@ class Eynollah:
         self.plotter = None if not self.enable_plotting else EynollahPlotter(
             dir_out=self.dir_out,
             dir_of_all=self.dir_of_all,
+            dir_save_page=self.dir_save_page,
             dir_of_deskewed=self.dir_of_deskewed,
             dir_of_cropped_images=self.dir_of_cropped_images,
             dir_of_layout=self.dir_of_layout,

@@ -55,6 +55,12 @@ from qurator.eynollah.eynollah import Eynollah
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
+    "--save_page",
+    "-sp",
+    help="if a directory is given, page crop of image will be saved there",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
     "--enable-plotting/--disable-plotting",
     "-ep/-noep",
     is_flag=True,
@@ -129,6 +135,7 @@ def main(
     save_layout,
     save_deskewed,
     save_all,
+    save_page,
     enable_plotting,
     allow_enhancement,
     curved_line,
@@ -144,11 +151,11 @@ def main(
     if log_level:
         setOverrideLogLevel(log_level)
     initLogging()
-    if not enable_plotting and (save_layout or save_deskewed or save_all or save_images or allow_enhancement):
-        print("Error: You used one of -sl, -sd, -sa, -si or -ae but did not enable plotting with -ep")
+    if not enable_plotting and (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
+        print("Error: You used one of -sl, -sd, -sa, -sp, -si or -ae but did not enable plotting with -ep")
         sys.exit(1)
-    elif enable_plotting and not (save_layout or save_deskewed or save_all or save_images or allow_enhancement):
-        print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa, -si or -ae")
+    elif enable_plotting and not (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
+        print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa, -sp, -si or -ae")
         sys.exit(1)
     eynollah = Eynollah(
         image_filename=image,
@@ -159,6 +166,7 @@ def main(
         dir_of_layout=save_layout,
         dir_of_deskewed=save_deskewed,
         dir_of_all=save_all,
+        dir_save_page=save_page,
         enable_plotting=enable_plotting,
         allow_enhancement=allow_enhancement,
         curved_line=curved_line,
