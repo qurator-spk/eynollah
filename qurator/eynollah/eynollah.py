@@ -2870,6 +2870,7 @@ class Eynollah:
             self.ls_imgs = [1]
         
         for img_name in self.ls_imgs:
+            print(img_name,'img_name')
             t0 = time.time()
             if self.dir_in:
                 self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
