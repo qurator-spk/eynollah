@@ -294,7 +294,7 @@ def return_x_start_end_mothers_childs_and_type_of_reading_order(x_min_hor_some,x
     #print(args_to_be_unified,'args_to_be_unified')
     
     
-    return reading_orther_type,x_start_returned, x_end_returned ,y_sep_returned,y_diff_returned,y_lines_without_mother,x_start_without_mother,x_end_without_mother,there_is_sep_with_child,y_lines_with_child_without_mother,x_start_with_child_without_mother,x_end_with_child_without_mother
+    return reading_orther_type,x_start_returned, x_end_returned ,y_sep_returned,y_diff_returned,y_lines_without_mother,x_start_without_mother,x_end_without_mother,there_is_sep_with_child,y_lines_with_child_without_mother,x_start_with_child_without_mother,x_end_with_child_without_mother,new_main_sep_y
 def crop_image_inside_box(box, img_org_copy):
     image_box = img_org_copy[box[1] : box[1] + box[3], box[0] : box[0] + box[2]]
     return image_box, [box[1], box[1] + box[3], box[0], box[0] + box[2]]
@@ -1771,7 +1771,7 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
             
             peaks_neg_tot_tables.append(peaks_neg_tot)
             
-            reading_order_type,x_starting,x_ending,y_type_2,y_diff_type_2,y_lines_without_mother,x_start_without_mother,x_end_without_mother,there_is_sep_with_child,y_lines_with_child_without_mother,x_start_with_child_without_mother,x_end_with_child_without_mother=return_x_start_end_mothers_childs_and_type_of_reading_order(x_min_hor_some,x_max_hor_some,cy_hor_some,peaks_neg_tot,cy_hor_diff)
+            reading_order_type,x_starting,x_ending,y_type_2,y_diff_type_2,y_lines_without_mother,x_start_without_mother,x_end_without_mother,there_is_sep_with_child,y_lines_with_child_without_mother,x_start_with_child_without_mother,x_end_with_child_without_mother,new_main_sep_y=return_x_start_end_mothers_childs_and_type_of_reading_order(x_min_hor_some,x_max_hor_some,cy_hor_some,peaks_neg_tot,cy_hor_diff)
             
 
             
@@ -2240,9 +2240,18 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                         ##y_lines_by_order.append(int(splitter_y_new[i]))
                         ##x_start_by_order.append(0)
                     
-                    y_type_2.append(int(splitter_y_new[i]))
-                    x_starting.append(x_starting[0])
-                    x_ending.append(x_ending[0])
+                    #y_type_2.append(int(splitter_y_new[i]))
+                    #x_starting.append(x_starting[0])
+                    #x_ending.append(x_ending[0])
+                    
+                    if len(new_main_sep_y)>0:
+                        y_type_2.append(int(splitter_y_new[i]))
+                        x_starting.append(0)
+                        x_ending.append(len(peaks_neg_tot)-1)
+                    else:
+                        y_type_2.append(int(splitter_y_new[i]))
+                        x_starting.append(x_starting[0])
+                        x_ending.append(x_ending[0])
                         
                         
                     y_type_2=np.array(y_type_2)
