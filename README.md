@@ -14,7 +14,7 @@ Alternatively, you can also use `make` with these targets:
 
 `make install-dev` for editable installation  
 
-The current version of Eynollah runs on Python >=3.6 with Tensorflow >=2.4.
+The current version of Eynollah runs on Python `>=3.6` with Tensorflow `>=2.4`.
 
 In order to use a GPU for inference, the CUDA toolkit version 10.x needs to be installed.
 
@@ -36,23 +36,23 @@ The command-line interface can be called like this:
 eynollah -i <image file name> -o <directory to write output> -m <directory of models> [OPTIONS]
 ```
 
-Additionally, the following optional parameters can be used to further configure the processing:
+The following options can be used to further configure the processing:
 
 ```sh
--fl: the tool will perform full layout analysis including detection of marginalia and drop capitals 
--ae: the tool will resize and enhance the image. The rescaled and enhanced image is saved to the output directory 
--as: the tool will check whether the document needs rescaling or not 
--cl: the tool will extract contours of curved textlines instead of rectangle bounding boxes 
--si <directory>: when a directory is given here, the tool will save image regions detected in documents to this directory  
--sd <directory>: when a directory is given, deskewed image will be saved to this directory  
--sa <directory>: when a directory is given, plots of layout detection are saved to this directory  
--tab: the tool will try to detect tables  
--ib: the tool will binarize the input image  
--ho: the tool will ignore headers in reading order detection  
--sl <directory>: when a directory is given, plots of layout detection are saved to this directory  
--ep: the tool will save a plot. This should be used alongside with `-sl`, `-sd`, `-sa`, `-si` or `-ae` options  
--light: the tool will apply a faster method for main region detection and deskewing   
--di <directory>: the tool will process all images in the directory in batch mode
+-fl: perform full layout analysis including detection of marginalia and drop capitals 
+-ae: allow resizing and enhancing the input image, a rescaled and enhanced image is saved to the output directory 
+-as: allow scaling - check whether the input image needs rescaling or not 
+-cl: extract contours of curved textlines instead of rectangle bounding boxes 
+-si <directory>: save image regions detected in documents to this directory  
+-sd <directory>: save deskewed image to this directory  
+-sa <directory>: save plot of layout detection to this directory  
+-tab: try to detect tables  
+-ib: allow binarization of the input image  
+-ho: ignore headers in reading order detection  
+-sl <directory>: save plots of layout detection to this directory  
+-ep: save a plot. This should be used alongside with `-sl`, `-sd`, `-sa`, `-si` or `-ae` options  
+-light: apply a faster but simpler method for main region detection and deskewing   
+-di <directory>: process all images in a directory in batch mode
 ```
 
 The tool performs better with RGB images as input than with greyscale or binarized images.
