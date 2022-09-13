@@ -21,7 +21,7 @@ help:
 # Download and extract models to $(PWD)/models_eynollah
 models: models_eynollah
 
-models_eynollah: models_eynollah_renamed.tar.gz
+models_eynollah: models_eynollah.tar.gz
 	tar xf models_eynollah_renamed.tar.gz
 
 models_eynollah.tar.gz:
