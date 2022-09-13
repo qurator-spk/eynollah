@@ -33,28 +33,29 @@ In case you want to train your own model to use with Eynollah, have a look at [s
 The command-line interface can be called like this:
 
 ```sh
-eynollah \
--i <image file name> \
--o <directory to write output xml or enhanced image> \
--m <directory of models> \
--fl <if true, the tool will perform full layout analysis> \
--ae <if true, the tool will resize and enhance the image and produce the resulting image as output. The rescaled and enhanced image will be saved in output directory> \
--as <if true, the tool will check whether the document needs rescaling or not> \
--cl <if true, the tool will extract the contours of curved textlines instead of rectangle bounding boxes> \
--si <if a directory is given here, the tool will output image regions inside documents there> \
--sd <if a directory is given, deskewed image will be saved there> \
--sa <if a directory is given, all plots needed for documentation will be saved there> \
--tab <if true, this tool will try to detect tables> \
--ib <in general, eynollah uses RGB as input but if the input document is strongly dark, bright or for any other reason you can turn binarized input on. This option does not mean that you have to provide a binary image, otherwise this means that the tool itself will binarized the RGB input document> \
--ho <if true, this tool would ignore headers role in reading order detection> \
--sl <if a directory is given, plot of layout will be saved there> \
--ep <if true, the tool will be enabled to save desired plot. This should be true alongside with -sl, -sd, -sa , -si or -ae options>
--light <if true, the tool will apply a faster method for main regions detection and moreover deskewing will not occur locally for each region in return it is done once for the whole document>
--di <directory of images. This option will accelerate the process significantly>
-
+eynollah -i <image file name> -o <directory to write output> -m <directory of models> [OPTIONS]
 ```
 
-The tool performs better with RGB images than greyscale/binarized images.
+Additionally, the following optional parameters can be used to further configure the processing:
+
+```sh
+-fl: the tool will perform full layout analysis including detection of marginalia and drop capitals 
+-ae: the tool will resize and enhance the image. The rescaled and enhanced image is saved to the output directory 
+-as: the tool will check whether the document needs rescaling or not 
+-cl: the tool will extract contours of curved textlines instead of rectangle bounding boxes 
+-si <directory>: when a directory is given here, the tool will save image regions detected in documents to this directory  
+-sd <directory>: when a directory is given, deskewed image will be saved to this directory  
+-sa <directory>: when a directory is given, plots of layout detection are saved to this directory  
+-tab: the tool will try to detect tables  
+-ib: the tool will binarize the input image  
+-ho: the tool will ignore headers in reading order detection  
+-sl <directory>: when a directory is given, plots of layout detection are saved to this directory  
+-ep: the tool will save a plot. This should be used alongside with `-sl`, `-sd`, `-sa`, `-si` or `-ae` options  
+-light: the tool will apply a faster method for main region detection and deskewing   
+-di <directory>: the tool will process all images in the directory in batch mode
+```
+
+The tool performs better with RGB images as input than with greyscale or binarized images.
 
 ## Documentation
   
@@ -126,7 +127,9 @@ Some heuristic methods are also employed to further improve the model prediction
 
   <details>
   <summary>click to expand/collapse</summary><br/>
-  
+
+The tool makes use of a combination of several models. For model training, please see [Training](https://github.com/qurator-spk/eynollah/blob/eynollah_light/README.md#training).
+    
 #### Enhancement model:
 The image enhancement model is again an image-to-image model, trained on document images with low quality and GT of corresponding images with higher quality. For training the image enhancement model, a total of 1127 document images underwent 11 different downscaling processes and consequently 11 different qualities for each image were derived. The resulting images were cropped into patches of 672*672 pixels. Adam is used as an optimizer and the learning rate is 1e-4. Scaling is the only augmentation applied for training. The model is trained with a batch size of 2 and for 5 epochs.
 
