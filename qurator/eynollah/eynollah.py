@@ -30,6 +30,7 @@ from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
 from keras.backend import set_session
+from tensorflow.keras import layers
 
 from .utils.contour import (
     filter_contours_area_of_image,
@@ -83,6 +84,60 @@ DPI_THRESHOLD = 298
 MAX_SLOPE = 999
 KERNEL = np.ones((5, 5), np.uint8)
 
+projection_dim = 64
+patch_size = 1
+num_patches =21*21#14*14#28*28#14*14#28*28
+
+
+class Patches(layers.Layer):
+    def __init__(self, **kwargs):
+        super(Patches, self).__init__()
+        self.patch_size = patch_size
+
+    def call(self, images):
+        batch_size = tf.shape(images)[0]
+        patches = tf.image.extract_patches(
+            images=images,
+            sizes=[1, self.patch_size, self.patch_size, 1],
+            strides=[1, self.patch_size, self.patch_size, 1],
+            rates=[1, 1, 1, 1],
+            padding="VALID",
+        )
+        patch_dims = patches.shape[-1]
+        patches = tf.reshape(patches, [batch_size, -1, patch_dims])
+        return patches
+    def get_config(self):
+
+        config = super().get_config().copy()
+        config.update({
+            'patch_size': self.patch_size,
+        })
+        return config
+    
+    
+class PatchEncoder(layers.Layer):
+    def __init__(self, **kwargs):
+        super(PatchEncoder, self).__init__()
+        self.num_patches = num_patches
+        self.projection = layers.Dense(units=projection_dim)
+        self.position_embedding = layers.Embedding(
+            input_dim=num_patches, output_dim=projection_dim
+        )
+
+    def call(self, patch):
+        positions = tf.range(start=0, limit=self.num_patches, delta=1)
+        encoded = self.projection(patch) + self.position_embedding(positions)
+        return encoded
+    def get_config(self):
+
+        config = super().get_config().copy()
+        config.update({
+            'num_patches': self.num_patches,
+            'projection': self.projection,
+            'position_embedding': self.position_embedding,
+        })
+        return config
+
 class Eynollah:
     def __init__(
         self,
@@ -100,6 +155,7 @@ class Eynollah:
         enable_plotting=False,
         allow_enhancement=False,
         curved_line=False,
+        textline_light=False,
         full_layout=False,
         tables=False,
         input_binary=False,
@@ -130,6 +186,7 @@ class Eynollah:
         self.enable_plotting = enable_plotting
         self.allow_enhancement = allow_enhancement
         self.curved_line = curved_line
+        self.textline_light = textline_light
         self.full_layout = full_layout
         self.tables = tables
         self.input_binary = input_binary
@@ -151,6 +208,7 @@ class Eynollah:
                 dir_out=self.dir_out,
                 image_filename=self.image_filename,
                 curved_line=self.curved_line,
+                textline_light = self.textline_light,
                 pcgts=pcgts)
         self.logger = logger if logger else getLogger('eynollah')
         self.dir_models = dir_models
@@ -165,7 +223,10 @@ class Eynollah:
         self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425.h5"
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425.h5"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314.h5"
-        self.model_textline_dir = dir_models + "/eynollah-textline_20210425.h5"
+        if self.textline_light:
+            self.model_textline_dir = dir_models + "/model_17.h5"
+        else:
+            self.model_textline_dir = dir_models + "/eynollah-textline_20210425.h5"
         self.model_tables = dir_models + "/eynollah-tables_20210319.h5"
         
         if dir_in and light_version:
@@ -603,7 +664,10 @@ class Eynollah:
         gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
         #gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=7.7, allow_growth=True)
         session = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
-        model = load_model(model_dir, compile=False)
+        try:
+            model = load_model(model_dir, compile=False)
+        except:
+            model = load_model(model_dir , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
 
         return model, session
 
@@ -1368,12 +1432,17 @@ class Eynollah:
 
             # plt.imshow(mask_only_con_region)
             # plt.show()
-            all_text_region_raw = np.copy(textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]])
-            mask_only_con_region = mask_only_con_region[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
-
-
-            all_text_region_raw[mask_only_con_region == 0] = 0
-            cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, [slope_deskew][0], contours_par_per_process[mv], boxes_text[mv])
+            
+            if self.textline_light:
+                all_text_region_raw = np.copy(textline_mask_tot_ea)
+                all_text_region_raw[mask_only_con_region == 0] = 0
+                cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(all_text_region_raw)
+                cnt_clean_rot = filter_contours_area_of_image(all_text_region_raw, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
+            else:
+                all_text_region_raw = np.copy(textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]])
+                mask_only_con_region = mask_only_con_region[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
+                all_text_region_raw[mask_only_con_region == 0] = 0
+                cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, [slope_deskew][0], contours_par_per_process[mv], boxes_text[mv])
 
             textlines_rectangles_per_each_subprocess.append(cnt_clean_rot)
             index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
@@ -1481,8 +1550,10 @@ class Eynollah:
         if not self.dir_in:
             session_textline.close()
 
-
-        return prediction_textline[:, :, 0], prediction_textline_longshot_true_size[:, :, 0]
+        if self.textline_light:
+            return (prediction_textline[:, :, 0]==1)*1, (prediction_textline_longshot_true_size[:, :, 0]==1)*1
+        else:
+            return prediction_textline[:, :, 0], prediction_textline_longshot_true_size[:, :, 0]
 
     def do_work_of_slopes(self, q, poly, box_sub, boxes_per_process, textline_mask_tot, contours_per_process):
         self.logger.debug('enter do_work_of_slopes')
@@ -2562,6 +2633,8 @@ class Eynollah:
         scaler_h_textline = 1  # 1.2#1.2
         scaler_w_textline = 1  # 0.9#1
         textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline)
+        if self.textline_light:
+            textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
         if not self.dir_in:
             K.clear_session()
         if self.plotter:
@@ -2870,7 +2943,6 @@ class Eynollah:
             self.ls_imgs = [1]
         
         for img_name in self.ls_imgs:
-            print(img_name,'img_name')
             t0 = time.time()
             if self.dir_in:
                 self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
@@ -2887,6 +2959,7 @@ class Eynollah:
                 num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea = \
                         self.run_graphics_and_columns_light(text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts)
                 #self.logger.info("run graphics %.1fs ", time.time() - t1t)
+                textline_mask_tot_ea_org = np.copy(textline_mask_tot_ea)
             else:
                 text_regions_p_1 ,erosion_hurts, polygons_lines_xml = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
                 self.logger.info("Textregion detection took %.1fs ", time.time() - t1)
@@ -3043,8 +3116,12 @@ class Eynollah:
             
             if not self.curved_line:
                 if self.light_version:
-                    slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
-                    slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
+                    if self.textline_light:
+                        slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea_org, image_page_rotated, boxes_text, slope_deskew)
+                        slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea_org, image_page_rotated, boxes_marginals, slope_deskew)
+                    else:
+                        slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
+                        slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
                 else:
                     slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
                     slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
