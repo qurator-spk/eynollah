@@ -293,6 +293,7 @@ class Eynollah:
             dir_out=self.dir_out,
             image_filename=self.image_filename,
             curved_line=self.curved_line,
+            textline_light = self.textline_light,
             pcgts=self.pcgts)
     def imread(self, grayscale=False, uint8=True):
         key = 'img'
@@ -2926,8 +2927,11 @@ class Eynollah:
         return polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables
     
     def our_load_model(self, model_file):
-
-        model = load_model(model_file, compile=False)
+        
+        try:
+            model = load_model(model_file, compile=False)
+        except:
+            model = load_model(model_file , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
 
         return model
 
