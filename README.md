@@ -39,7 +39,7 @@ eynollah -i <image file name> -o <directory to write output> -m <directory of mo
 The following options can be used to further configure the processing:
 
 ```
--fl              perform full layout analysis including detection of marginalia and drop capitals 
+-fl              perform full layout analysis including detection of headers and drop capitals 
 -tab             try to detect tables  
 -light           apply a faster but simpler method for main region detection and deskewing   
 -ae              allow resizing and enhancing the input image, the enhanced image is saved to the output directory 
