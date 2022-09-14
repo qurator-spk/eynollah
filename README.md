@@ -38,21 +38,21 @@ eynollah -i <image file name> -o <directory to write output> -m <directory of mo
 
 The following options can be used to further configure the processing:
 
-```sh
--fl: perform full layout analysis including detection of marginalia and drop capitals 
--ae: allow resizing and enhancing the input image, a rescaled and enhanced image is saved to the output directory 
--as: allow scaling - check whether the input image needs rescaling or not 
--cl: extract contours of curved textlines instead of rectangle bounding boxes 
--si <directory>: save image regions detected in documents to this directory  
--sd <directory>: save deskewed image to this directory  
--sa <directory>: save plot of layout detection to this directory  
--tab: try to detect tables  
--ib: allow binarization of the input image  
--ho: ignore headers in reading order detection  
--sl <directory>: save plots of layout detection to this directory  
--ep: save a plot. This should be used alongside with `-sl`, `-sd`, `-sa`, `-si` or `-ae` options  
--light: apply a faster but simpler method for main region detection and deskewing   
--di <directory>: process all images in a directory in batch mode
+```
+-fl              perform full layout analysis including detection of marginalia and drop capitals 
+-tab             try to detect tables  
+-light           apply a faster but simpler method for main region detection and deskewing   
+-ae              allow resizing and enhancing the input image, the enhanced image is saved to the output directory 
+-as              allow scaling - automatically check whether the input image needs scaling or not 
+-ib              allow binarization of the input image
+-ho              ignore headers for reading order prediction  
+-cl              extract contours of curved textlines instead of rectangle bounding boxes 
+-ep              enables plotting. This MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae` options 
+-di <directory>  process all images in a directory in batch mode
+-si <directory>  save image regions detected in documents to this directory  
+-sd <directory>  save deskewed image to this directory  
+-sl <directory>  save layout prediction as plot to this directory 
+-sa <directory>  save all outputs (plot, enhanced or binary image and layout prediction) to this directory   
 ```
 
 The tool performs better with RGB images as input than with greyscale or binarized images.
