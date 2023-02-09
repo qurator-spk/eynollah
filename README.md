@@ -6,7 +6,7 @@
 ## Installation
 `pip install .` or 
 
-`pip install . -e` for editable installation
+`pip install -e .` for editable installation
 
 Alternatively, you can also use `make` with these targets:  
 
