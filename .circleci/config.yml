@@ -2,7 +2,7 @@ version: 2
 
 jobs:
 
-  build-python36:
+  build-python37:
     docker:
       - image: python:3.7
     steps:
@@ -25,4 +25,4 @@ workflows:
     jobs:
       #- build-python36
       - build-python37
-      - build-python38
+      #- build-python38
