@@ -2359,12 +2359,12 @@ class Eynollah:
             contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
                         
             if len(contours_only_text_parent) > 0:
-                areas_cnt_text = np.array([cv2.contourArea(contours_only_text_parent[j]) for j in range(len(contours_only_text_parent))])
+                areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
                 areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
                 #self.logger.info('areas_cnt_text %s', areas_cnt_text)
                 contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
-                contours_only_text_parent = [contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz] > min_con_area]
-                areas_cnt_text_parent = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > min_con_area]
+                contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent) if areas_cnt_text[jz] > min_con_area]
+                areas_cnt_text_parent = [area for area in areas_cnt_text if area > min_con_area]
 
                 index_con_parents = np.argsort(areas_cnt_text_parent)
                 contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
@@ -2376,14 +2376,14 @@ class Eynollah:
                 contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
                 contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
 
-                areas_cnt_text_d = np.array([cv2.contourArea(contours_only_text_parent_d[j]) for j in range(len(contours_only_text_parent_d))])
+                areas_cnt_text_d = np.array([cv2.contourArea(c) for c in contours_only_text_parent_d])
                 areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
                 
                 if len(areas_cnt_text_d)>0:
                     contours_biggest_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
-                    index_con_parents_d=np.argsort(areas_cnt_text_d)
-                    contours_only_text_parent_d=list(np.array(contours_only_text_parent_d)[index_con_parents_d] )
-                    areas_cnt_text_d=list(np.array(areas_cnt_text_d)[index_con_parents_d] )
+                    index_con_parents_d = np.argsort(areas_cnt_text_d)
+                    contours_only_text_parent_d = list(np.array(contours_only_text_parent_d)[index_con_parents_d])
+                    areas_cnt_text_d = list(np.array(areas_cnt_text_d)[index_con_parents_d])
 
                     cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest_d])
                     cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent_d)
@@ -2438,12 +2438,12 @@ class Eynollah:
             contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
             
             if len(contours_only_text_parent) > 0:
-                areas_cnt_text = np.array([cv2.contourArea(contours_only_text_parent[j]) for j in range(len(contours_only_text_parent))])
+                areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
                 areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
 
                 contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
-                contours_only_text_parent = [contours_only_text_parent[jz] for jz in range(len(contours_only_text_parent)) if areas_cnt_text[jz] > min_con_area]
-                areas_cnt_text_parent = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > min_con_area]
+                contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent) if areas_cnt_text[jz] > min_con_area]
+                areas_cnt_text_parent = [area for area in areas_cnt_text if area > min_con_area]
 
                 index_con_parents = np.argsort(areas_cnt_text_parent)
                 contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
