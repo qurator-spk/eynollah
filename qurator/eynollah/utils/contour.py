@@ -19,7 +19,7 @@ def contours_in_same_horizon(cy_main_hor):
         list_h.append(i)
         if len(list_h) > 1:
             all_args.append(list(set(list_h)))
-    return np.unique(all_args)
+    return np.unique(np.array(all_args, dtype=object))
 
 def find_contours_mean_y_diff(contours_main):
     M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
