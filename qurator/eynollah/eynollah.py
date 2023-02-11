@@ -220,7 +220,8 @@ class Eynollah:
                     index_y_d = img_h - img_height_model
 
                 img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-                label_p_pred = model_enhancement.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]))
+                label_p_pred = model_enhancement.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]),
+                                                         verbose=0)
 
                 seg = label_p_pred[0, :, :, :]
                 seg = seg * 255
@@ -355,7 +356,7 @@ class Eynollah:
             img_in[0, :, :, 1] = img_1ch[:, :]
             img_in[0, :, :, 2] = img_1ch[:, :]
 
-        label_p_pred = model_num_classifier.predict(img_in)
+        label_p_pred = model_num_classifier.predict(img_in, verbose=0)
         num_col = np.argmax(label_p_pred[0]) + 1
 
         self.logger.info("Found %s columns (%s)", num_col, label_p_pred)
@@ -428,7 +429,7 @@ class Eynollah:
 
 
 
-        label_p_pred = model_num_classifier.predict(img_in)
+        label_p_pred = model_num_classifier.predict(img_in, verbose=0)
         num_col = np.argmax(label_p_pred[0]) + 1
         self.logger.info("Found %s columns (%s)", num_col, label_p_pred)
         session_col_classifier.close()
@@ -534,7 +535,8 @@ class Eynollah:
             img = img / float(255.0)
             img = resize_image(img, img_height_model, img_width_model)
 
-            label_p_pred = model.predict(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]))
+            label_p_pred = model.predict(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]),
+                                         verbose=0)
 
             seg = np.argmax(label_p_pred, axis=3)[0]
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
@@ -586,7 +588,8 @@ class Eynollah:
                         index_y_d = img_h - img_height_model
 
                     img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-                    label_p_pred = model.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]))
+                    label_p_pred = model.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]),
+                                                 verbose=0)
                     seg = np.argmax(label_p_pred, axis=3)[0]
                     seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
 
