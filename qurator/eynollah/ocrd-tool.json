@@ -48,7 +48,7 @@
       "resources": [
 	{
 	  "description": "models for eynollah (TensorFlow format)",
-	  "url": "https://ocr-d.kba.cloud/2021-04-25.SavedModel.tar.gz",
+	  "url": "https://qurator-data.de/eynollah/2021-04-25/SavedModel.tar.gz",
 	  "name": "default",
 	  "size": 1483106598,
 	  "type": "archive",
