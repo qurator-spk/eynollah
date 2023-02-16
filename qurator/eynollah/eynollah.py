@@ -388,6 +388,7 @@ class Eynollah:
             img = self.imread()
             img_bin = None
 
+        t1 = time.time()
         _, page_coord = self.early_page_for_num_of_column_classification(img_bin)
         model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
         
@@ -413,6 +414,7 @@ class Eynollah:
         label_p_pred = model_num_classifier.predict(img_in, verbose=0)
         num_col = np.argmax(label_p_pred[0]) + 1
         self.logger.info("Found %d columns (%s)", num_col, np.around(label_p_pred, decimals=5))
+        self.logger.info("detecting columns took %.1fs", time.time() - t1)
 
         if dpi < DPI_THRESHOLD:
             img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
@@ -2356,6 +2358,14 @@ class Eynollah:
                 # self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))
             else:
                 pass
+
+        self.logger.info("Found %d text regions", len(contours_only_text_parent))
+        self.logger.info("Found %d margin regions", len(polygons_of_marginals))
+        self.logger.info("Found %d image regions", len(polygons_of_images))
+        self.logger.info("Found %d separator lines", len(polygons_lines_xml))
+        if self.tables:
+            self.logger.info("Found %d tables", len(contours_tables))
+
         txt_con_org = get_textregion_contours_in_org_image(contours_only_text_parent, self.image, slope_first)
         boxes_text, _ = get_text_region_boxes_by_given_contours(contours_only_text_parent)
         boxes_marginals, _ = get_text_region_boxes_by_given_contours(polygons_of_marginals)
