@@ -44,7 +44,17 @@
           "default": false,
           "description": "ignore the special role of headings during reading order detection"
         }
-      }
+      },
+      "resources": [
+	{
+	  "description": "models for eynollah (TensorFlow format)",
+	  "url": "https://ocr-d.kba.cloud/2021-04-25.SavedModel.tar.gz",
+	  "name": "default",
+	  "size": 1483106598,
+	  "type": "archive",
+	  "path_in_archive": "default"
+	}
+      ]
     }
   }
 }
