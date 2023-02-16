@@ -50,6 +50,7 @@ class EynollahProcessor(Processor):
                 'full_layout': self.parameter['full_layout'],
                 'allow_scaling': self.parameter['allow_scaling'],
                 'headers_off': self.parameter['headers_off'],
+                'tables': self.parameter['tables'],
                 'override_dpi': self.parameter['dpi'],
                 'logger': LOG,
                 'pcgts': pcgts,

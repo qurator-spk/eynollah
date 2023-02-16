@@ -29,6 +29,11 @@
           "default": true,
           "description": "Try to detect all element subtypes, including drop-caps and headings"
         },
+	"tables": {
+	  "type": "boolean",
+	  "default": false,
+	  "description": "Try to detect table regions"
+	},
         "curved_line": {
           "type": "boolean",
           "default": false,
