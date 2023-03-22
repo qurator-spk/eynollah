@@ -5,6 +5,8 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.1.0] - 2023-03-22
+
 Fixed:
 
   * Do not produce spurious `TextEquiv`, #68
@@ -83,6 +85,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.1.0]: ../../compare/v0.1.0...v0.0.11
 [0.0.11]: ../../compare/v0.0.11...v0.0.10
 [0.0.10]: ../../compare/v0.0.10...v0.0.9
 [0.0.9]: ../../compare/v0.0.9...v0.0.8
