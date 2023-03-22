@@ -5,6 +5,17 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Fixed:
+
+  * Do not produce spurious `TextEquiv`, #68
+  * Less spammy logging, #64, #65, #71
+
+Changed:
+
+  * Upgrade to tensorflow 2.4.0, #74
+  * Improved README
+  * CI: test for python 3.7+, #90
+
 ## [0.0.11] - 2022-02-02
 
 Fixed:
