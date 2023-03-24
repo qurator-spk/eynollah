@@ -5,6 +5,17 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.2.0] - 2023-03-24
+
+Changed:
+
+  * Convert default model from HDFS to TF SavedModel, #91
+
+Added:
+
+  * parmeter `tables` to toggle table detectino, #91
+  * default model described in ocrd-tool.json, #91
+
 ## [0.1.0] - 2023-03-22
 
 Fixed:
@@ -85,6 +96,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.2.0]: ../../compare/v0.2.0...v0.1.0
 [0.1.0]: ../../compare/v0.1.0...v0.0.11
 [0.0.11]: ../../compare/v0.0.11...v0.0.10
 [0.0.10]: ../../compare/v0.0.10...v0.0.9
