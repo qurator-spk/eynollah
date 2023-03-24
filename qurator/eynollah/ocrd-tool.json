@@ -29,6 +29,11 @@
           "default": true,
           "description": "Try to detect all element subtypes, including drop-caps and headings"
         },
+	"tables": {
+	  "type": "boolean",
+	  "default": false,
+	  "description": "Try to detect table regions"
+	},
         "curved_line": {
           "type": "boolean",
           "default": false,
@@ -44,7 +49,17 @@
           "default": false,
           "description": "ignore the special role of headings during reading order detection"
         }
-      }
+      },
+      "resources": [
+	{
+	  "description": "models for eynollah (TensorFlow format)",
+	  "url": "https://qurator-data.de/eynollah/2021-04-25/SavedModel.tar.gz",
+	  "name": "default",
+	  "size": 1483106598,
+	  "type": "archive",
+	  "path_in_archive": "default"
+	}
+      ]
     }
   }
 }
