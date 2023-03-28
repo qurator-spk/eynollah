@@ -20,10 +20,10 @@ import numpy as np
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 stderr = sys.stderr
 sys.stderr = open(os.devnull, "w")
-from keras import backend as K
-from keras.models import load_model
-sys.stderr = stderr
 import tensorflow as tf
+from tensorflow.python.keras import backend as K
+from tensorflow.keras.models load_model
+sys.stderr = stderr
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
 from scipy.signal import find_peaks
@@ -699,7 +699,7 @@ class Eynollah:
             if img.shape[1] < img_width_model:
                 img = resize_image(img, img.shape[0], img_width_model)
 
-            self.logger.info("Image dimensions: %sx%s", img_height_model, img_width_model)
+            self.logger.debug("Patch size: %sx%s", img_height_model, img_width_model)
             margin = int(marginal_of_patch_percent * img_height_model)
             width_mid = img_width_model - 2 * margin
             height_mid = img_height_model - 2 * margin
