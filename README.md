@@ -14,7 +14,7 @@ Alternatively, you can also use `make` with these targets:
 
 `make install-dev` for editable installation
 
-The current version of Eynollah runs on Python `>=3.6` with Tensorflow `>=2.4`. 
+The current version of Eynollah runs on Python `>=3.7` with Tensorflow `>=2.4`. 
 
 In order to use a GPU for inference, the CUDA toolkit version 10.x needs to be installed.
 
