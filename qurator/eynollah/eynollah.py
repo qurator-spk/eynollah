@@ -827,7 +827,7 @@ class Eynollah:
             if img.shape[1] < img_width_model:
                 img = resize_image(img, img.shape[0], img_width_model)
 
-            self.logger.info("Image dimensions: %sx%s", img_height_model, img_width_model)
+            self.logger.debug("Patch size: %sx%s", img_height_model, img_width_model)
             margin = int(marginal_of_patch_percent * img_height_model)
             width_mid = img_width_model - 2 * margin
             height_mid = img_height_model - 2 * margin
