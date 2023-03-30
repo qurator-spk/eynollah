@@ -3,7 +3,7 @@
 # pylint: disable=too-many-public-methods,too-many-arguments,too-many-instance-attributes,too-many-public-methods,
 # pylint: disable=consider-using-enumerate
 """
-tool to extract table form data from alto xml data
+document layout analysis (segmentation) with output in PAGE-XML
 """
 
 import math
