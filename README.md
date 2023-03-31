@@ -1,4 +1,7 @@
 # Eynollah
+[![CircleCI Build Status](https://circleci.com/gh/qurator-spk/eynollah.svg?style=svg)](https://circleci.com/gh/qurator-spk/eynollah)
+[![PyPI Version](https://img.shields.io/pypi/v/eynollah)](https://pypi.org/project/eynollah/)
+[![License: ASL](https://img.shields.io/github/license/qurator-spk/eynollah)](https://github.com/qurator-spk/eynollah/blob/main/LICENSE)
 > Perform document layout analysis (segmentation) from image data and return the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML).
 
 ![](https://user-images.githubusercontent.com/952378/102350683-8a74db80-3fa5-11eb-8c7e-f743f7d6eae2.jpg)
