@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_namespace_packages, find_packages, setup
 from json import load
 
 install_requires = open('requirements.txt').read().split('\n')
