@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_namespace_packages, find_packages, setup
 from json import load
 
 install_requires = open('requirements.txt').read().split('\n')
@@ -13,7 +13,6 @@ setup(
     author='Vahid Rezanezhad',
     url='https://github.com/qurator-spk/eynollah',
     license='Apache License 2.0',
-    namespace_packages=['qurator'],
     packages=find_packages(exclude=['tests']),
     install_requires=install_requires,
     package_data={
