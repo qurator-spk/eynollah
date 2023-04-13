@@ -16,6 +16,9 @@ jobs:
           paths:
             models_eynollah.tar.gz
             models_eynollah
+      - run:
+        name: "Set Python Version"
+        command: pyenv install -s 3.7.16 && pyenv global 3.7.16
       - run: make install
       - run: make smoke-test
 
@@ -33,6 +36,9 @@ jobs:
           paths:
             models_eynollah.tar.gz
             models_eynollah
+      - run:
+        name: "Set Python Version"
+        command: pyenv install -s 3.8.16 && pyenv global 3.8.16           
       - run: make install
       - run: make smoke-test
 
