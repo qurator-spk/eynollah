@@ -496,7 +496,8 @@ class Eynollah:
         #session = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
         physical_devices = tf.config.list_physical_devices('GPU')
         try:
-            tf.config.experimental.set_memory_growth(physical_devices[0], True)
+            for device in physical_devices:
+                tf.config.experimental.set_memory_growth(device, True)
         except:
             self.logger.warning("no GPU device available")
         if model_dir.endswith('.h5') and Path(model_dir[:-3]).exists():
