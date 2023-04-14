@@ -16,6 +16,7 @@
 * Text line segmentation to bounding boxes or polygons (contours) including for curved lines and vertical text
 * Detection of reading order
 * Output in [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML)
+* [OCR-D](https://github.com/qurator-spk/eynollah#use-as-ocr-d-processor) interface
 
 ## Installation
 Python versions `3.7-3.10` with Tensorflow `>=2.4` are currently supported.
