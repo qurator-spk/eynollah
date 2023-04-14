@@ -13,14 +13,14 @@
   * background, page border, text region, text line, header, image, separator, marginalia, initial (drop capital), table
 * Support for various image optimization operations:
   * cropping (border detection), binarization, deskewing, dewarping, scaling, enhancing, resizing
-* Text line segmentation to bounding boxes or polygons (contours) including curved lines and vertical text
+* Text line segmentation to bounding boxes or polygons (contours) including for curved lines and vertical text
 * Detection of reading order
-* Output in [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML) format
+* Output in [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML)
 
 ## Installation
 Python versions `3.7-3.10` with Tensorflow `>=2.4` are currently supported.
 
-For (minimal) GPU support the [matching](https://www.tensorflow.org/install/source#gpu) CUDA toolkit `>=10.1` needs to be installed.
+For (limited) GPU support the [matching](https://www.tensorflow.org/install/source#gpu) CUDA toolkit `>=10.1` needs to be installed.
 
 You can either install via 
 
@@ -43,8 +43,6 @@ Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data
 
 Alternatively, running `make models` will download and extract models to `$(PWD)/models_eynollah`.
 
-### Training
-
 In case you want to train your own model to use with Eynollah, have a look at [sbb_pixelwise_segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation). 
 
 ## Usage
@@ -61,22 +59,21 @@ eynollah \
 
 The following options can be used to further configure the processing:
 
-```
--fl              perform full layout analysis including detection of headers and drop capitals 
--tab             try to detect tables  
--light           apply a faster but simpler method for main region detection and deskewing   
--ae              allow resizing and enhancing the input image, the enhanced image is saved to the output directory 
--as              allow scaling - automatically check whether the input image needs scaling or not 
--ib              allow binarization of the input image
--ho              ignore headers for reading order prediction  
--cl              extract contours of curved textlines instead of rectangle bounding boxes 
--ep              enables plotting. This MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae` options 
--di <directory>  process all images in a directory in batch mode
--si <directory>  save image regions detected in documents to this directory  
--sd <directory>  save deskewed image to this directory  
--sl <directory>  save layout prediction as plot to this directory 
--sa <directory>  save all outputs (plot, enhanced or binary image and layout prediction) to this directory   
-```
+| option   |      description      |
+|----------|:-------------|
+| `-fl`  | apply full layout analysis including all steps and segmentation classes |
+| `-light` | apply a lighter and faster but simpler method for main region detection and deskewing |
+| `-tab` | apply table detection |
+| `-ae`  | apply enhancement (the resulting image is saved to the output directory) |
+| `-as`  | apply scaling |
+| `-ib`  | apply binarization (the resulting image is saved to the output directory)  |
+| `-ep`  | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`) |
+| `-ho`  | ignore headers for reading order dectection |
+| `-di <directory>`  | process all images in a directory in batch mode |
+| `-si <directory>`  | save image regions detected in documents to this directory |
+| `-sd <directory>`  | save deskewed image to this directory |
+| `-sl <directory>`  | save layout prediction as plot to this directory |
+| `-sa <directory>`  | save all (plot, enhanced, binary image and layout prediction) to this directory |
 
 The tool performs better with RGB images as input than with greyscale or binarized images.
 
