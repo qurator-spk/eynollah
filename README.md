@@ -10,7 +10,7 @@
 
 ## Features
 * Support for up to 10 segmentation classes: 
-  * background, page border, text region, text line, header, image, separator, marginalia, initial (drop capital), table
+  * background, page border, text region, text line, header, image, separator, marginalia, initial, table
 * Support for various image optimization operations:
   * cropping (border detection), binarization, deskewing, dewarping, scaling, enhancing, resizing
 * Text line segmentation to bounding boxes or polygons (contours) including for curved lines and vertical text
