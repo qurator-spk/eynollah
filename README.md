@@ -66,6 +66,7 @@ The following options can be used to further configure the processing:
 | `-tab` | apply table detection |
 | `-ae`  | apply enhancement (the resulting image is saved to the output directory) |
 | `-as`  | apply scaling |
+| `-cl`  | apply polygonal countour detection for curved text lines |
 | `-ib`  | apply binarization (the resulting image is saved to the output directory)  |
 | `-ep`  | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`) |
 | `-ho`  | ignore headers for reading order dectection |
@@ -73,6 +74,7 @@ The following options can be used to further configure the processing:
 | `-si <directory>`  | save image regions detected in documents to this directory |
 | `-sd <directory>`  | save deskewed image to this directory |
 | `-sl <directory>`  | save layout prediction as plot to this directory |
+| `-sp <directory>`  | save cropped page image to this directory |
 | `-sa <directory>`  | save all (plot, enhanced, binary image and layout prediction) to this directory |
 
 The tool performs better with RGB images as input than with greyscale or binarized images.
