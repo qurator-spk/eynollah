@@ -1,5 +1,5 @@
 # Eynollah
-> Perform document layout analysis (segmentation) from image data and return the results as [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML)
+> Document Layout Analysis (segmentation) using pre-trained models and heuristics
 
 [![PyPI Version](https://img.shields.io/pypi/v/eynollah)](https://pypi.org/project/eynollah/)
 [![CircleCI Build Status](https://circleci.com/gh/qurator-spk/eynollah.svg?style=shield)](https://circleci.com/gh/qurator-spk/eynollah)
@@ -8,24 +8,38 @@
 
 ![](https://user-images.githubusercontent.com/952378/102350683-8a74db80-3fa5-11eb-8c7e-f743f7d6eae2.jpg)
 
+## Features
+* Support for up to 10 segmentation classes: 
+  * background, page border, text region, text line, header, image, separator, marginalia, initial (drop capital), table
+* Support for various image optimization operations:
+  * cropping (border detection), binarization, deskewing, dewarping, scaling, enhancing, resizing
+* Text line segmentation to bounding boxes or polygons (contours) including curved lines and vertical text
+* Detection of reading order
+* Output in [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML) format
+
 ## Installation
-`pip install .` or 
+Python versions `3.7-3.10` with Tensorflow `>=2.4` are currently supported.
 
-`pip install -e .` for editable installation
+For (minimal) GPU support the [matching](https://www.tensorflow.org/install/source#gpu) CUDA toolkit `>=10.1` needs to be installed.
 
-Alternatively, you can also use `make` with these targets:  
+You can either install via 
 
-`make install` or  
+```
+pip install eynollah
+```
 
-`make install-dev` for editable installation
+or clone the repository, enter it and install (editable) with
 
-The current version of Eynollah runs on Python `>=3.7` with Tensorflow `>=2.4`. 
+```
+git clone git@github.com:qurator-spk/eynollah.git
+cd eynollah; pip install -e .
+```
 
-In order to use a GPU for inference, the CUDA toolkit version 10.x needs to be installed.
+Alternatively, you can run `make install` or `make install-dev` for editable installation.
 
 ### Models
 
-In order to run this tool you need trained models. You can download our pretrained models from [qurator-data.de](https://qurator-data.de/eynollah/).
+Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/).
 
 Alternatively, running `make models` will download and extract models to `$(PWD)/models_eynollah`.
 
@@ -38,7 +52,11 @@ In case you want to train your own model to use with Eynollah, have a look at [s
 The command-line interface can be called like this:
 
 ```sh
-eynollah -i <image file name> -o <directory to write output> -m <directory of models> [OPTIONS]
+eynollah \
+  -i <image file> \
+  -o <output directory> \
+  -m <path to directory containing model files> \
+     [OPTIONS]
 ```
 
 The following options can be used to further configure the processing:
@@ -183,4 +201,3 @@ would still use the original (RGB) image despite any binarization that may have 
   </details>
     
 </details>
- 
