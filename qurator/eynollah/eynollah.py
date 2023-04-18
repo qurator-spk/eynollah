@@ -665,8 +665,12 @@ class Eynollah:
         if model_dir in self.models:
             model = self.models[model_dir]
         else:
-            model = load_model(model_dir, compile=False)
-            self.models[model_dir] = model
+            try:
+                model = load_model(model_dir, compile=False)
+                self.models[model_dir] = model
+            except:
+                model = load_model(model_dir , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
+                self.models[model_dir] = model
 
         return model, None
 
