@@ -224,7 +224,7 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425.h5"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314.h5"
         if self.textline_light:
-            self.model_textline_dir = dir_models + "/model_17.h5"
+            self.model_textline_dir = dir_models + "/eynollah-textline_light_20210425.h5"
         else:
             self.model_textline_dir = dir_models + "/eynollah-textline_20210425.h5"
         self.model_tables = dir_models + "/eynollah-tables_20210319.h5"
