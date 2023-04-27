@@ -164,6 +164,9 @@ def main(
     elif enable_plotting and not (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
         print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa, -sp, -si or -ae")
         sys.exit(1)
+    if textline_light and not light_version:
+        print('Error: You used -tll to enable light textline detection but -light is not enabled')
+        sys.exit(1)
     eynollah = Eynollah(
         image_filename=image,
         dir_out=out,
