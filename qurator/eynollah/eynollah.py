@@ -213,21 +213,21 @@ class Eynollah:
         self.logger = logger if logger else getLogger('eynollah')
         self.dir_models = dir_models
 
-        self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425.h5"
-        self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425.h5"
-        self.model_dir_of_col_classifier = dir_models + "/eynollah-column-classifier_20210425.h5"
-        self.model_region_dir_p = dir_models + "/eynollah-main-regions-aug-scaling_20210425.h5"
-        self.model_region_dir_p2 = dir_models + "/eynollah-main-regions-aug-rotation_20210425.h5"
-        self.model_region_dir_fully_np = dir_models + "/eynollah-full-regions-1column_20210425.h5"
-        self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425.h5"
-        self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425.h5"
-        self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425.h5"
-        self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314.h5"
+        self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
+        self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425"
+        self.model_dir_of_col_classifier = dir_models + "/eynollah-column-classifier_20210425"
+        self.model_region_dir_p = dir_models + "/eynollah-main-regions-aug-scaling_20210425"
+        self.model_region_dir_p2 = dir_models + "/eynollah-main-regions-aug-rotation_20210425"
+        self.model_region_dir_fully_np = dir_models + "/eynollah-full-regions-1column_20210425"
+        self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425"
+        self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425"
+        self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
+        self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         if self.textline_light:
-            self.model_textline_dir = dir_models + "/eynollah-textline_light_20210425.h5"
+            self.model_textline_dir = dir_models + "/eynollah-textline_light_20210425"
         else:
-            self.model_textline_dir = dir_models + "/eynollah-textline_20210425.h5"
-        self.model_tables = dir_models + "/eynollah-tables_20210319.h5"
+            self.model_textline_dir = dir_models + "/eynollah-textline_20210425"
+        self.model_tables = dir_models + "/eynollah-tables_20210319"
         
         self.models = {}
         
@@ -1824,6 +1824,9 @@ class Eynollah:
             
                 if not self.dir_in:
                     model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+                    
+            else:
+                prediction_bin = np.copy(img_org)
             ratio_y=1
             ratio_x=1
 
