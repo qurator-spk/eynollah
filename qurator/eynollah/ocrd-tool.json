@@ -1,5 +1,5 @@
 {
-  "version": "0.0.11",
+  "version": "0.2.0",
   "git_url": "https://github.com/qurator-spk/eynollah",
   "tools": {
     "ocrd-eynollah-segment": {
@@ -49,7 +49,17 @@
           "default": false,
           "description": "ignore the special role of headings during reading order detection"
         }
-      }
+      },
+      "resources": [
+	{
+	  "description": "models for eynollah (TensorFlow format)",
+	  "url": "https://qurator-data.de/eynollah/2021-04-25/SavedModel.tar.gz",
+	  "name": "default",
+	  "size": 1483106598,
+	  "type": "archive",
+	  "path_in_archive": "default"
+	}
+      ]
     }
   }
 }

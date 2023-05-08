@@ -38,11 +38,15 @@ cd eynollah; pip install -e .
 
 Alternatively, you can run `make install` or `make install-dev` for editable installation.
 
-### Models
+  <details>
+  <summary>click to expand/collapse</summary><br/>
+  
+First, this model makes use of up to 9 trained models which are responsible for different operations like size detection, column classification, image enhancement, page extraction, main layout detection, full layout detection and textline detection.That does not mean that all 9 models are always required for every document. Based on the document characteristics and parameters specified, different scenarios can be applied.
 
 Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/).
 
-Alternatively, running `make models` will download and extract models to `$(PWD)/models_eynollah`.
+
+* If you set `-ae` (**a**llow image **e**nhancement) parameter to `true`, the tool will first check the ppi (pixel-per-inch) of the image and when it is less than 300, the tool will resize it and only then image enhancement will occur. Image enhancement can also take place without this option, but by setting this option to `true`, the layout xml data (e.g. coordinates) will be based on the resized and enhanced image instead of the original image.
 
 In case you want to train your own model to use with Eynollah, have a look at [sbb_pixelwise_segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation). 
 
@@ -99,3 +103,4 @@ ocrd-eynollah-segment -I OCR-D-IMG-BIN -O SEG-LINE -P models
 ```
     
 still uses the original (RGB) image despite any binarization that may have occured in previous OCR-D processing steps
+

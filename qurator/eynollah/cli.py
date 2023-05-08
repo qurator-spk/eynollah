@@ -29,6 +29,7 @@ from qurator.eynollah.eynollah import Eynollah
     "-m",
     help="directory of models",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
 @click.option(
     "--save_images",

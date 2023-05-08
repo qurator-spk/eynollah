@@ -393,7 +393,6 @@ class Eynollah:
                     prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg
 
         prediction_true = prediction_true.astype(int)
-
         return prediction_true
 
     def calculate_width_height_by_columns(self, img, num_col, width_early, label_p_pred):
@@ -495,11 +494,10 @@ class Eynollah:
             label_p_pred = model_num_classifier.predict(img_in, verbose=0)
         else:
             label_p_pred = self.model_classifier.predict(img_in, verbose=0)
+
         num_col = np.argmax(label_p_pred[0]) + 1
 
         self.logger.info("Found %s columns (%s)", num_col, label_p_pred)
-
-
 
         img_new, _ = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
 
@@ -527,7 +525,7 @@ class Eynollah:
             prediction_bin = prediction_bin*255
             
             prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
-            
+
             prediction_bin = prediction_bin.astype(np.uint8)
             img= np.copy(prediction_bin)
             img_bin = np.copy(prediction_bin)
@@ -535,6 +533,7 @@ class Eynollah:
             img = self.imread()
             img_bin = None
 
+        t1 = time.time()
         _, page_coord = self.early_page_for_num_of_column_classification(img_bin)
         if not self.dir_in:
             model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
@@ -578,7 +577,6 @@ class Eynollah:
             image_res = np.copy(img)
             is_image_enhanced = False
 
-        
         self.logger.debug("exit resize_and_enhance_image_with_column_classifier")
         return is_image_enhanced, img, image_res, num_col, num_column_is_classified, img_bin
 
@@ -655,10 +653,6 @@ class Eynollah:
         except:
             self.logger.warning("no GPU device available")
 
-        # try:
-        #     model = load_model(model_dir, compile=False)
-        # except:
-        #     model = load_model(model_dir , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
         if model_dir.endswith('.h5') and Path(model_dir[:-3]).exists():
             # prefer SavedModel over HDF5 format if it exists
             model_dir = model_dir[:-3]
@@ -671,6 +665,7 @@ class Eynollah:
             except:
                 model = load_model(model_dir , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
                 self.models[model_dir] = model
+
 
         return model, None
 
@@ -808,6 +803,7 @@ class Eynollah:
 
             label_p_pred = model.predict(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]))
 
+
             seg = np.argmax(label_p_pred, axis=3)[0]
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
             prediction_true = resize_image(seg_color, img_h_page, img_w_page)
@@ -858,7 +854,8 @@ class Eynollah:
                         index_y_d = img_h - img_height_model
 
                     img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-                    label_p_pred = model.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]))
+                    label_p_pred = model.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]),
+                                                 verbose=0)
                     seg = np.argmax(label_p_pred, axis=3)[0]
                     
                     
@@ -957,8 +954,6 @@ class Eynollah:
                         prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg_color
 
             prediction_true = prediction_true.astype(np.uint8)
-        ##del model
-        ##gc.collect()
         return prediction_true
 
     def extract_page(self):
@@ -1043,7 +1038,6 @@ class Eynollah:
             box = [0, 0, img.shape[1], img.shape[0]]
             croped_page, page_coord = crop_image_inside_box(box, img)
         return croped_page, page_coord
-
 
     def extract_text_regions(self, img, patches, cols):
         self.logger.debug("enter extract_text_regions")
@@ -1138,7 +1132,6 @@ class Eynollah:
         marginal_of_patch_percent = 0.1
         prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent)
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
-        
         self.logger.debug("exit extract_text_regions")
         return prediction_regions, prediction_regions2
     
@@ -1541,6 +1534,7 @@ class Eynollah:
         else:
             return prediction_textline[:, :, 0], prediction_textline_longshot_true_size[:, :, 0]
 
+
     def do_work_of_slopes(self, q, poly, box_sub, boxes_per_process, textline_mask_tot, contours_per_process):
         self.logger.debug('enter do_work_of_slopes')
         slope_biggest = 0
@@ -1713,6 +1707,7 @@ class Eynollah:
             
             if not self.dir_in:
                 model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
+
             img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]))
             
             if self.dir_in:
@@ -1761,8 +1756,6 @@ class Eynollah:
                     prediction_bin = prediction_bin*255
                     
                     prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
-                    
-                
                 
                 if not self.dir_in:
                     model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
@@ -1781,7 +1774,6 @@ class Eynollah:
                 
                 mask_lines_only=(prediction_regions_org[:,:]==3)*1
                 
-                
             mask_texts_only=(prediction_regions_org[:,:]==1)*1
             mask_images_only=(prediction_regions_org[:,:]==2)*1
             
@@ -1799,7 +1791,6 @@ class Eynollah:
 
             text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
 
-            
             return text_regions_p_true, erosion_hurts, polygons_lines_xml
         except:
             
@@ -1819,7 +1810,6 @@ class Eynollah:
                 prediction_bin = prediction_bin*255
                 
                 prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
-
             
             
                 if not self.dir_in:
@@ -1840,7 +1830,6 @@ class Eynollah:
             prediction_regions_org=prediction_regions_org[:,:,0]
             
             #mask_lines_only=(prediction_regions_org[:,:]==3)*1
-            
             #img = resize_image(img_org, int(img_org.shape[0]*1), int(img_org.shape[1]*1))
             
             #prediction_regions_org = self.do_prediction(True, img, model_region)
@@ -2367,9 +2356,8 @@ class Eynollah:
             
             img_new =np.ones((height_new,width_new,img.shape[2])).astype(float)*0
             img_new[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ] =img[:,:,:]
-            
+
             prediction_ext = self.do_prediction(patches, img_new, model_region)
-            
             pre_updown = self.do_prediction(patches, cv2.flip(img_new[:,:,:], -1), model_region)
             pre_updown = cv2.flip(pre_updown, -1)
             
@@ -2390,9 +2378,8 @@ class Eynollah:
             
             img_new =np.ones((height_new,width_new,img.shape[2])).astype(float)*0
             img_new[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ] =img[:,:,:]
-            
+
             prediction_ext = self.do_prediction(patches, img_new, model_region)
-            
             pre_updown = self.do_prediction(patches, cv2.flip(img_new[:,:,:], -1), model_region)
             pre_updown = cv2.flip(pre_updown, -1)
             
@@ -2405,12 +2392,10 @@ class Eynollah:
         else:
             prediction_table = np.zeros(img.shape)
             img_w_half = int(img.shape[1]/2.)
-            
+
             pre1 = self.do_prediction(patches, img[:,0:img_w_half,:], model_region)
             pre2 = self.do_prediction(patches, img[:,img_w_half:,:], model_region)
-            
             pre_full = self.do_prediction(patches, img[:,:,:], model_region)
-            
             pre_updown = self.do_prediction(patches, cv2.flip(img[:,:,:], -1), model_region)
             pre_updown = cv2.flip(pre_updown, -1)
             
@@ -2432,8 +2417,6 @@ class Eynollah:
         
         prediction_table_erode = cv2.erode(prediction_table[:,:,0], KERNEL, iterations=20)
         prediction_table_erode = cv2.dilate(prediction_table_erode, KERNEL, iterations=20)
-        
-        
         return prediction_table_erode.astype(np.int16)
     def run_graphics_and_columns_light(self, text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts):
         img_g = self.imread(grayscale=True, uint8=True)
@@ -2558,6 +2541,7 @@ class Eynollah:
         textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline)
         if self.textline_light:
             textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
+
         if self.plotter:
             self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page)
         return textline_mask_tot_ea
@@ -2787,7 +2771,6 @@ class Eynollah:
         regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 4] = 4
 
         regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully)
-
         regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
         if num_col_classifier > 2:
             regions_fully_np[:, :, 0][regions_fully_np[:, :, 0] == 4] = 0
@@ -2835,6 +2818,7 @@ class Eynollah:
         Get image and scales, then extract the page of scanned image
         """
         self.logger.debug("enter run")
+
 
         t0_tot = time.time()
 
@@ -3023,6 +3007,7 @@ class Eynollah:
                 else:
                     slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
                     slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
+
             else:
                 
                 scale_param = 1

@@ -5,6 +5,30 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.2.0] - 2023-03-24
+
+Changed:
+
+  * Convert default model from HDFS to TF SavedModel, #91
+
+Added:
+
+  * parmeter `tables` to toggle table detectino, #91
+  * default model described in ocrd-tool.json, #91
+
+## [0.1.0] - 2023-03-22
+
+Fixed:
+
+  * Do not produce spurious `TextEquiv`, #68
+  * Less spammy logging, #64, #65, #71
+
+Changed:
+
+  * Upgrade to tensorflow 2.4.0, #74
+  * Improved README
+  * CI: test for python 3.7+, #90
+
 ## [0.0.11] - 2022-02-02
 
 Fixed:
@@ -72,6 +96,8 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.2.0]: ../../compare/v0.2.0...v0.1.0
+[0.1.0]: ../../compare/v0.1.0...v0.0.11
 [0.0.11]: ../../compare/v0.0.11...v0.0.10
 [0.0.10]: ../../compare/v0.0.10...v0.0.9
 [0.0.9]: ../../compare/v0.0.9...v0.0.8
