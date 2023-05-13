@@ -38,20 +38,7 @@ cd eynollah; pip install -e .
 
 Alternatively, you can run `make install` or `make install-dev` for editable installation.
 
-  <details>
-  <summary>click to expand/collapse</summary><br/>
-  
-First, this model makes use of up to 9 trained models which are responsible for different operations like size detection, column classification, image enhancement, page extraction, main layout detection, full layout detection and textline detection.That does not mean that all 9 models are always required for every document. Based on the document characteristics and parameters specified, different scenarios can be applied.
-
-Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/).
-
-
-* If you set `-ae` (**a**llow image **e**nhancement) parameter to `true`, the tool will first check the ppi (pixel-per-inch) of the image and when it is less than 300, the tool will resize it and only then image enhancement will occur. Image enhancement can also take place without this option, but by setting this option to `true`, the layout xml data (e.g. coordinates) will be based on the resized and enhanced image instead of the original image.
-
-In case you want to train your own model to use with Eynollah, have a look at [sbb_pixelwise_segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation). 
-
 ## Usage
-
 The command-line interface can be called like this:
 
 ```sh
@@ -66,25 +53,30 @@ The following options can be used to further configure the processing:
 
 | option   |      description      |
 |----------|:-------------|
-| `-fl`  | apply full layout analysis including all steps and segmentation classes |
-| `-light` | apply a lighter and faster but simpler method for main region detection and deskewing |
+| `-fl`  | full layout analysis including all steps and segmentation classes |
+| `-light` | lighter and faster but simpler method for main region detection and deskewing |
 | `-tab` | apply table detection |
-| `-ae`  | apply enhancement and adapt coordinates (the resulting image is saved to the output directory) |
+| `-ae`  | apply enhancement (the resulting image is saved to the output directory) |
 | `-as`  | apply scaling |
-| `-cl`  | apply polygonal countour detection for curved text lines instead of rectangular bounding boxes |
+| `-cl`  | apply countour detection for curved text lines instead of bounding boxes |
 | `-ib`  | apply binarization (the resulting image is saved to the output directory)  |
 | `-ep`  | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`) |
 | `-ho`  | ignore headers for reading order dectection |
 | `-di <directory>`  | process all images in a directory in batch mode |
-| `-si <directory>`  | save image regions detected in documents to this directory |
+| `-si <directory>`  | save image regions detected to this directory |
 | `-sd <directory>`  | save deskewed image to this directory |
 | `-sl <directory>`  | save layout prediction as plot to this directory |
 | `-sp <directory>`  | save cropped page image to this directory |
-| `-sa <directory>`  | save all (plot, enhanced, binary image and layout prediction) to this directory |
+| `-sa <directory>`  | save all (plot, enhanced/binary image, layout) to this directory |
 
 If no option is set, the tool will perform layout detection of main regions (background, text, images, separators and marginals).
 
 The tool produces better output from RGB images as input than greyscale or binarized images.
+
+## Models
+Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/).
+
+In case you want to train your own model to use with Eynollah, have a look at [sbb_pixelwise_segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation). 
 
 #### Use as OCR-D processor
 
@@ -103,4 +95,3 @@ ocrd-eynollah-segment -I OCR-D-IMG-BIN -O SEG-LINE -P models
 ```
     
 still uses the original (RGB) image despite any binarization that may have occured in previous OCR-D processing steps
-
