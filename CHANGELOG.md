@@ -5,6 +5,27 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.3.0] - 2023-05-13
+
+Changed:
+
+  * Eynollah light integration, #86
+  * use PEP420 style qurator namespace, #97
+  * set_memory_growth to all GPU devices alike, #100
+
+Fixed:
+
+  * PAGE-XML coordinates can have self-intersections, #20
+  * reading order representation (XML order vs index), #22
+  * allow cropping separately, #26
+  * Order of regions, #51
+  * error while running inference, #75
+  * Eynollah crashes while processing image, #77
+  * ValueError: bad marshal data, #87
+  * contour extraction: inhomogeneous shape, #92
+  * Confusing model dir variables, #93
+  * New release?, #96
+
 ## [0.2.0] - 2023-03-24
 
 Changed:
