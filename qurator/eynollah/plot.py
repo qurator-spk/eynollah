@@ -19,6 +19,7 @@ class EynollahPlotter():
         *,
         dir_out,
         dir_of_all,
+        dir_save_page,
         dir_of_deskewed,
         dir_of_layout,
         dir_of_cropped_images,
@@ -29,6 +30,7 @@ class EynollahPlotter():
     ):
         self.dir_out = dir_out
         self.dir_of_all = dir_of_all
+        self.dir_save_page = dir_save_page
         self.dir_of_layout = dir_of_layout
         self.dir_of_cropped_images = dir_of_cropped_images
         self.dir_of_deskewed = dir_of_deskewed
@@ -74,8 +76,8 @@ class EynollahPlotter():
         if self.dir_of_layout is not None:
             values = np.unique(text_regions_p[:, :])
             # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-            pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator"]
-            values_indexes = [0, 1, 2, 8, 4, 5, 6]
+            pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator", "Tables"]
+            values_indexes = [0, 1, 2, 8, 4, 5, 6, 10]
             plt.figure(figsize=(40, 40))
             plt.rcParams["font.size"] = "40"
             im = plt.imshow(text_regions_p[:, :])
@@ -88,8 +90,8 @@ class EynollahPlotter():
         if self.dir_of_all is not None:
             values = np.unique(text_regions_p[:, :])
             # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
-            pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator"]
-            values_indexes = [0, 1, 2, 8, 4, 5, 6]
+            pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator", "Tables"]
+            values_indexes = [0, 1, 2, 8, 4, 5, 6, 10]
             plt.figure(figsize=(80, 40))
             plt.rcParams["font.size"] = "40"
             plt.subplot(1, 2, 1)
@@ -127,6 +129,8 @@ class EynollahPlotter():
     def save_page_image(self, image_page):
         if self.dir_of_all is not None:
             cv2.imwrite(os.path.join(self.dir_of_all, self.image_filename_stem + "_page.png"), image_page)
+        if self.dir_save_page is not None:
+            cv2.imwrite(os.path.join(self.dir_save_page, self.image_filename_stem + "_page.png"), image_page)
     def save_enhanced_image(self, img_res):
         cv2.imwrite(os.path.join(self.dir_out, self.image_filename_stem + "_enhanced.png"), img_res)
         

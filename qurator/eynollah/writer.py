@@ -22,12 +22,13 @@ import numpy as np
 
 class EynollahXmlWriter():
 
-    def __init__(self, *, dir_out, image_filename, curved_line, pcgts=None):
+    def __init__(self, *, dir_out, image_filename, curved_line,textline_light, pcgts=None):
         self.logger = getLogger('eynollah.writer')
         self.counter = EynollahIdCounter()
         self.dir_out = dir_out
         self.image_filename = image_filename
         self.curved_line = curved_line
+        self.textline_light = textline_light
         self.pcgts = pcgts
         self.scale_x = None # XXX set outside __init__
         self.scale_y = None # XXX set outside __init__
@@ -60,7 +61,7 @@ class EynollahXmlWriter():
             marginal_region.add_TextLine(textline)
             points_co = ''
             for l in range(len(all_found_texline_polygons_marginals[marginal_idx][j])):
-                if not self.curved_line:
+                if not (self.curved_line or self.textline_light):
                     if len(all_found_texline_polygons_marginals[marginal_idx][j][l]) == 2:
                         textline_x_coord = max(0, int((all_found_texline_polygons_marginals[marginal_idx][j][l][0] + all_box_coord_marginals[marginal_idx][2] + page_coord[2]) / self.scale_x) )
                         textline_y_coord = max(0, int((all_found_texline_polygons_marginals[marginal_idx][j][l][1] + all_box_coord_marginals[marginal_idx][0] + page_coord[0]) / self.scale_y) )
@@ -70,7 +71,7 @@ class EynollahXmlWriter():
                     points_co += str(textline_x_coord)
                     points_co += ','
                     points_co += str(textline_y_coord)
-                if self.curved_line and np.abs(slopes_marginals[marginal_idx]) <= 45:
+                if (self.curved_line or self.textline_light) and np.abs(slopes_marginals[marginal_idx]) <= 45:
                     if len(all_found_texline_polygons_marginals[marginal_idx][j][l]) == 2:
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0] + page_coord[2]) / self.scale_x))
                         points_co += ','
@@ -80,7 +81,7 @@ class EynollahXmlWriter():
                         points_co += ','
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0][1] + page_coord[0]) / self.scale_y))
 
-                elif self.curved_line and np.abs(slopes_marginals[marginal_idx]) > 45:
+                elif (self.curved_line or self.textline_light) and np.abs(slopes_marginals[marginal_idx]) > 45:
                     if len(all_found_texline_polygons_marginals[marginal_idx][j][l]) == 2:
                         points_co += str(int((all_found_texline_polygons_marginals[marginal_idx][j][l][0] + all_box_coord_marginals[marginal_idx][2] + page_coord[2]) / self.scale_x))
                         points_co += ','
@@ -101,7 +102,7 @@ class EynollahXmlWriter():
             region_bboxes = all_box_coord[region_idx]
             points_co = ''
             for idx_contour_textline, contour_textline in enumerate(all_found_texline_polygons[region_idx][j]):
-                if not self.curved_line:
+                if not (self.curved_line or self.textline_light):
                     if len(contour_textline) == 2:
                         textline_x_coord = max(0, int((contour_textline[0] + region_bboxes[2] + page_coord[2]) / self.scale_x))
                         textline_y_coord = max(0, int((contour_textline[1] + region_bboxes[0] + page_coord[0]) / self.scale_y))
@@ -112,7 +113,7 @@ class EynollahXmlWriter():
                     points_co += ','
                     points_co += str(textline_y_coord)
 
-                if self.curved_line and np.abs(slopes[region_idx]) <= 45:
+                if (self.curved_line or self.textline_light) and np.abs(slopes[region_idx]) <= 45:
                     if len(contour_textline) == 2:
                         points_co += str(int((contour_textline[0] + page_coord[2]) / self.scale_x))
                         points_co += ','
@@ -121,7 +122,7 @@ class EynollahXmlWriter():
                         points_co += str(int((contour_textline[0][0] + page_coord[2]) / self.scale_x))
                         points_co += ','
                         points_co += str(int((contour_textline[0][1] + page_coord[0])/self.scale_y))
-                elif self.curved_line and np.abs(slopes[region_idx]) > 45:
+                elif (self.curved_line or self.textline_light) and np.abs(slopes[region_idx]) > 45:
                     if len(contour_textline)==2:
                         points_co += str(int((contour_textline[0] + region_bboxes[2] + page_coord[2])/self.scale_x))
                         points_co += ','

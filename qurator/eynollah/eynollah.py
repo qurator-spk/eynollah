@@ -3,7 +3,7 @@
 # pylint: disable=too-many-public-methods,too-many-arguments,too-many-instance-attributes,too-many-public-methods,
 # pylint: disable=consider-using-enumerate
 """
-tool to extract table form data from alto xml data
+document layout analysis (segmentation) with output in PAGE-XML
 """
 
 import math
@@ -29,6 +29,8 @@ warnings.filterwarnings("ignore")
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
+from keras.backend import set_session
+from tensorflow.keras import layers
 
 from .utils.contour import (
     filter_contours_area_of_image,
@@ -38,6 +40,7 @@ from .utils.contour import (
     find_features_of_contours,
     get_text_region_boxes_by_given_contours,
     get_textregion_contours_in_org_image,
+    get_textregion_contours_in_org_image_light,
     return_contours_of_image,
     return_contours_of_interested_region,
     return_contours_of_interested_region_by_min_size,
@@ -65,6 +68,7 @@ from .utils import (
     put_drop_out_from_only_drop_model,
     putt_bb_of_drop_capitals_of_model_in_patches_in_layout,
     check_any_text_region_in_model_one_is_main_or_header,
+    check_any_text_region_in_model_one_is_main_or_header_light,
     small_textlines_to_parent_adherence2,
     order_of_regions,
     find_number_of_columns_in_document,
@@ -80,73 +84,187 @@ DPI_THRESHOLD = 298
 MAX_SLOPE = 999
 KERNEL = np.ones((5, 5), np.uint8)
 
+projection_dim = 64
+patch_size = 1
+num_patches =21*21#14*14#28*28#14*14#28*28
+
+
+class Patches(layers.Layer):
+    def __init__(self, **kwargs):
+        super(Patches, self).__init__()
+        self.patch_size = patch_size
+
+    def call(self, images):
+        batch_size = tf.shape(images)[0]
+        patches = tf.image.extract_patches(
+            images=images,
+            sizes=[1, self.patch_size, self.patch_size, 1],
+            strides=[1, self.patch_size, self.patch_size, 1],
+            rates=[1, 1, 1, 1],
+            padding="VALID",
+        )
+        patch_dims = patches.shape[-1]
+        patches = tf.reshape(patches, [batch_size, -1, patch_dims])
+        return patches
+    def get_config(self):
+
+        config = super().get_config().copy()
+        config.update({
+            'patch_size': self.patch_size,
+        })
+        return config
+    
+    
+class PatchEncoder(layers.Layer):
+    def __init__(self, **kwargs):
+        super(PatchEncoder, self).__init__()
+        self.num_patches = num_patches
+        self.projection = layers.Dense(units=projection_dim)
+        self.position_embedding = layers.Embedding(
+            input_dim=num_patches, output_dim=projection_dim
+        )
+
+    def call(self, patch):
+        positions = tf.range(start=0, limit=self.num_patches, delta=1)
+        encoded = self.projection(patch) + self.position_embedding(positions)
+        return encoded
+    def get_config(self):
+
+        config = super().get_config().copy()
+        config.update({
+            'num_patches': self.num_patches,
+            'projection': self.projection,
+            'position_embedding': self.position_embedding,
+        })
+        return config
+
 class Eynollah:
     def __init__(
         self,
         dir_models,
-        image_filename,
+        image_filename=None,
         image_pil=None,
         image_filename_stem=None,
         dir_out=None,
+        dir_in=None,
         dir_of_cropped_images=None,
         dir_of_layout=None,
         dir_of_deskewed=None,
         dir_of_all=None,
+        dir_save_page=None,
         enable_plotting=False,
         allow_enhancement=False,
         curved_line=False,
+        textline_light=False,
         full_layout=False,
         tables=False,
         input_binary=False,
         allow_scaling=False,
         headers_off=False,
+        light_version=False,
+        ignore_page_extraction=False,
         override_dpi=None,
         logger=None,
         pcgts=None,
     ):
-        if image_pil:
-            self._imgs = self._cache_images(image_pil=image_pil)
-        else:
-            self._imgs = self._cache_images(image_filename=image_filename)
-        if override_dpi:
-            self.dpi = override_dpi
-        self.image_filename = image_filename
+        if not dir_in:
+            if image_pil:
+                self._imgs = self._cache_images(image_pil=image_pil)
+            else:
+                self._imgs = self._cache_images(image_filename=image_filename)
+            if override_dpi:
+                self.dpi = override_dpi
+            self.image_filename = image_filename
         self.dir_out = dir_out
+        self.dir_in = dir_in
+        self.dir_of_all = dir_of_all
+        self.dir_save_page = dir_save_page
+        self.dir_of_deskewed = dir_of_deskewed
+        self.dir_of_deskewed =  dir_of_deskewed
+        self.dir_of_cropped_images=dir_of_cropped_images
+        self.dir_of_layout=dir_of_layout
+        self.enable_plotting = enable_plotting
         self.allow_enhancement = allow_enhancement
         self.curved_line = curved_line
+        self.textline_light = textline_light
         self.full_layout = full_layout
         self.tables = tables
         self.input_binary = input_binary
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
-        self.plotter = None if not enable_plotting else EynollahPlotter(
-            dir_out=self.dir_out,
-            dir_of_all=dir_of_all,
-            dir_of_deskewed=dir_of_deskewed,
-            dir_of_cropped_images=dir_of_cropped_images,
-            dir_of_layout=dir_of_layout,
-            image_filename_stem=Path(Path(image_filename).name).stem)
-        self.writer = EynollahXmlWriter(
-            dir_out=self.dir_out,
-            image_filename=self.image_filename,
-            curved_line=self.curved_line,
-            pcgts=pcgts)
+        self.light_version = light_version
+        self.ignore_page_extraction = ignore_page_extraction
+        self.pcgts = pcgts
+        if not dir_in:
+            self.plotter = None if not enable_plotting else EynollahPlotter(
+                dir_out=self.dir_out,
+                dir_of_all=dir_of_all,
+                dir_save_page=dir_save_page,
+                dir_of_deskewed=dir_of_deskewed,
+                dir_of_cropped_images=dir_of_cropped_images,
+                dir_of_layout=dir_of_layout,
+                image_filename_stem=Path(Path(image_filename).name).stem)
+            self.writer = EynollahXmlWriter(
+                dir_out=self.dir_out,
+                image_filename=self.image_filename,
+                curved_line=self.curved_line,
+                textline_light = self.textline_light,
+                pcgts=pcgts)
         self.logger = logger if logger else getLogger('eynollah')
         self.dir_models = dir_models
 
-        self.model_dir_of_enhancement = dir_models + "/model_enhancement.h5"
-        self.model_dir_of_binarization = dir_models + "/model_bin_sbb_ens.h5"
-        self.model_dir_of_col_classifier = dir_models + "/model_scale_classifier.h5"
-        self.model_region_dir_p = dir_models + "/model_main_covid19_lr5-5_scale_1_1_great.h5"
-        self.model_region_dir_p2 = dir_models + "/model_main_home_corona3_rot.h5"
-        self.model_region_dir_fully_np = dir_models + "/model_no_patches_class0_30eopch.h5"
-        self.model_region_dir_fully = dir_models + "/model_3up_new_good_no_augmentation.h5"
-        self.model_page_dir = dir_models + "/model_page_mixed_best.h5"
-        self.model_region_dir_p_ens = dir_models + "/model_ensemble_s.h5"
-        self.model_textline_dir = dir_models + "/model_textline_newspapers.h5"
-        self.model_tables = dir_models + "/model_tables_ens_mixed_new_2.h5"
-
+        self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
+        self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425"
+        self.model_dir_of_col_classifier = dir_models + "/eynollah-column-classifier_20210425"
+        self.model_region_dir_p = dir_models + "/eynollah-main-regions-aug-scaling_20210425"
+        self.model_region_dir_p2 = dir_models + "/eynollah-main-regions-aug-rotation_20210425"
+        self.model_region_dir_fully_np = dir_models + "/eynollah-full-regions-1column_20210425"
+        self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425"
+        self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425"
+        self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
+        self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
+        if self.textline_light:
+            self.model_textline_dir = dir_models + "/eynollah-textline_light_20210425"
+        else:
+            self.model_textline_dir = dir_models + "/eynollah-textline_20210425"
+        self.model_tables = dir_models + "/eynollah-tables_20210319"
+        
         self.models = {}
+        
+        if dir_in and light_version:
+            config = tf.compat.v1.ConfigProto()
+            config.gpu_options.allow_growth = True
+            session = tf.compat.v1.Session(config=config)
+            set_session(session)
+            
+            self.model_page = self.our_load_model(self.model_page_dir)
+            self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
+            self.model_bin = self.our_load_model(self.model_dir_of_binarization)
+            self.model_textline = self.our_load_model(self.model_textline_dir)
+            self.model_region = self.our_load_model(self.model_region_dir_p_ens_light)
+            self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
+            self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
+            
+            self.ls_imgs  = os.listdir(self.dir_in)
+            
+        if dir_in and not light_version:
+            config = tf.compat.v1.ConfigProto()
+            config.gpu_options.allow_growth = True
+            session = tf.compat.v1.Session(config=config)
+            set_session(session)
+            
+            self.model_page = self.our_load_model(self.model_page_dir)
+            self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
+            self.model_bin = self.our_load_model(self.model_dir_of_binarization)
+            self.model_textline = self.our_load_model(self.model_textline_dir)
+            self.model_region = self.our_load_model(self.model_region_dir_p_ens)
+            self.model_region_p2 = self.our_load_model(self.model_region_dir_p2)
+            self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
+            self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
+            self.model_enhancement = self.our_load_model(self.model_dir_of_enhancement)
+            
+            self.ls_imgs  = os.listdir(self.dir_in)
+            
         
     def _cache_images(self, image_filename=None, image_pil=None):
         ret = {}
@@ -160,7 +278,25 @@ class Eynollah:
         for prefix in ('',  '_grayscale'):
             ret[f'img{prefix}_uint8'] = ret[f'img{prefix}'].astype(np.uint8)
         return ret
-
+    def reset_file_name_dir(self, image_filename):
+        self._imgs = self._cache_images(image_filename=image_filename)
+        self.image_filename = image_filename
+        
+        self.plotter = None if not self.enable_plotting else EynollahPlotter(
+            dir_out=self.dir_out,
+            dir_of_all=self.dir_of_all,
+            dir_save_page=self.dir_save_page,
+            dir_of_deskewed=self.dir_of_deskewed,
+            dir_of_cropped_images=self.dir_of_cropped_images,
+            dir_of_layout=self.dir_of_layout,
+            image_filename_stem=Path(Path(image_filename).name).stem)
+        
+        self.writer = EynollahXmlWriter(
+            dir_out=self.dir_out,
+            image_filename=self.image_filename,
+            curved_line=self.curved_line,
+            textline_light = self.textline_light,
+            pcgts=self.pcgts)
     def imread(self, grayscale=False, uint8=True):
         key = 'img'
         if grayscale:
@@ -330,7 +466,8 @@ class Eynollah:
             img = self.imread()
 
         _, page_coord = self.early_page_for_num_of_column_classification(img)
-        model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
+        if not self.dir_in:
+            model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
         if self.input_binary:
             img_in = np.copy(img)
             img_in = img_in / 255.0
@@ -353,7 +490,11 @@ class Eynollah:
             img_in[0, :, :, 1] = img_1ch[:, :]
             img_in[0, :, :, 2] = img_1ch[:, :]
 
-        label_p_pred = model_num_classifier.predict(img_in, verbose=0)
+        if not self.dir_in:
+            label_p_pred = model_num_classifier.predict(img_in, verbose=0)
+        else:
+            label_p_pred = self.model_classifier.predict(img_in, verbose=0)
+
         num_col = np.argmax(label_p_pred[0]) + 1
 
         self.logger.info("Found %s columns (%s)", num_col, label_p_pred)
@@ -366,14 +507,18 @@ class Eynollah:
 
         return img, img_new, is_image_enhanced
 
-    def resize_and_enhance_image_with_column_classifier(self):
+    def resize_and_enhance_image_with_column_classifier(self,light_version):
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
         dpi = self.dpi
         self.logger.info("Detected %s DPI", dpi)
         if self.input_binary:
             img = self.imread()
-            model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-            prediction_bin = self.do_prediction(True, img, model_bin)
+            if self.dir_in:
+                prediction_bin = self.do_prediction(True, img, self.model_bin)
+            else:
+                
+                model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+                prediction_bin = self.do_prediction(True, img, model_bin)
             
             prediction_bin=prediction_bin[:,:,0]
             prediction_bin = (prediction_bin[:,:]==0)*1
@@ -390,7 +535,8 @@ class Eynollah:
 
         t1 = time.time()
         _, page_coord = self.early_page_for_num_of_column_classification(img_bin)
-        model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
+        if not self.dir_in:
+            model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
         
         if self.input_binary:
             img_in = np.copy(img)
@@ -411,14 +557,20 @@ class Eynollah:
             img_in[0, :, :, 2] = img_1ch[:, :]
 
 
-        label_p_pred = model_num_classifier.predict(img_in, verbose=0)
+        if self.dir_in:
+            label_p_pred = self.model_classifier.predict(img_in, verbose=0)
+        else:
+            label_p_pred = model_num_classifier.predict(img_in, verbose=0)
         num_col = np.argmax(label_p_pred[0]) + 1
+        
         self.logger.info("Found %d columns (%s)", num_col, np.around(label_p_pred, decimals=5))
-        self.logger.info("detecting columns took %.1fs", time.time() - t1)
 
         if dpi < DPI_THRESHOLD:
             img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
-            image_res = self.predict_enhancement(img_new)
+            if light_version:
+                image_res = np.copy(img_new)
+            else:
+                image_res = self.predict_enhancement(img_new)
             is_image_enhanced = True
         else:
             num_column_is_classified = True
@@ -500,14 +652,20 @@ class Eynollah:
                 tf.config.experimental.set_memory_growth(device, True)
         except:
             self.logger.warning("no GPU device available")
+
         if model_dir.endswith('.h5') and Path(model_dir[:-3]).exists():
             # prefer SavedModel over HDF5 format if it exists
             model_dir = model_dir[:-3]
         if model_dir in self.models:
             model = self.models[model_dir]
         else:
-            model = load_model(model_dir, compile=False)
-            self.models[model_dir] = model
+            try:
+                model = load_model(model_dir, compile=False)
+                self.models[model_dir] = model
+            except:
+                model = load_model(model_dir , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
+                self.models[model_dir] = model
+
 
         return model, None
 
@@ -583,6 +741,174 @@ class Eynollah:
 
                     if i == 0 and j == 0:
                         seg_color = seg_color[0 : seg_color.shape[0] - margin, 0 : seg_color.shape[1] - margin, :]
+                        #seg = seg[0 : seg.shape[0] - margin, 0 : seg.shape[1] - margin]
+                        #mask_true[index_y_d + 0 : index_y_u - margin, index_x_d + 0 : index_x_u - margin] = seg
+                        prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + 0 : index_x_u - margin, :] = seg_color
+                    elif i == nxf - 1 and j == nyf - 1:
+                        seg_color = seg_color[margin : seg_color.shape[0] - 0, margin : seg_color.shape[1] - 0, :]
+                        #seg = seg[margin : seg.shape[0] - 0, margin : seg.shape[1] - 0]
+                        #mask_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - 0] = seg
+                        prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - 0, :] = seg_color
+                    elif i == 0 and j == nyf - 1:
+                        seg_color = seg_color[margin : seg_color.shape[0] - 0, 0 : seg_color.shape[1] - margin, :]
+                        #seg = seg[margin : seg.shape[0] - 0, 0 : seg.shape[1] - margin]
+                        #mask_true[index_y_d + margin : index_y_u - 0, index_x_d + 0 : index_x_u - margin] = seg
+                        prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + 0 : index_x_u - margin, :] = seg_color
+                    elif i == nxf - 1 and j == 0:
+                        seg_color = seg_color[0 : seg_color.shape[0] - margin, margin : seg_color.shape[1] - 0, :]
+                        #seg = seg[0 : seg.shape[0] - margin, margin : seg.shape[1] - 0]
+                        #mask_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - 0] = seg
+                        prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - 0, :] = seg_color
+                    elif i == 0 and j != 0 and j != nyf - 1:
+                        seg_color = seg_color[margin : seg_color.shape[0] - margin, 0 : seg_color.shape[1] - margin, :]
+                        #seg = seg[margin : seg.shape[0] - margin, 0 : seg.shape[1] - margin]
+                        #mask_true[index_y_d + margin : index_y_u - margin, index_x_d + 0 : index_x_u - margin] = seg
+                        prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + 0 : index_x_u - margin, :] = seg_color
+                    elif i == nxf - 1 and j != 0 and j != nyf - 1:
+                        seg_color = seg_color[margin : seg_color.shape[0] - margin, margin : seg_color.shape[1] - 0, :]
+                        #seg = seg[margin : seg.shape[0] - margin, margin : seg.shape[1] - 0]
+                        #mask_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - 0] = seg
+                        prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - 0, :] = seg_color
+                    elif i != 0 and i != nxf - 1 and j == 0:
+                        seg_color = seg_color[0 : seg_color.shape[0] - margin, margin : seg_color.shape[1] - margin, :]
+                        #seg = seg[0 : seg.shape[0] - margin, margin : seg.shape[1] - margin]
+                        #mask_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - margin] = seg
+                        prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg_color
+                    elif i != 0 and i != nxf - 1 and j == nyf - 1:
+                        seg_color = seg_color[margin : seg_color.shape[0] - 0, margin : seg_color.shape[1] - margin, :]
+                        #seg = seg[margin : seg.shape[0] - 0, margin : seg.shape[1] - margin]
+                        #mask_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - margin] = seg
+                        prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - margin, :] = seg_color
+                    else:
+                        seg_color = seg_color[margin : seg_color.shape[0] - margin, margin : seg_color.shape[1] - margin, :]
+                        #seg = seg[margin : seg.shape[0] - margin, margin : seg.shape[1] - margin]
+                        #mask_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin] = seg
+                        prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg_color
+
+            prediction_true = prediction_true.astype(np.uint8)
+        #del model
+        #gc.collect()
+        return prediction_true
+    def do_prediction_new_concept(self, patches, img, model, marginal_of_patch_percent=0.1):
+        self.logger.debug("enter do_prediction")
+
+        img_height_model = model.layers[len(model.layers) - 1].output_shape[1]
+        img_width_model = model.layers[len(model.layers) - 1].output_shape[2]
+
+        if not patches:
+            img_h_page = img.shape[0]
+            img_w_page = img.shape[1]
+            img = img / float(255.0)
+            img = resize_image(img, img_height_model, img_width_model)
+
+            label_p_pred = model.predict(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]))
+
+
+            seg = np.argmax(label_p_pred, axis=3)[0]
+            seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
+            prediction_true = resize_image(seg_color, img_h_page, img_w_page)
+            prediction_true = prediction_true.astype(np.uint8)
+
+
+        else:
+            if img.shape[0] < img_height_model:
+                img = resize_image(img, img_height_model, img.shape[1])
+
+            if img.shape[1] < img_width_model:
+                img = resize_image(img, img.shape[0], img_width_model)
+
+            self.logger.debug("Patch size: %sx%s", img_height_model, img_width_model)
+            margin = int(marginal_of_patch_percent * img_height_model)
+            width_mid = img_width_model - 2 * margin
+            height_mid = img_height_model - 2 * margin
+            img = img / float(255.0)
+            img = img.astype(np.float16)
+            img_h = img.shape[0]
+            img_w = img.shape[1]
+            prediction_true = np.zeros((img_h, img_w, 3))
+            mask_true = np.zeros((img_h, img_w))
+            nxf = img_w / float(width_mid)
+            nyf = img_h / float(height_mid)
+            nxf = int(nxf) + 1 if nxf > int(nxf) else int(nxf)
+            nyf = int(nyf) + 1 if nyf > int(nyf) else int(nyf)
+
+            for i in range(nxf):
+                for j in range(nyf):
+                    if i == 0:
+                        index_x_d = i * width_mid
+                        index_x_u = index_x_d + img_width_model
+                    else:
+                        index_x_d = i * width_mid
+                        index_x_u = index_x_d + img_width_model
+                    if j == 0:
+                        index_y_d = j * height_mid
+                        index_y_u = index_y_d + img_height_model
+                    else:
+                        index_y_d = j * height_mid
+                        index_y_u = index_y_d + img_height_model
+                    if index_x_u > img_w:
+                        index_x_u = img_w
+                        index_x_d = img_w - img_width_model
+                    if index_y_u > img_h:
+                        index_y_u = img_h
+                        index_y_d = img_h - img_height_model
+
+                    img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
+                    label_p_pred = model.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]),
+                                                 verbose=0)
+                    seg = np.argmax(label_p_pred, axis=3)[0]
+                    
+                    
+                    seg_not_base = label_p_pred[0,:,:,4]
+                    ##seg2 = -label_p_pred[0,:,:,2]
+                    
+                    
+                    seg_not_base[seg_not_base>0.03] =1
+                    seg_not_base[seg_not_base<1] =0
+                    
+                    
+                    
+                    seg_test = label_p_pred[0,:,:,1]
+                    ##seg2 = -label_p_pred[0,:,:,2]
+                    
+                    
+                    seg_test[seg_test>0.75] =1
+                    seg_test[seg_test<1] =0
+                    
+                    
+                    seg_line = label_p_pred[0,:,:,3]
+                    ##seg2 = -label_p_pred[0,:,:,2]
+                    
+                    
+                    seg_line[seg_line>0.1] =1
+                    seg_line[seg_line<1] =0
+                    
+                    
+                    seg_background = label_p_pred[0,:,:,0]
+                    ##seg2 = -label_p_pred[0,:,:,2]
+                    
+                    
+                    seg_background[seg_background>0.25] =1
+                    seg_background[seg_background<1] =0
+                    ##seg = seg+seg2
+                    #seg = label_p_pred[0,:,:,2]
+                    #seg[seg>0.4] =1
+                    #seg[seg<1] =0
+                    
+                    ##plt.imshow(seg_test)
+                    ##plt.show()
+                    
+                    ##plt.imshow(seg_background)
+                    ##plt.show()
+                    #seg[seg==1]=0
+                    #seg[seg_test==1]=1
+                    seg[seg_not_base==1]=4
+                    seg[seg_background==1]=0
+                    seg[(seg_line==1) & (seg==0)]=3
+                    seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
+
+                    if i == 0 and j == 0:
+                        seg_color = seg_color[0 : seg_color.shape[0] - margin, 0 : seg_color.shape[1] - margin, :]
                         seg = seg[0 : seg.shape[0] - margin, 0 : seg.shape[1] - margin]
                         mask_true[index_y_d + 0 : index_y_u - margin, index_x_d + 0 : index_x_u - margin] = seg
                         prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + 0 : index_x_u - margin, :] = seg_color
@@ -630,74 +956,97 @@ class Eynollah:
             prediction_true = prediction_true.astype(np.uint8)
         return prediction_true
 
-    def early_page_for_num_of_column_classification(self,img_bin):
-        self.logger.debug("enter early_page_for_num_of_column_classification")
-        if self.input_binary:
-            img =np.copy(img_bin)
-            img = img.astype(np.uint8)
-        else:
-            img = self.imread()
-        model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-        img = cv2.GaussianBlur(img, (5, 5), 0)
-
-        img_page_prediction = self.do_prediction(False, img, model_page)
-
-        imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(imgray, 0, 255, 0)
-        thresh = cv2.dilate(thresh, KERNEL, iterations=3)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours)>0:
-            cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-            cnt = contours[np.argmax(cnt_size)]
-            x, y, w, h = cv2.boundingRect(cnt)
-            box = [x, y, w, h]
-        else:
-            box = [0, 0, img.shape[1], img.shape[0]]
-        croped_page, page_coord = crop_image_inside_box(box, img)
-        self.logger.debug("exit early_page_for_num_of_column_classification")
-        return croped_page, page_coord
-
     def extract_page(self):
         self.logger.debug("enter extract_page")
         cont_page = []
-        img = cv2.GaussianBlur(self.image, (5, 5), 0)
-        
-        model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
-        img_page_prediction = self.do_prediction(False, img, model_page)
-        imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(imgray, 0, 255, 0)
-        thresh = cv2.dilate(thresh, KERNEL, iterations=3)
-        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        
-        if len(contours)>0:
-            cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-            cnt = contours[np.argmax(cnt_size)]
-            x, y, w, h = cv2.boundingRect(cnt)
-            if x <= 30:
-                w += x
-                x = 0
-            if (self.image.shape[1] - (x + w)) <= 30:
-                w = w + (self.image.shape[1] - (x + w))
-            if y <= 30:
-                h = h + y
-                y = 0
-            if (self.image.shape[0] - (y + h)) <= 30:
-                h = h + (self.image.shape[0] - (y + h))
+        if not self.ignore_page_extraction:
+            img = cv2.GaussianBlur(self.image, (5, 5), 0)
+            
+            if not self.dir_in:
+                model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
+                
+            if not self.dir_in:
+                img_page_prediction = self.do_prediction(False, img, model_page)
+            else:
+                img_page_prediction = self.do_prediction(False, img, self.model_page)
+            imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(imgray, 0, 255, 0)
+            thresh = cv2.dilate(thresh, KERNEL, iterations=3)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            
+            if len(contours)>0:
+                cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
+                cnt = contours[np.argmax(cnt_size)]
+                x, y, w, h = cv2.boundingRect(cnt)
+                if x <= 30:
+                    w += x
+                    x = 0
+                if (self.image.shape[1] - (x + w)) <= 30:
+                    w = w + (self.image.shape[1] - (x + w))
+                if y <= 30:
+                    h = h + y
+                    y = 0
+                if (self.image.shape[0] - (y + h)) <= 30:
+                    h = h + (self.image.shape[0] - (y + h))
 
-            box = [x, y, w, h]
+                box = [x, y, w, h]
+            else:
+                box = [0, 0, img.shape[1], img.shape[0]]
+            croped_page, page_coord = crop_image_inside_box(box, self.image)
+            cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
+            
+            self.logger.debug("exit extract_page")
         else:
-            box = [0, 0, img.shape[1], img.shape[0]]
-        croped_page, page_coord = crop_image_inside_box(box, self.image)
-        cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
-        self.logger.debug("exit extract_page")
+            box = [0, 0, self.image.shape[1], self.image.shape[0]]
+            croped_page, page_coord = crop_image_inside_box(box, self.image)
+            cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
         return croped_page, page_coord, cont_page
+
+    def early_page_for_num_of_column_classification(self,img_bin):
+        if not self.ignore_page_extraction:
+            self.logger.debug("enter early_page_for_num_of_column_classification")
+            if self.input_binary:
+                img =np.copy(img_bin)
+                img = img.astype(np.uint8)
+            else:
+                img = self.imread()
+            if not self.dir_in:
+                model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
+            img = cv2.GaussianBlur(img, (5, 5), 0)
+            
+            if self.dir_in:
+                img_page_prediction = self.do_prediction(False, img, self.model_page)
+            else:
+                img_page_prediction = self.do_prediction(False, img, model_page)
+
+            imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(imgray, 0, 255, 0)
+            thresh = cv2.dilate(thresh, KERNEL, iterations=3)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            if len(contours)>0:
+                cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
+                cnt = contours[np.argmax(cnt_size)]
+                x, y, w, h = cv2.boundingRect(cnt)
+                box = [x, y, w, h]
+            else:
+                box = [0, 0, img.shape[1], img.shape[0]]
+            croped_page, page_coord = crop_image_inside_box(box, img)
+            
+            self.logger.debug("exit early_page_for_num_of_column_classification")
+        else:
+            img = self.imread()
+            box = [0, 0, img.shape[1], img.shape[0]]
+            croped_page, page_coord = crop_image_inside_box(box, img)
+        return croped_page, page_coord
 
     def extract_text_regions(self, img, patches, cols):
         self.logger.debug("enter extract_text_regions")
         img_height_h = img.shape[0]
         img_width_h = img.shape[1]
-
-        model_region, session_region = self.start_new_session_and_model(self.model_region_dir_fully if patches else self.model_region_dir_fully_np)
+        if not self.dir_in:
+            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_fully if patches else self.model_region_dir_fully_np)
+        else:
+            model_region = self.model_region_fl if patches else self.model_region_fl_np
 
         if not patches:
             img = otsu_copy_binary(img)
@@ -783,9 +1132,56 @@ class Eynollah:
         marginal_of_patch_percent = 0.1
         prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent)
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
-
         self.logger.debug("exit extract_text_regions")
         return prediction_regions, prediction_regions2
+    
+    def get_slopes_and_deskew_new_light(self, contours, contours_par, textline_mask_tot, image_page_rotated, boxes, slope_deskew):
+        self.logger.debug("enter get_slopes_and_deskew_new")
+        num_cores = cpu_count()
+        queue_of_all_params = Queue()
+
+        processes = []
+        nh = np.linspace(0, len(boxes), num_cores + 1)
+        indexes_by_text_con = np.array(range(len(contours_par)))
+        for i in range(num_cores):
+            boxes_per_process = boxes[int(nh[i]) : int(nh[i + 1])]
+            contours_per_process = contours[int(nh[i]) : int(nh[i + 1])]
+            contours_par_per_process = contours_par[int(nh[i]) : int(nh[i + 1])]
+            indexes_text_con_per_process = indexes_by_text_con[int(nh[i]) : int(nh[i + 1])]
+
+            processes.append(Process(target=self.do_work_of_slopes_new_light, args=(queue_of_all_params, boxes_per_process, textline_mask_tot, contours_per_process, contours_par_per_process, indexes_text_con_per_process, image_page_rotated, slope_deskew)))
+        for i in range(num_cores):
+            processes[i].start()
+
+        slopes = []
+        all_found_texline_polygons = []
+        all_found_text_regions = []
+        all_found_text_regions_par = []
+        boxes = []
+        all_box_coord = []
+        all_index_text_con = []
+        for i in range(num_cores):
+            list_all_par = queue_of_all_params.get(True)
+            slopes_for_sub_process = list_all_par[0]
+            polys_for_sub_process = list_all_par[1]
+            boxes_for_sub_process = list_all_par[2]
+            contours_for_subprocess = list_all_par[3]
+            contours_par_for_subprocess = list_all_par[4]
+            boxes_coord_for_subprocess = list_all_par[5]
+            indexes_for_subprocess = list_all_par[6]
+            for j in range(len(slopes_for_sub_process)):
+                slopes.append(slopes_for_sub_process[j])
+                all_found_texline_polygons.append(polys_for_sub_process[j])
+                boxes.append(boxes_for_sub_process[j])
+                all_found_text_regions.append(contours_for_subprocess[j])
+                all_found_text_regions_par.append(contours_par_for_subprocess[j])
+                all_box_coord.append(boxes_coord_for_subprocess[j])
+                all_index_text_con.append(indexes_for_subprocess[j])
+        for i in range(num_cores):
+            processes[i].join()
+        self.logger.debug('slopes %s', slopes)
+        self.logger.debug("exit get_slopes_and_deskew_new")
+        return slopes, all_found_texline_polygons, boxes, all_found_text_regions, all_found_text_regions_par, all_box_coord, all_index_text_con
 
     def get_slopes_and_deskew_new(self, contours, contours_par, textline_mask_tot, image_page_rotated, boxes, slope_deskew):
         self.logger.debug("enter get_slopes_and_deskew_new")
@@ -995,7 +1391,49 @@ class Eynollah:
             all_box_coord_per_process.append(crop_coor)
 
         queue_of_all_params.put([textlines_rectangles_per_each_subprocess, bounding_box_of_textregion_per_each_subprocess, contours_textregion_per_each_subprocess, contours_textregion_par_per_each_subprocess, all_box_coord_per_process, index_by_text_region_contours, slopes_per_each_subprocess])
+    def do_work_of_slopes_new_light(self, queue_of_all_params, boxes_text, textline_mask_tot_ea, contours_per_process, contours_par_per_process, indexes_r_con_per_pro, image_page_rotated, slope_deskew):
+        self.logger.debug('enter do_work_of_slopes_new_light')
+        slopes_per_each_subprocess = []
+        bounding_box_of_textregion_per_each_subprocess = []
+        textlines_rectangles_per_each_subprocess = []
+        contours_textregion_per_each_subprocess = []
+        contours_textregion_par_per_each_subprocess = []
+        all_box_coord_per_process = []
+        index_by_text_region_contours = []
+        for mv in range(len(boxes_text)):
+            _, crop_coor = crop_image_inside_box(boxes_text[mv],image_page_rotated)
+            mask_textline = np.zeros((textline_mask_tot_ea.shape))
+            mask_textline = cv2.fillPoly(mask_textline,pts=[contours_per_process[mv]],color=(1,1,1))
+            all_text_region_raw = (textline_mask_tot_ea*mask_textline[:,:])[boxes_text[mv][1]:boxes_text[mv][1]+boxes_text[mv][3] , boxes_text[mv][0]:boxes_text[mv][0]+boxes_text[mv][2] ]
+            all_text_region_raw=all_text_region_raw.astype(np.uint8)
 
+            slopes_per_each_subprocess.append([slope_deskew][0])
+            mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
+            mask_only_con_region = cv2.fillPoly(mask_only_con_region, pts=[contours_par_per_process[mv]], color=(1, 1, 1))
+
+            # plt.imshow(mask_only_con_region)
+            # plt.show()
+            
+            if self.textline_light:
+                all_text_region_raw = np.copy(textline_mask_tot_ea)
+                all_text_region_raw[mask_only_con_region == 0] = 0
+                cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(all_text_region_raw)
+                cnt_clean_rot = filter_contours_area_of_image(all_text_region_raw, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
+            else:
+                all_text_region_raw = np.copy(textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]])
+                mask_only_con_region = mask_only_con_region[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
+                all_text_region_raw[mask_only_con_region == 0] = 0
+                cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, [slope_deskew][0], contours_par_per_process[mv], boxes_text[mv])
+
+            textlines_rectangles_per_each_subprocess.append(cnt_clean_rot)
+            index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
+            bounding_box_of_textregion_per_each_subprocess.append(boxes_text[mv])
+
+            contours_textregion_per_each_subprocess.append(contours_per_process[mv])
+            contours_textregion_par_per_each_subprocess.append(contours_par_per_process[mv])
+            all_box_coord_per_process.append(crop_coor)
+        queue_of_all_params.put([slopes_per_each_subprocess, textlines_rectangles_per_each_subprocess, bounding_box_of_textregion_per_each_subprocess, contours_textregion_per_each_subprocess, contours_textregion_par_per_each_subprocess, all_box_coord_per_process, index_by_text_region_contours])
+        
     def do_work_of_slopes_new(self, queue_of_all_params, boxes_text, textline_mask_tot_ea, contours_per_process, contours_par_per_process, indexes_r_con_per_pro, image_page_rotated, slope_deskew):
         self.logger.debug('enter do_work_of_slopes_new')
         slopes_per_each_subprocess = []
@@ -1072,19 +1510,30 @@ class Eynollah:
 
     def textline_contours(self, img, patches, scaler_h, scaler_w):
         self.logger.debug('enter textline_contours')
-
-        model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir if patches else self.model_textline_dir_np)
+        if not self.dir_in:
+            model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir if patches else self.model_textline_dir_np)
         img = img.astype(np.uint8)
         img_org = np.copy(img)
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
-        prediction_textline = self.do_prediction(patches, img, model_textline)
+        if not self.dir_in:
+            prediction_textline = self.do_prediction(patches, img, model_textline)
+        else:
+            prediction_textline = self.do_prediction(patches, img, self.model_textline)
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
-        prediction_textline_longshot = self.do_prediction(False, img, model_textline)
+        if not self.dir_in:
+            prediction_textline_longshot = self.do_prediction(False, img, model_textline)
+        else:
+            prediction_textline_longshot = self.do_prediction(False, img, self.model_textline)
         prediction_textline_longshot_true_size = resize_image(prediction_textline_longshot, img_h, img_w)
+        
 
-        return prediction_textline[:, :, 0], prediction_textline_longshot_true_size[:, :, 0]
+        if self.textline_light:
+            return (prediction_textline[:, :, 0]==1)*1, (prediction_textline_longshot_true_size[:, :, 0]==1)*1
+        else:
+            return prediction_textline[:, :, 0], prediction_textline_longshot_true_size[:, :, 0]
+
 
     def do_work_of_slopes(self, q, poly, box_sub, boxes_per_process, textline_mask_tot, contours_per_process):
         self.logger.debug('enter do_work_of_slopes')
@@ -1119,6 +1568,96 @@ class Eynollah:
         q.put(slopes_sub)
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new)
+    def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
+        self.logger.debug("enter get_regions_light_v")
+        erosion_hurts = False
+        img_org = np.copy(img)
+        img_height_h = img_org.shape[0]
+        img_width_h = img_org.shape[1]
+
+        #model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+
+        
+        
+        if num_col_classifier == 1:
+            img_w_new = 1000
+            img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
+            
+        elif num_col_classifier == 2:
+            img_w_new = 1500
+            img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
+            
+        elif num_col_classifier == 3:
+            img_w_new = 2000
+            img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
+            
+        elif num_col_classifier == 4:
+            img_w_new = 2500
+            img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
+        elif num_col_classifier == 5:
+            img_w_new = 3000
+            img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
+        else:
+            img_w_new = 4000
+            img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
+        img_resized = resize_image(img,img_h_new, img_w_new )
+        
+        if not self.dir_in:
+            model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+            prediction_bin = self.do_prediction(True, img_resized, model_bin)
+        else:
+            prediction_bin = self.do_prediction(True, img_resized, self.model_bin)
+        prediction_bin=prediction_bin[:,:,0]
+        prediction_bin = (prediction_bin[:,:]==0)*1
+        prediction_bin = prediction_bin*255
+        
+        prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
+        
+        prediction_bin = prediction_bin.astype(np.uint16)
+        #img= np.copy(prediction_bin)
+        img_bin = np.copy(prediction_bin)
+        
+        
+        
+        textline_mask_tot_ea = self.run_textline(img_bin)
+
+        if not self.dir_in:
+            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
+            prediction_regions_org = self.do_prediction_new_concept(True, img_bin, model_region)
+        else:
+            prediction_regions_org = self.do_prediction_new_concept(True, img_bin, self.model_region)
+            
+        #plt.imshow(prediction_regions_org[:,:,0])
+        #plt.show()
+            
+        prediction_regions_org = resize_image(prediction_regions_org,img_height_h, img_width_h )
+        textline_mask_tot_ea = resize_image(textline_mask_tot_ea,img_height_h, img_width_h )
+        
+        prediction_regions_org=prediction_regions_org[:,:,0]
+            
+        mask_lines_only = (prediction_regions_org[:,:] ==3)*1
+        
+        mask_texts_only = (prediction_regions_org[:,:] ==1)*1
+        
+        mask_images_only=(prediction_regions_org[:,:] ==2)*1
+        
+        polygons_lines_xml, hir_lines_xml = return_contours_of_image(mask_lines_only)
+        polygons_lines_xml = textline_con_fil = filter_contours_area_of_image(mask_lines_only, polygons_lines_xml, hir_lines_xml, max_area=1, min_area=0.00001)
+        
+        
+        polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
+        
+        polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
+        
+        text_regions_p_true = np.zeros(prediction_regions_org.shape)
+        
+        text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_lines, color=(3,3,3))
+        
+        text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
+        
+        text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
+        
+        return text_regions_p_true, erosion_hurts, polygons_lines_xml, textline_mask_tot_ea
 
     def get_regions_from_xy_2models(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_from_xy_2models")
@@ -1126,15 +1665,18 @@ class Eynollah:
         img_org = np.copy(img)
         img_height_h = img_org.shape[0]
         img_width_h = img_org.shape[1]
-
-        model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+        
+        if not self.dir_in:
+            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
 
         ratio_y=1.3
         ratio_x=1
 
         img = resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-
-        prediction_regions_org_y = self.do_prediction(True, img, model_region)
+        if not self.dir_in:
+            prediction_regions_org_y = self.do_prediction(True, img, model_region)
+        else:
+            prediction_regions_org_y = self.do_prediction(True, img, self.model_region)
         prediction_regions_org_y = resize_image(prediction_regions_org_y, img_height_h, img_width_h )
 
         #plt.imshow(prediction_regions_org_y[:,:,0])
@@ -1152,18 +1694,26 @@ class Eynollah:
             _, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
             
             img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]*(1.2 if is_image_enhanced else 1)))
-
-            prediction_regions_org = self.do_prediction(True, img, model_region)
+            
+            if self.dir_in:
+                prediction_regions_org = self.do_prediction(True, img, self.model_region)
+            else:
+                prediction_regions_org = self.do_prediction(True, img, model_region)
             prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
 
-            ##plt.imshow(prediction_regions_org[:,:,0])
-            ##plt.show()
             prediction_regions_org=prediction_regions_org[:,:,0]
             prediction_regions_org[(prediction_regions_org[:,:]==1) & (mask_zeros_y[:,:]==1)]=0
+            
+            
+            if not self.dir_in:
+                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
 
-            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
             img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]))
-            prediction_regions_org2 = self.do_prediction(True, img, model_region, 0.2)
+            
+            if self.dir_in:
+                prediction_regions_org2 = self.do_prediction(True, img, self.model_region_p2, 0.2)
+            else:
+                prediction_regions_org2 = self.do_prediction(True, img, model_region, 0.2)
             prediction_regions_org2=resize_image(prediction_regions_org2, img_height_h, img_width_h )
 
 
@@ -1186,8 +1736,6 @@ class Eynollah:
             mask_lines_only=(prediction_regions_org[:,:]==3)*1
             prediction_regions_org = cv2.erode(prediction_regions_org[:,:], KERNEL, iterations=2)
 
-            #plt.imshow(text_region2_1st_channel)
-            #plt.show()
 
             prediction_regions_org = cv2.dilate(prediction_regions_org[:,:], KERNEL, iterations=2)
             
@@ -1196,8 +1744,11 @@ class Eynollah:
                 if self.input_binary:
                     prediction_bin = np.copy(img_org)
                 else:
-                    model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                    prediction_bin = self.do_prediction(True, img_org, model_bin)
+                    if not self.dir_in:
+                        model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+                        prediction_bin = self.do_prediction(True, img_org, model_bin)
+                    else:
+                        prediction_bin = self.do_prediction(True, img_org, self.model_bin)
                     prediction_bin = resize_image(prediction_bin, img_height_h, img_width_h )
                     
                     prediction_bin=prediction_bin[:,:,0]
@@ -1205,16 +1756,19 @@ class Eynollah:
                     prediction_bin = prediction_bin*255
                     
                     prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
-
                 
-                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+                if not self.dir_in:
+                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
                 ratio_y=1
                 ratio_x=1
 
 
                 img = resize_image(prediction_bin, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-
-                prediction_regions_org = self.do_prediction(True, img, model_region)
+                
+                if not self.dir_in:
+                    prediction_regions_org = self.do_prediction(True, img, model_region)
+                else:
+                    prediction_regions_org = self.do_prediction(True, img, self.model_region)
                 prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
                 prediction_regions_org=prediction_regions_org[:,:,0]
                 
@@ -1242,9 +1796,12 @@ class Eynollah:
             
             if self.input_binary:
                 prediction_bin = np.copy(img_org)
-            else:
-                model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                prediction_bin = self.do_prediction(True, img_org, model_bin)
+                
+                if not self.dir_in:
+                    model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+                    prediction_bin = self.do_prediction(True, img_org, model_bin)
+                else:
+                    prediction_bin = self.do_prediction(True, img_org, self.model_bin)
                 prediction_bin = resize_image(prediction_bin, img_height_h, img_width_h )
                 prediction_bin=prediction_bin[:,:,0]
                 
@@ -1253,15 +1810,22 @@ class Eynollah:
                 prediction_bin = prediction_bin*255
                 
                 prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
-
-                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+            
+            
+                if not self.dir_in:
+                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+                    
+            else:
+                prediction_bin = np.copy(img_org)
             ratio_y=1
             ratio_x=1
 
 
             img = resize_image(prediction_bin, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-
-            prediction_regions_org = self.do_prediction(True, img, model_region)
+            if not self.dir_in:
+                prediction_regions_org = self.do_prediction(True, img, model_region)
+            else:
+                prediction_regions_org = self.do_prediction(True, img, self.model_region)
             prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
             prediction_regions_org=prediction_regions_org[:,:,0]
             
@@ -1275,7 +1839,6 @@ class Eynollah:
             #prediction_regions_org = prediction_regions_org[:,:,0]
             
             #prediction_regions_org[(prediction_regions_org[:,:] == 1) & (mask_zeros_y[:,:] == 1)]=0
-            
             
             
             mask_lines_only = (prediction_regions_org[:,:] ==3)*1
@@ -1302,7 +1865,6 @@ class Eynollah:
             text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
             
             erosion_hurts = True
-
             return text_regions_p_true, erosion_hurts, polygons_lines_xml
 
     def do_order_of_regions_full_layout(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
@@ -1855,9 +2417,55 @@ class Eynollah:
         
         prediction_table_erode = cv2.erode(prediction_table[:,:,0], KERNEL, iterations=20)
         prediction_table_erode = cv2.dilate(prediction_table_erode, KERNEL, iterations=20)
-
         return prediction_table_erode.astype(np.int16)
+    def run_graphics_and_columns_light(self, text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts):
+        img_g = self.imread(grayscale=True, uint8=True)
 
+        img_g3 = np.zeros((img_g.shape[0], img_g.shape[1], 3))
+        img_g3 = img_g3.astype(np.uint8)
+        img_g3[:, :, 0] = img_g[:, :]
+        img_g3[:, :, 1] = img_g[:, :]
+        img_g3[:, :, 2] = img_g[:, :]
+
+        image_page, page_coord, cont_page = self.extract_page()
+        
+        if self.tables:
+            table_prediction = self.get_tables_from_model(image_page, num_col_classifier)
+        else:
+            table_prediction = (np.zeros((image_page.shape[0], image_page.shape[1]))).astype(np.int16)
+        
+        if self.plotter:
+            self.plotter.save_page_image(image_page)
+
+        text_regions_p_1 = text_regions_p_1[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
+        textline_mask_tot_ea = textline_mask_tot_ea[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
+        mask_images = (text_regions_p_1[:, :] == 2) * 1
+        mask_images = mask_images.astype(np.uint8)
+        mask_images = cv2.erode(mask_images[:, :], KERNEL, iterations=10)
+        mask_lines = (text_regions_p_1[:, :] == 3) * 1
+        mask_lines = mask_lines.astype(np.uint8)
+        img_only_regions_with_sep = ((text_regions_p_1[:, :] != 3) & (text_regions_p_1[:, :] != 0)) * 1
+        img_only_regions_with_sep = img_only_regions_with_sep.astype(np.uint8)
+        
+        
+        if erosion_hurts:
+            img_only_regions = np.copy(img_only_regions_with_sep[:,:])
+        else:
+            img_only_regions = cv2.erode(img_only_regions_with_sep[:,:], KERNEL, iterations=6)
+        
+        ##print(img_only_regions.shape,'img_only_regions')
+        ##plt.imshow(img_only_regions[:,:])
+        ##plt.show()
+        ##num_col, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
+        try:
+            num_col, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
+            num_col = num_col + 1
+            if not num_column_is_classified:
+                num_col_classifier = num_col + 1
+        except Exception as why:
+            self.logger.error(why)
+            num_col = None
+        return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea
     def run_graphics_and_columns(self, text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts):
         img_g = self.imread(grayscale=True, uint8=True)
 
@@ -1903,9 +2511,9 @@ class Eynollah:
             num_col = None
         return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction
 
-    def run_enhancement(self):
+    def run_enhancement(self,light_version):
         self.logger.info("Resizing and enhancing image...")
-        is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified, img_bin = self.resize_and_enhance_image_with_column_classifier()
+        is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified, img_bin = self.resize_and_enhance_image_with_column_classifier(light_version)
         self.logger.info("Image was %senhanced.", '' if is_image_enhanced else 'not ')
 
         scale = 1
@@ -1931,6 +2539,8 @@ class Eynollah:
         scaler_h_textline = 1  # 1.2#1.2
         scaler_w_textline = 1  # 0.9#1
         textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline)
+        if self.textline_light:
+            textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
 
         if self.plotter:
             self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page)
@@ -2057,7 +2667,6 @@ class Eynollah:
         pixel_img = 10
         contours_tables = return_contours_of_interested_region(text_regions_p, pixel_img, min_area_mar)
         
-        
         self.logger.debug('exit run_boxes_no_full_layout')
         return polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, boxes, boxes_d, polygons_of_marginals, contours_tables
 
@@ -2161,23 +2770,13 @@ class Eynollah:
         regions_fully_only_drop = put_drop_out_from_only_drop_model(regions_fully_only_drop, text_regions_p)
         regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 4] = 4
 
-        # plt.imshow(regions_fully[:,:,0])
-        # plt.show()
         regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully)
-        # plt.imshow(regions_fully[:,:,0])
-        # plt.show()
         regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
-        # plt.imshow(regions_fully_np[:,:,0])
-        # plt.show()
         if num_col_classifier > 2:
             regions_fully_np[:, :, 0][regions_fully_np[:, :, 0] == 4] = 0
         else:
             regions_fully_np = filter_small_drop_capitals_from_no_patch_layout(regions_fully_np, text_regions_p)
 
-        # plt.imshow(regions_fully_np[:,:,0])
-        # plt.show()
-        # plt.imshow(regions_fully[:,:,0])
-        # plt.show()
         regions_fully = boosting_headers_by_longshot_region_segmentation(regions_fully, regions_fully_np, img_only_regions)
         # plt.imshow(regions_fully[:,:,0])
         # plt.show()
@@ -2200,11 +2799,19 @@ class Eynollah:
             regions_without_separators_d = None
         if not self.tables:
             regions_without_separators = (text_regions_p[:, :] == 1) * 1
-
         img_revised_tab = np.copy(text_regions_p[:, :])
         polygons_of_images = return_contours_of_interested_region(img_revised_tab, 5)
         self.logger.debug('exit run_boxes_full_layout')
         return polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables
+    
+    def our_load_model(self, model_file):
+        
+        try:
+            model = load_model(model_file, compile=False)
+        except:
+            model = load_model(model_file , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
+
+        return model
 
     def run(self):
         """
@@ -2212,271 +2819,277 @@ class Eynollah:
         """
         self.logger.debug("enter run")
 
-        t0 = time.time()
-        img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement()
+
+        t0_tot = time.time()
+
+        if not self.dir_in:
+            self.ls_imgs = [1]
         
-        self.logger.info("Enhancing took %.1fs ", time.time() - t0)
+        for img_name in self.ls_imgs:
+            t0 = time.time()
+            if self.dir_in:
+                self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
+            
+            img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
+            
+            self.logger.info("Enhancing took %.1fs ", time.time() - t0)
+            
+            t1 = time.time()
+            if self.light_version:
+                text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea = self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
+                slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
+                #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
+                num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea = \
+                        self.run_graphics_and_columns_light(text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts)
+                #self.logger.info("run graphics %.1fs ", time.time() - t1t)
+                textline_mask_tot_ea_org = np.copy(textline_mask_tot_ea)
+            else:
+                text_regions_p_1 ,erosion_hurts, polygons_lines_xml = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
+                self.logger.info("Textregion detection took %.1fs ", time.time() - t1)
 
-        t1 = time.time()
-        text_regions_p_1 ,erosion_hurts, polygons_lines_xml = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
-        self.logger.info("Textregion detection took %.1fs ", time.time() - t1)
+                t1 = time.time()
+                num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction = \
+                        self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts)
+                self.logger.info("Graphics detection took %.1fs ", time.time() - t1)
+                #self.logger.info('cont_page %s', cont_page)
+            
+            if not num_col:
+                self.logger.info("No columns detected, outputting an empty PAGE-XML")
+                pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [], cont_page, [], [])
+                self.logger.info("Job done in %.1fs", time.time() - t1)
+                if self.dir_in:
+                    self.writer.write_pagexml(pcgts)
+                    continue
+                else:
+                    return pcgts
 
-        t1 = time.time()
-        num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction = \
-                self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts)
-        self.logger.info("Graphics detection took %.1fs ", time.time() - t1)
-        #self.logger.info('cont_page %s', cont_page)
+            t1 = time.time()
+            if not self.light_version:
+                textline_mask_tot_ea = self.run_textline(image_page)
+                self.logger.info("textline detection took %.1fs", time.time() - t1)
 
-        if not num_col:
-            self.logger.info("No columns detected, outputting an empty PAGE-XML")
-            pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [], cont_page, [], [])
-            self.logger.info("Job done in %.1fs", time.time() - t1)
-            return pcgts
+                t1 = time.time()
+                slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
+                self.logger.info("deskewing took %.1fs", time.time() - t1)
+            t1 = time.time()
+            #plt.imshow(table_prediction)
+            #plt.show()
 
-        t1 = time.time()
-        textline_mask_tot_ea = self.run_textline(image_page)
-        self.logger.info("textline detection took %.1fs", time.time() - t1)
+            textline_mask_tot, text_regions_p, image_page_rotated = self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines, num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
+            self.logger.info("detection of marginals took %.1fs", time.time() - t1)
+            t1 = time.time()
+            if not self.full_layout:
+                polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, boxes, boxes_d, polygons_of_marginals, contours_tables = self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, table_prediction, erosion_hurts)
 
-        t1 = time.time()
-        slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
-        self.logger.info("deskewing took %.1fs", time.time() - t1)
-        t1 = time.time()
-        #plt.imshow(table_prediction)
-        #plt.show()
-
-        textline_mask_tot, text_regions_p, image_page_rotated = self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines, num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
-        self.logger.info("detection of marginals took %.1fs", time.time() - t1)
-        t1 = time.time()
-        if not self.full_layout:
-            polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, boxes, boxes_d, polygons_of_marginals, contours_tables = self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, table_prediction, erosion_hurts)
-        
-        if self.full_layout:
-            polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts)
-        text_only = ((img_revised_tab[:, :] == 1)) * 1
-        if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            text_only_d = ((text_regions_p_1_n[:, :] == 1)) * 1
-
-        min_con_area = 0.000005
-        if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            contours_only_text, hir_on_text = return_contours_of_image(text_only)
-            contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
-                        
-            if len(contours_only_text_parent) > 0:
-                areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
-                areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
-                #self.logger.info('areas_cnt_text %s', areas_cnt_text)
-                contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
-                contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent) if areas_cnt_text[jz] > min_con_area]
-                areas_cnt_text_parent = [area for area in areas_cnt_text if area > min_con_area]
-
-                index_con_parents = np.argsort(areas_cnt_text_parent)
-                contours_only_text_parent = list(np.array(contours_only_text_parent, dtype=object)[index_con_parents])
-                areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
-
-                cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
-                cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
-
-                contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
-                contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
-
-                areas_cnt_text_d = np.array([cv2.contourArea(c) for c in contours_only_text_parent_d])
-                areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
-                
-                if len(areas_cnt_text_d)>0:
-                    contours_biggest_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
-                    index_con_parents_d = np.argsort(areas_cnt_text_d)
-                    contours_only_text_parent_d = list(np.array(contours_only_text_parent_d, dtype=object)[index_con_parents_d])
-                    areas_cnt_text_d = list(np.array(areas_cnt_text_d)[index_con_parents_d])
-
-                    cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest_d])
-                    cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent_d)
-                    try:
-                        if len(cx_bigest_d) >= 5:
-                            cx_bigest_d_last5 = cx_bigest_d[-5:]
-                            cy_biggest_d_last5 = cy_biggest_d[-5:]
-                            dists_d = [math.sqrt((cx_bigest_big[0] - cx_bigest_d_last5[j]) ** 2 + (cy_biggest_big[0] - cy_biggest_d_last5[j]) ** 2) for j in range(len(cy_biggest_d_last5))]
-                            ind_largest = len(cx_bigest_d) -5 + np.argmin(dists_d)
-                        else:
-                            cx_bigest_d_last5 = cx_bigest_d[-len(cx_bigest_d):]
-                            cy_biggest_d_last5 = cy_biggest_d[-len(cx_bigest_d):]
-                            dists_d = [math.sqrt((cx_bigest_big[0]-cx_bigest_d_last5[j])**2 + (cy_biggest_big[0]-cy_biggest_d_last5[j])**2) for j in range(len(cy_biggest_d_last5))]
-                            ind_largest = len(cx_bigest_d) - len(cx_bigest_d) + np.argmin(dists_d)
+            if self.full_layout:
+                polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts)
+            text_only = ((img_revised_tab[:, :] == 1)) * 1
+            if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+                text_only_d = ((text_regions_p_1_n[:, :] == 1)) * 1
+            
+            
+            min_con_area = 0.000005
+            if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+                contours_only_text, hir_on_text = return_contours_of_image(text_only)
+                contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
                             
-                        cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
-                        cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
-                    except Exception as why:
-                        self.logger.error(why)
+                if len(contours_only_text_parent) > 0:
+                    areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
+                    areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
+                    #self.logger.info('areas_cnt_text %s', areas_cnt_text)
+                    contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
+                    contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent) if areas_cnt_text[jz] > min_con_area]
+                    areas_cnt_text_parent = [area for area in areas_cnt_text if area > min_con_area]
+                    index_con_parents = np.argsort(areas_cnt_text_parent)
+                    contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
+                    areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
 
-                    (h, w) = text_only.shape[:2]
-                    center = (w // 2.0, h // 2.0)
-                    M = cv2.getRotationMatrix2D(center, slope_deskew, 1.0)
-                    M_22 = np.array(M)[:2, :2]
-                    p_big = np.dot(M_22, [cx_bigest_big, cy_biggest_big])
-                    x_diff = p_big[0] - cx_bigest_d_big
-                    y_diff = p_big[1] - cy_biggest_d_big
+                    cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
+                    cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
 
-                    contours_only_text_parent_d_ordered = []
-                    for i in range(len(contours_only_text_parent)):
-                        p = np.dot(M_22, [cx_bigest[i], cy_biggest[i]])
-                        p[0] = p[0] - x_diff[0]
-                        p[1] = p[1] - y_diff[0]
-                        dists = [math.sqrt((p[0] - cx_bigest_d[j]) ** 2 + (p[1] - cy_biggest_d[j]) ** 2) for j in range(len(cx_bigest_d))]
-                        contours_only_text_parent_d_ordered.append(contours_only_text_parent_d[np.argmin(dists)])
-                        # img2=np.zeros((text_only.shape[0],text_only.shape[1],3))
-                        # img2=cv2.fillPoly(img2,pts=[contours_only_text_parent_d[np.argmin(dists)]] ,color=(1,1,1))
-                        # plt.imshow(img2[:,:,0])
-                        # plt.show()
+                    contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
+                    contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
+
+                    areas_cnt_text_d = np.array([cv2.contourArea(c) for c in contours_only_text_parent_d])
+                    areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
+                    
+                    if len(areas_cnt_text_d)>0:
+                        contours_biggest_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
+                        index_con_parents_d = np.argsort(areas_cnt_text_d)
+                        contours_only_text_parent_d = list(np.array(contours_only_text_parent_d)[index_con_parents_d])
+                        areas_cnt_text_d = list(np.array(areas_cnt_text_d)[index_con_parents_d])
+
+                        cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest_d])
+                        cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent_d)
+                        try:
+                            if len(cx_bigest_d) >= 5:
+                                cx_bigest_d_last5 = cx_bigest_d[-5:]
+                                cy_biggest_d_last5 = cy_biggest_d[-5:]
+                                dists_d = [math.sqrt((cx_bigest_big[0] - cx_bigest_d_last5[j]) ** 2 + (cy_biggest_big[0] - cy_biggest_d_last5[j]) ** 2) for j in range(len(cy_biggest_d_last5))]
+                                ind_largest = len(cx_bigest_d) -5 + np.argmin(dists_d)
+                            else:
+                                cx_bigest_d_last5 = cx_bigest_d[-len(cx_bigest_d):]
+                                cy_biggest_d_last5 = cy_biggest_d[-len(cx_bigest_d):]
+                                dists_d = [math.sqrt((cx_bigest_big[0]-cx_bigest_d_last5[j])**2 + (cy_biggest_big[0]-cy_biggest_d_last5[j])**2) for j in range(len(cy_biggest_d_last5))]
+                                ind_largest = len(cx_bigest_d) - len(cx_bigest_d) + np.argmin(dists_d)
+                                
+                            cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
+                            cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
+                        except Exception as why:
+                            self.logger.error(why)
+
+                        (h, w) = text_only.shape[:2]
+                        center = (w // 2.0, h // 2.0)
+                        M = cv2.getRotationMatrix2D(center, slope_deskew, 1.0)
+                        M_22 = np.array(M)[:2, :2]
+                        p_big = np.dot(M_22, [cx_bigest_big, cy_biggest_big])
+                        x_diff = p_big[0] - cx_bigest_d_big
+                        y_diff = p_big[1] - cy_biggest_d_big
+
+                        contours_only_text_parent_d_ordered = []
+                        for i in range(len(contours_only_text_parent)):
+                            p = np.dot(M_22, [cx_bigest[i], cy_biggest[i]])
+                            p[0] = p[0] - x_diff[0]
+                            p[1] = p[1] - y_diff[0]
+                            dists = [math.sqrt((p[0] - cx_bigest_d[j]) ** 2 + (p[1] - cy_biggest_d[j]) ** 2) for j in range(len(cx_bigest_d))]
+                            contours_only_text_parent_d_ordered.append(contours_only_text_parent_d[np.argmin(dists)])
+                            # img2=np.zeros((text_only.shape[0],text_only.shape[1],3))
+                            # img2=cv2.fillPoly(img2,pts=[contours_only_text_parent_d[np.argmin(dists)]] ,color=(1,1,1))
+                            # plt.imshow(img2[:,:,0])
+                            # plt.show()
+                    else:
+                        contours_only_text_parent_d_ordered = []
+                        contours_only_text_parent_d = []
+                        contours_only_text_parent = []
+                        
                 else:
                     contours_only_text_parent_d_ordered = []
                     contours_only_text_parent_d = []
                     contours_only_text_parent = []
-                    
             else:
-                contours_only_text_parent_d_ordered = []
-                contours_only_text_parent_d = []
-                contours_only_text_parent = []
+                contours_only_text, hir_on_text = return_contours_of_image(text_only)
+                contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
                 
-        else:
-            contours_only_text, hir_on_text = return_contours_of_image(text_only)
-            contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
-            
-            if len(contours_only_text_parent) > 0:
-                areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
-                areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
+                if len(contours_only_text_parent) > 0:
+                    areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
+                    areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
 
-                contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
-                contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent) if areas_cnt_text[jz] > min_con_area]
-                areas_cnt_text_parent = [area for area in areas_cnt_text if area > min_con_area]
+                    contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
+                    contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent) if areas_cnt_text[jz] > min_con_area]
+                    areas_cnt_text_parent = [area for area in areas_cnt_text if area > min_con_area]
 
-                index_con_parents = np.argsort(areas_cnt_text_parent)
-                contours_only_text_parent = list(np.array(contours_only_text_parent, dtype=object)[index_con_parents])
-                areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
+                    index_con_parents = np.argsort(areas_cnt_text_parent)
+                    contours_only_text_parent = list(np.array(contours_only_text_parent)[index_con_parents])
+                    areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
 
-                cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
-                cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
-                #self.logger.debug('areas_cnt_text_parent %s', areas_cnt_text_parent)
-                # self.logger.debug('areas_cnt_text_parent_d %s', areas_cnt_text_parent_d)
-                # self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))
+                    cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
+                    cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
+                    #self.logger.debug('areas_cnt_text_parent %s', areas_cnt_text_parent)
+                    # self.logger.debug('areas_cnt_text_parent_d %s', areas_cnt_text_parent_d)
+                    # self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))
+                else:
+                    pass
+            if self.light_version:
+                txt_con_org = get_textregion_contours_in_org_image_light(contours_only_text_parent, self.image, slope_first)
             else:
-                pass
+                txt_con_org = get_textregion_contours_in_org_image(contours_only_text_parent, self.image, slope_first)
+            boxes_text, _ = get_text_region_boxes_by_given_contours(contours_only_text_parent)
+            boxes_marginals, _ = get_text_region_boxes_by_given_contours(polygons_of_marginals)
+            
+            if not self.curved_line:
+                if self.light_version:
+                    if self.textline_light:
+                        slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea_org, image_page_rotated, boxes_text, slope_deskew)
+                        slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea_org, image_page_rotated, boxes_marginals, slope_deskew)
+                    else:
+                        slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
+                        slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
+                else:
+                    slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
+                    slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
 
-        self.logger.info("Found %d text regions", len(contours_only_text_parent))
-        self.logger.info("Found %d margin regions", len(polygons_of_marginals))
-        self.logger.info("Found %d image regions", len(polygons_of_images))
-        self.logger.info("Found %d separator lines", len(polygons_lines_xml))
-        if self.tables:
-            self.logger.info("Found %d tables", len(contours_tables))
+            else:
+                
+                scale_param = 1
+                all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_curved(txt_con_org, contours_only_text_parent, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_text, text_only, num_col_classifier, scale_param, slope_deskew)
+                all_found_texline_polygons = small_textlines_to_parent_adherence2(all_found_texline_polygons, textline_mask_tot_ea, num_col_classifier)
+                all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
+                all_found_texline_polygons_marginals = small_textlines_to_parent_adherence2(all_found_texline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
+            
+            if self.full_layout:
+                if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+                    contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered)[index_by_text_par_con])
+                    if self.light_version:
+                        text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header_light(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
+                    else:
+                        text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
+                else:
+                    #takes long timee
+                    contours_only_text_parent_d_ordered = None
+                    if self.light_version:
+                        text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header_light(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
+                    else:
+                        text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
 
-        txt_con_org = get_textregion_contours_in_org_image(contours_only_text_parent, self.image, slope_first)
-        boxes_text, _ = get_text_region_boxes_by_given_contours(contours_only_text_parent)
-        boxes_marginals, _ = get_text_region_boxes_by_given_contours(polygons_of_marginals)
+                if self.plotter:
+                    self.plotter.save_plot_of_layout(text_regions_p, image_page)
+                    self.plotter.save_plot_of_layout_all(text_regions_p, image_page)
         
-        if not self.curved_line:
-            slopes, all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
-            slopes_marginals, all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
-        else:
+                pixel_img = 4
+                polygons_of_drop_capitals = return_contours_of_interested_region_by_min_size(text_regions_p, pixel_img)
+                all_found_texline_polygons = adhere_drop_capital_region_into_corresponding_textline(text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, kernel=KERNEL, curved_line=self.curved_line)
+                pixel_lines = 6
+                
+
+                if not self.headers_off:
+                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                        num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables,  pixel_lines, contours_only_text_parent_h)
+                    else:
+                        _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines, contours_only_text_parent_h_d_ordered)
+                elif self.headers_off:
+                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                        num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables,  pixel_lines)
+                    else:
+                        _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines)
+
+                if num_col_classifier >= 3:
+                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                        regions_without_separators = regions_without_separators.astype(np.uint8)
+                        regions_without_separators = cv2.erode(regions_without_separators[:, :], KERNEL, iterations=6)
+
+                    else:
+                        regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
+                        regions_without_separators_d = cv2.erode(regions_without_separators_d[:, :], KERNEL, iterations=6)
+                        
+
+                if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                    boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
+                else:
+                    boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)
             
-            scale_param = 1
-            all_found_texline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_curved(txt_con_org, contours_only_text_parent, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_text, text_only, num_col_classifier, scale_param, slope_deskew)
-            all_found_texline_polygons = small_textlines_to_parent_adherence2(all_found_texline_polygons, textline_mask_tot_ea, num_col_classifier)
-            all_found_texline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
-            all_found_texline_polygons_marginals = small_textlines_to_parent_adherence2(all_found_texline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
-
-        if self.full_layout:
-            if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
-                text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
-            else:
-                contours_only_text_parent_d_ordered = None
-                text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_texline_polygons, slopes, contours_only_text_parent_d_ordered)
-
             if self.plotter:
-                self.plotter.save_plot_of_layout(text_regions_p, image_page)
-                self.plotter.save_plot_of_layout_all(text_regions_p, image_page)
-
-            pixel_img = 4
-            polygons_of_drop_capitals = return_contours_of_interested_region_by_min_size(text_regions_p, pixel_img)
-            all_found_texline_polygons = adhere_drop_capital_region_into_corresponding_textline(text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_texline_polygons, all_found_texline_polygons_h, kernel=KERNEL, curved_line=self.curved_line)
-
-            # print(len(contours_only_text_parent_h),len(contours_only_text_parent_h_d_ordered),'contours_only_text_parent_h')
-            pixel_lines = 6
-            
-
-            if not self.headers_off:
+                self.plotter.write_images_into_directory(polygons_of_images, image_page)
+            t_order = time.time()
+            if self.full_layout:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables,  pixel_lines, contours_only_text_parent_h)
+                    order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
                 else:
-                    _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines, contours_only_text_parent_h_d_ordered)
-            elif self.headers_off:
+                    order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
+
+                pcgts = self.writer.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_xml)
+                self.logger.info("Job done in %.1fs", time.time() - t0)
+                ##return pcgts
+            else:
+                contours_only_text_parent_h = None
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables,  pixel_lines)
+                    order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
                 else:
-                    _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines)
-
-            # print(peaks_neg_fin,peaks_neg_fin_d,'num_col2')
-            # print(splitter_y_new,splitter_y_new_d,'num_col_classifier')
-            # print(matrix_of_lines_ch.shape,matrix_of_lines_ch_d.shape,'matrix_of_lines_ch')
-
-            if num_col_classifier >= 3:
-                if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    regions_without_separators = regions_without_separators.astype(np.uint8)
-                    regions_without_separators = cv2.erode(regions_without_separators[:, :], KERNEL, iterations=6)
-                    
-                    #regions_without_separators_0 = regions_without_separators[:, :].sum(axis=0)
-                    #meda_n_updown = regions_without_separators_0[len(regions_without_separators_0) :: -1]
-                    #first_nonzero = next((i for i, x in enumerate(regions_without_separators_0) if x), 0)
-                    #last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
-                    #last_nonzero = len(regions_without_separators_0) - last_nonzero
-                    
-                    #random_pixels_for_image = np.random.randn(regions_without_separators.shape[0], regions_without_separators.shape[1])
-                    #random_pixels_for_image[random_pixels_for_image < -0.5] = 0
-                    #random_pixels_for_image[random_pixels_for_image != 0] = 1
-                    #regions_without_separators[(random_pixels_for_image[:, :] == 1) & (text_regions_p[:, :] == 5)] = 1
-                    
-                    #regions_without_separators[:, 0:first_nonzero] = 0
-                    #regions_without_separators[:, last_nonzero:] = 0
-                else:
-                    regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
-                    regions_without_separators_d = cv2.erode(regions_without_separators_d[:, :], KERNEL, iterations=6)
-                    
-                    #regions_without_separators_0 = regions_without_separators_d[:, :].sum(axis=0)
-                    #meda_n_updown = regions_without_separators_0[len(regions_without_separators_0) :: -1]
-                    #first_nonzero = next((i for i, x in enumerate(regions_without_separators_0) if x), 0)
-                    #last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
-                    #last_nonzero = len(regions_without_separators_0) - last_nonzero
-                    
-                    #random_pixels_for_image = np.random.randn(regions_without_separators_d.shape[0], regions_without_separators_d.shape[1])
-                    #random_pixels_for_image[random_pixels_for_image < -0.5] = 0
-                    #random_pixels_for_image[random_pixels_for_image != 0] = 1
-                    ##regions_without_separators_d[(random_pixels_for_image[:, :] == 1) & (text_regions_p_1_n[:, :] == 5)] = 1
-                    
-                    #regions_without_separators_d[:, 0:first_nonzero] = 0
-                    #regions_without_separators_d[:, last_nonzero:] = 0
-
-            if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
-            else:
-                boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)
-
-        if self.plotter:
-            self.plotter.write_images_into_directory(polygons_of_images, image_page)
-
-        if self.full_layout:
-            if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
-            else:
-                order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
-
-            pcgts = self.writer.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_found_texline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_xml)
-            self.logger.info("Job done in %.1fs", time.time() - t0)
-            return pcgts
-        else:
-            contours_only_text_parent_h = None
-            if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
-            else:
-                contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
-                order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
-            pcgts = self.writer.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_xml, contours_tables)
-            self.logger.info("Job done in %.1fs", time.time() - t0)
-            return pcgts
+                    contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered)[index_by_text_par_con])
+                    order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
+                pcgts = self.writer.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_texline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_texline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_xml, contours_tables)
+                self.logger.info("Job done in %.1fs", time.time() - t0)
+                ##return pcgts
+            self.writer.write_pagexml(pcgts)
+            #self.logger.info("Job done in %.1fs", time.time() - t0)
+        if self.dir_in:
+            self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
