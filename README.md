@@ -38,6 +38,11 @@ cd eynollah; pip install -e .
 
 Alternatively, you can run `make install` or `make install-dev` for editable installation.
 
+## Models
+Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/).
+
+In case you want to train your own model to use with Eynollah, have a look at [sbb_pixelwise_segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation). 
+
 ## Usage
 The command-line interface can be called like this:
 
@@ -70,13 +75,7 @@ The following options can be used to further configure the processing:
 | `-sa <directory>`  | save all (plot, enhanced/binary image, layout) to this directory |
 
 If no option is set, the tool will perform layout detection of main regions (background, text, images, separators and marginals).
-
-The tool produces better output from RGB images as input than greyscale or binarized images.
-
-## Models
-Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/).
-
-In case you want to train your own model to use with Eynollah, have a look at [sbb_pixelwise_segmentation](https://github.com/qurator-spk/sbb_pixelwise_segmentation). 
+The tool produces better quality output when RGB images are used as input than greyscale or binarized images.
 
 #### Use as OCR-D processor
 
@@ -88,10 +87,10 @@ In this case, the source image file group with (preferably) RGB images should be
 ocrd-eynollah-segment -I OCR-D-IMG -O SEG-LINE -P models
 ```
     
-Any image referenced by `@imageFilename` in PAGE-XML is passed on directly to Eynollah as a processor, so that e.g. calling
+Any image referenced by `@imageFilename` in PAGE-XML is passed on directly to Eynollah as a processor, so that e.g.
 
 ```
 ocrd-eynollah-segment -I OCR-D-IMG-BIN -O SEG-LINE -P models
 ```
     
-still uses the original (RGB) image despite any binarization that may have occured in previous OCR-D processing steps
+uses the original (RGB) image despite any binarization that may have occured in previous OCR-D processing steps
