@@ -2834,7 +2834,6 @@ class Eynollah:
                 self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
             
             img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
-            print(img_res.shape)
             self.logger.info("Enhancing took %.1fs ", time.time() - t0)
             
             t1 = time.time()
