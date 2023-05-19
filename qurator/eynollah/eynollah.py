@@ -452,6 +452,9 @@ class Eynollah:
         if label_p_pred[0][int(num_col - 1)] < 0.9 and img_w_new < width_early:
             img_new = np.copy(img)
             num_column_is_classified = False
+        elif label_p_pred[0][int(num_col - 1)] < 0.8 and img_h_new >= 8000:
+            img_new = np.copy(img)
+            num_column_is_classified = False
         else:
             img_new = resize_image(img, img_h_new, img_w_new)
             num_column_is_classified = True
@@ -2831,7 +2834,7 @@ class Eynollah:
                 self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
             
             img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
-            
+            print(img_res.shape)
             self.logger.info("Enhancing took %.1fs ", time.time() - t0)
             
             t1 = time.time()
