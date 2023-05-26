@@ -1774,7 +1774,6 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
             reading_order_type,x_starting,x_ending,y_type_2,y_diff_type_2,y_lines_without_mother,x_start_without_mother,x_end_without_mother,there_is_sep_with_child,y_lines_with_child_without_mother,x_start_with_child_without_mother,x_end_with_child_without_mother,new_main_sep_y=return_x_start_end_mothers_childs_and_type_of_reading_order(x_min_hor_some,x_max_hor_some,cy_hor_some,peaks_neg_tot,cy_hor_diff)
             
 
-            
             if (reading_order_type==1) or (reading_order_type==0 and (len(y_lines_without_mother)>=2 or there_is_sep_with_child==1)):
 
                 
@@ -2281,7 +2280,6 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                     
                 ind_args=np.array(range(len(y_type_2)))
                 #ind_args=np.array(ind_args)
-                #print(ind_args,'ind_args')
                 for column in range(len(peaks_neg_tot)-1):
                     #print(column,'column')
                     ind_args_in_col=ind_args[x_starting==column]
@@ -2338,3 +2336,253 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
         #else:
             #boxes.append([ 0, regions_without_separators[:,:].shape[1] ,splitter_y_new[i],splitter_y_new[i+1]])
     return boxes, peaks_neg_tot_tables
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def return_boxes_of_images_by_order_of_reading_new_right2left(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, tables):
+    boxes=[]
+    peaks_neg_tot_tables = []
+
+    for i in range(len(splitter_y_new)-1):
+        #print(splitter_y_new[i],splitter_y_new[i+1])
+        matrix_new=matrix_of_lines_ch[:,:][ (matrix_of_lines_ch[:,6]> splitter_y_new[i] ) & (matrix_of_lines_ch[:,7]< splitter_y_new[i+1] )  ] 
+        #print(len( matrix_new[:,9][matrix_new[:,9]==1] ))
+        
+        #print(matrix_new[:,8][matrix_new[:,9]==1],'gaddaaa')
+        
+        # check to see is there any vertical separator to find holes.
+        if 1>0:#len( matrix_new[:,9][matrix_new[:,9]==1] )>0 and np.max(matrix_new[:,8][matrix_new[:,9]==1])>=0.1*(np.abs(splitter_y_new[i+1]-splitter_y_new[i] )):
+            
+            try:
+                if erosion_hurts:
+                    num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:], num_col_classifier, tables, multiplier=6.)
+                else:
+                    num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],num_col_classifier, tables, multiplier=7.)
+            except:
+                peaks_neg_fin=[]
+                num_col = 0
+
+            
+            try:
+                peaks_neg_fin_org=np.copy(peaks_neg_fin)
+                if (len(peaks_neg_fin)+1)<num_col_classifier or num_col_classifier==6:
+                    #print('burda')
+                    
+                    if len(peaks_neg_fin)==0:
+                        num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],num_col_classifier, tables, multiplier=3.)
+                    peaks_neg_fin_early=[]
+                    peaks_neg_fin_early.append(0)
+                    #print(peaks_neg_fin,'peaks_neg_fin')
+                    for p_n in peaks_neg_fin:
+                        peaks_neg_fin_early.append(p_n)
+                    peaks_neg_fin_early.append(regions_without_separators.shape[1]-1)
+                        
+                    #print(peaks_neg_fin_early,'burda2')
+                    peaks_neg_fin_rev=[]
+                    for i_n in range(len(peaks_neg_fin_early)-1):
+                        #print(i_n,'i_n')
+                        
+                        #plt.plot(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]].sum(axis=0) )
+                        #plt.show()
+                        try:
+                            num_col, peaks_neg_fin1=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]],num_col_classifier,tables, multiplier=7.)
+                        except:
+                            peaks_neg_fin1=[]
+                            
+                        try:
+                            num_col, peaks_neg_fin2=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),peaks_neg_fin_early[i_n]:peaks_neg_fin_early[i_n+1]],num_col_classifier,tables, multiplier=5.)
+                        except:
+                            peaks_neg_fin2=[]
+                            
+                            
+                        if len(peaks_neg_fin1)>=len(peaks_neg_fin2):
+                            peaks_neg_fin=list(np.copy(peaks_neg_fin1))
+                        else:
+                            peaks_neg_fin=list(np.copy(peaks_neg_fin2))
+                            
+                        
+                            
+                        peaks_neg_fin=list(np.array(peaks_neg_fin)+peaks_neg_fin_early[i_n])
+                        
+                        if i_n!=(len(peaks_neg_fin_early)-2):
+                            peaks_neg_fin_rev.append(peaks_neg_fin_early[i_n+1])
+                        #print(peaks_neg_fin,'peaks_neg_fin')
+                        peaks_neg_fin_rev=peaks_neg_fin_rev+peaks_neg_fin
+
+                            
+                            
+                        
+                        
+                    if len(peaks_neg_fin_rev)>=len(peaks_neg_fin_org):    
+                        peaks_neg_fin=list(np.sort(peaks_neg_fin_rev))
+                        num_col=len(peaks_neg_fin)
+                    else:
+                        peaks_neg_fin=list(np.copy(peaks_neg_fin_org))
+                        num_col=len(peaks_neg_fin)
+                
+                    #print(peaks_neg_fin,'peaks_neg_fin')
+            except:
+                pass
+            #num_col, peaks_neg_fin=find_num_col(regions_without_separators[int(splitter_y_new[i]):int(splitter_y_new[i+1]),:],multiplier=7.0)
+            x_min_hor_some=matrix_new[:,2][ (matrix_new[:,9]==0) ]
+            x_max_hor_some=matrix_new[:,3][ (matrix_new[:,9]==0) ]
+            cy_hor_some=matrix_new[:,5][ (matrix_new[:,9]==0) ]
+            cy_hor_diff=matrix_new[:,7][ (matrix_new[:,9]==0) ]
+            arg_org_hor_some=matrix_new[:,0][ (matrix_new[:,9]==0) ]
+            
+            
+            
+            
+
+            peaks_neg_tot=return_points_with_boundies(peaks_neg_fin,0, regions_without_separators[:,:].shape[1])
+            
+            peaks_neg_tot_tables.append(peaks_neg_tot)
+            
+            reading_order_type,x_starting,x_ending,y_type_2,y_diff_type_2,y_lines_without_mother,x_start_without_mother,x_end_without_mother,there_is_sep_with_child,y_lines_with_child_without_mother,x_start_with_child_without_mother,x_end_with_child_without_mother,new_main_sep_y=return_x_start_end_mothers_childs_and_type_of_reading_order(x_min_hor_some,x_max_hor_some,cy_hor_some,peaks_neg_tot,cy_hor_diff)
+            
+
+            y_lines_by_order=[]
+            x_start_by_order=[]
+            x_end_by_order=[]
+            if len(x_starting)>0:
+                all_columns = np.array(range(len(peaks_neg_tot)-1))
+                columns_covered_by_lines_covered_more_than_2col=[]
+                
+                for dj in range(len(x_starting)):
+                    if set( list(np.array(range(x_starting[dj],x_ending[dj])) ) ) == set(all_columns):
+                        pass
+                    else:
+                        columns_covered_by_lines_covered_more_than_2col=columns_covered_by_lines_covered_more_than_2col+list(np.array(range(x_starting[dj],x_ending[dj])) )
+                columns_covered_by_lines_covered_more_than_2col=list(set(columns_covered_by_lines_covered_more_than_2col))
+                
+                
+                
+                columns_not_covered=list( set(all_columns)-set(columns_covered_by_lines_covered_more_than_2col) )
+                
+                
+                y_type_2=list(y_type_2)
+                x_starting=list(x_starting)
+                x_ending=list(x_ending)
+                
+                for lj in columns_not_covered:
+                    y_type_2.append(int(splitter_y_new[i]))
+                    x_starting.append(lj)
+                    x_ending.append(lj+1)
+                    ##y_lines_by_order.append(int(splitter_y_new[i]))
+                    ##x_start_by_order.append(0)
+                
+                #y_type_2.append(int(splitter_y_new[i]))
+                #x_starting.append(x_starting[0])
+                #x_ending.append(x_ending[0])
+                
+                if len(new_main_sep_y)>0:
+                    y_type_2.append(int(splitter_y_new[i]))
+                    x_starting.append(0)
+                    x_ending.append(len(peaks_neg_tot)-1)
+                else:
+                    y_type_2.append(int(splitter_y_new[i]))
+                    x_starting.append(x_starting[0])
+                    x_ending.append(x_ending[0])
+                    
+                    
+                y_type_2=np.array(y_type_2)
+                x_starting=np.array(x_starting)
+                x_ending=np.array(x_ending)
+            else:
+                all_columns=np.array(range(len(peaks_neg_tot)-1))
+                columns_not_covered=list( set(all_columns) )
+                
+                
+                y_type_2=list(y_type_2)
+                x_starting=list(x_starting)
+                x_ending=list(x_ending)
+                
+                for lj in columns_not_covered:
+                    y_type_2.append(int(splitter_y_new[i]))
+                    x_starting.append(lj)
+                    x_ending.append(lj+1)
+                    ##y_lines_by_order.append(int(splitter_y_new[i]))
+                    ##x_start_by_order.append(0)
+                
+                    
+                    
+                y_type_2=np.array(y_type_2)
+                x_starting=np.array(x_starting)
+                x_ending=np.array(x_ending)
+                
+            ind_args=np.array(range(len(y_type_2)))
+            #ind_args=np.array(ind_args)
+            #print(ind_args,'ind_args')
+            for column in range(len(peaks_neg_tot)-1,0,-1):
+                #print(column,'column')
+                ind_args_in_col=ind_args[x_ending==column]
+                ind_args_in_col=np.array(ind_args_in_col)
+                #print(len(y_type_2))
+                y_column=y_type_2[ind_args_in_col]
+                x_start_column=x_starting[ind_args_in_col]
+                x_end_column=x_ending[ind_args_in_col]
+
+                ind_args_col_sorted=np.argsort(y_column)
+                y_col_sort=y_column[ind_args_col_sorted]
+                x_start_column_sort=x_start_column[ind_args_col_sorted]
+                x_end_column_sort=x_end_column[ind_args_col_sorted]
+                #print('babali4')
+                for ii in range(len(y_col_sort)):
+                    #print('babali5')
+                    y_lines_by_order.append(y_col_sort[ii])
+                    x_start_by_order.append(x_start_column_sort[ii])
+                    x_end_by_order.append(x_end_column_sort[ii]-1)
+                    
+            for il in range(len(y_lines_by_order)):
+                
+                
+                y_copy=list( np.copy(y_lines_by_order) )
+                x_start_copy=list( np.copy(x_start_by_order) )
+                x_end_copy=list ( np.copy(x_end_by_order) )
+                
+                #print(y_copy,'y_copy')
+                y_itself=y_copy.pop(il)
+                x_start_itself=x_start_copy.pop(il)
+                x_end_itself=x_end_copy.pop(il)
+                
+                #print(y_copy,'y_copy2')
+                
+                for column in range(x_end_itself+1-1,x_start_itself-1,-1):
+                    #print(column,'cols')
+                    y_in_cols=[]
+                    for yic in range(len(y_copy)):
+                        #print('burda')
+                        if y_copy[yic]>y_itself and column>=x_start_copy[yic] and column<=x_end_copy[yic]:
+                            y_in_cols.append(y_copy[yic])
+                    #print('burda2')
+                    #print(y_in_cols,'y_in_cols')
+                    if len(y_in_cols)>0:
+                        y_down=np.min(y_in_cols)
+                    else:
+                        y_down=[int(splitter_y_new[i+1])][0]
+                    #print(y_itself,'y_itself')    
+                    boxes.append([peaks_neg_tot[column],peaks_neg_tot[column+1],y_itself,y_down])
+
+
+                    
+        #else:
+            #boxes.append([ 0, regions_without_separators[:,:].shape[1] ,splitter_y_new[i],splitter_y_new[i+1]])
+    return boxes, peaks_neg_tot_tables
+

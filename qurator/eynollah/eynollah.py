@@ -72,7 +72,8 @@ from .utils import (
     small_textlines_to_parent_adherence2,
     order_of_regions,
     find_number_of_columns_in_document,
-    return_boxes_of_images_by_order_of_reading_new)
+    return_boxes_of_images_by_order_of_reading_new,
+    return_boxes_of_images_by_order_of_reading_new_right2left)
 from .utils.pil_cv2 import check_dpi, pil2cv
 from .utils.xml import order_and_id_of_texts
 from .plot import EynollahPlotter
@@ -2069,6 +2070,7 @@ class Eynollah:
             arg_text_con = []
             for ii in range(len(cx_text_only)):
                 for jj in range(len(boxes)):
+                    print(cx_text_only[ii],cy_text_only[ii],'markaz')
                     if cx_text_only[ii] >= boxes[jj][0] and cx_text_only[ii] < boxes[jj][1] and cy_text_only[ii] >= boxes[jj][2] and cy_text_only[ii] < boxes[jj][3]:  # this is valid if the center of region identify in which box it is located
                         arg_text_con.append(jj)
                         break
@@ -2104,6 +2106,9 @@ class Eynollah:
                 ref_point += len(id_of_texts)
 
             order_of_texts_tot = []
+            print(len(contours_only_text_parent),'contours_only_text_parent')
+            print(len(order_by_con_main),'order_by_con_main')
+            
             for tj1 in range(len(contours_only_text_parent)):
                 order_of_texts_tot.append(int(order_by_con_main[tj1]))
 
@@ -2618,7 +2623,7 @@ class Eynollah:
                 regions_without_separators_d = cv2.erode(regions_without_separators_d[:, :], KERNEL, iterations=6)
         t1 = time.time()
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-            boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
+            boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new_right2left(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
             boxes_d = None
             self.logger.debug("len(boxes): %s", len(boxes))
             
@@ -2628,7 +2633,7 @@ class Eynollah:
             img_revised_tab2 = self.add_tables_heuristic_to_layout(text_regions_p_tables, boxes, 0, splitter_y_new, peaks_neg_tot_tables, text_regions_p_tables , num_col_classifier , 0.000005, pixel_line)
             img_revised_tab2, contoures_tables = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2,table_prediction, 10, num_col_classifier)
         else:
-            boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)
+            boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new_right2left(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)
             boxes = None
             self.logger.debug("len(boxes): %s", len(boxes_d))
             
@@ -2713,7 +2718,7 @@ class Eynollah:
                 pass
             
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
+                boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new_right2left(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
                 text_regions_p_tables = np.copy(text_regions_p)
                 text_regions_p_tables[:,:][(table_prediction[:,:]==1)] = 10
                 pixel_line = 3
@@ -2722,7 +2727,7 @@ class Eynollah:
                 img_revised_tab2,contoures_tables = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2, table_prediction, 10, num_col_classifier)
                 
             else:
-                boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)
+                boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new_right2left(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)
                 text_regions_p_tables = np.copy(text_regions_p_1_n)
                 text_regions_p_tables = np.round(text_regions_p_tables)
                 text_regions_p_tables[:,:][(text_regions_p_tables[:,:]!=3) & (table_prediction_n[:,:]==1)] = 10
@@ -3065,9 +3070,10 @@ class Eynollah:
                         
 
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
+                    boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new_right2left(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables)
                 else:
-                    boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)
+                    boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new_right2left(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables)     
+
             
             if self.plotter:
                 self.plotter.write_images_into_directory(polygons_of_images, image_page)
