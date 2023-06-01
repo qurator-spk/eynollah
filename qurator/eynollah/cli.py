@@ -98,6 +98,12 @@ from qurator.eynollah.eynollah import Eynollah
     help="if this parameter set to true, this tool will try to detect tables.",
 )
 @click.option(
+    "--right2left/--left2right",
+    "-r2l/-l2r",
+    is_flag=True,
+    help="if this parameter set to true, this tool will extract right-to-left reading order.",
+)
+@click.option(
     "--input_binary/--input-RGB",
     "-ib/-irgb",
     is_flag=True,
@@ -149,6 +155,7 @@ def main(
     textline_light,
     full_layout,
     tables,
+    right2left,
     input_binary,
     allow_scaling,
     headers_off,
@@ -184,6 +191,7 @@ def main(
         textline_light=textline_light,
         full_layout=full_layout,
         tables=tables,
+        right2left=right2left,
         input_binary=input_binary,
         allow_scaling=allow_scaling,
         headers_off=headers_off,
