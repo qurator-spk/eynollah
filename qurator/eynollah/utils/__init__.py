@@ -1672,7 +1672,9 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     return num_col_fin, peaks_neg_fin_fin,matrix_of_lines_ch,splitter_y_new,separators_closeup_n
         
 
-def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, tables):
+def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, tables, right2left_readingorder):
+    if right2left_readingorder:
+        regions_without_separators = cv2.flip(regions_without_separators,1)
     boxes=[]
     peaks_neg_tot_tables = []
 
@@ -1763,6 +1765,13 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
             cy_hor_diff=matrix_new[:,7][ (matrix_new[:,9]==0) ]
             arg_org_hor_some=matrix_new[:,0][ (matrix_new[:,9]==0) ]
             
+            if right2left_readingorder:
+                x_max_hor_some_new = regions_without_separators.shape[1] - x_min_hor_some
+                x_min_hor_some_new = regions_without_separators.shape[1] - x_max_hor_some
+                
+                x_min_hor_some =list(np.copy(x_min_hor_some_new))
+                x_max_hor_some =list(np.copy(x_max_hor_some_new))
+            
             
             
             
@@ -1774,7 +1783,6 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
             reading_order_type,x_starting,x_ending,y_type_2,y_diff_type_2,y_lines_without_mother,x_start_without_mother,x_end_without_mother,there_is_sep_with_child,y_lines_with_child_without_mother,x_start_with_child_without_mother,x_end_with_child_without_mother,new_main_sep_y=return_x_start_end_mothers_childs_and_type_of_reading_order(x_min_hor_some,x_max_hor_some,cy_hor_some,peaks_neg_tot,cy_hor_diff)
             
 
-            
             if (reading_order_type==1) or (reading_order_type==0 and (len(y_lines_without_mother)>=2 or there_is_sep_with_child==1)):
 
                 
@@ -2026,6 +2034,7 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                             
                         
                         columns_not_covered_child_no_mother=np.sort(columns_not_covered_child_no_mother)
+                        
                         
 
                         ind_args=np.array(range(len(y_type_2)))
@@ -2281,7 +2290,6 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                     
                 ind_args=np.array(range(len(y_type_2)))
                 #ind_args=np.array(ind_args)
-                #print(ind_args,'ind_args')
                 for column in range(len(peaks_neg_tot)-1):
                     #print(column,'column')
                     ind_args_in_col=ind_args[x_starting==column]
@@ -2337,4 +2345,21 @@ def return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_witho
                     
         #else:
             #boxes.append([ 0, regions_without_separators[:,:].shape[1] ,splitter_y_new[i],splitter_y_new[i+1]])
-    return boxes, peaks_neg_tot_tables
+            
+    if right2left_readingorder:        
+        peaks_neg_tot_tables_new = []
+        if len(peaks_neg_tot_tables)>=1:
+            for peaks_tab_ind in peaks_neg_tot_tables:
+                peaks_neg_tot_tables_ind = regions_without_separators.shape[1] - np.array(peaks_tab_ind)
+                peaks_neg_tot_tables_ind = list(peaks_neg_tot_tables_ind[::-1])
+                peaks_neg_tot_tables_new.append(peaks_neg_tot_tables_ind)
+                
+        
+        for i in range(len(boxes)):
+            x_start_new = regions_without_separators.shape[1] - boxes[i][1]
+            x_end_new = regions_without_separators.shape[1] - boxes[i][0]
+            boxes[i][0] = x_start_new
+            boxes[i][1] = x_end_new
+        return boxes, peaks_neg_tot_tables_new
+    else:
+        return boxes, peaks_neg_tot_tables
