@@ -33,6 +33,7 @@ class EynollahProcessor(Processor):
         LOG = getLogger('eynollah')
         assert_file_grp_cardinality(self.input_file_grp, 1)
         assert_file_grp_cardinality(self.output_file_grp, 1)
+        models = None
         for n, input_file in enumerate(self.input_files):
             page_id = input_file.pageId or input_file.ID
             LOG.info("INPUT FILE %s (%d/%d) ", page_id, n + 1, len(self.input_files))
@@ -40,13 +41,18 @@ class EynollahProcessor(Processor):
             LOG.debug('width %s height %s', pcgts.get_Page().imageWidth, pcgts.get_Page().imageHeight)
             self.add_metadata(pcgts)
             page = pcgts.get_Page()
+            # if not('://' in page.imageFilename):
+            #     image_filename = next(self.workspace.mets.find_files(local_filename=page.imageFilename)).local_filename
+            # else:
+            #     # could be a URL with file:// or truly remote
+            #     image_filename = self.workspace.download_file(next(self.workspace.mets.find_files(url=page.imageFilename))).local_filename
             # XXX loses DPI information
-            # page_image, _, _ = self.workspace.image_from_page(page, page_id, feature_filter='binarized')
-            if not('://' in page.imageFilename):
-                image_filename = next(self.workspace.mets.find_files(local_filename=page.imageFilename)).local_filename
-            else:
-                # could be a URL with file:// or truly remote
-                image_filename = self.workspace.download_file(next(self.workspace.mets.find_files(url=page.imageFilename))).local_filename
+            page_image, _, _ = self.workspace.image_from_page(
+                page, page_id,
+                # avoid any features that would change the coordinate system: cropped,deskewed
+                # (the PAGE builder merely adds regions, so afterwards we would not know which to transform)
+                # also avoid binarization as models usually fare better on grayscale/RGB
+                feature_filter='cropped,deskewed,binarized')
             eynollah_kwargs = {
                 'dir_models': self.resolve_resource(self.parameter['models']),
                 'allow_enhancement': False,
@@ -58,9 +64,14 @@ class EynollahProcessor(Processor):
                 'override_dpi': self.parameter['dpi'],
                 'logger': LOG,
                 'pcgts': pcgts,
-                'image_filename': str(image_filename)
+                'image_filename': page.imageFilename,
+                'image_pil': page_image
                 }
-            Eynollah(**eynollah_kwargs).run()
+            eynollah = Eynollah(**eynollah_kwargs)
+            if models is not None:
+                # reuse loaded models from previous page
+                eynollah.models = models
+            pcgts = eynollah.run()
             file_id = make_file_id(input_file, self.output_file_grp)
             pcgts.set_pcGtsId(file_id)
             self.workspace.add_file(
