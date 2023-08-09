@@ -103,8 +103,11 @@ If you find this tool useful in your work, please consider citing our paper:
   title     = {Document Layout Analysis with Deep Learning and Heuristics},
   author    = {Rezanezhad, Vahid and Baierer, Konstantin and Gerber, Mike and Labusch, Kai and Neudecker, Clemens},
   booktitle = {Proceedings of the 7th International Workshop on Historical Document Imaging and Processing {HIP} 2023,
-               San José, US, August 25-26, 2023, ACM.},
+               San José, CA, USA, August 25-26, 2023},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
   year      = {2023},
+  pages     = {73--78},
   url       = {https://doi.org/10.1145/3604951.3605513}
 }
 ```
