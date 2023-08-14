@@ -99,7 +99,7 @@ uses the original (RGB) image despite any binarization that may have occured in 
 If you find this tool useful in your work, please consider citing our paper:
 
 ```bibtex
-@inproceedings{rezanezhad2023eynollah,
+@inproceedings{rezanezhad2023documentlayoutanalysis,
   title     = {Document Layout Analysis with Deep Learning and Heuristics},
   author    = {Rezanezhad, Vahid and Baierer, Konstantin and Gerber, Mike and Labusch, Kai and Neudecker, Clemens},
   booktitle = {Proceedings of the 7th International Workshop on Historical Document Imaging and Processing {HIP} 2023,
