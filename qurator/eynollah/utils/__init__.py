@@ -796,7 +796,7 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch):
 
     return layout_in_patch
 
-def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions_model_full,contours_only_text_parent,all_box_coord,all_found_texline_polygons,slopes,contours_only_text_parent_d_ordered):
+def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions_model_full,contours_only_text_parent,all_box_coord,all_found_textline_polygons,slopes,contours_only_text_parent_d_ordered):
     
     cx_main,cy_main ,x_min_main , x_max_main, y_min_main ,y_max_main,y_corr_x_min_from_argmin=find_new_features_of_contours(contours_only_text_parent)
 
@@ -805,8 +805,8 @@ def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions
 
 
 
-    all_found_texline_polygons_main=[]
-    all_found_texline_polygons_head=[]
+    all_found_textline_polygons_main=[]
+    all_found_textline_polygons_head=[]
 
     all_box_coord_main=[]
     all_box_coord_head=[]
@@ -840,7 +840,7 @@ def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions
                 contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_head.append(all_box_coord[ii])
             slopes_head.append(slopes[ii])
-            all_found_texline_polygons_head.append(all_found_texline_polygons[ii])
+            all_found_textline_polygons_head.append(all_found_textline_polygons[ii])
         else:
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=1
             contours_only_text_parent_main.append(con)
@@ -848,14 +848,14 @@ def check_any_text_region_in_model_one_is_main_or_header(regions_model_1,regions
                 contours_only_text_parent_main_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_main.append(all_box_coord[ii])
             slopes_main.append(slopes[ii])
-            all_found_texline_polygons_main.append(all_found_texline_polygons[ii])
+            all_found_textline_polygons_main.append(all_found_textline_polygons[ii])
 
         #print(all_pixels,pixels_main,pixels_header)
 
-    return regions_model_1,contours_only_text_parent_main,contours_only_text_parent_head,all_box_coord_main,all_box_coord_head,all_found_texline_polygons_main,all_found_texline_polygons_head,slopes_main,slopes_head,contours_only_text_parent_main_d,contours_only_text_parent_head_d
+    return regions_model_1,contours_only_text_parent_main,contours_only_text_parent_head,all_box_coord_main,all_box_coord_head,all_found_textline_polygons_main,all_found_textline_polygons_head,slopes_main,slopes_head,contours_only_text_parent_main_d,contours_only_text_parent_head_d
 
 
-def check_any_text_region_in_model_one_is_main_or_header_light(regions_model_1,regions_model_full,contours_only_text_parent,all_box_coord,all_found_texline_polygons,slopes,contours_only_text_parent_d_ordered):
+def check_any_text_region_in_model_one_is_main_or_header_light(regions_model_1,regions_model_full,contours_only_text_parent,all_box_coord,all_found_textline_polygons,slopes,contours_only_text_parent_d_ordered):
     
     ### to make it faster
     h_o = regions_model_1.shape[0]
@@ -874,8 +874,8 @@ def check_any_text_region_in_model_one_is_main_or_header_light(regions_model_1,r
 
 
 
-    all_found_texline_polygons_main=[]
-    all_found_texline_polygons_head=[]
+    all_found_textline_polygons_main=[]
+    all_found_textline_polygons_head=[]
 
     all_box_coord_main=[]
     all_box_coord_head=[]
@@ -909,7 +909,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(regions_model_1,r
                 contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_head.append(all_box_coord[ii])
             slopes_head.append(slopes[ii])
-            all_found_texline_polygons_head.append(all_found_texline_polygons[ii])
+            all_found_textline_polygons_head.append(all_found_textline_polygons[ii])
         else:
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=1
             contours_only_text_parent_main.append(con)
@@ -917,7 +917,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(regions_model_1,r
                 contours_only_text_parent_main_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_main.append(all_box_coord[ii])
             slopes_main.append(slopes[ii])
-            all_found_texline_polygons_main.append(all_found_texline_polygons[ii])
+            all_found_textline_polygons_main.append(all_found_textline_polygons[ii])
 
         #print(all_pixels,pixels_main,pixels_header)
 
@@ -931,7 +931,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(regions_model_1,r
     contours_only_text_parent_main = [ (i*3.).astype(np.int32) for i in  contours_only_text_parent_main]
     ###
     
-    return regions_model_1,contours_only_text_parent_main,contours_only_text_parent_head,all_box_coord_main,all_box_coord_head,all_found_texline_polygons_main,all_found_texline_polygons_head,slopes_main,slopes_head,contours_only_text_parent_main_d,contours_only_text_parent_head_d
+    return regions_model_1,contours_only_text_parent_main,contours_only_text_parent_head,all_box_coord_main,all_box_coord_head,all_found_textline_polygons_main,all_found_textline_polygons_head,slopes_main,slopes_head,contours_only_text_parent_main_d,contours_only_text_parent_head_d
 
 def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col):
     # print(textlines_con)
