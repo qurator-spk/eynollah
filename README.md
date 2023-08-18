@@ -63,7 +63,7 @@ The following options can be used to further configure the processing:
 | `-tab` | apply table detection |
 | `-ae`  | apply enhancement (the resulting image is saved to the output directory) |
 | `-as`  | apply scaling |
-| `-cl`  | apply countour detection for curved text lines instead of bounding boxes |
+| `-cl`  | apply contour detection for curved text lines instead of bounding boxes |
 | `-ib`  | apply binarization (the resulting image is saved to the output directory)  |
 | `-ep`  | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`) |
 | `-ho`  | ignore headers for reading order dectection |
@@ -99,7 +99,7 @@ uses the original (RGB) image despite any binarization that may have occured in 
 If you find this tool useful in your work, please consider citing our paper:
 
 ```bibtex
-@inproceedings{rezanezhad2023documentlayoutanalysis,
+@inproceedings{rezanezhad2023eynollah,
   title     = {Document Layout Analysis with Deep Learning and Heuristics},
   author    = {Rezanezhad, Vahid and Baierer, Konstantin and Gerber, Mike and Labusch, Kai and Neudecker, Clemens},
   booktitle = {Proceedings of the 7th International Workshop on Historical Document Imaging and Processing {HIP} 2023,

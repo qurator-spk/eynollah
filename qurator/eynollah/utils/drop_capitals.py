@@ -13,13 +13,13 @@ def adhere_drop_capital_region_into_corresponding_textline(
     contours_only_text_parent_h,
     all_box_coord,
     all_box_coord_h,
-    all_found_texline_polygons,
-    all_found_texline_polygons_h,
+    all_found_textline_polygons,
+    all_found_textline_polygons_h,
     kernel=None,
     curved_line=False,
 ):
-    # print(np.shape(all_found_texline_polygons),np.shape(all_found_texline_polygons[3]),'all_found_texline_polygonsshape')
-    # print(all_found_texline_polygons[3])
+    # print(np.shape(all_found_textline_polygons),np.shape(all_found_textline_polygons[3]),'all_found_textline_polygonsshape')
+    # print(all_found_textline_polygons[3])
     cx_m, cy_m, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
     cx_h, cy_h, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent_h)
     cx_d, cy_d, _, _, y_min_d, y_max_d, _ = find_new_features_of_contours(polygons_of_drop_capitals)
@@ -87,9 +87,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
                 region_final = region_with_intersected_drop[np.argmax(sum_pixels_of_intersection)] - 1
 
                 # print(region_final,'region_final')
-                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
                 try:
-                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -105,9 +105,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     arg_min = np.argmin(np.abs(y_lines - y_min_d[i_drop]))
                     # print(arg_min)
 
-                    cnt_nearest = np.copy(all_found_texline_polygons[int(region_final)][arg_min])
-                    cnt_nearest[:, 0, 0] = all_found_texline_polygons[int(region_final)][arg_min][:, 0, 0]  # +all_box_coord[int(region_final)][2]
-                    cnt_nearest[:, 0, 1] = all_found_texline_polygons[int(region_final)][arg_min][:, 0, 1]  # +all_box_coord[int(region_final)][0]
+                    cnt_nearest = np.copy(all_found_textline_polygons[int(region_final)][arg_min])
+                    cnt_nearest[:, 0, 0] = all_found_textline_polygons[int(region_final)][arg_min][:, 0, 0]  # +all_box_coord[int(region_final)][2]
+                    cnt_nearest[:, 0, 1] = all_found_textline_polygons[int(region_final)][arg_min][:, 0, 1]  # +all_box_coord[int(region_final)][0]
 
                     img_textlines = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1], 3))
                     img_textlines = cv2.fillPoly(img_textlines, pts=[cnt_nearest], color=(255, 255, 255))
@@ -131,7 +131,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
 
                     # contours_biggest=contours_biggest.reshape(np.shape(contours_biggest)[0],np.shape(contours_biggest)[2])
 
-                    all_found_texline_polygons[int(region_final)][arg_min] = contours_biggest
+                    all_found_textline_polygons[int(region_final)][arg_min] = contours_biggest
 
                 except:
                     # print('gordun1')
@@ -139,11 +139,11 @@ def adhere_drop_capital_region_into_corresponding_textline(
             elif len(region_with_intersected_drop) == 1:
                 region_final = region_with_intersected_drop[0] - 1
 
-                # areas_main=np.array([cv2.contourArea(all_found_texline_polygons[int(region_final)][0][j] ) for j in range(len(all_found_texline_polygons[int(region_final)]))])
+                # areas_main=np.array([cv2.contourArea(all_found_textline_polygons[int(region_final)][0][j] ) for j in range(len(all_found_textline_polygons[int(region_final)]))])
 
-                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
                 try:
-                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -157,9 +157,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     arg_min = np.argmin(np.abs(y_lines - y_min_d[i_drop]))
                     # print(arg_min)
 
-                    cnt_nearest = np.copy(all_found_texline_polygons[int(region_final)][arg_min])
-                    cnt_nearest[:, 0, 0] = all_found_texline_polygons[int(region_final)][arg_min][:, 0, 0]  # +all_box_coord[int(region_final)][2]
-                    cnt_nearest[:, 0, 1] = all_found_texline_polygons[int(region_final)][arg_min][:, 0, 1]  # +all_box_coord[int(region_final)][0]
+                    cnt_nearest = np.copy(all_found_textline_polygons[int(region_final)][arg_min])
+                    cnt_nearest[:, 0, 0] = all_found_textline_polygons[int(region_final)][arg_min][:, 0, 0]  # +all_box_coord[int(region_final)][2]
+                    cnt_nearest[:, 0, 1] = all_found_textline_polygons[int(region_final)][arg_min][:, 0, 1]  # +all_box_coord[int(region_final)][0]
 
                     img_textlines = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1], 3))
                     img_textlines = cv2.fillPoly(img_textlines, pts=[cnt_nearest], color=(255, 255, 255))
@@ -184,15 +184,15 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     # contours_biggest[:,0,0]=contours_biggest[:,0,0]#-all_box_coord[int(region_final)][2]
                     # contours_biggest[:,0,1]=contours_biggest[:,0,1]#-all_box_coord[int(region_final)][0]
                     # print(np.shape(contours_biggest),'contours_biggest')
-                    # print(np.shape(all_found_texline_polygons[int(region_final)][arg_min]))
+                    # print(np.shape(all_found_textline_polygons[int(region_final)][arg_min]))
                     ##contours_biggest=contours_biggest.reshape(np.shape(contours_biggest)[0],np.shape(contours_biggest)[2])
-                    all_found_texline_polygons[int(region_final)][arg_min] = contours_biggest
+                    all_found_textline_polygons[int(region_final)][arg_min] = contours_biggest
                 except:
                     pass
 
                 try:
-                    # print(all_found_texline_polygons[j_cont][0])
-                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                    # print(all_found_textline_polygons[j_cont][0])
+                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -206,9 +206,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     arg_min = np.argmin(np.abs(y_lines - y_min_d[i_drop]))
                     # print(arg_min)
 
-                    cnt_nearest = np.copy(all_found_texline_polygons[int(region_final)][arg_min])
-                    cnt_nearest[:, 0, 0] = all_found_texline_polygons[int(region_final)][arg_min][:, 0, 0]  # +all_box_coord[int(region_final)][2]
-                    cnt_nearest[:, 0, 1] = all_found_texline_polygons[int(region_final)][arg_min][:, 0, 1]  # +all_box_coord[int(region_final)][0]
+                    cnt_nearest = np.copy(all_found_textline_polygons[int(region_final)][arg_min])
+                    cnt_nearest[:, 0, 0] = all_found_textline_polygons[int(region_final)][arg_min][:, 0, 0]  # +all_box_coord[int(region_final)][2]
+                    cnt_nearest[:, 0, 1] = all_found_textline_polygons[int(region_final)][arg_min][:, 0, 1]  # +all_box_coord[int(region_final)][0]
 
                     img_textlines = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1], 3))
                     img_textlines = cv2.fillPoly(img_textlines, pts=[cnt_nearest], color=(255, 255, 255))
@@ -231,15 +231,15 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     contours_biggest[:, 0, 1] = contours_biggest[:, 0, 1]  # -all_box_coord[int(region_final)][0]
 
                     ##contours_biggest=contours_biggest.reshape(np.shape(contours_biggest)[0],np.shape(contours_biggest)[2])
-                    all_found_texline_polygons[int(region_final)][arg_min] = contours_biggest
-                    # all_found_texline_polygons[int(region_final)][arg_min]=contours_biggest
+                    all_found_textline_polygons[int(region_final)][arg_min] = contours_biggest
+                    # all_found_textline_polygons[int(region_final)][arg_min]=contours_biggest
 
                 except:
                     pass
             else:
                 pass
 
-            ##cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+            ##cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
             ###print(all_box_coord[j_cont])
             ###print(cx_t)
             ###print(cy_t)
@@ -253,9 +253,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
             ##arg_min=np.argmin(np.abs(y_lines-y_min_d[i_drop])  )
             ###print(arg_min)
 
-            ##cnt_nearest=np.copy(all_found_texline_polygons[int(region_final)][arg_min])
-            ##cnt_nearest[:,0,0]=all_found_texline_polygons[int(region_final)][arg_min][:,0,0]#+all_box_coord[int(region_final)][2]
-            ##cnt_nearest[:,0,1]=all_found_texline_polygons[int(region_final)][arg_min][:,0,1]#+all_box_coord[int(region_final)][0]
+            ##cnt_nearest=np.copy(all_found_textline_polygons[int(region_final)][arg_min])
+            ##cnt_nearest[:,0,0]=all_found_textline_polygons[int(region_final)][arg_min][:,0,0]#+all_box_coord[int(region_final)][2]
+            ##cnt_nearest[:,0,1]=all_found_textline_polygons[int(region_final)][arg_min][:,0,1]#+all_box_coord[int(region_final)][0]
 
             ##img_textlines=np.zeros((text_regions_p.shape[0],text_regions_p.shape[1],3))
             ##img_textlines=cv2.fillPoly(img_textlines,pts=[cnt_nearest],color=(255,255,255))
@@ -281,7 +281,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
             ##contours_biggest[:,0,1]=contours_biggest[:,0,1]#-all_box_coord[int(region_final)][0]
 
             ##contours_biggest=contours_biggest.reshape(np.shape(contours_biggest)[0],np.shape(contours_biggest)[2])
-            ##all_found_texline_polygons[int(region_final)][arg_min]=contours_biggest
+            ##all_found_textline_polygons[int(region_final)][arg_min]=contours_biggest
 
         else:
             if len(region_with_intersected_drop) > 1:
@@ -293,9 +293,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
                 region_final = region_with_intersected_drop[np.argmax(sum_pixels_of_intersection)] - 1
 
                 # print(region_final,'region_final')
-                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
                 try:
-                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -311,9 +311,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     arg_min = np.argmin(np.abs(y_lines - y_min_d[i_drop]))
                     # print(arg_min)
 
-                    cnt_nearest = np.copy(all_found_texline_polygons[int(region_final)][arg_min])
-                    cnt_nearest[:, 0] = all_found_texline_polygons[int(region_final)][arg_min][:, 0] + all_box_coord[int(region_final)][2]
-                    cnt_nearest[:, 1] = all_found_texline_polygons[int(region_final)][arg_min][:, 1] + all_box_coord[int(region_final)][0]
+                    cnt_nearest = np.copy(all_found_textline_polygons[int(region_final)][arg_min])
+                    cnt_nearest[:, 0] = all_found_textline_polygons[int(region_final)][arg_min][:, 0] + all_box_coord[int(region_final)][2]
+                    cnt_nearest[:, 1] = all_found_textline_polygons[int(region_final)][arg_min][:, 1] + all_box_coord[int(region_final)][0]
 
                     img_textlines = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1], 3))
                     img_textlines = cv2.fillPoly(img_textlines, pts=[cnt_nearest], color=(255, 255, 255))
@@ -337,7 +337,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
 
                     contours_biggest = contours_biggest.reshape(np.shape(contours_biggest)[0], np.shape(contours_biggest)[2])
 
-                    all_found_texline_polygons[int(region_final)][arg_min] = contours_biggest
+                    all_found_textline_polygons[int(region_final)][arg_min] = contours_biggest
 
                 except:
                     # print('gordun1')
@@ -345,14 +345,14 @@ def adhere_drop_capital_region_into_corresponding_textline(
             elif len(region_with_intersected_drop) == 1:
                 region_final = region_with_intersected_drop[0] - 1
 
-                # areas_main=np.array([cv2.contourArea(all_found_texline_polygons[int(region_final)][0][j] ) for j in range(len(all_found_texline_polygons[int(region_final)]))])
+                # areas_main=np.array([cv2.contourArea(all_found_textline_polygons[int(region_final)][0][j] ) for j in range(len(all_found_textline_polygons[int(region_final)]))])
 
-                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
 
                 # print(cx_t,'print')
                 try:
-                    # print(all_found_texline_polygons[j_cont][0])
-                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_texline_polygons[int(region_final)])
+                    # print(all_found_textline_polygons[j_cont][0])
+                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -366,9 +366,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     arg_min = np.argmin(np.abs(y_lines - y_min_d[i_drop]))
                     # print(arg_min)
 
-                    cnt_nearest = np.copy(all_found_texline_polygons[int(region_final)][arg_min])
-                    cnt_nearest[:, 0] = all_found_texline_polygons[int(region_final)][arg_min][:, 0] + all_box_coord[int(region_final)][2]
-                    cnt_nearest[:, 1] = all_found_texline_polygons[int(region_final)][arg_min][:, 1] + all_box_coord[int(region_final)][0]
+                    cnt_nearest = np.copy(all_found_textline_polygons[int(region_final)][arg_min])
+                    cnt_nearest[:, 0] = all_found_textline_polygons[int(region_final)][arg_min][:, 0] + all_box_coord[int(region_final)][2]
+                    cnt_nearest[:, 1] = all_found_textline_polygons[int(region_final)][arg_min][:, 1] + all_box_coord[int(region_final)][0]
 
                     img_textlines = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1], 3))
                     img_textlines = cv2.fillPoly(img_textlines, pts=[cnt_nearest], color=(255, 255, 255))
@@ -391,8 +391,8 @@ def adhere_drop_capital_region_into_corresponding_textline(
                     contours_biggest[:, 0, 1] = contours_biggest[:, 0, 1] - all_box_coord[int(region_final)][0]
 
                     contours_biggest = contours_biggest.reshape(np.shape(contours_biggest)[0], np.shape(contours_biggest)[2])
-                    all_found_texline_polygons[int(region_final)][arg_min] = contours_biggest
-                    # all_found_texline_polygons[int(region_final)][arg_min]=contours_biggest
+                    all_found_textline_polygons[int(region_final)][arg_min] = contours_biggest
+                    # all_found_textline_polygons[int(region_final)][arg_min]=contours_biggest
 
                 except:
                     pass
@@ -417,8 +417,8 @@ def adhere_drop_capital_region_into_corresponding_textline(
     ######plt.show()
     #####try:
     #####if len(contours_new_parent)==1:
-    ######print(all_found_texline_polygons[j_cont][0])
-    #####cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_texline_polygons[j_cont])
+    ######print(all_found_textline_polygons[j_cont][0])
+    #####cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[j_cont])
     ######print(all_box_coord[j_cont])
     ######print(cx_t)
     ######print(cy_t)
@@ -431,9 +431,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
     #####arg_min=np.argmin(np.abs(y_lines-y_min_d[i_drop])  )
     ######print(arg_min)
 
-    #####cnt_nearest=np.copy(all_found_texline_polygons[j_cont][arg_min])
-    #####cnt_nearest[:,0]=all_found_texline_polygons[j_cont][arg_min][:,0]+all_box_coord[j_cont][2]
-    #####cnt_nearest[:,1]=all_found_texline_polygons[j_cont][arg_min][:,1]+all_box_coord[j_cont][0]
+    #####cnt_nearest=np.copy(all_found_textline_polygons[j_cont][arg_min])
+    #####cnt_nearest[:,0]=all_found_textline_polygons[j_cont][arg_min][:,0]+all_box_coord[j_cont][2]
+    #####cnt_nearest[:,1]=all_found_textline_polygons[j_cont][arg_min][:,1]+all_box_coord[j_cont][0]
 
     #####img_textlines=np.zeros((text_regions_p.shape[0],text_regions_p.shape[1],3))
     #####img_textlines=cv2.fillPoly(img_textlines,pts=[cnt_nearest],color=(255,255,255))
@@ -454,7 +454,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
     #####contours_biggest[:,0,0]=contours_biggest[:,0,0]-all_box_coord[j_cont][2]
     #####contours_biggest[:,0,1]=contours_biggest[:,0,1]-all_box_coord[j_cont][0]
 
-    #####all_found_texline_polygons[j_cont][arg_min]=contours_biggest
+    #####all_found_textline_polygons[j_cont][arg_min]=contours_biggest
     ######print(contours_biggest)
     ######plt.imshow(img_textlines[:,:,0])
     ######plt.show()
@@ -462,7 +462,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
     #####pass
     #####except:
     #####pass
-    return all_found_texline_polygons
+    return all_found_textline_polygons
 
 def filter_small_drop_capitals_from_no_patch_layout(layout_no_patch, layout1):
 

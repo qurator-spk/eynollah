@@ -7,13 +7,13 @@ class EynollahIdCounter():
 
     def __init__(self, region_idx=0, line_idx=0):
         self._counter = Counter()
-        self._inital_region_idx = region_idx
-        self._inital_line_idx = line_idx
+        self._initial_region_idx = region_idx
+        self._initial_line_idx = line_idx
         self.reset()
 
     def reset(self):
-        self.set('region', self._inital_region_idx)
-        self.set('line', self._inital_line_idx)
+        self.set('region', self._initial_region_idx)
+        self.set('line', self._initial_line_idx)
 
     def inc(self, name, val=1):
         self._counter.update({name: val})
