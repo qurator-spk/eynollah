@@ -19,9 +19,9 @@
 * [OCR-D](https://github.com/qurator-spk/eynollah#use-as-ocr-d-processor) interface
 
 ## Installation
-Python versions `3.7-3.10` with Tensorflow versions `2.4-2.11` are currently supported. 
+Python versions `3.8-3.11` with Tensorflow versions >=`2.12` are currently supported. 
 
-For (limited) GPU support the [matching](https://www.tensorflow.org/install/source#gpu) CUDA toolkit needs to be installed.
+For (limited) GPU support the CUDA toolkit needs to be installed.
 
 You can either install via 
 
