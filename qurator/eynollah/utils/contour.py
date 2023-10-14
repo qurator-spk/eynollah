@@ -44,8 +44,8 @@ def get_text_region_boxes_by_given_contours(contours):
 
 def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area):
     found_polygons_early = list()
-    jv = 0
-    for c in contours:
+
+    for jv,c in enumerate(contours):
         if len(c) < 3:  # A polygon cannot have less than 3 points
             continue
 
@@ -53,14 +53,12 @@ def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area
         area = polygon.area
         if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]) and hierarchy[0][jv][3] == -1:  # and hierarchy[0][jv][3]==-1 :
             found_polygons_early.append(np.array([[point] for point in polygon.exterior.coords], dtype=np.uint))
-        jv += 1
     return found_polygons_early
 
 def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, min_area):
     found_polygons_early = list()
 
-    jv = 0
-    for c in contours:
+    for jv,c in enumerate(contours):
         if len(c) < 3:  # A polygon cannot have less than 3 points
             continue
 
@@ -73,7 +71,6 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
         if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]):  # and hierarchy[0][jv][3]==-1 :
             # print(c[0][0][1])
             found_polygons_early.append(np.array([[point] for point in polygon.exterior.coords], dtype=np.int32))
-        jv += 1
     return found_polygons_early
 
 def find_new_features_of_contours(contours_main):
@@ -234,8 +231,6 @@ def get_textregion_contours_in_org_image_multi2(cnts, img, slope_first):
     with Pool(cpu_count()) as p:
         cnts_org = p.starmap(loop_contour_image, [(index_l,cnts, img,slope_first) for index_l in range(len(cnts))])
         
-    print(len(cnts_org),'lendiha')
-
     return cnts_org
 
 def get_textregion_contours_in_org_image(cnts, img, slope_first):
