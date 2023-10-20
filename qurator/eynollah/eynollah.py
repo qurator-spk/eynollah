@@ -2881,16 +2881,17 @@ class Eynollah:
         height3 =672#448
         width3 = 448#224
         
-        _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(contours_only_text_parent_h)
-        
-        
         img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
-
-        for j in range(len(cy_main)):
-            img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,int(x_min_main[j]):int(x_max_main[j]) ] = 1 
-            
         
-        co_text_all = contours_only_text_parent + contours_only_text_parent_h
+        if contours_only_text_parent_h:
+            _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(contours_only_text_parent_h)
+            
+            for j in range(len(cy_main)):
+                img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,int(x_min_main[j]):int(x_max_main[j]) ] = 1 
+            
+            co_text_all = contours_only_text_parent + contours_only_text_parent_h
+        else:
+            co_text_all = contours_only_text_parent
 
 
         labels_con = np.zeros((y_len,x_len,len(co_text_all)),dtype='uint8')
@@ -2984,7 +2985,7 @@ class Eynollah:
         
         return order_of_texts, id_of_texts
     
-    def update_list_and_return_first_biger_than_one_length(self,index_element_to_be_updated, innner_index_pr_pos, pr_list, pos_list,list_inp):
+    def update_list_and_return_first_with_length_bigger_than_one(self,index_element_to_be_updated, innner_index_pr_pos, pr_list, pos_list,list_inp):
         list_inp.pop(index_element_to_be_updated)
         if len(pr_list)>0:
             list_inp.insert(index_element_to_be_updated, pr_list)
@@ -3030,16 +3031,17 @@ class Eynollah:
         height3 =672#448
         width3 = 448#224
         
-        _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(contours_only_text_parent_h)
-        
-        
         img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
-
-        for j in range(len(cy_main)):
-            img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,int(x_min_main[j]):int(x_max_main[j]) ] = 1 
-            
         
-        co_text_all = contours_only_text_parent + contours_only_text_parent_h
+        if contours_only_text_parent_h:
+            _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(contours_only_text_parent_h)
+            
+            for j in range(len(cy_main)):
+                img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,int(x_min_main[j]):int(x_max_main[j]) ] = 1 
+            
+            co_text_all = contours_only_text_parent + contours_only_text_parent_h
+        else:
+            co_text_all = contours_only_text_parent
 
 
         labels_con = np.zeros((y_len,x_len,len(co_text_all)),dtype='uint8')
@@ -3118,7 +3120,7 @@ class Eynollah:
                     
                 tot_counter = tot_counter+1
                     
-            starting_list_of_regions, index_update = self.update_list_and_return_first_biger_than_one_length(index_update, i, pr_list, post_list,starting_list_of_regions)
+            starting_list_of_regions, index_update = self.update_list_and_return_first_with_length_bigger_than_one(index_update, i, pr_list, post_list,starting_list_of_regions)
 
         index_sort = [i[0] for i in starting_list_of_regions ]
         
@@ -3138,7 +3140,7 @@ class Eynollah:
         """
         self.logger.debug("enter run")
         
-        self.reading_order_machine_based = True#True
+        self.reading_order_machine_based = True#False#True#True
 
         t0_tot = time.time()
 
@@ -3359,32 +3361,32 @@ class Eynollah:
                 all_found_textline_polygons = adhere_drop_capital_region_into_corresponding_textline(text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_textline_polygons, all_found_textline_polygons_h, kernel=KERNEL, curved_line=self.curved_line)
                 pixel_lines = 6
                 
+                if not self.reading_order_machine_based:
+                    if not self.headers_off:
+                        if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                            num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables,  pixel_lines, contours_only_text_parent_h)
+                        else:
+                            _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines, contours_only_text_parent_h_d_ordered)
+                    elif self.headers_off:
+                        if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                            num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables,  pixel_lines)
+                        else:
+                            _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines)
 
-                if not self.headers_off:
-                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                        num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables,  pixel_lines, contours_only_text_parent_h)
-                    else:
-                        _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines, contours_only_text_parent_h_d_ordered)
-                elif self.headers_off:
-                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                        num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables,  pixel_lines)
-                    else:
-                        _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines)
+                    if num_col_classifier >= 3:
+                        if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                            regions_without_separators = regions_without_separators.astype(np.uint8)
+                            regions_without_separators = cv2.erode(regions_without_separators[:, :], KERNEL, iterations=6)
 
-                if num_col_classifier >= 3:
-                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                        regions_without_separators = regions_without_separators.astype(np.uint8)
-                        regions_without_separators = cv2.erode(regions_without_separators[:, :], KERNEL, iterations=6)
-
-                    else:
-                        regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
-                        regions_without_separators_d = cv2.erode(regions_without_separators_d[:, :], KERNEL, iterations=6)
+                        else:
+                            regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
+                            regions_without_separators_d = cv2.erode(regions_without_separators_d[:, :], KERNEL, iterations=6)
                         
-
-                if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables, self.right2left)
-                else:
-                    boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables, self.right2left)     
+                if not self.reading_order_machine_based:
+                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                        boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables, self.right2left)
+                    else:
+                        boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables, self.right2left)     
 
             #print(boxes_d,'boxes_d')
             #img_once = np.zeros((textline_mask_tot_d.shape[0],textline_mask_tot_d.shape[1]))
