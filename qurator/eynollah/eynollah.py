@@ -2857,32 +2857,20 @@ class Eynollah:
         return model
     
     def do_order_of_regions_with_machine(self,contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
-        
-        #print(text_regions_p.shape)
         y_len = text_regions_p.shape[0]
         x_len = text_regions_p.shape[1]
         
         img_poly = np.zeros((y_len,x_len), dtype='uint8')
         
         unique_pix = np.unique(text_regions_p)
-        #print(unique_pix, 'unique_pix')
-        
-        #for pix in unique_pix:
-            #print(pix)
-            #plt.imshow((text_regions_p[:,:]==pix)*1 )
-            #plt.show()
+
             
         img_poly[text_regions_p[:,:]==1] = 1
         img_poly[text_regions_p[:,:]==2] = 2
         img_poly[text_regions_p[:,:]==3] = 4
         img_poly[text_regions_p[:,:]==6] = 5
             
-        #plt.imshow(text_regions_p)
-        #plt.show()
-        
-        
-        #plt.imshow(img_poly)
-        #plt.show()
+
         model_ro_machine, _ = self.start_new_session_and_model(self.model_reading_order_machine_dir)
 
         height1 =672#448
@@ -2900,19 +2888,11 @@ class Eynollah:
         img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
 
         for j in range(len(cy_main)):
-            #print(j, int(y_max_main[j]), x_min_main[j], x_max_main[j] )
             img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,int(x_min_main[j]):int(x_max_main[j]) ] = 1 
             
-        #plt.imshow(img_header_and_sep[:,:])
-        #plt.show()
         
         co_text_all = contours_only_text_parent + contours_only_text_parent_h
-        #id_all_text = id_paragraph + id_header
 
-        #texts_corr_order_index  = [index_tot_regions[tot_region_ref.index(i)] for i in id_all_text ]
-        #texts_corr_order_index_int = [int(x) for x in texts_corr_order_index]
-
-        #co_text_all, texts_corr_order_index_int = filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int, max_area, min_area)
 
         labels_con = np.zeros((y_len,x_len,len(co_text_all)),dtype='uint8')
         for i in range(len(co_text_all)):
@@ -2932,63 +2912,69 @@ class Eynollah:
         img3 = img3.astype(np.uint16)
         
         
-        #plt.imshow(img3)
-        #plt.show()
-        
         order_matrix = np.zeros((labels_con.shape[2], labels_con.shape[2]))-1
+        inference_bs = 6
+        tot_counter = 1
+        batch_counter = 0
+        i_indexer = []
+        j_indexer =[]
         
+        input_1= np.zeros( (inference_bs, height1, width1,3))
+        
+        tot_iteration = int( ( labels_con.shape[2]*(labels_con.shape[2]-1) )/2. )
+        full_bs_ite= tot_iteration//inference_bs
+        last_bs = tot_iteration % inference_bs
+        
+        #print(labels_con.shape[2],"number of regions for reading order")
         for i in range(labels_con.shape[2]):
             for j in range(labels_con.shape[2]):
                 if j>i:
                     img1= np.repeat(labels_con[:,:,i][:, :, np.newaxis], 3, axis=2)
                     img2 = np.repeat(labels_con[:,:,j][:, :, np.newaxis], 3, axis=2)
-                    #img1 = img1.astype(np.uint16)
-                    #img2 = img2.astype(np.uint16)
                     
                     img2[:,:,0][img3[:,:]==5] = 2
                     img2[:,:,0][img_header_and_sep[:,:]==1] = 3
-                    
-                    
                     
                     img1[:,:,0][img3[:,:]==5] = 2
                     img1[:,:,0][img_header_and_sep[:,:]==1] = 3
                     
                     
-                    #plt.imshow(labels_con[:,:,i])
-                    #plt.show()
+                    i_indexer.append(i)
+                    j_indexer.append(j)
+                    
+                    input_1[batch_counter,:,:,0] = img1[:,:,0]/3.
+                    input_1[batch_counter,:,:,2] = img2[:,:,0]/3.
+                    input_1[batch_counter,:,:,1] = img3[:,:]/5.
+                    
+                    batch_counter = batch_counter+1
+                    
+                    if batch_counter==inference_bs or ( (tot_counter//inference_bs)==full_bs_ite and tot_counter%inference_bs==last_bs):
+                        y_pr=model_ro_machine.predict(input_1 , verbose=0)
 
-                    #plt.imshow(img2[:,:,0])
-                    #plt.show()
-                    
-                    
-                    #plt.imshow(img1[:,:,0])
-                    #plt.show()
-                    
-                    #sys.exit()
-                    input_1= np.zeros( (height1, width1,3))
-                    
-                    input_1[:,:,0] = img1[:,:,0]/3.
-                    input_1[:,:,2] = img2[:,:,0]/3.
-                    input_1[:,:,1] = img3[:,:]/5.
-                    
-                    #y_pr=model.predict([img1.reshape(1,height1,width1,3) , img2.reshape(1,height2,width2,3),img3.reshape(1,height3,width3,3) ], verbose=2)
-                    y_pr=model_ro_machine.predict(input_1.reshape(1,height1,width1,3) , verbose=0)
-                    #print(y_pr)
-
-                    if y_pr>=0.5:
-                        order_class = 1
-                    else:
-                        order_class = 0
+                        if batch_counter==inference_bs:
+                            iteration_batches = inference_bs
+                        else:
+                            iteration_batches = last_bs
+                        for jb in range(iteration_batches):
+                            if y_pr[jb][0]>=0.5:
+                                order_class = 1
+                            else:
+                                order_class = 0
+                                
+                            order_matrix[i_indexer[jb],j_indexer[jb]] = y_pr[jb][0]#order_class
+                            order_matrix[j_indexer[jb],i_indexer[jb]] = 1-y_pr[jb][0]#int( 1 - order_class)
                         
-                    order_matrix[i,j] = y_pr#order_class
-                    order_matrix[j,i] = 1-y_pr#int( 1 - order_class)
+                        batch_counter = 0
+                        
+                        i_indexer = []
+                        j_indexer = []
+                    tot_counter = tot_counter+1
                     
                     
         sum_mat = np.sum(order_matrix, axis=1)
         index_sort = np.argsort(sum_mat)
         index_sort = index_sort[::-1]
         
-        print(index_sort)
         REGION_ID_TEMPLATE = 'region_%04d'
         order_of_texts = []
         id_of_texts = []
@@ -3272,13 +3258,12 @@ class Eynollah:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
                     else:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
+                self.logger.info("detection of reading order took %.1fs", time.time() - t_order)
 
                 pcgts = self.writer.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_xml)
                 self.logger.info("Job done in %.1fs", time.time() - t0)
                 ##return pcgts
                 
-                print(id_of_texts_tot,'id_of_texts_tot')
-                print(order_text_new,'order_text_new')
                 
             else:
                 contours_only_text_parent_h = None
@@ -3291,6 +3276,7 @@ class Eynollah:
                         contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
                     
+                self.logger.info("detection of reading order took %.1fs", time.time() - t_order)
                 pcgts = self.writer.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_xml, contours_tables)
                 self.logger.info("Job done in %.1fs", time.time() - t0)
                 ##return pcgts
