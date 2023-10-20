@@ -2855,7 +2855,6 @@ class Eynollah:
             model = load_model(model_file , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
 
         return model
-    
     def do_order_of_regions_with_machine(self,contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
         y_len = text_regions_p.shape[0]
         x_len = text_regions_p.shape[1]
@@ -2974,6 +2973,154 @@ class Eynollah:
         sum_mat = np.sum(order_matrix, axis=1)
         index_sort = np.argsort(sum_mat)
         index_sort = index_sort[::-1]
+        
+        REGION_ID_TEMPLATE = 'region_%04d'
+        order_of_texts = []
+        id_of_texts = []
+        for order, id_text in enumerate(index_sort):
+            order_of_texts.append(id_text)
+            id_of_texts.append( REGION_ID_TEMPLATE % order )
+            
+        
+        return order_of_texts, id_of_texts
+    
+    def update_list_and_return_first_biger_than_one_length(self,index_element_to_be_updated, innner_index_pr_pos, pr_list, pos_list,list_inp):
+        list_inp.pop(index_element_to_be_updated)
+        if len(pr_list)>0:
+            list_inp.insert(index_element_to_be_updated, pr_list)
+        else:
+            index_element_to_be_updated = index_element_to_be_updated -1
+        
+        list_inp.insert(index_element_to_be_updated+1, [innner_index_pr_pos])
+        if len(pos_list)>0:
+            list_inp.insert(index_element_to_be_updated+2, pos_list)
+        
+        len_all_elements = [len(i) for i in list_inp]
+        list_len_bigger_1 = np.where(np.array(len_all_elements)>1)
+        list_len_bigger_1 = list_len_bigger_1[0]
+        
+        if len(list_len_bigger_1)>0:
+            early_list_bigger_than_one = list_len_bigger_1[0]
+        else:
+            early_list_bigger_than_one = -20
+        return list_inp, early_list_bigger_than_one
+    def do_order_of_regions_with_machine_optimized_algorithm(self,contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
+        y_len = text_regions_p.shape[0]
+        x_len = text_regions_p.shape[1]
+        
+        img_poly = np.zeros((y_len,x_len), dtype='uint8')
+        
+        unique_pix = np.unique(text_regions_p)
+
+            
+        img_poly[text_regions_p[:,:]==1] = 1
+        img_poly[text_regions_p[:,:]==2] = 2
+        img_poly[text_regions_p[:,:]==3] = 4
+        img_poly[text_regions_p[:,:]==6] = 5
+            
+
+        model_ro_machine, _ = self.start_new_session_and_model(self.model_reading_order_machine_dir)
+
+        height1 =672#448
+        width1 = 448#224
+
+        height2 =672#448
+        width2= 448#224
+
+        height3 =672#448
+        width3 = 448#224
+        
+        _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(contours_only_text_parent_h)
+        
+        
+        img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
+
+        for j in range(len(cy_main)):
+            img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,int(x_min_main[j]):int(x_max_main[j]) ] = 1 
+            
+        
+        co_text_all = contours_only_text_parent + contours_only_text_parent_h
+
+
+        labels_con = np.zeros((y_len,x_len,len(co_text_all)),dtype='uint8')
+        for i in range(len(co_text_all)):
+            img_label = np.zeros((y_len,x_len,3),dtype='uint8')
+            img_label=cv2.fillPoly(img_label, pts =[co_text_all[i]], color=(1,1,1))
+            labels_con[:,:,i] = img_label[:,:,0]
+            
+            
+        img3= np.copy(img_poly)
+
+        labels_con = resize_image(labels_con, height1, width1)
+
+        img_header_and_sep = resize_image(img_header_and_sep, height1, width1)
+
+        img3= resize_image (img3, height3, width3)
+
+        img3 = img3.astype(np.uint16)
+        
+        inference_bs = 4
+        input_1= np.zeros( (inference_bs, height1, width1,3))
+        starting_list_of_regions = []
+        starting_list_of_regions.append( list(range(labels_con.shape[2])) )
+        index_update = 0
+        index_selected = starting_list_of_regions[0]
+        #print(labels_con.shape[2],"number of regions for reading order")
+        while index_update>=0:
+            ij_list = starting_list_of_regions[index_update] 
+            i = ij_list[0]
+            ij_list.pop(0)
+            
+            pr_list = []
+            post_list = []
+            
+            batch_counter = 0
+            tot_counter = 1
+            
+            tot_iteration = len(ij_list)
+            full_bs_ite= tot_iteration//inference_bs
+            last_bs = tot_iteration % inference_bs
+            
+            jbatch_indexer =[]
+            for j in ij_list:
+                img1= np.repeat(labels_con[:,:,i][:, :, np.newaxis], 3, axis=2)
+                img2 = np.repeat(labels_con[:,:,j][:, :, np.newaxis], 3, axis=2)
+                
+                img2[:,:,0][img3[:,:]==5] = 2
+                img2[:,:,0][img_header_and_sep[:,:]==1] = 3
+                
+                img1[:,:,0][img3[:,:]==5] = 2
+                img1[:,:,0][img_header_and_sep[:,:]==1] = 3
+
+                jbatch_indexer.append(j)
+                    
+                input_1[batch_counter,:,:,0] = img1[:,:,0]/3.
+                input_1[batch_counter,:,:,2] = img2[:,:,0]/3.
+                input_1[batch_counter,:,:,1] = img3[:,:]/5.
+
+                batch_counter = batch_counter+1
+                
+                if batch_counter==inference_bs or ( (tot_counter//inference_bs)==full_bs_ite and tot_counter%inference_bs==last_bs):
+                    y_pr=model_ro_machine.predict(input_1 , verbose=0)
+                    
+                    if batch_counter==inference_bs:
+                        iteration_batches = inference_bs
+                    else:
+                        iteration_batches = last_bs
+                    for jb in range(iteration_batches):
+                        if y_pr[jb][0]>=0.5:
+                            post_list.append(jbatch_indexer[jb])
+                        else:
+                            pr_list.append(jbatch_indexer[jb])
+                            
+                    batch_counter = 0
+                    jbatch_indexer = []
+                    
+                tot_counter = tot_counter+1
+                    
+            starting_list_of_regions, index_update = self.update_list_and_return_first_biger_than_one_length(index_update, i, pr_list, post_list,starting_list_of_regions)
+
+        index_sort = [i[0] for i in starting_list_of_regions ]
         
         REGION_ID_TEMPLATE = 'region_%04d'
         order_of_texts = []
@@ -3252,7 +3399,7 @@ class Eynollah:
             if self.full_layout:
                 
                 if self.reading_order_machine_based:
-                    order_text_new, id_of_texts_tot = self.do_order_of_regions_with_machine(contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
+                    order_text_new, id_of_texts_tot = self.do_order_of_regions_with_machine_optimized_algorithm(contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
                 else:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
@@ -3268,7 +3415,7 @@ class Eynollah:
             else:
                 contours_only_text_parent_h = None
                 if self.reading_order_machine_based:
-                    order_text_new, id_of_texts_tot = self.do_order_of_regions_with_machine(contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
+                    order_text_new, id_of_texts_tot = self.do_order_of_regions_with_machine_optimized_algorithm(contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
                 else:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
