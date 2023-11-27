@@ -148,6 +148,7 @@ class Eynollah:
         dir_out=None,
         dir_in=None,
         dir_of_cropped_images=None,
+        extract_only_images=False,
         dir_of_layout=None,
         dir_of_deskewed=None,
         dir_of_all=None,
@@ -195,7 +196,7 @@ class Eynollah:
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
         self.light_version = light_version
-        self.extract_only_images = True
+        self.extract_only_images = extract_only_images
         self.ignore_page_extraction = ignore_page_extraction
         self.pcgts = pcgts
         if not dir_in:
@@ -2953,9 +2954,6 @@ class Eynollah:
         Get image and scales, then extract the page of scanned image
         """
         self.logger.debug("enter run")
-        
-        self.extract_only_images = True
-
 
         t0_tot = time.time()
 
