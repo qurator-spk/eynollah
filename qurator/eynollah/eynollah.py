@@ -1669,9 +1669,39 @@ class Eynollah:
         
         text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
         
-        polygons_of_images = return_contours_of_interested_region(text_regions_p_true, 2)
+        polygons_of_images = return_contours_of_interested_region(text_regions_p_true, 2, 0.0001)
         
-        return text_regions_p_true, erosion_hurts, polygons_lines_xml, polygons_of_images
+        image_boundary_of_doc = np.zeros((text_regions_p_true.shape[0], text_regions_p_true.shape[1]))
+        
+        image_boundary_of_doc[:20, :] = 1
+        image_boundary_of_doc[text_regions_p_true.shape[0]-20:text_regions_p_true.shape[0], :] = 1
+        
+        image_boundary_of_doc[:, :20] = 1
+        image_boundary_of_doc[:, text_regions_p_true.shape[1]-20:text_regions_p_true.shape[1]] = 1
+        
+        #plt.imshow(image_boundary_of_doc)
+        #plt.show()
+        
+        polygons_of_images_fin = []
+        for ploy_img_ind in polygons_of_images:
+            test_poly_image = np.zeros((text_regions_p_true.shape[0], text_regions_p_true.shape[1]))
+            test_poly_image = cv2.fillPoly(test_poly_image, pts = [ploy_img_ind], color=(1,1,1))
+            
+            test_poly_image = test_poly_image[:,:] + image_boundary_of_doc[:,:]
+            test_poly_image_intersected_area = ( test_poly_image[:,:]==2 )*1
+            
+            test_poly_image_intersected_area = test_poly_image_intersected_area.sum()
+            
+            if test_poly_image_intersected_area==0:
+                polygons_of_images_fin.append(ploy_img_ind)
+            #plt.imshow(test_poly_image)
+            #plt.show()
+            
+            
+            
+        
+        
+        return text_regions_p_true, erosion_hurts, polygons_lines_xml, polygons_of_images_fin
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_light_v")
         erosion_hurts = False
