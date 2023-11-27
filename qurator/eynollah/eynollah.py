@@ -2071,7 +2071,6 @@ class Eynollah:
             arg_text_con = []
             for ii in range(len(cx_text_only)):
                 for jj in range(len(boxes)):
-                    print(cx_text_only[ii],cy_text_only[ii],'markaz')
                     if cx_text_only[ii] >= boxes[jj][0] and cx_text_only[ii] < boxes[jj][1] and cy_text_only[ii] >= boxes[jj][2] and cy_text_only[ii] < boxes[jj][3]:  # this is valid if the center of region identify in which box it is located
                         arg_text_con.append(jj)
                         break
@@ -2107,8 +2106,6 @@ class Eynollah:
                 ref_point += len(id_of_texts)
 
             order_of_texts_tot = []
-            print(len(contours_only_text_parent),'contours_only_text_parent')
-            print(len(order_by_con_main),'order_by_con_main')
             
             for tj1 in range(len(contours_only_text_parent)):
                 order_of_texts_tot.append(int(order_by_con_main[tj1]))
