@@ -182,8 +182,8 @@ def main(
     if textline_light and not light_version:
         print('Error: You used -tll to enable light textline detection but -light is not enabled')
         sys.exit(1)
-    if extract_only_images and not ( save_images and enable_plotting):
-        print('Error: You used -eoi to enable extract images only  mode but did not enable plotting with -ep and providing an output directory with -si')
+    if extract_only_images and  (allow_enhancement or allow_scaling or light_version) :
+        print('Error: You used -eoi which can not be enabled alongside light_version -light or allow_scaling -as or allow_enhancement -ae')
         sys.exit(1)
     eynollah = Eynollah(
         image_filename=image,

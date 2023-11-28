@@ -624,8 +624,11 @@ class Eynollah:
                 image_res = np.copy(img)
                 is_image_enhanced = False
         else:
-            img_new, num_column_is_classified = self.calculate_width_height_by_columns_extract_only_images(img, num_col, width_early, label_p_pred)
-            image_res = np.copy(img_new)
+            #img_new, num_column_is_classified = self.calculate_width_height_by_columns_extract_only_images(img, num_col, width_early, label_p_pred)
+            #image_res = np.copy(img_new)
+            #is_image_enhanced = True
+            num_column_is_classified = True
+            image_res = np.copy(img)
             is_image_enhanced = False
 
         self.logger.debug("exit resize_and_enhance_image_with_column_classifier")
@@ -1621,16 +1624,27 @@ class Eynollah:
         box_sub.put(boxes_sub_new)
         
     def get_regions_light_v_extract_only_images(self,img,is_image_enhanced, num_col_classifier):
-        self.logger.debug("enter get_regions_light_v")
+        self.logger.debug("enter get_regions_extract_images_only")
         erosion_hurts = False
         img_org = np.copy(img)
         img_height_h = img_org.shape[0]
         img_width_h = img_org.shape[1]
 
-        #model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+        if num_col_classifier == 1:
+            img_w_new = 700
+        elif num_col_classifier == 2:
+            img_w_new = 900
+        elif num_col_classifier == 3:
+            img_w_new = 1500
+        elif num_col_classifier == 4:
+            img_w_new = 1800
+        elif num_col_classifier == 5:
+            img_w_new = 2200
+        elif num_col_classifier == 6:
+            img_w_new = 2500
+        img_h_new = int(img.shape[0] / float(img.shape[1]) * img_w_new)
 
-
-        img_resized = np.copy(img)
+        img_resized = resize_image(img,img_h_new, img_w_new )
         
 
 
@@ -1644,6 +1658,11 @@ class Eynollah:
         #plt.show()
             
         prediction_regions_org = resize_image(prediction_regions_org,img_height_h, img_width_h )
+        
+        image_page, page_coord, cont_page = self.extract_page()
+        
+        
+        prediction_regions_org = prediction_regions_org[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
 
         
         prediction_regions_org=prediction_regions_org[:,:,0]
@@ -1695,6 +1714,13 @@ class Eynollah:
             
             if test_poly_image_intersected_area==0:
                 polygons_of_images_fin.append(ploy_img_ind)
+                
+                #x, y, w, h = cv2.boundingRect(ploy_img_ind)
+                #box = [x, y, w, h]
+                #_, page_coord = crop_image_inside_box(box, text_regions_p_true)
+                #cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
+                
+                #polygons_of_images_fin.append(np.array(cont_page))
             #plt.imshow(test_poly_image)
             #plt.show()
             
@@ -1702,7 +1728,7 @@ class Eynollah:
             
         
         
-        return text_regions_p_true, erosion_hurts, polygons_lines_xml, polygons_of_images_fin
+        return text_regions_p_true, erosion_hurts, polygons_lines_xml, polygons_of_images_fin, image_page, page_coord, cont_page
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_light_v")
         erosion_hurts = False
@@ -2554,6 +2580,7 @@ class Eynollah:
         prediction_table_erode = cv2.erode(prediction_table[:,:,0], KERNEL, iterations=20)
         prediction_table_erode = cv2.dilate(prediction_table_erode, KERNEL, iterations=20)
         return prediction_table_erode.astype(np.int16)
+    
     def run_graphics_and_columns_light(self, text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts):
         img_g = self.imread(grayscale=True, uint8=True)
 
@@ -2970,13 +2997,16 @@ class Eynollah:
                 img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
                 self.logger.info("Enhancing took %.1fs ", time.time() - t0)
                 
-                text_regions_p_1 ,erosion_hurts, polygons_lines_xml,polygons_of_images = self.get_regions_light_v_extract_only_images(img_res, is_image_enhanced, num_col_classifier)
-                #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
+                text_regions_p_1 ,erosion_hurts, polygons_lines_xml,polygons_of_images,image_page, page_coord, cont_page = self.get_regions_light_v_extract_only_images(img_res, is_image_enhanced, num_col_classifier)
+                
+                pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], polygons_of_images, [], [], [], [], [], cont_page, [], [])
                 
                 if self.plotter:
                     self.plotter.write_images_into_directory(polygons_of_images, img_res)
                 #plt.imshow(text_regions_p_1)
                 #plt.show()
+                
+                self.writer.write_pagexml(pcgts)
 
             else:
                 img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
