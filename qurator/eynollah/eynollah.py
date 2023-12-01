@@ -1693,17 +1693,18 @@ class Eynollah:
         
         image_boundary_of_doc = np.zeros((text_regions_p_true.shape[0], text_regions_p_true.shape[1]))
         
-        image_boundary_of_doc[:20, :] = 1
-        image_boundary_of_doc[text_regions_p_true.shape[0]-20:text_regions_p_true.shape[0], :] = 1
+        ###image_boundary_of_doc[:6, :] = 1
+        ###image_boundary_of_doc[text_regions_p_true.shape[0]-6:text_regions_p_true.shape[0], :] = 1
         
-        image_boundary_of_doc[:, :20] = 1
-        image_boundary_of_doc[:, text_regions_p_true.shape[1]-20:text_regions_p_true.shape[1]] = 1
+        ###image_boundary_of_doc[:, :6] = 1
+        ###image_boundary_of_doc[:, text_regions_p_true.shape[1]-6:text_regions_p_true.shape[1]] = 1
         
         #plt.imshow(image_boundary_of_doc)
         #plt.show()
         
         polygons_of_images_fin = []
         for ploy_img_ind in polygons_of_images:
+            """
             test_poly_image = np.zeros((text_regions_p_true.shape[0], text_regions_p_true.shape[1]))
             test_poly_image = cv2.fillPoly(test_poly_image, pts = [ploy_img_ind], color=(1,1,1))
             
@@ -1713,20 +1714,21 @@ class Eynollah:
             test_poly_image_intersected_area = test_poly_image_intersected_area.sum()
             
             if test_poly_image_intersected_area==0:
-                polygons_of_images_fin.append(ploy_img_ind)
+                ##polygons_of_images_fin.append(ploy_img_ind)
                 
-                #x, y, w, h = cv2.boundingRect(ploy_img_ind)
-                #box = [x, y, w, h]
-                #_, page_coord = crop_image_inside_box(box, text_regions_p_true)
+                x, y, w, h = cv2.boundingRect(ploy_img_ind)
+                box = [x, y, w, h]
+                _, page_coord_img = crop_image_inside_box(box, text_regions_p_true)
                 #cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
                 
-                #polygons_of_images_fin.append(np.array(cont_page))
-            #plt.imshow(test_poly_image)
-            #plt.show()
+                polygons_of_images_fin.append(np.array([[page_coord_img[2], page_coord_img[0]], [page_coord_img[3], page_coord_img[0]], [page_coord_img[3], page_coord_img[1]], [page_coord_img[2], page_coord_img[1]]]) )
+            """
+            x, y, w, h = cv2.boundingRect(ploy_img_ind)
+            box = [x, y, w, h]
+            _, page_coord_img = crop_image_inside_box(box, text_regions_p_true)
+            #cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
             
-            
-            
-        
+            polygons_of_images_fin.append(np.array([[page_coord_img[2], page_coord_img[0]], [page_coord_img[3], page_coord_img[0]], [page_coord_img[3], page_coord_img[1]], [page_coord_img[2], page_coord_img[1]]]) )
         
         return text_regions_p_true, erosion_hurts, polygons_lines_xml, polygons_of_images_fin, image_page, page_coord, cont_page
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
