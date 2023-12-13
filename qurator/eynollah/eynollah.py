@@ -165,6 +165,7 @@ class Eynollah:
         headers_off=False,
         light_version=False,
         ignore_page_extraction=False,
+        reading_order_machine_based=False,
         override_dpi=None,
         logger=None,
         pcgts=None,
@@ -181,6 +182,7 @@ class Eynollah:
         self.dir_in = dir_in
         self.dir_of_all = dir_of_all
         self.dir_save_page = dir_save_page
+        self.reading_order_machine_based = reading_order_machine_based
         self.dir_of_deskewed = dir_of_deskewed
         self.dir_of_deskewed =  dir_of_deskewed
         self.dir_of_cropped_images=dir_of_cropped_images
@@ -226,7 +228,7 @@ class Eynollah:
         self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425"
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
-        self.model_reading_order_machine_dir = dir_models + "/model_6_reading_order_machine_based"
+        self.model_reading_order_machine_dir = dir_models + "/model_ens_reading_order_machine_based"
         if self.textline_light:
             self.model_textline_dir = dir_models + "/eynollah-textline_light_20210425"
         else:
@@ -3139,8 +3141,6 @@ class Eynollah:
         Get image and scales, then extract the page of scanned image
         """
         self.logger.debug("enter run")
-        
-        self.reading_order_machine_based = True#False#True#True
 
         t0_tot = time.time()
 

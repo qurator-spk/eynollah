@@ -134,6 +134,12 @@ from qurator.eynollah.eynollah import Eynollah
     help="if this parameter set to true, this tool would ignore page extraction",
 )
 @click.option(
+    "--reading_order_machine_based/--heuristic_reading_order",
+    "-romb/-hro",
+    is_flag=True,
+    help="if this parameter set to true, this tool would apply machine based reading order detection",
+)
+@click.option(
     "--log-level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
@@ -160,6 +166,7 @@ def main(
     allow_scaling,
     headers_off,
     light_version,
+    reading_order_machine_based,
     ignore_page_extraction,
     log_level
 ):
@@ -197,6 +204,7 @@ def main(
         headers_off=headers_off,
         light_version=light_version,
         ignore_page_extraction=ignore_page_extraction,
+        reading_order_machine_based=reading_order_machine_based,
     )
     eynollah.run()
     #pcgts = eynollah.run()
