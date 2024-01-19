@@ -42,7 +42,11 @@ class EynollahProcessor(Processor):
             page = pcgts.get_Page()
             # XXX loses DPI information
             # page_image, _, _ = self.workspace.image_from_page(page, page_id, feature_filter='binarized')
-            image_filename = self.workspace.download_file(next(self.workspace.mets.find_files(url=page.imageFilename))).local_filename
+            if not('://' in page.imageFilename):
+                image_filename = next(self.workspace.mets.find_files(local_filename=page.imageFilename)).local_filename
+            else:
+                # could be a URL with file:// or truly remote
+                image_filename = self.workspace.download_file(next(self.workspace.mets.find_files(url=page.imageFilename))).local_filename
             eynollah_kwargs = {
                 'dir_models': self.resolve_resource(self.parameter['models']),
                 'allow_enhancement': False,
