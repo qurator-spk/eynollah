@@ -58,7 +58,7 @@ class EynollahProcessor(Processor):
                 'override_dpi': self.parameter['dpi'],
                 'logger': LOG,
                 'pcgts': pcgts,
-                'image_filename': image_filename
+                'image_filename': str(image_filename)
                 }
             Eynollah(**eynollah_kwargs).run()
             file_id = make_file_id(input_file, self.output_file_grp)
