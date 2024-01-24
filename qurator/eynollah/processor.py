@@ -43,6 +43,6 @@ class EynollahProcessor(Processor):
             tables=self.parameter['tables'],
             override_dpi=self.parameter['dpi'],
             pcgts=pcgts,
-            image_filename=image_filename
+            image_filename=str(image_filename)
         ).run()
         return OcrdPageResult(pcgts)
