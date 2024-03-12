@@ -3082,7 +3082,7 @@ class Eynollah:
                 #     self.writer.write_pagexml(pcgts)
                 #     continue
                 # else:
-                    return pcgts
+                return pcgts
 
             t1 = time.time()
             if not self.light_version:
