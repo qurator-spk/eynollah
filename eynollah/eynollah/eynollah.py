@@ -145,11 +145,11 @@ class Eynollah:
     def __init__(
             self,
             dir_models,
-            image_filename=None,
+            image_filename,
             image_pil=None,
             image_filename_stem=None,
             dir_out=None,
-            dir_in=None,
+            # dir_in=None,
             dir_of_cropped_images=None,
             dir_of_layout=None,
             dir_of_deskewed=None,
@@ -171,16 +171,16 @@ class Eynollah:
             logger=None,
             pcgts=None,
     ):
-        if not dir_in:
-            if image_pil:
-                self._imgs = self._cache_images(image_pil=image_pil)
-            else:
-                self._imgs = self._cache_images(image_filename=image_filename)
-            if override_dpi:
-                self.dpi = override_dpi
-            self.image_filename = image_filename
+        # if not dir_in:
+        #     if image_pil:
+        #         self._imgs = self._cache_images(image_pil=image_pil)
+        #     else:
+        #         self._imgs = self._cache_images(image_filename=image_filename)
+        #     if override_dpi:
+        #         self.dpi = override_dpi
+        #     self.image_filename = image_filename
         self.dir_out = dir_out
-        self.dir_in = dir_in
+        # self.dir_in = dir_in
         self.dir_of_all = dir_of_all
         self.dir_save_page = dir_save_page
         self.dir_of_deskewed = dir_of_deskewed
@@ -200,21 +200,21 @@ class Eynollah:
         self.light_version = light_version
         self.ignore_page_extraction = ignore_page_extraction
         self.pcgts = pcgts
-        if not dir_in:
-            self.plotter = None if not enable_plotting else EynollahPlotter(
-                dir_out=self.dir_out,
-                dir_of_all=dir_of_all,
-                dir_save_page=dir_save_page,
-                dir_of_deskewed=dir_of_deskewed,
-                dir_of_cropped_images=dir_of_cropped_images,
-                dir_of_layout=dir_of_layout,
-                image_filename_stem=Path(Path(image_filename).name).stem)
-            self.writer = EynollahXmlWriter(
-                dir_out=self.dir_out,
-                image_filename=self.image_filename,
-                curved_line=self.curved_line,
-                textline_light=self.textline_light,
-                pcgts=pcgts)
+        # if not dir_in:
+        self.plotter = None if not enable_plotting else EynollahPlotter(
+            dir_out=self.dir_out,
+            dir_of_all=dir_of_all,
+            dir_save_page=dir_save_page,
+            dir_of_deskewed=dir_of_deskewed,
+            dir_of_cropped_images=dir_of_cropped_images,
+            dir_of_layout=dir_of_layout,
+            image_filename_stem=Path(Path(image_filename).name).stem)
+        self.writer = EynollahXmlWriter(
+            dir_out=self.dir_out,
+            image_filename=self.image_filename,
+            curved_line=self.curved_line,
+            textline_light=self.textline_light,
+            pcgts=pcgts)
         self.logger = logger if logger else getLogger('eynollah')
         self.dir_models = dir_models
 
@@ -236,39 +236,39 @@ class Eynollah:
 
         self.models = {}
 
-        if dir_in and light_version:
-            config = tf.compat.v1.ConfigProto()
-            config.gpu_options.allow_growth = True
-            session = tf.compat.v1.Session(config=config)
-            set_session(session)
+        # if dir_in and light_version:
+        #     config = tf.compat.v1.ConfigProto()
+        #     config.gpu_options.allow_growth = True
+        #     session = tf.compat.v1.Session(config=config)
+        #     set_session(session)
 
-            self.model_page = self.our_load_model(self.model_page_dir)
-            self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
-            self.model_bin = self.our_load_model(self.model_dir_of_binarization)
-            self.model_textline = self.our_load_model(self.model_textline_dir)
-            self.model_region = self.our_load_model(self.model_region_dir_p_ens_light)
-            self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
-            self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
+        #     self.model_page = self.our_load_model(self.model_page_dir)
+        #     self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
+        #     self.model_bin = self.our_load_model(self.model_dir_of_binarization)
+        #     self.model_textline = self.our_load_model(self.model_textline_dir)
+        #     self.model_region = self.our_load_model(self.model_region_dir_p_ens_light)
+        #     self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
+        #     self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
 
-            self.ls_imgs = os.listdir(self.dir_in)
+        #     self.ls_imgs = os.listdir(self.dir_in)
 
-        if dir_in and not light_version:
-            config = tf.compat.v1.ConfigProto()
-            config.gpu_options.allow_growth = True
-            session = tf.compat.v1.Session(config=config)
-            set_session(session)
+        # if dir_in and not light_version:
+        #     config = tf.compat.v1.ConfigProto()
+        #     config.gpu_options.allow_growth = True
+        #     session = tf.compat.v1.Session(config=config)
+        #     set_session(session)
 
-            self.model_page = self.our_load_model(self.model_page_dir)
-            self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
-            self.model_bin = self.our_load_model(self.model_dir_of_binarization)
-            self.model_textline = self.our_load_model(self.model_textline_dir)
-            self.model_region = self.our_load_model(self.model_region_dir_p_ens)
-            self.model_region_p2 = self.our_load_model(self.model_region_dir_p2)
-            self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
-            self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
-            self.model_enhancement = self.our_load_model(self.model_dir_of_enhancement)
+        #     self.model_page = self.our_load_model(self.model_page_dir)
+        #     self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
+        #     self.model_bin = self.our_load_model(self.model_dir_of_binarization)
+        #     self.model_textline = self.our_load_model(self.model_textline_dir)
+        #     self.model_region = self.our_load_model(self.model_region_dir_p_ens)
+        #     self.model_region_p2 = self.our_load_model(self.model_region_dir_p2)
+        #     self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
+        #     self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
+        #     self.model_enhancement = self.our_load_model(self.model_dir_of_enhancement)
 
-            self.ls_imgs = os.listdir(self.dir_in)
+        #     self.ls_imgs = os.listdir(self.dir_in)
 
     def _cache_images(self, image_filename=None, image_pil=None):
         ret = {}
@@ -283,9 +283,9 @@ class Eynollah:
             ret[f'img{prefix}_uint8'] = ret[f'img{prefix}'].astype(np.uint8)
         return ret
 
-    def reset_file_name_dir(self, image_filename):
-        self._imgs = self._cache_images(image_filename=image_filename)
-        self.image_filename = image_filename
+    # def reset_file_name_dir(self, image_filename):
+    #     self._imgs = self._cache_images(image_filename=image_filename)
+    #     self.image_filename = image_filename
 
         self.plotter = None if not self.enable_plotting else EynollahPlotter(
             dir_out=self.dir_out,
@@ -476,9 +476,9 @@ class Eynollah:
             img = self.imread()
 
         _, page_coord = self.early_page_for_num_of_column_classification(img)
-        if not self.dir_in:
-            model_num_classifier, session_col_classifier = self.start_new_session_and_model(
-                self.model_dir_of_col_classifier)
+        # if not self.dir_in:
+        model_num_classifier, session_col_classifier = self.start_new_session_and_model(
+            self.model_dir_of_col_classifier)
         if self.input_binary:
             img_in = np.copy(img)
             img_in = img_in / 255.0
@@ -501,10 +501,10 @@ class Eynollah:
             img_in[0, :, :, 1] = img_1ch[:, :]
             img_in[0, :, :, 2] = img_1ch[:, :]
 
-        if not self.dir_in:
-            label_p_pred = model_num_classifier.predict(img_in, verbose=0)
-        else:
-            label_p_pred = self.model_classifier.predict(img_in, verbose=0)
+        # if not self.dir_in:
+        label_p_pred = model_num_classifier.predict(img_in, verbose=0)
+        # else:
+        #     label_p_pred = self.model_classifier.predict(img_in, verbose=0)
 
         num_col = np.argmax(label_p_pred[0]) + 1
 
@@ -524,12 +524,12 @@ class Eynollah:
         self.logger.info("Detected %s DPI", dpi)
         if self.input_binary:
             img = self.imread()
-            if self.dir_in:
-                prediction_bin = self.do_prediction(True, img, self.model_bin)
-            else:
+            # if self.dir_in:
+            #     prediction_bin = self.do_prediction(True, img, self.model_bin)
+            # else:
 
-                model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                prediction_bin = self.do_prediction(True, img, model_bin)
+            model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+            prediction_bin = self.do_prediction(True, img, model_bin)
 
             prediction_bin = prediction_bin[:, :, 0]
             prediction_bin = (prediction_bin[:, :] == 0) * 1
@@ -546,9 +546,9 @@ class Eynollah:
 
         t1 = time.time()
         _, page_coord = self.early_page_for_num_of_column_classification(img_bin)
-        if not self.dir_in:
-            model_num_classifier, session_col_classifier = self.start_new_session_and_model(
-                self.model_dir_of_col_classifier)
+        # if not self.dir_in:
+        model_num_classifier, session_col_classifier = self.start_new_session_and_model(
+            self.model_dir_of_col_classifier)
 
         if self.input_binary:
             img_in = np.copy(img)
@@ -568,10 +568,11 @@ class Eynollah:
             img_in[0, :, :, 1] = img_1ch[:, :]
             img_in[0, :, :, 2] = img_1ch[:, :]
 
-        if self.dir_in:
-            label_p_pred = self.model_classifier.predict(img_in, verbose=0)
-        else:
-            label_p_pred = model_num_classifier.predict(img_in, verbose=0)
+        # if self.dir_in:
+        #     label_p_pred = self.model_classifier.predict(img_in, verbose=0)
+        # else:
+        #     label_p_pred = model_num_classifier.predict(img_in, verbose=0)
+        label_p_pred = model_num_classifier.predict(img_in, verbose=0)
         num_col = np.argmax(label_p_pred[0]) + 1
 
         self.logger.info("Found %d columns (%s)", num_col, np.around(label_p_pred, decimals=5))
@@ -984,13 +985,13 @@ class Eynollah:
         if not self.ignore_page_extraction:
             img = cv2.GaussianBlur(self.image, (5, 5), 0)
 
-            if not self.dir_in:
-                model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
+            # if not self.dir_in:
+            model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
 
-            if not self.dir_in:
-                img_page_prediction = self.do_prediction(False, img, model_page)
-            else:
-                img_page_prediction = self.do_prediction(False, img, self.model_page)
+            # if not self.dir_in:
+            img_page_prediction = self.do_prediction(False, img, model_page)
+            # else:
+            #    img_page_prediction = self.do_prediction(False, img, self.model_page)
             imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
             _, thresh = cv2.threshold(imgray, 0, 255, 0)
             thresh = cv2.dilate(thresh, KERNEL, iterations=3)
@@ -1036,14 +1037,14 @@ class Eynollah:
                 img = img.astype(np.uint8)
             else:
                 img = self.imread()
-            if not self.dir_in:
-                model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
+            # if not self.dir_in:
+            model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
             img = cv2.GaussianBlur(img, (5, 5), 0)
 
-            if self.dir_in:
-                img_page_prediction = self.do_prediction(False, img, self.model_page)
-            else:
-                img_page_prediction = self.do_prediction(False, img, model_page)
+            # if self.dir_in:
+            #    img_page_prediction = self.do_prediction(False, img, self.model_page)
+            # else:
+            img_page_prediction = self.do_prediction(False, img, model_page)
 
             imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
             _, thresh = cv2.threshold(imgray, 0, 255, 0)
@@ -1069,11 +1070,11 @@ class Eynollah:
         self.logger.debug("enter extract_text_regions")
         img_height_h = img.shape[0]
         img_width_h = img.shape[1]
-        if not self.dir_in:
-            model_region, session_region = self.start_new_session_and_model(
-                self.model_region_dir_fully if patches else self.model_region_dir_fully_np)
-        else:
-            model_region = self.model_region_fl if patches else self.model_region_fl_np
+        # if not self.dir_in:
+        model_region, session_region = self.start_new_session_and_model(
+            self.model_region_dir_fully if patches else self.model_region_dir_fully_np)
+        # else:
+        #     model_region = self.model_region_fl if patches else self.model_region_fl_np
 
         if not patches:
             img = otsu_copy_binary(img)
@@ -1588,23 +1589,23 @@ class Eynollah:
 
     def textline_contours(self, img, patches, scaler_h, scaler_w):
         self.logger.debug('enter textline_contours')
-        if not self.dir_in:
-            model_textline, session_textline = self.start_new_session_and_model(
-                self.model_textline_dir if patches else self.model_textline_dir_np)
+        # if not self.dir_in:
+        model_textline, session_textline = self.start_new_session_and_model(
+            self.model_textline_dir if patches else self.model_textline_dir_np)
         img = img.astype(np.uint8)
         img_org = np.copy(img)
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
-        if not self.dir_in:
-            prediction_textline = self.do_prediction(patches, img, model_textline)
-        else:
-            prediction_textline = self.do_prediction(patches, img, self.model_textline)
+        # if not self.dir_in:
+        prediction_textline = self.do_prediction(patches, img, model_textline)
+        # else:
+        #     prediction_textline = self.do_prediction(patches, img, self.model_textline)
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
-        if not self.dir_in:
-            prediction_textline_longshot = self.do_prediction(False, img, model_textline)
-        else:
-            prediction_textline_longshot = self.do_prediction(False, img, self.model_textline)
+        # if not self.dir_in:
+        prediction_textline_longshot = self.do_prediction(False, img, model_textline)
+        # else:
+        #     prediction_textline_longshot = self.do_prediction(False, img, self.model_textline)
         prediction_textline_longshot_true_size = resize_image(prediction_textline_longshot, img_h, img_w)
 
         if self.textline_light:
@@ -1681,11 +1682,11 @@ class Eynollah:
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
         img_resized = resize_image(img, img_h_new, img_w_new)
 
-        if not self.dir_in:
-            model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-            prediction_bin = self.do_prediction(True, img_resized, model_bin)
-        else:
-            prediction_bin = self.do_prediction(True, img_resized, self.model_bin)
+        # if not self.dir_in:
+        model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+        prediction_bin = self.do_prediction(True, img_resized, model_bin)
+        # else:
+        #     prediction_bin = self.do_prediction(True, img_resized, self.model_bin)
         prediction_bin = prediction_bin[:, :, 0]
         prediction_bin = (prediction_bin[:, :] == 0) * 1
         prediction_bin = prediction_bin * 255
@@ -1698,11 +1699,11 @@ class Eynollah:
 
         textline_mask_tot_ea = self.run_textline(img_bin)
 
-        if not self.dir_in:
-            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
-            prediction_regions_org = self.do_prediction_new_concept(True, img_bin, model_region)
-        else:
-            prediction_regions_org = self.do_prediction_new_concept(True, img_bin, self.model_region)
+        # if not self.dir_in:
+        model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
+        prediction_regions_org = self.do_prediction_new_concept(True, img_bin, model_region)
+        # else:
+        #     prediction_regions_org = self.do_prediction_new_concept(True, img_bin, self.model_region)
 
         # plt.imshow(prediction_regions_org[:,:,0])
         # plt.show()
@@ -1744,17 +1745,17 @@ class Eynollah:
         img_height_h = img_org.shape[0]
         img_width_h = img_org.shape[1]
 
-        if not self.dir_in:
-            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+        # if not self.dir_in:
+        model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
 
         ratio_y = 1.3
         ratio_x = 1
 
         img = resize_image(img_org, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
-        if not self.dir_in:
-            prediction_regions_org_y = self.do_prediction(True, img, model_region)
-        else:
-            prediction_regions_org_y = self.do_prediction(True, img, self.model_region)
+        # if not self.dir_in:
+        prediction_regions_org_y = self.do_prediction(True, img, model_region)
+        # else:
+        #     prediction_regions_org_y = self.do_prediction(True, img, self.model_region)
         prediction_regions_org_y = resize_image(prediction_regions_org_y, img_height_h, img_width_h)
 
         # plt.imshow(prediction_regions_org_y[:,:,0])
@@ -1774,24 +1775,24 @@ class Eynollah:
             img = resize_image(img_org, int(img_org.shape[0]),
                                int(img_org.shape[1] * (1.2 if is_image_enhanced else 1)))
 
-            if self.dir_in:
-                prediction_regions_org = self.do_prediction(True, img, self.model_region)
-            else:
-                prediction_regions_org = self.do_prediction(True, img, model_region)
+            # if self.dir_in:
+            #     prediction_regions_org = self.do_prediction(True, img, self.model_region)
+            # else:
+            prediction_regions_org = self.do_prediction(True, img, model_region)
             prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h)
 
             prediction_regions_org = prediction_regions_org[:, :, 0]
             prediction_regions_org[(prediction_regions_org[:, :] == 1) & (mask_zeros_y[:, :] == 1)] = 0
 
-            if not self.dir_in:
-                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
+            # if not self.dir_in:
+            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
 
             img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]))
 
-            if self.dir_in:
-                prediction_regions_org2 = self.do_prediction(True, img, self.model_region_p2, 0.2)
-            else:
-                prediction_regions_org2 = self.do_prediction(True, img, model_region, 0.2)
+            # if self.dir_in:
+            #     prediction_regions_org2 = self.do_prediction(True, img, self.model_region_p2, 0.2)
+            # else:
+            prediction_regions_org2 = self.do_prediction(True, img, model_region, 0.2)
             prediction_regions_org2 = resize_image(prediction_regions_org2, img_height_h, img_width_h)
 
             mask_zeros2 = (prediction_regions_org2[:, :, 0] == 0)
@@ -1817,11 +1818,11 @@ class Eynollah:
                 if self.input_binary:
                     prediction_bin = np.copy(img_org)
                 else:
-                    if not self.dir_in:
-                        model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                        prediction_bin = self.do_prediction(True, img_org, model_bin)
-                    else:
-                        prediction_bin = self.do_prediction(True, img_org, self.model_bin)
+                    # if not self.dir_in:
+                    model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+                    prediction_bin = self.do_prediction(True, img_org, model_bin)
+                    # else:
+                    #     prediction_bin = self.do_prediction(True, img_org, self.model_bin)
                     prediction_bin = resize_image(prediction_bin, img_height_h, img_width_h)
 
                     prediction_bin = prediction_bin[:, :, 0]
@@ -1830,17 +1831,17 @@ class Eynollah:
 
                     prediction_bin = np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
 
-                if not self.dir_in:
-                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+                # if not self.dir_in:
+                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
                 ratio_y = 1
                 ratio_x = 1
 
                 img = resize_image(prediction_bin, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
 
-                if not self.dir_in:
-                    prediction_regions_org = self.do_prediction(True, img, model_region)
-                else:
-                    prediction_regions_org = self.do_prediction(True, img, self.model_region)
+                # if not self.dir_in:
+                prediction_regions_org = self.do_prediction(True, img, model_region)
+                # else:
+                #     prediction_regions_org = self.do_prediction(True, img, self.model_region)
                 prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h)
                 prediction_regions_org = prediction_regions_org[:, :, 0]
 
@@ -1869,11 +1870,11 @@ class Eynollah:
             if self.input_binary:
                 prediction_bin = np.copy(img_org)
 
-                if not self.dir_in:
-                    model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                    prediction_bin = self.do_prediction(True, img_org, model_bin)
-                else:
-                    prediction_bin = self.do_prediction(True, img_org, self.model_bin)
+                # if not self.dir_in:
+                model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+                prediction_bin = self.do_prediction(True, img_org, model_bin)
+                # else:
+                #     prediction_bin = self.do_prediction(True, img_org, self.model_bin)
                 prediction_bin = resize_image(prediction_bin, img_height_h, img_width_h)
                 prediction_bin = prediction_bin[:, :, 0]
 
@@ -1883,8 +1884,8 @@ class Eynollah:
 
                 prediction_bin = np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
 
-                if not self.dir_in:
-                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+                # if not self.dir_in:
+                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
 
             else:
                 prediction_bin = np.copy(img_org)
@@ -1892,10 +1893,10 @@ class Eynollah:
             ratio_x = 1
 
             img = resize_image(prediction_bin, int(img_org.shape[0] * ratio_y), int(img_org.shape[1] * ratio_x))
-            if not self.dir_in:
-                prediction_regions_org = self.do_prediction(True, img, model_region)
-            else:
-                prediction_regions_org = self.do_prediction(True, img, self.model_region)
+            # if not self.dir_in:
+            prediction_regions_org = self.do_prediction(True, img, model_region)
+            # else:
+            #     prediction_regions_org = self.do_prediction(True, img, self.model_region)
             prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h)
             prediction_regions_org = prediction_regions_org[:, :, 0]
 
@@ -3036,13 +3037,13 @@ class Eynollah:
 
         t0_tot = time.time()
 
-        if not self.dir_in:
-            self.ls_imgs = [1]
+        # if not self.dir_in:
+        self.ls_imgs = [1]
 
         for img_name in self.ls_imgs:
             t0 = time.time()
-            if self.dir_in:
-                self.reset_file_name_dir(os.path.join(self.dir_in, img_name))
+            # if self.dir_in:
+            #     self.reset_file_name_dir(os.path.join(self.dir_in, img_name))
 
             img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(
                 self.light_version)
@@ -3077,10 +3078,10 @@ class Eynollah:
                 pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [],
                                                                  cont_page, [], [])
                 self.logger.info("Job done in %.1fs", time.time() - t1)
-                if self.dir_in:
-                    self.writer.write_pagexml(pcgts)
-                    continue
-                else:
+                # if self.dir_in:
+                #     self.writer.write_pagexml(pcgts)
+                #     continue
+                # else:
                     return pcgts
 
             t1 = time.time()
@@ -3419,5 +3420,5 @@ class Eynollah:
                 # return pcgts
             self.writer.write_pagexml(pcgts)
             # self.logger.info("Job done in %.1fs", time.time() - t0)
-        if self.dir_in:
-            self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
+        # if self.dir_in:
+        #     self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)

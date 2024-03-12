@@ -19,12 +19,13 @@ from eynollah.eynollah.eynollah import Eynollah
     type=click.Path(exists=True, file_okay=False),
     required=True,
 )
-@click.option(
-    "--dir_in",
-    "-di",
-    help="directory of images",
-    type=click.Path(exists=True, file_okay=False),
-)
+# temporary disable directory input
+# @click.option(
+#     "--dir_in",
+#     "-di",
+#     help="directory of images",
+#     type=click.Path(exists=True, file_okay=False),
+# )
 @click.option(
     "--model",
     "-m",
@@ -143,7 +144,7 @@ from eynollah.eynollah.eynollah import Eynollah
 def main(
     image,
     out,
-    dir_in,
+    # dir_in,
     model,
     save_images,
     save_layout,
@@ -179,7 +180,7 @@ def main(
     eynollah = Eynollah(
         image_filename=image,
         dir_out=out,
-        dir_in=dir_in,
+        # dir_in=dir_in,
         dir_models=model,
         dir_of_cropped_images=save_images,
         dir_of_layout=save_layout,
@@ -199,9 +200,9 @@ def main(
         light_version=light_version,
         ignore_page_extraction=ignore_page_extraction,
     )
-    eynollah.run()
-    # pcgts = eynollah.run()
-    # eynollah.writer.write_pagexml(pcgts)
+    # eynollah.run()
+    pcgts = eynollah.run()
+    eynollah.writer.write_pagexml(pcgts)
 
 
 if __name__ == "__main__":
