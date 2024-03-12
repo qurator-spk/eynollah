@@ -172,13 +172,13 @@ class Eynollah:
             pcgts=None,
     ):
         # if not dir_in:
-        #     if image_pil:
-        #         self._imgs = self._cache_images(image_pil=image_pil)
+        if image_pil:
+            self._imgs = self._cache_images(image_pil=image_pil)
         #     else:
         #         self._imgs = self._cache_images(image_filename=image_filename)
-        #     if override_dpi:
-        #         self.dpi = override_dpi
-        #     self.image_filename = image_filename
+        if override_dpi:
+            self.dpi = override_dpi
+        self.image_filename = image_filename
         self.dir_out = dir_out
         # self.dir_in = dir_in
         self.dir_of_all = dir_of_all
