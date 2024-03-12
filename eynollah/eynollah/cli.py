@@ -200,9 +200,9 @@ def main(
         light_version=light_version,
         ignore_page_extraction=ignore_page_extraction,
     )
-    # eynollah.run()
-    pcgts = eynollah.run()
-    eynollah.writer.write_pagexml(pcgts)
+    eynollah.run()
+    # pcgts = eynollah.run()
+    # eynollah.writer.write_pagexml(pcgts)
 
 
 if __name__ == "__main__":
