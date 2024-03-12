@@ -174,8 +174,8 @@ class Eynollah:
         # if not dir_in:
         if image_pil:
             self._imgs = self._cache_images(image_pil=image_pil)
-        #     else:
-        #         self._imgs = self._cache_images(image_filename=image_filename)
+        else:
+            self._imgs = self._cache_images(image_filename=image_filename)
         if override_dpi:
             self.dpi = override_dpi
         self.image_filename = image_filename
