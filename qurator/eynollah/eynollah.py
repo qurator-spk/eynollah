@@ -29,7 +29,8 @@ warnings.filterwarnings("ignore")
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
-from tensorflow.python.keras.backend import set_session
+# use tf1 compatibility for keras backend
+from tensorflow.compat.v1.keras.backend import set_session
 from tensorflow.keras import layers
 
 from .utils.contour import (
