@@ -1,0 +1,7 @@
+tensorflow == 2.12.1
+sacred
+opencv-python
+seaborn
+tqdm
+imutils
+
