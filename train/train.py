@@ -1,29 +1,21 @@
 import os
 import sys
 import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session
-import keras , warnings
-from keras.optimizers import *
+from tensorflow.compat.v1.keras.backend import set_session
+import warnings
+from tensorflow.keras.optimizers import *
 from sacred import Experiment
 from models import *
 from utils import *
 from metrics import *
-from keras.models import load_model
+from tensorflow.keras.models import load_model
 from tqdm import tqdm
 
 def configuration():
-    keras.backend.clear_session()
-    tf.reset_default_graph()
-    warnings.filterwarnings('ignore')
-    
-    os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
-    config = tf.ConfigProto(log_device_placement=False, allow_soft_placement=True)
-    
-    
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    config.gpu_options.per_process_gpu_memory_fraction=0.95#0.95
-    config.gpu_options.visible_device_list="0"
-    set_session(tf.Session(config=config))
+    session = tf.compat.v1.Session(config=config)
+    set_session(session)
 
 def get_dirs_or_files(input_data):
     if os.path.isdir(input_data):
@@ -219,7 +211,7 @@ def run(n_classes,n_epochs,input_height,
             validation_data=val_gen,
             validation_steps=1,
             epochs=1)
-        model.save(dir_output+'/'+'model_'+str(i)+'.h5')
+        model.save(dir_output+'/'+'model_'+str(i))
     
 
     #os.system('rm -rf '+dir_train_flowing)
