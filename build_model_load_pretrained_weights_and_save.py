@@ -1,8 +1,8 @@
 import os
 import sys
 import tensorflow as tf
-import keras , warnings
-from keras.optimizers import *
+import warnings
+from tensorflow.keras.optimizers import *
 from sacred import Experiment
 from models import *
 from utils import *

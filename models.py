@@ -1,7 +1,7 @@
-from keras.models import *
-from keras.layers import *
-from keras import layers
-from keras.regularizers import l2
+from tensorflow.keras.models import *
+from tensorflow.keras.layers import *
+from tensorflow.keras import layers
+from tensorflow.keras.regularizers import l2
 
 resnet50_Weights_path='./pretrained_model/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5'
 IMAGE_ORDERING ='channels_last'
