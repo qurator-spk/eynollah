@@ -24,7 +24,7 @@
     "weighted_loss": false,
     "is_loss_soft_dice": false,
     "data_is_provided": false,
-    "dir_train": "/home/vahid/Documents/handwrittens_train/train",
-    "dir_eval": "/home/vahid/Documents/handwrittens_train/eval",
-    "dir_output": "/home/vahid/Documents/handwrittens_train/output"
+    "dir_train": "/train",
+    "dir_eval": "/eval",
+    "dir_output": "/output"
 }
