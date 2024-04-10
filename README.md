@@ -10,6 +10,16 @@ Either clone the repository via `git clone https://github.com/qurator-spk/sbb_pi
 ### Pretrained encoder
 Download our pretrained weights and add them to a ``pretrained_model`` folder:   
 https://qurator-data.de/sbb_pixelwise_segmentation/pretrained_encoder/
+
+### Helpful tools
+* [`pagexml2img`](https://github.com/qurator-spk/page2img)
+> Tool to extract 2-D or 3-D RGB images from PAGE-XML data. In the former case, the output will be 1 2-D image array which each class has filled with a pixel value. In the case of a 3-D RGB image, 
+each class will be defined with a RGB value and beside images, a text file of classes will also be produced.
+* [`cocoSegmentationToPng`](https://github.com/nightrome/cocostuffapi/blob/17acf33aef3c6cc2d6aca46dcf084266c2778cf0/PythonAPI/pycocotools/cocostuffhelper.py#L130)
+> Convert COCO GT or results for a single image to a segmentation map and write it to disk.
+* [`ocrd-segment-extract-pages`](https://github.com/OCR-D/ocrd_segment/blob/master/ocrd_segment/extract_pages.py)
+> Extract region classes and their colours in mask (pseg) images. Allows the color map as free dict parameter, and comes with a default that mimics PageViewer's coloring for quick debugging; it also warns when regions do overlap.
+
 ## Usage
 
 ### Train
