@@ -48,7 +48,7 @@ If you have an image label with height and width of 10, for a binary case the fi
  A small sample of training data for binarization experiment can be found here, [Training data sample](https://qurator-data.de/~vahid.rezanezhad/binarization_training_data_sample/), which contains images and lables folders.
     
 ### Training , evaluation and output 
-The train and evaluation folders should contain subfolders of images and labels.
+The train and evaluation folders should contain subfolders of images and labels.  
 The output folder should be an empty folder where the output model will be written to.
     
 ### Parameter configuration
@@ -63,7 +63,7 @@ The output folder should be an empty folder where the output model will be writt
 * flip_aug: If ``true``, different types of filp will be applied on image. Type of flips is given with "flip_index" in train.py file.
 * blur_aug: If ``true``, different types of blurring will be applied on image. Type of blurrings is given with "blur_k" in train.py file.
 * scaling: If ``true``, scaling will be applied on image. Scale of scaling is given with "scales" in train.py file.
-* rotation_not_90: If ``true``, rotation (not 90 degree) will be applied on image. Rothation angles are given with "thetha" in train.py file.
+* rotation_not_90: If ``true``, rotation (not 90 degree) will be applied on image. Rotation angles are given with "thetha" in train.py file.
 * rotation: If ``true``, 90 degree rotation will be applied on image.
 * binarization: If ``true``,Otsu thresholding will be applied to augment the input data with binarized images.
 * scaling_bluring: If ``true``, combination of scaling and blurring will be applied on image.
@@ -73,5 +73,3 @@ The output folder should be an empty folder where the output model will be writt
 * weighted_loss: If ``true``, this means that you want to apply weighted categorical_crossentropy as loss fucntion. Be carefull if you set to ``true``the parameter "is_loss_soft_dice" should be ``false``
 * data_is_provided: If you have already provided the input data you can set this to ``true``. Be sure that the train and eval data are in "dir_output". Since when once we provide training data we resize and augment them and then we write them in sub-directories train and eval in "dir_output". 
 * dir_train: This is the directory of "images" and "labels" (dir_train should include two subdirectories with names of images and labels ) for raw images and labels. Namely they are not prepared (not resized and not augmented) yet for training the model. When we run this tool these raw data will be transformed to suitable size needed for the model and they will be written in "dir_output" in train and eval directories. Each of train and eval include "images" and "labels" sub-directories.
-    
-
