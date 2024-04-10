@@ -29,37 +29,36 @@ ex = Experiment()
 
 @ex.config
 def config_params():
-    n_classes=None # Number of classes. If your case study is binary case the set it to 2 and otherwise give your number of cases.
-    n_epochs=1
-    input_height=224*1
-    input_width=224*1 
+    n_classes=None # Number of classes. In the case of binary classification this should be 2.
+    n_epochs=1 # Number of epochs.
+    input_height=224*1 # Height of model's input in pixels.
+    input_width=224*1 # Width of model's input in pixels.
     weight_decay=1e-6 # Weight decay of l2 regularization of model layers.
     n_batch=1 # Number of batches at each iteration.
-    learning_rate=1e-4
-    patches=False # Make patches of image in order to use all information of image. In the case of page
-    # extraction this should be set to false since model should see all image.
-    augmentation=False
-    flip_aug=False # Flip image (augmentation).
-    blur_aug=False # Blur patches of image (augmentation). 
-    scaling=False # Scaling of patches (augmentation) will be imposed if this set to true.
-    binarization=False # Otsu thresholding. Used for augmentation in the case of binary case like textline prediction. For multicases should not be applied.
-    dir_train=None # Directory of training dataset (sub-folders should be named images and labels).
-    dir_eval=None # Directory of validation dataset (sub-folders should be named images and labels).
-    dir_output=None # Directory of output where the model should be saved.
-    pretraining=False # Set true to load pretrained weights of resnet50 encoder.
-    scaling_bluring=False
-    scaling_binarization=False
-    scaling_flip=False
-    thetha=[10,-10]
-    blur_k=['blur','guass','median'] # Used in order to blur image. Used for augmentation.
-    scales= [ 0.5, 2 ] # Scale patches with these scales. Used for augmentation.
-    flip_index=[0,1,-1] # Flip image. Used for augmentation.
-    continue_training = False # If 
-    index_start = 0
-    dir_of_start_model = ''
-    is_loss_soft_dice = False
-    weighted_loss = False
-    data_is_provided = False
+    learning_rate=1e-4 # Set the learning rate.
+    patches=False # Divides input image into smaller patches (input size of the model) when set to true. For the model to see the full image, like page extraction, set this to false.
+    augmentation=False # To apply any kind of augmentation, this parameter must be set to true.
+    flip_aug=False # If true, different types of flipping will be applied to the image. Types of flips are defined with "flip_index" in train.py.
+    blur_aug=False # If true, different types of blurring will be applied to the image. Types of blur are defined with "blur_k" in train.py.
+    scaling=False # If true, scaling will be applied to the image. The amount of scaling is defined with "scales" in train.py. 
+    binarization=False # If true, Otsu thresholding will be applied to augment the input with binarized images.
+    dir_train=None # Directory of training dataset with subdirectories having the names "images" and "labels".
+    dir_eval=None # Directory of validation dataset with subdirectories having the names "images" and "labels".
+    dir_output=None # Directory where the output model will be saved.
+    pretraining=False # Set to true to load pretrained weights of ResNet50 encoder.
+    scaling_bluring=False # If true, a combination of scaling and blurring will be applied to the image.
+    scaling_binarization=False # If true, a combination of scaling and binarization will be applied to the image.
+    scaling_flip=False # If true, a combination of scaling and flipping will be applied to the image.
+    thetha=[10,-10] # Rotate image by these angles for augmentation.
+    blur_k=['blur','gauss','median'] # Blur image for augmentation.
+    scales=[0.5,2] # Scale patches for augmentation.
+    flip_index=[0,1,-1] # Flip image for augmentation.
+    continue_training = False # Set to true if you would like to continue training an already trained a model.
+    index_start = 0 # Index of model to continue training from. E.g. if you trained for 3 epochs and last index is 2, to continue from model_1.h5, set "index_start" to 3 to start naming model with index 3.
+    dir_of_start_model = '' # Directory containing pretrained encoder to continue training the model.
+    is_loss_soft_dice = False # Use soft dice as loss function. When set to true, "weighted_loss" must be false.
+    weighted_loss = False # Use weighted categorical cross entropy as loss fucntion. When set to true, "is_loss_soft_dice" must be false.
+    data_is_provided = False # Only set this to true when you have already provided the input data and the train and eval data are in "dir_output".
 
 @ex.automain
 def run(n_classes,n_epochs,input_height,
