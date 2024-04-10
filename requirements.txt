@@ -1,7 +1,6 @@
 tensorflow == 2.12.1
 sacred
-opencv-python
+opencv-python-headless
 seaborn
 tqdm
 imutils
-
