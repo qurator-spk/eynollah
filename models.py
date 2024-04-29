@@ -400,7 +400,7 @@ def vit_resnet50_unet(n_classes,patch_size, num_patches, input_height=224,input_
     f5 = x 
     
     if pretraining:
-        model = keras.Model(inputs, x).load_weights(resnet50_Weights_path)
+        model = Model(inputs, x).load_weights(resnet50_Weights_path)
 
     num_patches = x.shape[1]*x.shape[2]
     patches = Patches(patch_size)(x)
@@ -468,6 +468,71 @@ def vit_resnet50_unet(n_classes,patch_size, num_patches, input_height=224,input_
     o = (BatchNormalization(axis=bn_axis))(o)
     o = (Activation('softmax'))(o)
 
-    model = keras.Model(inputs=inputs, outputs=o)
+    model = Model(inputs=inputs, outputs=o)
     
+    return model
+
+def resnet50_classifier(n_classes,input_height=224,input_width=224,weight_decay=1e-6,pretraining=False):
+    include_top=True
+    assert input_height%32 == 0
+    assert input_width%32 == 0
+
+    
+    img_input = Input(shape=(input_height,input_width , 3 ))
+
+    if IMAGE_ORDERING == 'channels_last':
+        bn_axis = 3
+    else:
+        bn_axis = 1
+
+    x = ZeroPadding2D((3, 3), data_format=IMAGE_ORDERING)(img_input)
+    x = Conv2D(64, (7, 7), data_format=IMAGE_ORDERING, strides=(2, 2),kernel_regularizer=l2(weight_decay), name='conv1')(x)
+    f1 = x
+
+    x = BatchNormalization(axis=bn_axis, name='bn_conv1')(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D((3, 3) , data_format=IMAGE_ORDERING , strides=(2, 2))(x)
+    
+
+    x = conv_block(x, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1))
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='b')
+    x = identity_block(x, 3, [64, 64, 256], stage=2, block='c')
+    f2 = one_side_pad(x )
+
+
+    x = conv_block(x, 3, [128, 128, 512], stage=3, block='a')
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='b')
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='c')
+    x = identity_block(x, 3, [128, 128, 512], stage=3, block='d')
+    f3 = x 
+
+    x = conv_block(x, 3, [256, 256, 1024], stage=4, block='a')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='b')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='c')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='d')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='e')
+    x = identity_block(x, 3, [256, 256, 1024], stage=4, block='f')
+    f4 = x 
+
+    x = conv_block(x, 3, [512, 512, 2048], stage=5, block='a')
+    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='b')
+    x = identity_block(x, 3, [512, 512, 2048], stage=5, block='c')
+    f5 = x 
+
+    if pretraining:
+        Model(img_input, x).load_weights(resnet50_Weights_path)
+
+    x = AveragePooling2D((7, 7), name='avg_pool')(x)
+    x = Flatten()(x)
+    
+    ##
+    x = Dense(256, activation='relu', name='fc512')(x)
+    x=Dropout(0.2)(x)
+    ##
+    x = Dense(n_classes, activation='softmax', name='fc1000')(x)
+    model = Model(img_input, x)
+    
+    
+
+
     return model

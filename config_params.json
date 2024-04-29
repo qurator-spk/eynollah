@@ -1,13 +1,15 @@
 {
-    "model_name" : "hybrid_transformer_cnn",
+    "model_name" : "resnet50_unet",
+    "task": "classification",
     "n_classes" : 2,
-    "n_epochs" : 2,
-    "input_height" : 448,
-    "input_width" : 448,
+    "n_epochs" : 7,
+    "input_height" : 224,
+    "input_width" : 224,
     "weight_decay" : 1e-6,
-    "n_batch" : 2,
+    "n_batch" : 6,
     "learning_rate": 1e-4,
-    "patches" : true,
+    "f1_threshold_classification": 0.8,
+    "patches" : false,
     "pretraining" : true,
     "augmentation" : false,
     "flip_aug" : false,
@@ -33,7 +35,7 @@
     "weighted_loss": false,
     "is_loss_soft_dice": false,
     "data_is_provided": false,
-    "dir_train": "/train",
-    "dir_eval": "/eval",
-    "dir_output": "/out"
+    "dir_train": "/home/vahid/Downloads/image_classification_data/train",
+    "dir_eval": "/home/vahid/Downloads/image_classification_data/eval",
+    "dir_output": "/home/vahid/Downloads/image_classification_data/output"
 }
