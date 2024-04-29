@@ -8,6 +8,119 @@ import random
 from tqdm import tqdm
 import imutils
 import math
+from tensorflow.keras.utils import to_categorical
+
+
+def return_number_of_total_training_data(path_classes):
+    sub_classes = os.listdir(path_classes)
+    n_tot = 0
+    for sub_c in sub_classes:
+        sub_files =  os.listdir(os.path.join(path_classes,sub_c))
+        n_tot = n_tot + len(sub_files)
+    return n_tot
+        
+    
+    
+def generate_data_from_folder_evaluation(path_classes, height, width, n_classes):
+    sub_classes = os.listdir(path_classes)
+    #n_classes = len(sub_classes)
+    all_imgs = []
+    labels = []
+    dicts =dict()
+    indexer= 0
+    for sub_c in sub_classes:
+        sub_files =  os.listdir(os.path.join(path_classes,sub_c  )) 
+        sub_files = [os.path.join(path_classes,sub_c  )+'/' + x for x in sub_files]
+        #print(     os.listdir(os.path.join(path_classes,sub_c  ))     )
+        all_imgs = all_imgs + sub_files
+        sub_labels = list( np.zeros( len(sub_files) ) +indexer )
+
+        #print( len(sub_labels) )
+        labels = labels + sub_labels
+        dicts[sub_c] = indexer
+        indexer +=1 
+        
+
+    categories =  to_categorical(range(n_classes)).astype(np.int16)#[  [1 , 0, 0 , 0 , 0 , 0]  , [0 , 1, 0 , 0 , 0 , 0]  , [0 , 0, 1 , 0 , 0 , 0] , [0 , 0, 0 , 1 , 0 , 0] , [0 , 0, 0 , 0 , 1 , 0]  , [0 , 0, 0 , 0 , 0 , 1] ]
+    ret_x= np.zeros((len(labels), height,width, 3)).astype(np.int16)
+    ret_y= np.zeros((len(labels), n_classes)).astype(np.int16)
+    
+    #print(all_imgs)
+    for i in range(len(all_imgs)):
+        row = all_imgs[i]
+        #####img = cv2.imread(row, 0)
+        #####img= resize_image (img, height, width)
+        #####img = img.astype(np.uint16)
+        #####ret_x[i, :,:,0] = img[:,:]
+        #####ret_x[i, :,:,1] = img[:,:]
+        #####ret_x[i, :,:,2] = img[:,:]
+        
+        img = cv2.imread(row)
+        img= resize_image (img, height, width)
+        img = img.astype(np.uint16)
+        ret_x[i, :,:] = img[:,:,:]
+        
+        ret_y[i, :] =  categories[ int( labels[i] ) ][:]
+    
+    return ret_x/255., ret_y
+
+def generate_data_from_folder_training(path_classes, batchsize, height, width, n_classes):
+    sub_classes = os.listdir(path_classes)
+    n_classes = len(sub_classes)
+
+    all_imgs = []
+    labels = []
+    dicts =dict()
+    indexer= 0
+    for sub_c in sub_classes:
+        sub_files =  os.listdir(os.path.join(path_classes,sub_c  )) 
+        sub_files = [os.path.join(path_classes,sub_c  )+'/' + x for x in sub_files]
+        #print(     os.listdir(os.path.join(path_classes,sub_c  ))     )
+        all_imgs = all_imgs + sub_files
+        sub_labels = list( np.zeros( len(sub_files) ) +indexer )
+
+        #print( len(sub_labels) )
+        labels = labels + sub_labels
+        dicts[sub_c] = indexer
+        indexer +=1 
+        
+    ids = np.array(range(len(labels)))
+    random.shuffle(ids)
+    
+    shuffled_labels = np.array(labels)[ids]
+    shuffled_files = np.array(all_imgs)[ids]
+    categories = to_categorical(range(n_classes)).astype(np.int16)#[  [1 , 0, 0 , 0 , 0 , 0]  , [0 , 1, 0 , 0 , 0 , 0]  , [0 , 0, 1 , 0 , 0 , 0] , [0 , 0, 0 , 1 , 0 , 0] , [0 , 0, 0 , 0 , 1 , 0]  , [0 , 0, 0 , 0 , 0 , 1] ]
+    ret_x= np.zeros((batchsize, height,width, 3)).astype(np.int16)
+    ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+    batchcount = 0
+    while True:
+        for i in range(len(shuffled_files)):
+            row = shuffled_files[i]
+            #print(row)
+            ###img = cv2.imread(row, 0)
+            ###img= resize_image (img, height, width)
+            ###img = img.astype(np.uint16)
+            ###ret_x[batchcount, :,:,0] = img[:,:]
+            ###ret_x[batchcount, :,:,1] = img[:,:]
+            ###ret_x[batchcount, :,:,2] = img[:,:]
+            
+            img = cv2.imread(row)
+            img= resize_image (img, height, width)
+            img = img.astype(np.uint16)
+            ret_x[batchcount, :,:,:] = img[:,:,:]
+            
+            #print(int(shuffled_labels[i]) )
+            #print( categories[int(shuffled_labels[i])] )
+            ret_y[batchcount, :] =  categories[ int( shuffled_labels[i] ) ][:]
+            
+            batchcount+=1
+            
+            if batchcount>=batchsize:
+                ret_x = ret_x/255.
+                yield (ret_x, ret_y)
+                ret_x= np.zeros((batchsize, height,width, 3)).astype(np.int16)
+                ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+                batchcount = 0
 
 def do_brightening(img_in_dir, factor):
     im = Image.open(img_in_dir)
