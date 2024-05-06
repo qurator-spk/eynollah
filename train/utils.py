@@ -268,7 +268,7 @@ def IoU(Yi, y_predi):
     return mIoU
 
 
-def data_gen(img_folder, mask_folder, batch_size, input_height, input_width, n_classes):
+def data_gen(img_folder, mask_folder, batch_size, input_height, input_width, n_classes, task='segmentation'):
     c = 0
     n = [f for f in os.listdir(img_folder) if not f.startswith('.')]  # os.listdir(img_folder) #List of training images
     random.shuffle(n)
@@ -277,8 +277,6 @@ def data_gen(img_folder, mask_folder, batch_size, input_height, input_width, n_c
         mask = np.zeros((batch_size, input_height, input_width, n_classes)).astype('float')
 
         for i in range(c, c + batch_size):  # initially from 0 to 16, c = 0.
-            # print(img_folder+'/'+n[i])
-
             try:
                 filename = n[i].split('.')[0]
 
@@ -287,11 +285,14 @@ def data_gen(img_folder, mask_folder, batch_size, input_height, input_width, n_c
                                        interpolation=cv2.INTER_NEAREST)  # Read an image from folder and resize
 
                 img[i - c] = train_img  # add to array - img[0], img[1], and so on.
-                train_mask = cv2.imread(mask_folder + '/' + filename + '.png')
-                # print(mask_folder+'/'+filename+'.png')
-                # print(train_mask.shape)
-                train_mask = get_one_hot(resize_image(train_mask, input_height, input_width), input_height, input_width,
-                                         n_classes)
+                if task == "segmentation":
+                    train_mask = cv2.imread(mask_folder + '/' + filename + '.png')
+                    train_mask = get_one_hot(resize_image(train_mask, input_height, input_width), input_height, input_width,
+                                            n_classes)
+                elif task == "enhancement":
+                    train_mask = cv2.imread(mask_folder + '/' + filename + '.png')/255.
+                    train_mask = resize_image(train_mask, input_height, input_width)
+                    
                 # train_mask = train_mask.reshape(224, 224, 1) # Add extra dimension for parity with train_img size [512 * 512 * 3]
 
                 mask[i - c] = train_mask
@@ -539,14 +540,19 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                     padding_white, padding_black, flip_aug, binarization, scaling, degrading,
                     brightening, scales, degrade_scales, brightness, flip_index,
                     scaling_bluring, scaling_brightness, scaling_binarization, rotation,
-                    rotation_not_90, thetha, scaling_flip, augmentation=False, patches=False):
+                    rotation_not_90, thetha, scaling_flip, task, augmentation=False, patches=False):
     
     indexer = 0
     for im, seg_i in tqdm(zip(imgs_list_train, segs_list_train)):
         img_name = im.split('.')[0]
+        if task == "segmentation":
+            dir_of_label_file = os.path.join(dir_seg, img_name + '.png')
+        elif task=="enhancement":
+            dir_of_label_file = os.path.join(dir_seg, im)
+            
         if not patches:
             cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png', resize_image(cv2.imread(dir_img + '/' + im), input_height, input_width))
-            cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png', resize_image(cv2.imread(dir_seg + '/' + img_name + '.png'), input_height, input_width))
+            cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png', resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
             indexer += 1
             
             if augmentation:
@@ -556,7 +562,7 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                                     resize_image(cv2.flip(cv2.imread(dir_img+'/'+im),f_i),input_height,input_width) )
                         
                         cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                    resize_image(cv2.flip(cv2.imread(dir_seg + '/' + img_name + '.png'), f_i), input_height, input_width)) 
+                                    resize_image(cv2.flip(cv2.imread(dir_of_label_file), f_i), input_height, input_width)) 
                         indexer += 1
                         
                 if blur_aug:   
@@ -565,7 +571,7 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                                     (resize_image(bluring(cv2.imread(dir_img + '/' + im), blur_i), input_height, input_width)))
                         
                         cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                    resize_image(cv2.imread(dir_seg + '/' + img_name + '.png'), input_height, input_width))
+                                    resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
                         indexer += 1
                     
                 if binarization:
@@ -573,26 +579,26 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                                 resize_image(otsu_copy(cv2.imread(dir_img + '/' + im)), input_height, input_width))
                     
                     cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(cv2.imread(dir_seg + '/' + img_name + '.png'), input_height, input_width))
+                                resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
                     indexer += 1
                     
                     
         if patches:
             indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
-                                  cv2.imread(dir_img + '/' + im), cv2.imread(dir_seg + '/' + img_name + '.png'),
+                                  cv2.imread(dir_img + '/' + im), cv2.imread(dir_of_label_file),
                                   input_height, input_width, indexer=indexer)
             
             if augmentation:
                 if rotation:
                     indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
                                         rotation_90(cv2.imread(dir_img + '/' + im)),
-                                        rotation_90(cv2.imread(dir_seg + '/' + img_name + '.png')),
+                                        rotation_90(cv2.imread(dir_of_label_file)),
                                         input_height, input_width, indexer=indexer)
                     
                 if rotation_not_90:
                     for thetha_i in thetha:
                         img_max_rotated, label_max_rotated = rotation_not_90_func(cv2.imread(dir_img + '/'+im),
-                                                                                  cv2.imread(dir_seg + '/'+img_name + '.png'), thetha_i)
+                                                                                  cv2.imread(dir_of_label_file), thetha_i)
                         indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
                                               img_max_rotated,
                                               label_max_rotated,
@@ -601,24 +607,24 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                     for f_i in flip_index:
                         indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
                                               cv2.flip(cv2.imread(dir_img + '/' + im), f_i),
-                                              cv2.flip(cv2.imread(dir_seg + '/' + img_name + '.png'), f_i),
+                                              cv2.flip(cv2.imread(dir_of_label_file), f_i),
                                               input_height, input_width, indexer=indexer)
                 if blur_aug:   
                     for blur_i in blur_k:
                         indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
                                               bluring(cv2.imread(dir_img + '/' + im), blur_i),
-                                              cv2.imread(dir_seg + '/' + img_name + '.png'),
+                                              cv2.imread(dir_of_label_file),
                                               input_height, input_width, indexer=indexer)          
                 if padding_black:
                     indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
                                           do_padding_black(cv2.imread(dir_img + '/' + im)),
-                                          do_padding_label(cv2.imread(dir_seg + '/' + img_name + '.png')),
+                                          do_padding_label(cv2.imread(dir_of_label_file)),
                                           input_height, input_width, indexer=indexer)       
         
                 if padding_white:   
                     indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
                                           do_padding_white(cv2.imread(dir_img + '/'+im)),
-                                          do_padding_label(cv2.imread(dir_seg + '/' + img_name + '.png')),
+                                          do_padding_label(cv2.imread(dir_of_label_file)),
                                           input_height, input_width, indexer=indexer)       
                     
                 if brightening:
@@ -626,7 +632,7 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                         try:
                             indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
                                                   do_brightening(dir_img + '/' +im, factor),
-                                                  cv2.imread(dir_seg + '/' + img_name + '.png'),
+                                                  cv2.imread(dir_of_label_file),
                                                   input_height, input_width, indexer=indexer)
                         except:
                             pass
@@ -634,20 +640,20 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                     for sc_ind in scales:
                         indexer = get_patches_num_scale_new(dir_flow_train_imgs, dir_flow_train_labels,
                                                             cv2.imread(dir_img + '/' + im) ,
-                                                            cv2.imread(dir_seg + '/' + img_name + '.png'),
+                                                            cv2.imread(dir_of_label_file),
                                                             input_height, input_width, indexer=indexer, scaler=sc_ind)
                         
                 if degrading:  
                     for degrade_scale_ind in degrade_scales:
                         indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
                                               do_degrading(cv2.imread(dir_img + '/' + im), degrade_scale_ind),
-                                              cv2.imread(dir_seg + '/' + img_name + '.png'),
+                                              cv2.imread(dir_of_label_file),
                                               input_height, input_width, indexer=indexer)
                         
                 if binarization:
                     indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
                                           otsu_copy(cv2.imread(dir_img + '/' + im)),
-                                          cv2.imread(dir_seg + '/' + img_name + '.png'),
+                                          cv2.imread(dir_of_label_file),
                                           input_height, input_width, indexer=indexer)
 
                 if scaling_brightness:
@@ -657,7 +663,7 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                                 indexer = get_patches_num_scale_new(dir_flow_train_imgs,
                                                                     dir_flow_train_labels,
                                                                     do_brightening(dir_img + '/' + im, factor)
-                                                                    ,cv2.imread(dir_seg + '/' + img_name + '.png')
+                                                                    ,cv2.imread(dir_of_label_file)
                                                                     ,input_height, input_width, indexer=indexer, scaler=sc_ind)
                             except:
                                 pass
@@ -667,14 +673,14 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                         for blur_i in blur_k:
                             indexer = get_patches_num_scale_new(dir_flow_train_imgs, dir_flow_train_labels,
                                                                 bluring(cv2.imread(dir_img + '/' + im), blur_i),
-                                                                cv2.imread(dir_seg + '/' + img_name + '.png'),
+                                                                cv2.imread(dir_of_label_file),
                                                                 input_height, input_width, indexer=indexer, scaler=sc_ind)
 
                 if scaling_binarization:  
                     for sc_ind in scales:
                         indexer = get_patches_num_scale_new(dir_flow_train_imgs, dir_flow_train_labels,
                                                             otsu_copy(cv2.imread(dir_img + '/' + im)),
-                                                            cv2.imread(dir_seg + '/' + img_name + '.png'),
+                                                            cv2.imread(dir_of_label_file),
                                                             input_height, input_width, indexer=indexer, scaler=sc_ind)
                         
                 if scaling_flip:  
@@ -682,5 +688,5 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                         for f_i in flip_index:
                             indexer = get_patches_num_scale_new(dir_flow_train_imgs, dir_flow_train_labels,
                                                                 cv2.flip( cv2.imread(dir_img + '/' + im), f_i),
-                                                                cv2.flip(cv2.imread(dir_seg + '/' + img_name + '.png'), f_i),
+                                                                cv2.flip(cv2.imread(dir_of_label_file), f_i),
                                                                 input_height, input_width, indexer=indexer, scaler=sc_ind)
