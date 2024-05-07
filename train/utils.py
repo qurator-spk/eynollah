@@ -21,14 +21,14 @@ def return_number_of_total_training_data(path_classes):
         
     
     
-def generate_data_from_folder_evaluation(path_classes, height, width, n_classes):
-    sub_classes = os.listdir(path_classes)
+def generate_data_from_folder_evaluation(path_classes, height, width, n_classes, list_classes):
+    #sub_classes = os.listdir(path_classes)
     #n_classes = len(sub_classes)
     all_imgs = []
     labels = []
-    dicts =dict()
-    indexer= 0
-    for sub_c in sub_classes:
+    #dicts =dict()
+    #indexer= 0
+    for indexer, sub_c in enumerate(list_classes):
         sub_files =  os.listdir(os.path.join(path_classes,sub_c  )) 
         sub_files = [os.path.join(path_classes,sub_c  )+'/' + x for x in sub_files]
         #print(     os.listdir(os.path.join(path_classes,sub_c  ))     )
@@ -37,8 +37,8 @@ def generate_data_from_folder_evaluation(path_classes, height, width, n_classes)
 
         #print( len(sub_labels) )
         labels = labels + sub_labels
-        dicts[sub_c] = indexer
-        indexer +=1 
+        #dicts[sub_c] = indexer
+        #indexer +=1 
         
 
     categories =  to_categorical(range(n_classes)).astype(np.int16)#[  [1 , 0, 0 , 0 , 0 , 0]  , [0 , 1, 0 , 0 , 0 , 0]  , [0 , 0, 1 , 0 , 0 , 0] , [0 , 0, 0 , 1 , 0 , 0] , [0 , 0, 0 , 0 , 1 , 0]  , [0 , 0, 0 , 0 , 0 , 1] ]
@@ -64,15 +64,15 @@ def generate_data_from_folder_evaluation(path_classes, height, width, n_classes)
     
     return ret_x/255., ret_y
 
-def generate_data_from_folder_training(path_classes, batchsize, height, width, n_classes):
-    sub_classes = os.listdir(path_classes)
-    n_classes = len(sub_classes)
+def generate_data_from_folder_training(path_classes, batchsize, height, width, n_classes, list_classes):
+    #sub_classes = os.listdir(path_classes)
+    #n_classes = len(sub_classes)
 
     all_imgs = []
     labels = []
-    dicts =dict()
-    indexer= 0
-    for sub_c in sub_classes:
+    #dicts =dict()
+    #indexer= 0
+    for indexer, sub_c in enumerate(list_classes):
         sub_files =  os.listdir(os.path.join(path_classes,sub_c  )) 
         sub_files = [os.path.join(path_classes,sub_c  )+'/' + x for x in sub_files]
         #print(     os.listdir(os.path.join(path_classes,sub_c  ))     )
@@ -81,8 +81,8 @@ def generate_data_from_folder_training(path_classes, batchsize, height, width, n
 
         #print( len(sub_labels) )
         labels = labels + sub_labels
-        dicts[sub_c] = indexer
-        indexer +=1 
+        #dicts[sub_c] = indexer
+        #indexer +=1 
         
     ids = np.array(range(len(labels)))
     random.shuffle(ids)
