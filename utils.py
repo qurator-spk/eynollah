@@ -9,6 +9,7 @@ from tqdm import tqdm
 import imutils
 import math
 from tensorflow.keras.utils import to_categorical
+from PIL import Image, ImageEnhance
 
 
 def return_number_of_total_training_data(path_classes):
