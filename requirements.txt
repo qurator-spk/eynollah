@@ -7,3 +7,4 @@ imutils
 numpy
 scipy
 scikit-learn
+shapely
