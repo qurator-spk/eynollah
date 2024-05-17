@@ -217,6 +217,79 @@ class pagexml2word:
                 except:
                     cv2.imwrite(self.output_dir+'/'+self.gt_list[index].split('.')[0]+'.png',img_poly )
                     
+            elif self.experiment == 'textline_new_concept':
+                region_tags = np.unique([x for x in alltags if x.endswith('TextLine')])
+                co_line = []
+
+                for tag in region_tags:
+                    if tag.endswith('}TextLine') or tag.endswith('}textline'):
+                        # print('sth')
+                        for nn in root1.iter(tag):
+                            c_t_in = []
+                            sumi = 0
+                            for vv in nn.iter():
+                                # check the format of coords
+                                if vv.tag == link + 'Coords':
+                                    coords = bool(vv.attrib)
+                                    if coords:
+                                        p_h = vv.attrib['points'].split(' ')
+                                        c_t_in.append(
+                                            np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h]))
+                                        break
+                                    else:
+                                        pass
+
+                                if vv.tag == link + 'Point':
+                                    c_t_in.append([int(np.float(vv.attrib['x'])), int(np.float(vv.attrib['y']))])
+                                    sumi += 1
+                                # print(vv.tag,'in')
+                                elif vv.tag != link + 'Point' and sumi >= 1:
+                                    break
+                            co_line.append(np.array(c_t_in))
+                
+                img_boundary = np.zeros((y_len, x_len))
+                co_textline_eroded = []
+                for con in co_line:
+                    # try:
+                    img_boundary_in = np.zeros((y_len, x_len))
+                    img_boundary_in = cv2.fillPoly(img_boundary_in, pts=[con], color=(1, 1, 1))
+                    # print('bidiahhhhaaa')
+
+                    # img_boundary_in = cv2.erode(img_boundary_in[:,:], KERNEL, iterations=7)#asiatica
+                    img_boundary_in = cv2.erode(img_boundary_in[:, :], KERNEL, iterations=1)
+
+                    pixel = 1
+                    min_size = 0
+                    con_eroded = self.return_contours_of_interested_region(img_boundary_in, pixel, min_size)
+
+                    try:
+                        co_textline_eroded.append(con_eroded[0])
+                    except:
+                        co_textline_eroded.append(con)
+
+                    img_boundary_in_dilated = cv2.dilate(img_boundary_in[:, :], KERNEL, iterations=3)
+                    # img_boundary_in_dilated = cv2.dilate(img_boundary_in[:,:], KERNEL, iterations=5)
+
+                    boundary = img_boundary_in_dilated[:, :] - img_boundary_in[:, :]
+
+                    img_boundary[:, :][boundary[:, :] == 1] = 1
+
+                img = np.zeros((y_len, x_len, 3))
+                if self.output_type == '2d':
+                    img_poly = cv2.fillPoly(img, pts=co_textline_eroded, color=(1, 1, 1))
+                    img_poly[:, :][img_boundary[:, :] == 1] = 2
+                elif self.output_type == '3d':
+                    img_poly = cv2.fillPoly(img, pts=co_textline_eroded, color=(255, 0, 0))
+                    img_poly[:, :, 0][img_boundary[:, :] == 1] = 255
+                    img_poly[:, :, 1][img_boundary[:, :] == 1] = 125
+                    img_poly[:, :, 2][img_boundary[:, :] == 1] = 125
+
+                try:
+                    cv2.imwrite(self.output_dir + '/' + self.gt_list[index].split('-')[1].split('.')[0] + '.png',
+                                img_poly)
+                except:
+                    cv2.imwrite(self.output_dir + '/' + self.gt_list[index].split('.')[0] + '.png', img_poly)
+                    
             elif self.experiment=='layout_for_main_regions':
                 region_tags=np.unique([x for x in alltags if x.endswith('Region')])   
                 #print(region_tags)
