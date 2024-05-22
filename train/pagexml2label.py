@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from tqdm import tqdm
 import cv2
 from shapely import geometry
+import json
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -21,11 +22,12 @@ This classes.txt file is required for dhsegment tool.
 KERNEL = np.ones((5, 5), np.uint8)
 
 class pagexml2word:
-    def __init__(self,dir_in, out_dir,output_type,experiment):
+    def __init__(self,dir_in, out_dir,output_type,experiment,layout_config):
         self.dir=dir_in
         self.output_dir=out_dir
         self.output_type=output_type
         self.experiment=experiment
+        self.layout_config=layout_config
 
     def get_content_of_dir(self):
         """
@@ -77,7 +79,7 @@ class pagexml2word:
 
         return contours_imgs
 
-    def get_images_of_ground_truth(self):
+    def get_images_of_ground_truth(self, config_params):
         """
         Reading the page xml files and write the ground truth images into given output directory.
         """
@@ -93,6 +95,445 @@ class pagexml2word:
             for jj in root1.iter(link+'Page'):
                 y_len=int(jj.attrib['imageHeight'])
                 x_len=int(jj.attrib['imageWidth'])
+                
+            if self.layout_config:
+                keys = list(config_params.keys())
+                #values = config_params.values()
+
+                if 'textregions' in keys:
+                    types_text_dict = config_params['textregions']
+                    types_text = list(types_text_dict.keys())
+                    types_text_label = list(types_text_dict.values())
+                if 'graphicregions' in keys:
+                    types_graphic_dict = config_params['graphicregions']
+                    types_graphic = list(types_graphic_dict.keys())
+                    types_graphic_label = list(types_graphic_dict.values())
+
+                    
+                types_text_label_rgb = [ (0,0,0), (255,0,0), (255,125,0), (255,0,125), (125,255,125), (125,125,0), (0,125,255), (0,125,0), (125,125,125), (0,125,255), (125,0,125), (0,255,0),(0,0,255), (0,255,255), (255,125,125),  (0,125,255), (0,255,125)]
+                
+                region_tags=np.unique([x for x in alltags if x.endswith('Region')])   
+
+                co_text_paragraph=[]
+                co_text_drop=[]
+                co_text_heading=[]
+                co_text_header=[]
+                co_text_marginalia=[]
+                co_text_catch=[]
+                co_text_page_number=[]
+                co_text_signature_mark=[]
+                co_sep=[]
+                co_img=[]
+                co_table=[]
+                co_graphic_signature=[]
+                co_graphic_text_annotation=[]
+                co_graphic_decoration=[]
+                co_graphic_stamp=[]
+                co_noise=[]
+                
+                for tag in region_tags:
+                    if 'textregions' in keys:
+                        if tag.endswith('}TextRegion') or tag.endswith('}Textregion'):
+                            for nn in root1.iter(tag):
+                                c_t_in_drop=[]
+                                c_t_in_paragraph=[]
+                                c_t_in_heading=[]
+                                c_t_in_header=[]
+                                c_t_in_page_number=[]
+                                c_t_in_signature_mark=[]
+                                c_t_in_catch=[]
+                                c_t_in_marginalia=[]
+                                sumi=0
+                                for vv in nn.iter():
+                                    # check the format of coords
+                                    if vv.tag==link+'Coords':
+                    
+                                        coords=bool(vv.attrib)
+                                        if coords:
+                                            #print('birda1')
+                                            p_h=vv.attrib['points'].split(' ')
+                                            
+                                            if "drop-capital" in types_text:
+                                                if "type" in nn.attrib and nn.attrib['type']=='drop-capital':
+                                                    c_t_in_drop.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                            
+                                            if "heading" in types_text:
+                                                if "type" in nn.attrib and nn.attrib['type']=='heading':
+                                                    c_t_in_heading.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                        
+                                            if "signature-mark" in types_text:
+                                                if "type" in nn.attrib and nn.attrib['type']=='signature-mark':
+                                                    c_t_in_signature_mark.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+
+                                            if "header" in types_text:
+                                                if "type" in nn.attrib and nn.attrib['type']=='header':
+                                                    c_t_in_header.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                            
+                                            if "catch-word" in types_text:
+                                                if "type" in nn.attrib and nn.attrib['type']=='catch-word':
+                                                    c_t_in_catch.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                        
+                                            if "page-number" in types_text:
+                                                if "type" in nn.attrib and nn.attrib['type']=='page-number':
+                                                    c_t_in_page_number.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+
+                                            if "marginalia" in types_text:    
+                                                if "type" in nn.attrib and nn.attrib['type']=='marginalia':
+                                                    c_t_in_marginalia.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                                
+                                            if "paragraph" in types_text:
+                                                if "type" in nn.attrib and nn.attrib['type']=='paragraph':
+                                                    c_t_in_paragraph.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+
+                    
+                                            break
+                                        else:
+                                            pass
+                    
+                    
+                                    if vv.tag==link+'Point':
+                                        if "drop-capital" in types_text:
+                                            if "type" in nn.attrib and nn.attrib['type']=='drop-capital':
+                                                c_t_in_drop.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                                
+                                        if "heading" in types_text:
+                                            if "type" in nn.attrib and nn.attrib['type']=='heading':
+                                                c_t_in_heading.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                                
+                                        if "signature-mark" in types_text:
+                                            if "type" in nn.attrib and nn.attrib['type']=='signature-mark':
+                                                c_t_in_signature_mark.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                         
+                                        if "header" in types_text:
+                                            if "type" in nn.attrib and nn.attrib['type']=='header':
+                                                c_t_in_header.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                        
+                                        if "catch-word" in types_text:
+                                            if "type" in nn.attrib and nn.attrib['type']=='catch-word':
+                                                c_t_in_catch.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                                
+                                        if "page-number" in types_text:
+                                            if "type" in nn.attrib and nn.attrib['type']=='page-number':
+                                                c_t_in_page_number.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                        
+                                        if "marginalia" in types_text:
+                                            if "type" in nn.attrib and nn.attrib['type']=='marginalia':
+                                                c_t_in_marginalia.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                            
+                                        if "paragraph" in types_text:
+                                            if "type" in nn.attrib and nn.attrib['type']=='paragraph':
+                                                c_t_in_paragraph.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                            
+
+                                    elif vv.tag!=link+'Point' and sumi>=1:
+                                        break
+                    
+                                if len(c_t_in_drop)>0:
+                                    co_text_drop.append(np.array(c_t_in_drop))
+                                if len(c_t_in_paragraph)>0:
+                                    co_text_paragraph.append(np.array(c_t_in_paragraph))
+                                if len(c_t_in_heading)>0:
+                                    co_text_heading.append(np.array(c_t_in_heading))
+                                    
+                                if len(c_t_in_header)>0:
+                                    co_text_header.append(np.array(c_t_in_header))
+                                if len(c_t_in_page_number)>0:
+                                    co_text_page_number.append(np.array(c_t_in_page_number))
+                                if len(c_t_in_catch)>0:
+                                    co_text_catch.append(np.array(c_t_in_catch))
+                                    
+                                if len(c_t_in_signature_mark)>0:
+                                    co_text_signature_mark.append(np.array(c_t_in_signature_mark))
+                                    
+                                if len(c_t_in_marginalia)>0:
+                                    co_text_marginalia.append(np.array(c_t_in_marginalia))
+                                    
+                    
+                    if 'graphicregions' in keys:
+                        if tag.endswith('}GraphicRegion') or tag.endswith('}graphicregion'):
+                            #print('sth')
+                            for nn in root1.iter(tag):
+                                c_t_in_stamp=[]
+                                c_t_in_text_annotation=[]
+                                c_t_in_decoration=[]
+                                c_t_in_signature=[]
+                                sumi=0
+                                for vv in nn.iter():
+                                    # check the format of coords
+                                    if vv.tag==link+'Coords':
+                                        coords=bool(vv.attrib)
+                                        if coords:
+                                            p_h=vv.attrib['points'].split(' ')
+                                            if "handwritten-annotation" in types_graphic:
+                                                if "type" in nn.attrib and nn.attrib['type']=='handwritten-annotation':
+                                                    c_t_in_text_annotation.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                            
+                                            if "decoration" in types_graphic:
+                                                if "type" in nn.attrib and nn.attrib['type']=='decoration':
+                                                    c_t_in_decoration.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+
+                                            if "stamp" in types_graphic:
+                                                if "type" in nn.attrib and nn.attrib['type']=='stamp':
+                                                    c_t_in_stamp.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                                
+                                            if "signature" in types_graphic:
+                                                if "type" in nn.attrib and nn.attrib['type']=='signature':
+                                                    c_t_in_signature.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                        
+                                            
+                                            
+                                            break
+                                        else:
+                                            pass
+                    
+                    
+                                    if vv.tag==link+'Point':
+                                        if "handwritten-annotation" in types_graphic:
+                                            if "type" in nn.attrib and nn.attrib['type']=='handwritten-annotation':
+                                                c_t_in_text_annotation.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                                
+                                        if "decoration" in types_graphic:        
+                                            if "type" in nn.attrib and nn.attrib['type']=='decoration':
+                                                c_t_in_decoration.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                            
+                                        if "stamp" in types_graphic:
+                                            if "type" in nn.attrib and nn.attrib['type']=='stamp':
+                                                c_t_in_stamp.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                            
+                                        if "signature" in types_graphic:
+                                            if "type" in nn.attrib and nn.attrib['type']=='signature':
+                                                c_t_in_signature.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                        
+                                if len(c_t_in_text_annotation)>0:
+                                    co_graphic_text_annotation.append(np.array(c_t_in_text_annotation))
+                                if len(c_t_in_decoration)>0:
+                                    co_graphic_decoration.append(np.array(c_t_in_decoration))
+                                if len(c_t_in_stamp)>0:
+                                    co_graphic_stamp.append(np.array(c_t_in_stamp))
+                                if len(c_t_in_signature)>0:
+                                    co_graphic_signature.append(np.array(c_t_in_signature))
+                
+                    if 'imageregion' in keys:
+                        if tag.endswith('}ImageRegion') or tag.endswith('}imageregion'):
+                            for nn in root1.iter(tag):
+                                c_t_in=[]
+                                sumi=0
+                                for vv in nn.iter():
+                                    if vv.tag==link+'Coords':
+                                        coords=bool(vv.attrib)
+                                        if coords:
+                                            p_h=vv.attrib['points'].split(' ')
+                                            c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                            break
+                                        else:
+                                            pass
+                    
+                    
+                                    if vv.tag==link+'Point':
+                                        c_t_in.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                        sumi+=1
+
+                                    elif vv.tag!=link+'Point' and sumi>=1:
+                                        break
+                                co_img.append(np.array(c_t_in))
+                
+                    
+                    if 'separatorregion' in keys:
+                        if tag.endswith('}SeparatorRegion') or tag.endswith('}separatorregion'):
+                            for nn in root1.iter(tag):
+                                c_t_in=[]
+                                sumi=0
+                                for vv in nn.iter():
+                                    # check the format of coords
+                                    if vv.tag==link+'Coords':
+                                        coords=bool(vv.attrib)
+                                        if coords:
+                                            p_h=vv.attrib['points'].split(' ')
+                                            c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                            break
+                                        else:
+                                            pass
+                    
+                    
+                                    if vv.tag==link+'Point':
+                                        c_t_in.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                        sumi+=1
+
+                                    elif vv.tag!=link+'Point' and sumi>=1:
+                                        break
+                                co_sep.append(np.array(c_t_in))
+                
+                
+                
+                    if 'tableregion' in keys:
+                        if tag.endswith('}TableRegion') or tag.endswith('}tableregion'):
+                            #print('sth')
+                            for nn in root1.iter(tag):
+                                c_t_in=[]
+                                sumi=0
+                                for vv in nn.iter():
+                                    # check the format of coords
+                                    if vv.tag==link+'Coords':
+                                        coords=bool(vv.attrib)
+                                        if coords:
+                                            p_h=vv.attrib['points'].split(' ')
+                                            c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                            break
+                                        else:
+                                            pass
+                    
+                    
+                                    if vv.tag==link+'Point':
+                                        c_t_in.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                        sumi+=1
+                                    #print(vv.tag,'in')
+                                    elif vv.tag!=link+'Point' and sumi>=1:
+                                        break
+                                co_table.append(np.array(c_t_in))
+                
+                    if 'noiseregion' in keys:
+                        if tag.endswith('}NoiseRegion') or tag.endswith('}noiseregion'):
+                            #print('sth')
+                            for nn in root1.iter(tag):
+                                c_t_in=[]
+                                sumi=0
+                                for vv in nn.iter():
+                                    # check the format of coords
+                                    if vv.tag==link+'Coords':
+                                        coords=bool(vv.attrib)
+                                        if coords:
+                                            p_h=vv.attrib['points'].split(' ')
+                                            c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                            break
+                                        else:
+                                            pass
+                    
+                    
+                                    if vv.tag==link+'Point':
+                                        c_t_in.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                        sumi+=1
+                                    #print(vv.tag,'in')
+                                    elif vv.tag!=link+'Point' and sumi>=1:
+                                        break
+                                co_noise.append(np.array(c_t_in))
+                
+                img = np.zeros( (y_len,x_len,3) ) 
+
+                if self.output_type == '3d':
+                    
+                    if 'graphicregions' in keys:
+                        if "handwritten-annotation" in types_graphic:
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_text_annotation, color=types_text_label_rgb[ config_params['graphicregions']['handwritten-annotation']])
+                        if "signature" in types_graphic:
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_signature, color=types_text_label_rgb[ config_params['graphicregions']['signature']])
+                        if "decoration" in types_graphic:
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_decoration, color=types_text_label_rgb[ config_params['graphicregions']['decoration']])
+                        if "stamp" in types_graphic:
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_stamp, color=types_text_label_rgb[ config_params['graphicregions']['stamp']])
+                            
+                    if 'imageregion' in keys: 
+                        img_poly=cv2.fillPoly(img, pts =co_img, color=types_text_label_rgb[ config_params['imageregion']])
+                    if 'separatorregion' in keys: 
+                        img_poly=cv2.fillPoly(img, pts =co_sep, color=types_text_label_rgb[ config_params['separatorregion']])
+                    if 'tableregion' in keys:  
+                        img_poly=cv2.fillPoly(img, pts =co_table, color=types_text_label_rgb[ config_params['tableregion']])
+                    if 'noiseregion' in keys:  
+                        img_poly=cv2.fillPoly(img, pts =co_noise, color=types_text_label_rgb[ config_params['noiseregion']])
+                        
+                    if 'textregions' in keys:
+                        if "paragraph" in types_text:
+                            img_poly=cv2.fillPoly(img, pts =co_text_paragraph, color=types_text_label_rgb[ config_params['textregions']['paragraph']])
+                        if "heading" in types_text:
+                            img_poly=cv2.fillPoly(img, pts =co_text_heading, color=types_text_label_rgb[ config_params['textregions']['heading']])
+                        if "header" in types_text:
+                            img_poly=cv2.fillPoly(img, pts =co_text_header, color=types_text_label_rgb[ config_params['textregions']['header']])
+                        if "catch-word" in types_text:
+                            img_poly=cv2.fillPoly(img, pts =co_text_catch, color=types_text_label_rgb[ config_params['textregions']['catch-word']])
+                        if "signature-mark" in types_text:
+                            img_poly=cv2.fillPoly(img, pts =co_text_signature_mark, color=types_text_label_rgb[ config_params['textregions']['signature-mark']])
+                        if "page-number" in types_text:
+                            img_poly=cv2.fillPoly(img, pts =co_text_page_number, color=types_text_label_rgb[ config_params['textregions']['page-number']])
+                        if "marginalia" in types_text:
+                            img_poly=cv2.fillPoly(img, pts =co_text_marginalia, color=types_text_label_rgb[ config_params['textregions']['marginalia']])
+                        if "drop-capital" in types_text:
+                            img_poly=cv2.fillPoly(img, pts =co_text_drop, color=types_text_label_rgb[ config_params['textregions']['drop-capital']])
+                    
+                elif self.output_type == '2d':
+                    if 'graphicregions' in keys:
+                        if "handwritten-annotation" in types_graphic:
+                            color_label = config_params['graphicregions']['handwritten-annotation']
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_text_annotation, color=(color_label,color_label,color_label))
+                        if "signature" in types_graphic:
+                            color_label = config_params['graphicregions']['signature']
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_signature, color=(color_label,color_label,color_label))
+                        if "decoration" in types_graphic:
+                            color_label = config_params['graphicregions']['decoration']
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_decoration, color=(color_label,color_label,color_label))
+                        if "stamp" in types_graphic:
+                            color_label = config_params['graphicregions']['stamp']
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_stamp, color=(color_label,color_label,color_label))
+                    
+                    if 'imageregion' in keys:
+                        color_label = config_params['imageregion']
+                        img_poly=cv2.fillPoly(img, pts =co_img, color=(color_label,color_label,color_label))
+                    if 'separatorregion' in keys: 
+                        color_label = config_params['separatorregion']
+                        img_poly=cv2.fillPoly(img, pts =co_sep, color=(color_label,color_label,color_label))
+                    if 'tableregion' in keys:
+                        color_label = config_params['tableregion']
+                        img_poly=cv2.fillPoly(img, pts =co_table, color=(color_label,color_label,color_label))
+                    if 'noiseregion' in keys:
+                        color_label = config_params['noiseregion']
+                        img_poly=cv2.fillPoly(img, pts =co_noise, color=(color_label,color_label,color_label))
+                        
+                    if 'textregions' in keys:
+                        if "paragraph" in types_text:
+                            color_label = config_params['textregions']['paragraph']
+                            img_poly=cv2.fillPoly(img, pts =co_text_paragraph, color=(color_label,color_label,color_label))
+                        if "heading" in types_text:
+                            color_label = config_params['textregions']['heading']
+                            img_poly=cv2.fillPoly(img, pts =co_text_heading, color=(color_label,color_label,color_label))
+                        if "header" in types_text:
+                            color_label = config_params['textregions']['header']
+                            img_poly=cv2.fillPoly(img, pts =co_text_header, color=(color_label,color_label,color_label))
+                        if "catch-word" in types_text:
+                            color_label = config_params['textregions']['catch-word']
+                            img_poly=cv2.fillPoly(img, pts =co_text_catch, color=(color_label,color_label,color_label))
+                        if "signature-mark" in types_text:
+                            color_label = config_params['textregions']['signature-mark']
+                            img_poly=cv2.fillPoly(img, pts =co_text_signature_mark, color=(color_label,color_label,color_label))
+                        if "page-number" in types_text:
+                            color_label = config_params['textregions']['page-number']
+                            img_poly=cv2.fillPoly(img, pts =co_text_page_number, color=(color_label,color_label,color_label))
+                        if "marginalia" in types_text:
+                            color_label = config_params['textregions']['marginalia']
+                            img_poly=cv2.fillPoly(img, pts =co_text_marginalia, color=(color_label,color_label,color_label))
+                        if "drop-capital" in types_text:
+                            color_label = config_params['textregions']['drop-capital']
+                            img_poly=cv2.fillPoly(img, pts =co_text_drop, color=(color_label,color_label,color_label))
+                    
+                    
+                    
+                    
+                try: 
+                    cv2.imwrite(self.output_dir+'/'+self.gt_list[index].split('-')[1].split('.')[0]+'.png',img_poly )
+                except:
+                    cv2.imwrite(self.output_dir+'/'+self.gt_list[index].split('.')[0]+'.png',img_poly )
+                    
+
+                #print(values[0])
             if self.experiment=='word':
                 region_tags=np.unique([x for x in alltags if x.endswith('Word')])                  
                 co_word=[]
@@ -302,6 +743,7 @@ class pagexml2word:
                     if tag.endswith('}TextRegion') or tag.endswith('}Textregion'):
                         #print('sth')
                         for nn in root1.iter(tag):
+                            print(nn.attrib['type'])
                             c_t_in=[]
                             sumi=0
                             for vv in nn.iter():
@@ -373,20 +815,19 @@ class pagexml2word:
                                 elif vv.tag!=link+'Point' and sumi>=1:
                                     break
                             co_sep.append(np.array(c_t_in))
-                            
 
-                            
-                img = np.zeros( (y_len,x_len,3) ) 
+                img_poly = np.zeros( (y_len,x_len,3) ) 
+                    
                 
                 if self.output_type == '3d':
-                    img_poly=cv2.fillPoly(img, pts =co_text, color=(255,0,0))
-                    img_poly=cv2.fillPoly(img, pts =co_img, color=(0,255,0))
-                    img_poly=cv2.fillPoly(img, pts =co_sep, color=(0,0,255))
+                    img_poly=cv2.fillPoly(img_poly, pts =co_text, color=(255,0,0))
+                    img_poly=cv2.fillPoly(img_poly, pts =co_img, color=(0,255,0))
+                    img_poly=cv2.fillPoly(img_poly, pts =co_sep, color=(0,0,255))
                     ##img_poly=cv2.fillPoly(img, pts =co_graphic, color=(255,125,125))
                 elif self.output_type == '2d':
-                    img_poly=cv2.fillPoly(img, pts =co_text, color=(1,1,1))
-                    img_poly=cv2.fillPoly(img, pts =co_img, color=(2,2,2))
-                    img_poly=cv2.fillPoly(img, pts =co_sep, color=(3,3,3))
+                    img_poly=cv2.fillPoly(img_poly, pts =co_text, color=(1,1,1))
+                    img_poly=cv2.fillPoly(img_poly, pts =co_img, color=(2,2,2))
+                    img_poly=cv2.fillPoly(img_poly, pts =co_sep, color=(3,3,3))
 
                 try: 
                     cv2.imwrite(self.output_dir+'/'+self.gt_list[index].split('-')[1].split('.')[0]+'.png',img_poly )
@@ -752,7 +1193,7 @@ class pagexml2word:
                 
                 
                 img = np.zeros( (y_len,x_len,3) ) 
-                
+
                 if self.output_type == '3d':
                     img_poly=cv2.fillPoly(img, pts =co_text_paragraph, color=(255,0,0))
                     
@@ -1043,9 +1484,9 @@ class pagexml2word:
 
             #except:
                 #pass
-    def run(self):
+    def run(self,config_params):
         self.get_content_of_dir()
-        self.get_images_of_ground_truth()
+        self.get_images_of_ground_truth(config_params)
         
         
 @click.command()
@@ -1061,6 +1502,14 @@ class pagexml2word:
     help="directory where ground truth images would be written",
     type=click.Path(exists=True, file_okay=False),
 )
+
+@click.option(
+    "--layout_config",
+    "-lc",
+    help="experiment of ineterst. Word , textline , glyph and textregion are desired options.",
+    type=click.Path(exists=True, dir_okay=False),
+)
+
 @click.option(
     "--type_output",
     "-to",
@@ -1072,9 +1521,16 @@ class pagexml2word:
     help="experiment of ineterst. Word , textline , glyph and textregion are desired options.",
 )
 
-def main(dir_xml,dir_out,type_output,experiment):
-    x=pagexml2word(dir_xml,dir_out,type_output,experiment)
-    x.run()
+
+def main(dir_xml,dir_out,type_output,experiment,layout_config):
+    if layout_config:
+        with open(layout_config) as f:
+            config_params = json.load(f)
+    else:
+        print("passed")
+        config_params = None
+    x=pagexml2word(dir_xml,dir_out,type_output,experiment, layout_config)
+    x.run(config_params)
 if __name__=="__main__":
     main()
 
