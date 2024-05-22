@@ -1,0 +1,6 @@
+{
+"textregions":{"paragraph":1, "heading": 2, "header":2,"drop-capital": 3, "marginal":4 },
+"imageregion":5,
+"separatorregion":6,
+"graphicregions" :{"handwritten-annotation":7, "decoration": 8, "signature": 9, "stamp": 10}
+}
