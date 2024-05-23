@@ -1,8 +1,9 @@
 {
-"textregions":{"paragraph":1, "heading": 1, "header":1,"drop-capital": 1, "marginalia":1 ,"page-number":1 , "catch-word":1 ,"footnote": 1, "footnote-continued": 1},
-"imageregion":2,
-"separatorregion":3,
-"graphicregions" :{"handwritten-annotation":2, "decoration": 2, "signature": 2, "stamp": 2},
+"use_case": "layout",
+"textregions":{"paragraph":1, "heading": 2, "header":2,"drop-capital": 3, "marginalia":4 ,"page-number":1 , "catch-word":1 ,"footnote": 1, "footnote-continued": 1},
+"imageregion":5,
+"separatorregion":6,
+"graphicregions" :{"handwritten-annotation":5, "decoration": 5, "signature": 5, "stamp": 5},
 "artificial_class_on_boundry": ["paragraph","header", "heading", "marginalia", "page-number", "catch-word", "drop-capital","footnote", "footnote-continued"],
-"artificial_class_label":4
+"artificial_class_label":7
 }
