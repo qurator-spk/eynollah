@@ -126,7 +126,7 @@ class pagexml2label:
                 y_len=int(jj.attrib['imageHeight'])
                 x_len=int(jj.attrib['imageWidth'])
                 
-            if self.config and (config_params['use_case']=='textline' or config_params['use_case']=='word' or config_params['use_case']=='glyph'):
+            if self.config and (config_params['use_case']=='textline' or config_params['use_case']=='word' or config_params['use_case']=='glyph' or config_params['use_case']=='printspace'):
                 keys = list(config_params.keys())
                 if "artificial_class_label" in keys:
                     artificial_class_rgb_color = (255,255,0)
@@ -140,6 +140,9 @@ class pagexml2label:
                     region_tags = np.unique([x for x in alltags if x.endswith('Word')])
                 elif config_params['use_case']=='glyph':
                     region_tags = np.unique([x for x in alltags if x.endswith('Glyph')])
+                elif config_params['use_case']=='printspace':
+                    region_tags = np.unique([x for x in alltags if x.endswith('PrintSpace')])
+                    
                 co_use_case = []
 
                 for tag in region_tags:
@@ -149,6 +152,8 @@ class pagexml2label:
                         tag_endings = ['}Word','}word']
                     elif config_params['use_case']=='glyph':
                         tag_endings = ['}Glyph','}glyph']
+                    elif config_params['use_case']=='printspace':
+                        tag_endings = ['}PrintSpace','}printspace']
                         
                     if tag.endswith(tag_endings[0]) or tag.endswith(tag_endings[1]):
                         for nn in root1.iter(tag):
