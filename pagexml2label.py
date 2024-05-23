@@ -113,6 +113,7 @@ class pagexml2word:
         """
         Reading the page xml files and write the ground truth images into given output directory.
         """
+        ## to do: add footnote to text regions
         for index in tqdm(range(len(self.gt_list))):
             #try:
             tree1 = ET.parse(self.dir+'/'+self.gt_list[index])
@@ -144,11 +145,13 @@ class pagexml2word:
                     types_graphic_label = list(types_graphic_dict.values())
 
                     
-                labels_rgb_color = [ (0,0,0), (255,0,0), (255,125,0), (255,0,125), (125,255,125), (125,125,0), (0,125,255), (0,125,0), (125,125,125), (255,0,255), (125,0,125), (0,255,0),(0,0,255), (0,255,255), (255,125,125),  (0,125,125), (0,255,125)]
+                labels_rgb_color = [ (0,0,0), (255,0,0), (255,125,0), (255,0,125), (125,255,125), (125,125,0), (0,125,255), (0,125,0), (125,125,125), (255,0,255), (125,0,125), (0,255,0),(0,0,255), (0,255,255), (255,125,125),  (0,125,125), (0,255,125), (255,125,255), (125,255,0)]
                 
                 region_tags=np.unique([x for x in alltags if x.endswith('Region')])   
 
                 co_text_paragraph=[]
+                co_text_footnote=[]
+                co_text_footnote_con=[]
                 co_text_drop=[]
                 co_text_heading=[]
                 co_text_header=[]
@@ -177,6 +180,8 @@ class pagexml2word:
                                 c_t_in_signature_mark=[]
                                 c_t_in_catch=[]
                                 c_t_in_marginalia=[]
+                                c_t_in_footnote=[]
+                                c_t_in_footnote_con=[]
                                 sumi=0
                                 for vv in nn.iter():
                                     # check the format of coords
@@ -190,6 +195,14 @@ class pagexml2word:
                                             if "drop-capital" in types_text:
                                                 if "type" in nn.attrib and nn.attrib['type']=='drop-capital':
                                                     c_t_in_drop.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                                    
+                                            if "footnote" in types_text:
+                                                if "type" in nn.attrib and nn.attrib['type']=='footnote':
+                                                    c_t_in_footnote.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                                    
+                                            if "footnote-continued" in types_text:
+                                                if "type" in nn.attrib and nn.attrib['type']=='footnote-continued':
+                                                    c_t_in_footnote_con.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                                             
                                             if "heading" in types_text:
                                                 if "type" in nn.attrib and nn.attrib['type']=='heading':
@@ -229,6 +242,16 @@ class pagexml2word:
                                         if "drop-capital" in types_text:
                                             if "type" in nn.attrib and nn.attrib['type']=='drop-capital':
                                                 c_t_in_drop.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                                
+                                        if "footnote" in types_text:
+                                            if "type" in nn.attrib and nn.attrib['type']=='footnote':
+                                                c_t_in_footnote.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
+                                                sumi+=1
+                                            
+                                        if "footnote-continued" in types_text:
+                                            if "type" in nn.attrib and nn.attrib['type']=='footnote-continued':
+                                                c_t_in_footnote_con.append([ int(np.float(vv.attrib['x'])) , int(np.float(vv.attrib['y'])) ])
                                                 sumi+=1
                                                 
                                         if "heading" in types_text:
@@ -272,6 +295,10 @@ class pagexml2word:
                     
                                 if len(c_t_in_drop)>0:
                                     co_text_drop.append(np.array(c_t_in_drop))
+                                if len(c_t_in_footnote_con)>0:
+                                    co_text_footnote_con.append(np.array(c_t_in_footnote_con))
+                                if len(c_t_in_footnote)>0:
+                                    co_text_footnote.append(np.array(c_t_in_footnote))
                                 if len(c_t_in_paragraph)>0:
                                     co_text_paragraph.append(np.array(c_t_in_paragraph))
                                 if len(c_t_in_heading)>0:
@@ -497,6 +524,15 @@ class pagexml2word:
                         erosion_rate = 2
                         dilation_rate = 4
                         co_text_marginalia, img_boundary = self.update_region_contours(co_text_marginalia, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                    if "footnote" in elements_with_artificial_class:
+                        erosion_rate = 2
+                        dilation_rate = 4
+                        co_text_footnote, img_boundary = self.update_region_contours(co_text_footnote, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                    if "footnote-continued" in elements_with_artificial_class:
+                        erosion_rate = 2
+                        dilation_rate = 4
+                        co_text_footnote_con, img_boundary = self.update_region_contours(co_text_footnote_con, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                        
                         
                     
                 img = np.zeros( (y_len,x_len,3) ) 
@@ -525,6 +561,10 @@ class pagexml2word:
                     if 'textregions' in keys:
                         if "paragraph" in types_text:
                             img_poly=cv2.fillPoly(img, pts =co_text_paragraph, color=labels_rgb_color[ config_params['textregions']['paragraph']])
+                        if "footnote" in types_text:
+                            img_poly=cv2.fillPoly(img, pts =co_text_footnote, color=labels_rgb_color[ config_params['textregions']['footnote']])
+                        if "footnote-continued" in types_text:
+                            img_poly=cv2.fillPoly(img, pts =co_text_footnote_con, color=labels_rgb_color[ config_params['textregions']['footnote-continued']])
                         if "heading" in types_text:
                             img_poly=cv2.fillPoly(img, pts =co_text_heading, color=labels_rgb_color[ config_params['textregions']['heading']])
                         if "header" in types_text:
@@ -580,6 +620,12 @@ class pagexml2word:
                         if "paragraph" in types_text:
                             color_label = config_params['textregions']['paragraph']
                             img_poly=cv2.fillPoly(img, pts =co_text_paragraph, color=(color_label,color_label,color_label))
+                        if "footnote" in types_text:
+                            color_label = config_params['textregions']['footnote']
+                            img_poly=cv2.fillPoly(img, pts =co_text_footnote, color=(color_label,color_label,color_label))
+                        if "footnote-continued" in types_text:
+                            color_label = config_params['textregions']['footnote-continued']
+                            img_poly=cv2.fillPoly(img, pts =co_text_footnote_con, color=(color_label,color_label,color_label))
                         if "heading" in types_text:
                             color_label = config_params['textregions']['heading']
                             img_poly=cv2.fillPoly(img, pts =co_text_heading, color=(color_label,color_label,color_label))
