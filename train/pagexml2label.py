@@ -78,7 +78,37 @@ class pagexml2word:
         contours_imgs = self.filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy, max_area=1, min_area=min_area)
 
         return contours_imgs
+    def update_region_contours(self, co_text, img_boundary, erosion_rate, dilation_rate, y_len, x_len):
+        co_text_eroded = []
+        for con in co_text:
+            #try:
+            img_boundary_in = np.zeros( (y_len,x_len) )
+            img_boundary_in = cv2.fillPoly(img_boundary_in, pts=[con], color=(1, 1, 1))
+            #print('bidiahhhhaaa')
+            
+            
+            
+            #img_boundary_in = cv2.erode(img_boundary_in[:,:], KERNEL, iterations=7)#asiatica
+            if erosion_rate > 0:
+                img_boundary_in = cv2.erode(img_boundary_in[:,:], KERNEL, iterations=erosion_rate)
+            
+            pixel = 1
+            min_size = 0
+            con_eroded = self.return_contours_of_interested_region(img_boundary_in,pixel, min_size )
+            
+            try:
+                co_text_eroded.append(con_eroded[0])
+            except:
+                co_text_eroded.append(con)
+            
 
+            img_boundary_in_dilated = cv2.dilate(img_boundary_in[:,:], KERNEL, iterations=dilation_rate)
+            #img_boundary_in_dilated = cv2.dilate(img_boundary_in[:,:], KERNEL, iterations=5)
+            
+            boundary = img_boundary_in_dilated[:,:] - img_boundary_in[:,:]
+            
+            img_boundary[:,:][boundary[:,:]==1] =1
+        return co_text_eroded, img_boundary
     def get_images_of_ground_truth(self, config_params):
         """
         Reading the page xml files and write the ground truth images into given output directory.
@@ -98,6 +128,10 @@ class pagexml2word:
                 
             if self.layout_config:
                 keys = list(config_params.keys())
+                if "artificial_class_on_boundry" in keys:
+                    elements_with_artificial_class = list(config_params['artificial_class_on_boundry'])
+                    artificial_class_rgb_color = (255,255,0)
+                    artificial_class_label = config_params['artificial_class_label']
                 #values = config_params.values()
 
                 if 'textregions' in keys:
@@ -110,7 +144,7 @@ class pagexml2word:
                     types_graphic_label = list(types_graphic_dict.values())
 
                     
-                types_text_label_rgb = [ (0,0,0), (255,0,0), (255,125,0), (255,0,125), (125,255,125), (125,125,0), (0,125,255), (0,125,0), (125,125,125), (0,125,255), (125,0,125), (0,255,0),(0,0,255), (0,255,255), (255,125,125),  (0,125,255), (0,255,125)]
+                labels_rgb_color = [ (0,0,0), (255,0,0), (255,125,0), (255,0,125), (125,255,125), (125,125,0), (0,125,255), (0,125,0), (125,125,125), (255,0,255), (125,0,125), (0,255,0),(0,0,255), (0,255,255), (255,125,125),  (0,125,125), (0,255,125)]
                 
                 region_tags=np.unique([x for x in alltags if x.endswith('Region')])   
 
@@ -429,46 +463,90 @@ class pagexml2word:
                                         break
                                 co_noise.append(np.array(c_t_in))
                 
+                if "artificial_class_on_boundry" in keys:
+                    img_boundary = np.zeros( (y_len,x_len) )
+                    if "paragraph" in elements_with_artificial_class:
+                        erosion_rate = 2
+                        dilation_rate = 4
+                        co_text_paragraph, img_boundary = self.update_region_contours(co_text_paragraph, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                    if "drop-capital" in elements_with_artificial_class:
+                        erosion_rate = 0
+                        dilation_rate = 4
+                        co_text_drop, img_boundary = self.update_region_contours(co_text_drop, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                    if "catch-word" in elements_with_artificial_class:
+                        erosion_rate = 0
+                        dilation_rate = 4
+                        co_text_catch, img_boundary = self.update_region_contours(co_text_catch, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                    if "page-number" in elements_with_artificial_class:
+                        erosion_rate = 0
+                        dilation_rate = 4
+                        co_text_page_number, img_boundary = self.update_region_contours(co_text_page_number, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                    if "header" in elements_with_artificial_class:
+                        erosion_rate = 1
+                        dilation_rate = 4
+                        co_text_header, img_boundary = self.update_region_contours(co_text_header, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                    if "heading" in elements_with_artificial_class:
+                        erosion_rate = 1
+                        dilation_rate = 4
+                        co_text_heading, img_boundary = self.update_region_contours(co_text_heading, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                    if "signature-mark" in elements_with_artificial_class:
+                        erosion_rate = 1
+                        dilation_rate = 4
+                        co_text_signature_mark, img_boundary = self.update_region_contours(co_text_signature_mark, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                    if "marginalia" in elements_with_artificial_class:
+                        erosion_rate = 2
+                        dilation_rate = 4
+                        co_text_marginalia, img_boundary = self.update_region_contours(co_text_marginalia, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                        
+                    
                 img = np.zeros( (y_len,x_len,3) ) 
 
                 if self.output_type == '3d':
                     
                     if 'graphicregions' in keys:
                         if "handwritten-annotation" in types_graphic:
-                            img_poly=cv2.fillPoly(img, pts =co_graphic_text_annotation, color=types_text_label_rgb[ config_params['graphicregions']['handwritten-annotation']])
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_text_annotation, color=labels_rgb_color[ config_params['graphicregions']['handwritten-annotation']])
                         if "signature" in types_graphic:
-                            img_poly=cv2.fillPoly(img, pts =co_graphic_signature, color=types_text_label_rgb[ config_params['graphicregions']['signature']])
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_signature, color=labels_rgb_color[ config_params['graphicregions']['signature']])
                         if "decoration" in types_graphic:
-                            img_poly=cv2.fillPoly(img, pts =co_graphic_decoration, color=types_text_label_rgb[ config_params['graphicregions']['decoration']])
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_decoration, color=labels_rgb_color[ config_params['graphicregions']['decoration']])
                         if "stamp" in types_graphic:
-                            img_poly=cv2.fillPoly(img, pts =co_graphic_stamp, color=types_text_label_rgb[ config_params['graphicregions']['stamp']])
+                            img_poly=cv2.fillPoly(img, pts =co_graphic_stamp, color=labels_rgb_color[ config_params['graphicregions']['stamp']])
                             
                     if 'imageregion' in keys: 
-                        img_poly=cv2.fillPoly(img, pts =co_img, color=types_text_label_rgb[ config_params['imageregion']])
+                        img_poly=cv2.fillPoly(img, pts =co_img, color=labels_rgb_color[ config_params['imageregion']])
                     if 'separatorregion' in keys: 
-                        img_poly=cv2.fillPoly(img, pts =co_sep, color=types_text_label_rgb[ config_params['separatorregion']])
+                        img_poly=cv2.fillPoly(img, pts =co_sep, color=labels_rgb_color[ config_params['separatorregion']])
                     if 'tableregion' in keys:  
-                        img_poly=cv2.fillPoly(img, pts =co_table, color=types_text_label_rgb[ config_params['tableregion']])
+                        img_poly=cv2.fillPoly(img, pts =co_table, color=labels_rgb_color[ config_params['tableregion']])
                     if 'noiseregion' in keys:  
-                        img_poly=cv2.fillPoly(img, pts =co_noise, color=types_text_label_rgb[ config_params['noiseregion']])
+                        img_poly=cv2.fillPoly(img, pts =co_noise, color=labels_rgb_color[ config_params['noiseregion']])
                         
                     if 'textregions' in keys:
                         if "paragraph" in types_text:
-                            img_poly=cv2.fillPoly(img, pts =co_text_paragraph, color=types_text_label_rgb[ config_params['textregions']['paragraph']])
+                            img_poly=cv2.fillPoly(img, pts =co_text_paragraph, color=labels_rgb_color[ config_params['textregions']['paragraph']])
                         if "heading" in types_text:
-                            img_poly=cv2.fillPoly(img, pts =co_text_heading, color=types_text_label_rgb[ config_params['textregions']['heading']])
+                            img_poly=cv2.fillPoly(img, pts =co_text_heading, color=labels_rgb_color[ config_params['textregions']['heading']])
                         if "header" in types_text:
-                            img_poly=cv2.fillPoly(img, pts =co_text_header, color=types_text_label_rgb[ config_params['textregions']['header']])
+                            img_poly=cv2.fillPoly(img, pts =co_text_header, color=labels_rgb_color[ config_params['textregions']['header']])
                         if "catch-word" in types_text:
-                            img_poly=cv2.fillPoly(img, pts =co_text_catch, color=types_text_label_rgb[ config_params['textregions']['catch-word']])
+                            img_poly=cv2.fillPoly(img, pts =co_text_catch, color=labels_rgb_color[ config_params['textregions']['catch-word']])
                         if "signature-mark" in types_text:
-                            img_poly=cv2.fillPoly(img, pts =co_text_signature_mark, color=types_text_label_rgb[ config_params['textregions']['signature-mark']])
+                            img_poly=cv2.fillPoly(img, pts =co_text_signature_mark, color=labels_rgb_color[ config_params['textregions']['signature-mark']])
                         if "page-number" in types_text:
-                            img_poly=cv2.fillPoly(img, pts =co_text_page_number, color=types_text_label_rgb[ config_params['textregions']['page-number']])
+                            img_poly=cv2.fillPoly(img, pts =co_text_page_number, color=labels_rgb_color[ config_params['textregions']['page-number']])
                         if "marginalia" in types_text:
-                            img_poly=cv2.fillPoly(img, pts =co_text_marginalia, color=types_text_label_rgb[ config_params['textregions']['marginalia']])
+                            img_poly=cv2.fillPoly(img, pts =co_text_marginalia, color=labels_rgb_color[ config_params['textregions']['marginalia']])
                         if "drop-capital" in types_text:
-                            img_poly=cv2.fillPoly(img, pts =co_text_drop, color=types_text_label_rgb[ config_params['textregions']['drop-capital']])
+                            img_poly=cv2.fillPoly(img, pts =co_text_drop, color=labels_rgb_color[ config_params['textregions']['drop-capital']])
+                            
+                    if "artificial_class_on_boundry" in keys:
+                        img_poly[:,:,0][img_boundary[:,:]==1] = artificial_class_rgb_color[0]
+                        img_poly[:,:,1][img_boundary[:,:]==1] = artificial_class_rgb_color[1]
+                        img_poly[:,:,2][img_boundary[:,:]==1] = artificial_class_rgb_color[2]
+                        
+
+                        
                     
                 elif self.output_type == '2d':
                     if 'graphicregions' in keys:
@@ -523,6 +601,9 @@ class pagexml2word:
                         if "drop-capital" in types_text:
                             color_label = config_params['textregions']['drop-capital']
                             img_poly=cv2.fillPoly(img, pts =co_text_drop, color=(color_label,color_label,color_label))
+                            
+                    if "artificial_class_on_boundry" in keys:
+                        img_poly[:,:][img_boundary[:,:]==1] = artificial_class_label
                     
                     
                     
@@ -1506,7 +1587,7 @@ class pagexml2word:
 @click.option(
     "--layout_config",
     "-lc",
-    help="experiment of ineterst. Word , textline , glyph and textregion are desired options.",
+    help="config file of prefered layout.",
     type=click.Path(exists=True, dir_okay=False),
 )
 
