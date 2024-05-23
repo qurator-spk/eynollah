@@ -1,6 +1,8 @@
 {
-"textregions":{"paragraph":1, "heading": 2, "header":2,"drop-capital": 3, "marginal":4 },
+"textregions":{"paragraph":1, "heading": 2, "header":2,"drop-capital": 3, "marginalia":4 ,"page-number":1 , "catch-word":1 },
 "imageregion":5,
 "separatorregion":6,
-"graphicregions" :{"handwritten-annotation":7, "decoration": 8, "signature": 9, "stamp": 10}
+"graphicregions" :{"handwritten-annotation":7, "decoration": 8, "signature": 9, "stamp": 10},
+"artificial_class_on_boundry": ["paragraph","header", "heading", "marginalia", "page-number", "catch-word", "drop-capital"],
+"artificial_class_label":11
 }
