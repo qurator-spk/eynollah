@@ -545,3 +545,58 @@ def resnet50_classifier(n_classes,input_height=224,input_width=224,weight_decay=
 
 
     return model
+
+def machine_based_reading_order_model(n_classes,input_height=224,input_width=224,weight_decay=1e-6,pretraining=False):
+    assert input_height%32 == 0
+    assert input_width%32 == 0
+
+    img_input = Input(shape=(input_height,input_width , 3 ))
+
+    if IMAGE_ORDERING == 'channels_last':
+        bn_axis = 3
+    else:
+        bn_axis = 1
+
+    x1 = ZeroPadding2D((3, 3), data_format=IMAGE_ORDERING)(img_input)
+    x1 = Conv2D(64, (7, 7), data_format=IMAGE_ORDERING, strides=(2, 2),kernel_regularizer=l2(weight_decay), name='conv1')(x1)
+
+    x1 = BatchNormalization(axis=bn_axis, name='bn_conv1')(x1)
+    x1 = Activation('relu')(x1)
+    x1 = MaxPooling2D((3, 3) , data_format=IMAGE_ORDERING , strides=(2, 2))(x1)
+    
+    x1 = conv_block(x1, 3, [64, 64, 256], stage=2, block='a', strides=(1, 1))
+    x1 = identity_block(x1, 3, [64, 64, 256], stage=2, block='b')
+    x1 = identity_block(x1, 3, [64, 64, 256], stage=2, block='c')
+
+    x1 = conv_block(x1, 3, [128, 128, 512], stage=3, block='a')
+    x1 = identity_block(x1, 3, [128, 128, 512], stage=3, block='b')
+    x1 = identity_block(x1, 3, [128, 128, 512], stage=3, block='c')
+    x1 = identity_block(x1, 3, [128, 128, 512], stage=3, block='d')
+
+    x1 = conv_block(x1, 3, [256, 256, 1024], stage=4, block='a')
+    x1 = identity_block(x1, 3, [256, 256, 1024], stage=4, block='b')
+    x1 = identity_block(x1, 3, [256, 256, 1024], stage=4, block='c')
+    x1 = identity_block(x1, 3, [256, 256, 1024], stage=4, block='d')
+    x1 = identity_block(x1, 3, [256, 256, 1024], stage=4, block='e')
+    x1 = identity_block(x1, 3, [256, 256, 1024], stage=4, block='f')
+
+    x1 = conv_block(x1, 3, [512, 512, 2048], stage=5, block='a')
+    x1 = identity_block(x1, 3, [512, 512, 2048], stage=5, block='b')
+    x1 = identity_block(x1, 3, [512, 512, 2048], stage=5, block='c')
+    
+    if pretraining:
+        Model(img_input , x1).load_weights(resnet50_Weights_path)
+    
+    x1 = AveragePooling2D((7, 7), name='avg_pool1')(x1)
+    flattened = Flatten()(x1)
+    
+    o = Dense(256, activation='relu', name='fc512')(flattened)
+    o=Dropout(0.2)(o)
+    
+    o = Dense(256, activation='relu', name='fc512a')(o)
+    o=Dropout(0.2)(o)
+
+    o = Dense(n_classes, activation='sigmoid', name='fc1000')(o)
+    model = Model(img_input , o)
+
+    return model
