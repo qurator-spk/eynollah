@@ -268,6 +268,29 @@ def IoU(Yi, y_predi):
     #print("Mean IoU: {:4.3f}".format(mIoU))
     return mIoU
 
+def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batchsize, height, width, n_classes):
+    all_labels_files = os.listdir(classes_file_dir)
+    ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
+    ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+    batchcount = 0
+    while True:
+        for i in all_labels_files:
+            file_name = i.split('.')[0]
+            img = cv2.imread(os.path.join(modal_dir,file_name+'.png'))
+
+            label_class = int( np.load(os.path.join(classes_file_dir,i)) )
+
+            ret_x[batchcount, :,:,0] = img[:,:,0]/3.0
+            ret_x[batchcount, :,:,2] = img[:,:,2]/3.0
+            ret_x[batchcount, :,:,1] = img[:,:,1]/5.0
+
+            ret_y[batchcount, :] =  label_class
+            batchcount+=1
+            if batchcount>=batchsize:
+                yield (ret_x, ret_y)
+                ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
+                ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+                batchcount = 0
 
 def data_gen(img_folder, mask_folder, batch_size, input_height, input_width, n_classes, task='segmentation'):
     c = 0

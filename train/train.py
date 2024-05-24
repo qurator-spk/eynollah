@@ -313,4 +313,35 @@ def run(_config, n_classes, n_epochs, input_height,
             
         with open(os.path.join( os.path.join(dir_output,'model_best'), "config.json"), "w") as fp:
             json.dump(_config, fp)  # encode dict into JSON
+            
+    elif task=='reading_order':
+        configuration()
+        model = machine_based_reading_order_model(n_classes,input_height,input_width,weight_decay,pretraining)
+        
+        dir_flow_train_imgs = os.path.join(dir_train, 'images')
+        dir_flow_train_labels = os.path.join(dir_train, 'labels')
+        
+        classes = os.listdir(dir_flow_train_labels)
+        num_rows =len(classes)
+        #ls_test = os.listdir(dir_flow_train_labels)
+
+        #f1score_tot = [0]
+        indexer_start = 0
+        opt = SGD(lr=0.01, momentum=0.9)
+        opt_adam = tf.keras.optimizers.Adam(learning_rate=0.0001)
+        model.compile(loss="binary_crossentropy",
+                            optimizer = opt_adam,metrics=['accuracy'])
+        for i in range(n_epochs):
+            history = model.fit(generate_arrays_from_folder_reading_order(dir_flow_train_labels, dir_flow_train_imgs, n_batch, input_height, input_width, n_classes), steps_per_epoch=num_rows / n_batch, verbose=1)
+            model.save( os.path.join(dir_output,'model_'+str(i+indexer_start) ))
+            
+            with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config.json"), "w") as fp:
+                json.dump(_config, fp)  # encode dict into JSON
+            '''
+            if f1score>f1score_tot[0]:
+                f1score_tot[0] = f1score
+                model_dir = os.path.join(dir_out,'model_best')
+                model.save(model_dir)
+            '''
+
     
