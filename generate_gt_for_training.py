@@ -116,22 +116,28 @@ def image_enhancement(dir_imgs, dir_out_images, dir_out_labels, scales):
 @click.option(
     "--input_height",
     "-ih",
-    help="input_height",
+    help="input height",
 )
 @click.option(
     "--input_width",
     "-iw",
-    help="input_width",
+    help="input width",
+)
+@click.option(
+    "--min_area_size",
+    "-min",
+    help="min area size of regions considered for reading order training.",
 )
 
-def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width):
+def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size):
     xml_files_ind = os.listdir(dir_xml)
     input_height = int(input_height)
     input_width = int(input_width)
+    min_area = float(min_area_size)
 
     indexer_start= 0#55166
     max_area = 1
-    min_area = 0.0001
+    #min_area = 0.0001
 
     for ind_xml in tqdm(xml_files_ind):
         indexer = 0
