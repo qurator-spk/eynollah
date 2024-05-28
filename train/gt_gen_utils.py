@@ -38,11 +38,8 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
         polygon = geometry.Polygon([point[0] for point in c])
         # area = cv2.contourArea(c)
         area = polygon.area
-        ##print(np.prod(thresh.shape[:2]))
         # Check that polygon has area greater than minimal area
-        # print(hierarchy[0][jv][3],hierarchy )
         if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]):  # and hierarchy[0][jv][3]==-1 :
-            # print(c[0][0][1])
             found_polygons_early.append(np.array([[point] for point in polygon.exterior.coords], dtype=np.int32))
         jv += 1
     return found_polygons_early
@@ -52,15 +49,12 @@ def filter_contours_area_of_image(image, contours, order_index, max_area, min_ar
     order_index_filtered = list()
     #jv = 0
     for jv, c in enumerate(contours):
-        #print(len(c[0]))
         c = c[0]
         if len(c) < 3:  # A polygon cannot have less than 3 points
             continue
         c_e = [point for point in c]
-        #print(c_e)
         polygon = geometry.Polygon(c_e)
         area = polygon.area
-        #print(area,'area')
         if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]):  # and hierarchy[0][jv][3]==-1 :
             found_polygons_early.append(np.array([[point] for point in polygon.exterior.coords], dtype=np.uint))
             order_index_filtered.append(order_index[jv])
@@ -88,12 +82,8 @@ def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
 def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y_len, x_len):
     co_text_eroded = []
     for con in co_text:
-        #try:
         img_boundary_in = np.zeros( (y_len,x_len) )
         img_boundary_in = cv2.fillPoly(img_boundary_in, pts=[con], color=(1, 1, 1))
-        #print('bidiahhhhaaa')
-        
-        
         
         #img_boundary_in = cv2.erode(img_boundary_in[:,:], KERNEL, iterations=7)#asiatica
         if erosion_rate > 0:
@@ -626,8 +616,6 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 
                 
 def find_new_features_of_contours(contours_main):
-    
-    #print(contours_main[0][0][:, 0])
 
     areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
     M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
@@ -658,8 +646,6 @@ def find_new_features_of_contours(contours_main):
         y_min_main = np.array([np.min(contours_main[j][:, 1]) for j in range(len(contours_main))])
         y_max_main = np.array([np.max(contours_main[j][:, 1]) for j in range(len(contours_main))])
 
-    # dis_x=np.abs(x_max_main-x_min_main)
-
     return cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin
 def read_xml(xml_file):
     file_name = Path(xml_file).stem
@@ -675,13 +661,11 @@ def read_xml(xml_file):
         y_len=int(jj.attrib['imageHeight'])
         x_len=int(jj.attrib['imageWidth'])
 
-
     for jj in root1.iter(link+'RegionRefIndexed'):
         index_tot_regions.append(jj.attrib['index'])
         tot_region_ref.append(jj.attrib['regionRef'])
 
     region_tags=np.unique([x for x in alltags if x.endswith('Region')])   
-    #print(region_tags)
     co_text_paragraph=[]
     co_text_drop=[]
     co_text_heading=[]
@@ -697,7 +681,6 @@ def read_xml(xml_file):
     co_graphic_text_annotation=[]
     co_graphic_decoration=[]
     co_noise=[]
-
 
     co_text_paragraph_text=[]
     co_text_drop_text=[]
@@ -715,7 +698,6 @@ def read_xml(xml_file):
     co_graphic_decoration_text=[]
     co_noise_text=[]
 
-
     id_paragraph = []
     id_header = []
     id_heading = []
@@ -726,14 +708,8 @@ def read_xml(xml_file):
             for nn in root1.iter(tag):
                 for child2 in nn:
                     tag2 = child2.tag
-                    #print(child2.tag)
                     if tag2.endswith('}TextEquiv') or tag2.endswith('}TextEquiv'):
-                        #children2 = childtext.getchildren()
-                        #rank = child2.find('Unicode').text
                         for childtext2 in child2:
-                            #rank = childtext2.find('Unicode').text
-                            #if childtext2.tag.endswith('}PlainText') or childtext2.tag.endswith('}PlainText'):
-                            #print(childtext2.text)
                             if childtext2.tag.endswith('}Unicode') or childtext2.tag.endswith('}Unicode'):
                                 if "type" in nn.attrib and nn.attrib['type']=='drop-capital':
                                     co_text_drop_text.append(childtext2.text)
@@ -743,10 +719,10 @@ def read_xml(xml_file):
                                     co_text_signature_mark_text.append(childtext2.text)
                                 elif "type" in nn.attrib and nn.attrib['type']=='header':
                                     co_text_header_text.append(childtext2.text)
-                                elif "type" in nn.attrib and nn.attrib['type']=='catch-word':
-                                    co_text_catch_text.append(childtext2.text)
-                                elif "type" in nn.attrib and nn.attrib['type']=='page-number':
-                                    co_text_page_number_text.append(childtext2.text)
+                                ###elif "type" in nn.attrib and nn.attrib['type']=='catch-word':
+                                    ###co_text_catch_text.append(childtext2.text)
+                                ###elif "type" in nn.attrib and nn.attrib['type']=='page-number':
+                                    ###co_text_page_number_text.append(childtext2.text)
                                 elif "type" in nn.attrib and nn.attrib['type']=='marginalia':
                                     co_text_marginalia_text.append(childtext2.text)
                                 else:
@@ -774,7 +750,6 @@ def read_xml(xml_file):
 
 
                             if "type" in nn.attrib and nn.attrib['type']=='drop-capital':
-                            #if nn.attrib['type']=='paragraph':
 
                                 c_t_in_drop.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
 
@@ -792,27 +767,22 @@ def read_xml(xml_file):
                                 c_t_in_header.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
 
 
-                            elif "type" in nn.attrib and nn.attrib['type']=='catch-word':
-                                c_t_in_catch.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                            ###elif "type" in nn.attrib and nn.attrib['type']=='catch-word':
+                                ###c_t_in_catch.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
 
 
-                            elif "type" in nn.attrib and nn.attrib['type']=='page-number':
+                            ###elif "type" in nn.attrib and nn.attrib['type']=='page-number':
 
-                                c_t_in_page_number.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
-                                #print(c_t_in_paragraph)
+                                ###c_t_in_page_number.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
 
                             elif "type" in nn.attrib and nn.attrib['type']=='marginalia':
                                 id_marginalia.append(nn.attrib['id'])
 
                                 c_t_in_marginalia.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
-                                #print(c_t_in_paragraph)
                             else:
-                                #print(nn.attrib['id'])
-
                                 id_paragraph.append(nn.attrib['id'])
 
                                 c_t_in_paragraph.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
-                                #print(c_t_in_paragraph)
 
                             break
                         else:
@@ -821,7 +791,6 @@ def read_xml(xml_file):
 
                     if vv.tag==link+'Point':
                         if "type" in nn.attrib and nn.attrib['type']=='drop-capital':
-                        #if nn.attrib['type']=='paragraph':
 
                             c_t_in_drop.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                             sumi+=1
@@ -835,7 +804,6 @@ def read_xml(xml_file):
                         elif "type" in nn.attrib and nn.attrib['type']=='signature-mark':
 
                             c_t_in_signature_mark.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
-                            #print(c_t_in_paragraph)
                             sumi+=1
                         elif "type" in nn.attrib and nn.attrib['type']=='header':
                             id_header.append(nn.attrib['id'])
@@ -843,33 +811,26 @@ def read_xml(xml_file):
                             sumi+=1
 
 
-                        elif "type" in nn.attrib and nn.attrib['type']=='catch-word':
-                            c_t_in_catch.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
-                            sumi+=1
+                        ###elif "type" in nn.attrib and nn.attrib['type']=='catch-word':
+                            ###c_t_in_catch.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
+                            ###sumi+=1
 
+                        ###elif "type" in nn.attrib and nn.attrib['type']=='page-number':
 
-                        elif "type" in nn.attrib and nn.attrib['type']=='page-number':
-
-                            c_t_in_page_number.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
-                            #print(c_t_in_paragraph)
-                            sumi+=1
+                            ###c_t_in_page_number.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
+                            ###sumi+=1
 
                         elif "type" in nn.attrib and nn.attrib['type']=='marginalia':
                             id_marginalia.append(nn.attrib['id'])
 
                             c_t_in_marginalia.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
-                            #print(c_t_in_paragraph)
                             sumi+=1
 
                         else:
                             id_paragraph.append(nn.attrib['id'])
                             c_t_in_paragraph.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
-                            #print(c_t_in_paragraph)
                             sumi+=1
 
-                        #c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
-
-                    #print(vv.tag,'in')
                     elif vv.tag!=link+'Point' and sumi>=1:
                         break
 
@@ -895,7 +856,6 @@ def read_xml(xml_file):
 
 
         elif tag.endswith('}GraphicRegion') or tag.endswith('}graphicregion'):
-            #print('sth')
             for nn in root1.iter(tag):
                 c_t_in=[]
                 c_t_in_text_annotation=[]
@@ -907,20 +867,15 @@ def read_xml(xml_file):
                         coords=bool(vv.attrib)
                         if coords:
                             p_h=vv.attrib['points'].split(' ')
-                            #c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
 
                             if "type" in nn.attrib and nn.attrib['type']=='handwritten-annotation':
-                            #if nn.attrib['type']=='paragraph':
-
                                 c_t_in_text_annotation.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
-
+                                
                             elif "type" in nn.attrib and nn.attrib['type']=='decoration':
-
                                 c_t_in_decoration.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
-                                #print(c_t_in_paragraph)
+                                
                             else:
                                 c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
-
 
 
                             break
@@ -929,18 +884,14 @@ def read_xml(xml_file):
 
 
                     if vv.tag==link+'Point':
-
                         if "type" in nn.attrib and nn.attrib['type']=='handwritten-annotation':
-                        #if nn.attrib['type']=='paragraph':
-
                             c_t_in_text_annotation.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                             sumi+=1
 
                         elif "type" in nn.attrib and nn.attrib['type']=='decoration':
-
                             c_t_in_decoration.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
-                            #print(c_t_in_paragraph)
                             sumi+=1
+                            
                         else:
                             c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                             sumi+=1
@@ -955,7 +906,6 @@ def read_xml(xml_file):
 
 
         elif tag.endswith('}ImageRegion') or tag.endswith('}imageregion'):
-            #print('sth')
             for nn in root1.iter(tag):
                 c_t_in=[]
                 sumi=0
@@ -974,7 +924,6 @@ def read_xml(xml_file):
                     if vv.tag==link+'Point':
                         c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                         sumi+=1
-                    #print(vv.tag,'in')
                     elif vv.tag!=link+'Point' and sumi>=1:
                         break
                 co_img.append(np.array(c_t_in))
@@ -982,7 +931,6 @@ def read_xml(xml_file):
 
 
         elif tag.endswith('}SeparatorRegion') or tag.endswith('}separatorregion'):
-            #print('sth')
             for nn in root1.iter(tag):
                 c_t_in=[]
                 sumi=0
@@ -1001,7 +949,6 @@ def read_xml(xml_file):
                     if vv.tag==link+'Point':
                         c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                         sumi+=1
-                    #print(vv.tag,'in')
                     elif vv.tag!=link+'Point' and sumi>=1:
                         break
                 co_sep.append(np.array(c_t_in))
@@ -1009,7 +956,6 @@ def read_xml(xml_file):
 
 
         elif tag.endswith('}TableRegion') or tag.endswith('}tableregion'):
-            #print('sth')
             for nn in root1.iter(tag):
                 c_t_in=[]
                 sumi=0
@@ -1028,14 +974,13 @@ def read_xml(xml_file):
                     if vv.tag==link+'Point':
                         c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                         sumi+=1
-                    #print(vv.tag,'in')
+                        
                     elif vv.tag!=link+'Point' and sumi>=1:
                         break
                 co_table.append(np.array(c_t_in))
                 co_table_text.append(' ')
 
         elif tag.endswith('}NoiseRegion') or tag.endswith('}noiseregion'):
-            #print('sth')
             for nn in root1.iter(tag):
                 c_t_in=[]
                 sumi=0
@@ -1054,40 +999,22 @@ def read_xml(xml_file):
                     if vv.tag==link+'Point':
                         c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                         sumi+=1
-                    #print(vv.tag,'in')
+
                     elif vv.tag!=link+'Point' and sumi>=1:
                         break
                 co_noise.append(np.array(c_t_in))
                 co_noise_text.append(' ')
 
-
     img = np.zeros( (y_len,x_len,3) ) 
-
     img_poly=cv2.fillPoly(img, pts =co_text_paragraph, color=(1,1,1))
 
     img_poly=cv2.fillPoly(img, pts =co_text_heading, color=(2,2,2))
     img_poly=cv2.fillPoly(img, pts =co_text_header, color=(2,2,2))
-    #img_poly=cv2.fillPoly(img, pts =co_text_catch, color=(125,255,125))
-    #img_poly=cv2.fillPoly(img, pts =co_text_signature_mark, color=(125,125,0))
-    #img_poly=cv2.fillPoly(img, pts =co_graphic_decoration, color=(1,125,255))
-    #img_poly=cv2.fillPoly(img, pts =co_text_page_number, color=(1,125,0))
     img_poly=cv2.fillPoly(img, pts =co_text_marginalia, color=(3,3,3))
-    #img_poly=cv2.fillPoly(img, pts =co_text_drop, color=(1,125,255))
-
-    #img_poly=cv2.fillPoly(img, pts =co_graphic_text_annotation, color=(125,0,125))
     img_poly=cv2.fillPoly(img, pts =co_img, color=(4,4,4))
     img_poly=cv2.fillPoly(img, pts =co_sep, color=(5,5,5))
-    #img_poly=cv2.fillPoly(img, pts =co_table, color=(1,255,255))
-    #img_poly=cv2.fillPoly(img, pts =co_graphic, color=(255,125,125))
-    #img_poly=cv2.fillPoly(img, pts =co_noise, color=(255,0,255))
 
-    #print('yazdimmm',self.output_dir+'/'+self.gt_list[index].split('.')[0]+'.jpg')
-    ###try: 
-        ####print('yazdimmm',self.output_dir+'/'+self.gt_list[index].split('.')[0]+'.jpg')
-        ###cv2.imwrite(self.output_dir+'/'+self.gt_list[index].split('-')[1].split('.')[0]+'.jpg',img_poly )
-    ###except:
-        ###cv2.imwrite(self.output_dir+'/'+self.gt_list[index].split('.')[0]+'.jpg',img_poly )
-    return file_name, id_paragraph, id_header,co_text_paragraph, co_text_header,\
+    return tree1, root1, file_name, id_paragraph, id_header,co_text_paragraph, co_text_header,\
 tot_region_ref,x_len, y_len,index_tot_regions, img_poly
 
 
@@ -1113,3 +1040,24 @@ def make_image_from_bb(width_l, height_l, bb_all):
     for i in range(bb_all.shape[0]):
         img_remade[bb_all[i,1]:bb_all[i,1]+bb_all[i,3],bb_all[i,0]:bb_all[i,0]+bb_all[i,2] ] = 1
     return img_remade
+
+def update_list_and_return_first_with_length_bigger_than_one(index_element_to_be_updated, innner_index_pr_pos, pr_list, pos_list,list_inp):
+    list_inp.pop(index_element_to_be_updated)
+    if len(pr_list)>0:
+        list_inp.insert(index_element_to_be_updated, pr_list)
+    else:
+        index_element_to_be_updated = index_element_to_be_updated -1
+    
+    list_inp.insert(index_element_to_be_updated+1, [innner_index_pr_pos])
+    if len(pos_list)>0:
+        list_inp.insert(index_element_to_be_updated+2, pos_list)
+    
+    len_all_elements = [len(i) for i in list_inp]
+    list_len_bigger_1 = np.where(np.array(len_all_elements)>1)
+    list_len_bigger_1 = list_len_bigger_1[0]
+    
+    if len(list_len_bigger_1)>0:
+        early_list_bigger_than_one = list_len_bigger_1[0]
+    else:
+        early_list_bigger_than_one = -20
+    return list_inp, early_list_bigger_than_one
