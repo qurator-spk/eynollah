@@ -16,7 +16,7 @@ def pil2cv(img):
 
 def check_dpi(img):
     try:
-        if isinstance(img, Image.__class__):
+        if isinstance(img, Image.Image):
             pil_image = img
         elif isinstance(img, str):
             pil_image = Image.open(img)
