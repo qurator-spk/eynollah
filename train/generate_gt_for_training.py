@@ -64,13 +64,17 @@ def pagexml2label(dir_xml,dir_out,type_output,config):
     help="directory where original images will be written as labels.",
     type=click.Path(exists=True, file_okay=False),
 )
-def image_enhancement(dir_imgs, dir_out_images, dir_out_labels):
-    #dir_imgs = './training_data_sample_enhancement/images'
-    #dir_out_images = './training_data_sample_enhancement/images_gt'
-    #dir_out_labels = './training_data_sample_enhancement/labels_gt'
-
+@click.option(
+    "--scales",
+    "-scs",
+    help="json dictionary where the scales are written.",
+    type=click.Path(exists=True, dir_okay=False),
+)
+def image_enhancement(dir_imgs, dir_out_images, dir_out_labels, scales):
     ls_imgs = os.listdir(dir_imgs)
-    ls_scales = [ 0.5, 0.55, 0.6, 0.65, 0.7, 0.75,  0.8, 0.85,  0.9]
+    with open(scales) as f:
+        scale_dict = json.load(f)
+    ls_scales = scale_dict['scales']
 
     for img in tqdm(ls_imgs):
         img_name = img.split('.')[0]
