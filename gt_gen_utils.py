@@ -664,6 +664,58 @@ def read_xml(xml_file):
     for jj in root1.iter(link+'RegionRefIndexed'):
         index_tot_regions.append(jj.attrib['index'])
         tot_region_ref.append(jj.attrib['regionRef'])
+        
+    if (link+'PrintSpace' in alltags) or  (link+'Border' in alltags):
+        co_printspace = []
+        if link+'PrintSpace' in alltags:
+            region_tags_printspace = np.unique([x for x in alltags if x.endswith('PrintSpace')])
+        elif link+'Border' in alltags:
+            region_tags_printspace = np.unique([x for x in alltags if x.endswith('Border')])
+            
+        for tag in region_tags_printspace:
+            if link+'PrintSpace' in alltags:
+                tag_endings_printspace = ['}PrintSpace','}printspace']
+            elif link+'Border' in alltags:
+                tag_endings_printspace = ['}Border','}border']
+                
+            if tag.endswith(tag_endings_printspace[0]) or tag.endswith(tag_endings_printspace[1]):
+                for nn in root1.iter(tag):
+                    c_t_in = []
+                    sumi = 0
+                    for vv in nn.iter():
+                        # check the format of coords
+                        if vv.tag == link + 'Coords':
+                            coords = bool(vv.attrib)
+                            if coords:
+                                p_h = vv.attrib['points'].split(' ')
+                                c_t_in.append(
+                                    np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h]))
+                                break
+                            else:
+                                pass
+
+                        if vv.tag == link + 'Point':
+                            c_t_in.append([int(float(vv.attrib['x'])), int(float(vv.attrib['y']))])
+                            sumi += 1
+                        elif vv.tag != link + 'Point' and sumi >= 1:
+                            break
+                    co_printspace.append(np.array(c_t_in))
+        img_printspace = np.zeros( (y_len,x_len,3) ) 
+        img_printspace=cv2.fillPoly(img_printspace, pts =co_printspace, color=(1,1,1))
+        img_printspace = img_printspace.astype(np.uint8)
+        
+        imgray = cv2.cvtColor(img_printspace, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(imgray, 0, 255, 0)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
+        cnt = contours[np.argmax(cnt_size)]
+        x, y, w, h = cv2.boundingRect(cnt)
+        
+        bb_coord_printspace = [x, y, w, h]
+                    
+    else:
+        bb_coord_printspace = None
+                    
 
     region_tags=np.unique([x for x in alltags if x.endswith('Region')])   
     co_text_paragraph=[]
@@ -754,7 +806,7 @@ def read_xml(xml_file):
                                 c_t_in_drop.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
 
                             elif "type" in nn.attrib and nn.attrib['type']=='heading':
-                                id_heading.append(nn.attrib['id'])
+                                ##id_heading.append(nn.attrib['id'])
                                 c_t_in_heading.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
 
 
@@ -763,7 +815,7 @@ def read_xml(xml_file):
                                 c_t_in_signature_mark.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                                 #print(c_t_in_paragraph)
                             elif "type" in nn.attrib and nn.attrib['type']=='header':
-                                id_header.append(nn.attrib['id'])
+                                #id_header.append(nn.attrib['id'])
                                 c_t_in_header.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
 
 
@@ -776,11 +828,11 @@ def read_xml(xml_file):
                                 ###c_t_in_page_number.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
 
                             elif "type" in nn.attrib and nn.attrib['type']=='marginalia':
-                                id_marginalia.append(nn.attrib['id'])
+                                #id_marginalia.append(nn.attrib['id'])
 
                                 c_t_in_marginalia.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                             else:
-                                id_paragraph.append(nn.attrib['id'])
+                                #id_paragraph.append(nn.attrib['id'])
 
                                 c_t_in_paragraph.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
 
@@ -796,7 +848,7 @@ def read_xml(xml_file):
                             sumi+=1
 
                         elif "type" in nn.attrib and nn.attrib['type']=='heading':
-                            id_heading.append(nn.attrib['id'])
+                            #id_heading.append(nn.attrib['id'])
                             c_t_in_heading.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                             sumi+=1
 
@@ -806,7 +858,7 @@ def read_xml(xml_file):
                             c_t_in_signature_mark.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                             sumi+=1
                         elif "type" in nn.attrib and nn.attrib['type']=='header':
-                            id_header.append(nn.attrib['id'])
+                            #id_header.append(nn.attrib['id'])
                             c_t_in_header.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                             sumi+=1
 
@@ -821,13 +873,13 @@ def read_xml(xml_file):
                             ###sumi+=1
 
                         elif "type" in nn.attrib and nn.attrib['type']=='marginalia':
-                            id_marginalia.append(nn.attrib['id'])
+                            #id_marginalia.append(nn.attrib['id'])
 
                             c_t_in_marginalia.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                             sumi+=1
 
                         else:
-                            id_paragraph.append(nn.attrib['id'])
+                            #id_paragraph.append(nn.attrib['id'])
                             c_t_in_paragraph.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
                             sumi+=1
 
@@ -838,11 +890,14 @@ def read_xml(xml_file):
                     co_text_drop.append(np.array(c_t_in_drop))
                 if len(c_t_in_paragraph)>0:
                     co_text_paragraph.append(np.array(c_t_in_paragraph))
+                    id_paragraph.append(nn.attrib['id'])
                 if len(c_t_in_heading)>0:
                     co_text_heading.append(np.array(c_t_in_heading))
+                    id_heading.append(nn.attrib['id'])
 
                 if len(c_t_in_header)>0:
                     co_text_header.append(np.array(c_t_in_header))
+                    id_header.append(nn.attrib['id'])
                 if len(c_t_in_page_number)>0:
                     co_text_page_number.append(np.array(c_t_in_page_number))
                 if len(c_t_in_catch)>0:
@@ -853,6 +908,7 @@ def read_xml(xml_file):
 
                 if len(c_t_in_marginalia)>0:
                     co_text_marginalia.append(np.array(c_t_in_marginalia))
+                    id_marginalia.append(nn.attrib['id'])
 
 
         elif tag.endswith('}GraphicRegion') or tag.endswith('}graphicregion'):
@@ -1014,7 +1070,7 @@ def read_xml(xml_file):
     img_poly=cv2.fillPoly(img, pts =co_img, color=(4,4,4))
     img_poly=cv2.fillPoly(img, pts =co_sep, color=(5,5,5))
 
-    return tree1, root1, file_name, id_paragraph, id_header,co_text_paragraph, co_text_header,\
+    return tree1, root1, bb_coord_printspace, file_name, id_paragraph, id_header+id_heading, co_text_paragraph, co_text_header+co_text_heading,\
 tot_region_ref,x_len, y_len,index_tot_regions, img_poly
 
 
