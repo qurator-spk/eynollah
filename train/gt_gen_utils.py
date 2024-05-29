@@ -32,10 +32,16 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
 
     jv = 0
     for c in contours:
+        if len(np.shape(c)) == 3:
+            c = c[0]
+        elif len(np.shape(c)) == 2:
+            pass
+        #c = c[0]
         if len(c) < 3:  # A polygon cannot have less than 3 points
             continue
 
-        polygon = geometry.Polygon([point[0] for point in c])
+        c_e = [point for point in c]
+        polygon = geometry.Polygon(c_e)
         # area = cv2.contourArea(c)
         area = polygon.area
         # Check that polygon has area greater than minimal area
@@ -49,7 +55,10 @@ def filter_contours_area_of_image(image, contours, order_index, max_area, min_ar
     order_index_filtered = list()
     #jv = 0
     for jv, c in enumerate(contours):
-        c = c[0]
+        if len(np.shape(c)) == 3:
+            c = c[0]
+        elif len(np.shape(c)) == 2:
+            pass
         if len(c) < 3:  # A polygon cannot have less than 3 points
             continue
         c_e = [point for point in c]

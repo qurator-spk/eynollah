@@ -28,7 +28,7 @@ Tool to load model and predict for given image.
 """
 
 class sbb_predict:
-    def __init__(self,image, model, task, config_params_model, patches, save, ground_truth, xml_file, out):
+    def __init__(self,image, model, task, config_params_model, patches, save, ground_truth, xml_file, out, min_area):
         self.image=image
         self.patches=patches
         self.save=save
@@ -38,6 +38,10 @@ class sbb_predict:
         self.config_params_model=config_params_model
         self.xml_file = xml_file
         self.out = out
+        if min_area:
+            self.min_area = float(min_area)
+        else:
+            self.min_area = 0
 
     def resize_image(self,img_in,input_height,input_width):
         return cv2.resize( img_in, ( input_width,input_height) ,interpolation=cv2.INTER_NEAREST)
@@ -255,11 +259,18 @@ class sbb_predict:
             ##texts_corr_order_index_int = [int(x) for x in texts_corr_order_index]
             texts_corr_order_index_int = list(np.array(range(len(co_text_all))))
             
-            min_area = 0
-            max_area = 1
+            #print(texts_corr_order_index_int)
             
-
-            ##co_text_all, texts_corr_order_index_int = filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int, max_area, min_area)
+            max_area = 1
+            #print(np.shape(co_text_all[0]), len( np.shape(co_text_all[0]) ),'co_text_all')
+            #co_text_all = filter_contours_area_of_image_tables(img_poly, co_text_all, _, max_area, min_area)
+            #print(co_text_all,'co_text_all')
+            co_text_all, texts_corr_order_index_int = filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int, max_area, self.min_area)
+            
+            #print(texts_corr_order_index_int)
+            
+            #co_text_all = [co_text_all[index] for index in texts_corr_order_index_int]
+            id_all_text = [id_all_text[index] for index in texts_corr_order_index_int]
             
             labels_con = np.zeros((y_len,x_len,len(co_text_all)),dtype='uint8')
             for i in range(len(co_text_all)):
@@ -596,7 +607,13 @@ class sbb_predict:
     "-xml",
     help="xml file with layout coordinates that reading order detection will be implemented on. The result will be written in the same xml file.",
 )
-def main(image, model, patches, save, ground_truth, xml_file, out):
+
+@click.option(
+    "--min_area",
+    "-min",
+    help="min area size of regions considered for reading order detection. The default value is zero and means that all text regions are considered for reading order.",
+)
+def main(image, model, patches, save, ground_truth, xml_file, out, min_area):
     with open(os.path.join(model,'config.json')) as f:
         config_params_model = json.load(f)
     task = config_params_model['task']
@@ -604,7 +621,7 @@ def main(image, model, patches, save, ground_truth, xml_file, out):
         if not save:
             print("Error: You used one of segmentation or binarization task but not set -s, you need a filename to save visualized output with -s")
             sys.exit(1)
-    x=sbb_predict(image, model, task, config_params_model, patches, save, ground_truth, xml_file, out)
+    x=sbb_predict(image, model, task, config_params_model, patches, save, ground_truth, xml_file, out, min_area)
     x.run()
 
 if __name__=="__main__":
