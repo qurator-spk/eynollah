@@ -15,9 +15,21 @@ def main():
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
+    "--dir_images",
+    "-di",
+    help="directory of org images. If print space cropping or scaling is needed for labels it would be great to provide the original images to apply the same function on them. So if -ps is not set true or in config files no columns_width key is given this argumnet can be ignored. File stems in this directory should be the same as those in dir_xml.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
+    "--dir_out_images",
+    "-doi",
+    help="directory where the output org images after undergoing a process (like print space cropping or scaling) will be written.",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
     "--dir_out",
     "-do",
-    help="directory where ground truth images would be written",
+    help="directory where ground truth label images would be written",
     type=click.Path(exists=True, file_okay=False),
 )
 
@@ -33,8 +45,14 @@ def main():
     "-to",
     help="this defines how output should be. A 2d image array or a 3d image array encoded with RGB color. Just pass 2d or 3d. The file will be saved one directory up. 2D image array is 3d but only information of one channel would be enough since all channels have the same values.",
 )
+@click.option(
+    "--printspace",
+    "-ps",
+    is_flag=True,
+    help="if this parameter set to true, generated labels and in the case of provided org images cropping will be imposed and cropped labels and images will be written in output directories.",
+)
 
-def pagexml2label(dir_xml,dir_out,type_output,config):
+def pagexml2label(dir_xml,dir_out,type_output,config, printspace, dir_images, dir_out_images):
     if config:
         with open(config) as f:
             config_params = json.load(f)
@@ -42,7 +60,7 @@ def pagexml2label(dir_xml,dir_out,type_output,config):
         print("passed")
         config_params = None
     gt_list = get_content_of_dir(dir_xml)
-    get_images_of_ground_truth(gt_list,dir_xml,dir_out,type_output, config, config_params)
+    get_images_of_ground_truth(gt_list,dir_xml,dir_out,type_output, config, config_params, printspace, dir_images, dir_out_images)
     
 @main.command()
 @click.option(
@@ -181,7 +199,7 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
         for i in range(len(texts_corr_order_index_int)):
             for j in range(len(texts_corr_order_index_int)):
                 if i!=j:
-                    input_matrix = np.zeros((input_height,input_width,3)).astype(np.int8)
+                    input_multi_visual_modal = np.zeros((input_height,input_width,3)).astype(np.int8)
                     final_f_name = f_name+'_'+str(indexer+indexer_start)
                     order_class_condition = texts_corr_order_index_int[i]-texts_corr_order_index_int[j]
                     if order_class_condition<0:
@@ -189,13 +207,13 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
                     else:
                         class_type = 0
 
-                    input_matrix[:,:,0] = resize_image(labels_con[:,:,i], input_height, input_width)
-                    input_matrix[:,:,1] = resize_image(img_poly[:,:,0], input_height, input_width)
-                    input_matrix[:,:,2] = resize_image(labels_con[:,:,j], input_height, input_width)
+                    input_multi_visual_modal[:,:,0] = resize_image(labels_con[:,:,i], input_height, input_width)
+                    input_multi_visual_modal[:,:,1] = resize_image(img_poly[:,:,0], input_height, input_width)
+                    input_multi_visual_modal[:,:,2] = resize_image(labels_con[:,:,j], input_height, input_width)
 
                     np.save(os.path.join(dir_out_classes,final_f_name+'.npy' ), class_type)
                     
-                    cv2.imwrite(os.path.join(dir_out_modal_image,final_f_name+'.png' ), input_matrix)
+                    cv2.imwrite(os.path.join(dir_out_modal_image,final_f_name+'.png' ), input_multi_visual_modal)
                     indexer = indexer+1
 
     
