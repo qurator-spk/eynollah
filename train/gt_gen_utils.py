@@ -122,7 +122,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
     ## to do: add footnote to text regions
     for index in tqdm(range(len(gt_list))):
         #try:
-        tree1 = ET.parse(dir_in+'/'+gt_list[index])
+        tree1 = ET.parse(dir_in+'/'+gt_list[index], parser = ET.XMLParser(encoding = 'iso-8859-5'))
         root1=tree1.getroot()
         alltags=[elem.tag for elem in root1.iter()]
         link=alltags[0].split('}')[0]+'}'
@@ -658,7 +658,7 @@ def find_new_features_of_contours(contours_main):
     return cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin
 def read_xml(xml_file):
     file_name = Path(xml_file).stem
-    tree1 = ET.parse(xml_file)
+    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding = 'iso-8859-5'))
     root1=tree1.getroot()
     alltags=[elem.tag for elem in root1.iter()]
     link=alltags[0].split('}')[0]+'}'
