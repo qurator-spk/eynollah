@@ -636,7 +636,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     
                 if 'textregions' in keys:
                     if 'rest_as_paragraph' in types_text:
-                        types_text[types_text=='rest_as_paragraph'] = 'paragraph'
+                        types_text = ['paragraph'if ttind=='rest_as_paragraph' else ttind for ttind in types_text]
                         for element_text in types_text:
                             if element_text == 'paragraph':
                                 color_label = labels_rgb_color[ config_params['textregions']['rest_as_paragraph']]
@@ -688,7 +688,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     
                 if 'textregions' in keys:
                     if 'rest_as_paragraph' in types_text:
-                        types_text[types_text=='rest_as_paragraph'] = 'paragraph'
+                        types_text = ['paragraph'if ttind=='rest_as_paragraph' else ttind for ttind in types_text]
                         for element_text in types_text:
                             if element_text == 'paragraph':
                                 color_label = config_params['textregions']['rest_as_paragraph']
