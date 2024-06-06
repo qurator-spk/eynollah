@@ -325,6 +325,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
             
             region_tags=np.unique([x for x in alltags if x.endswith('Region')])   
             co_text = {'drop-capital':[], "footnote":[], "footnote-continued":[], "heading":[], "signature-mark":[], "header":[], "catch-word":[], "page-number":[], "marginalia":[], "paragraph":[]}
+            all_defined_textregion_types = list(co_text.keys())
             co_graphic = {"handwritten-annotation":[], "decoration":[], "stamp":[], "signature":[]}
             co_sep=[]
             co_img=[]
@@ -359,7 +360,8 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                                         
                                         else:
                                             if "type" in nn.attrib:
-                                                c_t_in[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                                if nn.attrib['type'] in all_defined_textregion_types:
+                                                    c_t_in[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                 
                                         break
                                     else:
@@ -384,8 +386,9 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                                     
                                     else:
                                         if "type" in nn.attrib:
-                                            c_t_in[nn.attrib['type']].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
-                                            sumi+=1
+                                            if nn.attrib['type'] in all_defined_textregion_types:
+                                                c_t_in[nn.attrib['type']].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                                sumi+=1
 
 
                                 elif vv.tag!=link+'Point' and sumi>=1:
