@@ -59,6 +59,8 @@ def config_params():
     pretraining = False  # Set to true to load pretrained weights of ResNet50 encoder.
     scaling_bluring = False  # If true, a combination of scaling and blurring will be applied to the image.
     scaling_binarization = False  # If true, a combination of scaling and binarization will be applied to the image.
+    rotation = False # If true, a 90 degree rotation will be implemeneted.
+    rotation_not_90 = False # If true rotation based on provided angles with thetha will be implemeneted.
     scaling_brightness = False  # If true, a combination of scaling and brightening will be applied to the image.
     scaling_flip = False  # If true, a combination of scaling and flipping will be applied to the image.
     thetha = None  # Rotate image by these angles for augmentation.
