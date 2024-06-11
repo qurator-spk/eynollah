@@ -309,7 +309,7 @@ def data_gen(img_folder, mask_folder, batch_size, input_height, input_width, n_c
                                        interpolation=cv2.INTER_NEAREST)  # Read an image from folder and resize
 
                 img[i - c] = train_img  # add to array - img[0], img[1], and so on.
-                if task == "segmentation":
+                if task == "segmentation" or task=="binarization":
                     train_mask = cv2.imread(mask_folder + '/' + filename + '.png')
                     train_mask = get_one_hot(resize_image(train_mask, input_height, input_width), input_height, input_width,
                                             n_classes)
@@ -569,7 +569,7 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
     indexer = 0
     for im, seg_i in tqdm(zip(imgs_list_train, segs_list_train)):
         img_name = im.split('.')[0]
-        if task == "segmentation":
+        if task == "segmentation" or task == "binarization":
             dir_of_label_file = os.path.join(dir_seg, img_name + '.png')
         elif task=="enhancement":
             dir_of_label_file = os.path.join(dir_seg, im)
