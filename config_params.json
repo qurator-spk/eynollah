@@ -42,7 +42,7 @@
     "weighted_loss": false,
     "is_loss_soft_dice": false,
     "data_is_provided": false,
-    "dir_train": "/home/vahid/Documents/test/training_data_sample_binarization",
-    "dir_eval": "/home/vahid/Documents/test/eval",
-    "dir_output": "/home/vahid/Documents/test/out"
+    "dir_train": "./train",
+    "dir_eval": "./eval",
+    "dir_output": "./output"
 }
