@@ -70,10 +70,14 @@ def config_params():
     brightness = None #  Brighten image for augmentation.
     flip_index = None  #  Flip image for augmentation.
     continue_training = False  # Set to true if you would like to continue training an already trained a model.
-    transformer_patchsize_x = None  # Patch size of vision transformer patches.
-    transformer_patchsize_y = None
-    transformer_num_patches_xy = None  # Number of patches for vision transformer.
-    transformer_projection_dim = 64 # Transformer projection dimension
+    transformer_patchsize_x = None  # Patch size of vision transformer patches in x direction.
+    transformer_patchsize_y = None # Patch size of vision transformer patches in y direction.
+    transformer_num_patches_xy = None  # Number of patches for vision transformer in x and y direction respectively.
+    transformer_projection_dim = 64 # Transformer projection dimension. Default value is 64.
+    transformer_mlp_head_units = [128, 64] # Transformer Multilayer Perceptron (MLP) head units. Default value is [128, 64]
+    transformer_layers = 8 # transformer layers. Default value is 8.
+    transformer_num_heads = 4 # Transformer number of heads. Default value is 4.
+    transformer_cnn_first = True # We have two types of vision transformers. In one type, a CNN is applied first, followed by a transformer. In the other type, this order is reversed. If transformer_cnn_first is true, it means the CNN will be applied before the transformer. Default value is true.
     index_start = 0  #  Index of model to continue training from. E.g. if you trained for 3 epochs and last index is 2, to continue from model_1.h5, set "index_start" to 3 to start naming model with index 3.
     dir_of_start_model = ''  # Directory containing pretrained encoder to continue training the model.
     is_loss_soft_dice = False  # Use soft dice as loss function. When set to true, "weighted_loss" must be false.
@@ -94,7 +98,9 @@ def run(_config, n_classes, n_epochs, input_height,
         brightening, binarization, blur_k, scales, degrade_scales,
         brightness, dir_train, data_is_provided, scaling_bluring,
         scaling_brightness, scaling_binarization, rotation, rotation_not_90,
-        thetha, scaling_flip, continue_training, transformer_projection_dim, transformer_patchsize_x, transformer_patchsize_y,
+        thetha, scaling_flip, continue_training, transformer_projection_dim,
+        transformer_mlp_head_units, transformer_layers, transformer_num_heads, transformer_cnn_first,
+        transformer_patchsize_x, transformer_patchsize_y,
         transformer_num_patches_xy, backbone_type, flip_index, dir_eval, dir_output,
         pretraining, learning_rate, task, f1_threshold_classification, classification_classes_name):
     
@@ -218,26 +224,33 @@ def run(_config, n_classes, n_epochs, input_height,
                 num_patches_y = transformer_num_patches_xy[1]
                 num_patches = num_patches_x * num_patches_y
                 
-                ##if not (num_patches == (input_width / 32) * (input_height / 32)):
-                    ##print("Error: transformer num patches error. Parameter transformer_num_patches_xy should be set to (input_width/32) = {} and (input_height/32) =  {}".format(int(input_width / 32), int(input_height / 32)) )
-                    ##sys.exit(1)
-                #if not (transformer_patchsize == 1):
-                    #print("Error: transformer patchsize error. Parameter transformer_patchsizeshould set to 1" )
-                    #sys.exit(1)
-                if (input_height != (num_patches_y * transformer_patchsize_y * 32) ):
-                    print("Error: transformer_patchsize_y or transformer_num_patches_xy height value error . input_height should be equal to ( transformer_num_patches_xy height value * transformer_patchsize_y * 32)")
-                    sys.exit(1)
-                if (input_width != (num_patches_x * transformer_patchsize_x * 32) ):
-                    print("Error: transformer_patchsize_x or transformer_num_patches_xy width value error . input_width should be equal to ( transformer_num_patches_xy width value * transformer_patchsize_x * 32)")
-                    sys.exit(1)
-                if (transformer_projection_dim % (transformer_patchsize_y * transformer_patchsize_x)) != 0:
-                    print("Error: transformer_projection_dim error. The remainder when parameter transformer_projection_dim is divided by (transformer_patchsize_y*transformer_patchsize_x) should be zero")
-                    sys.exit(1)
+                if transformer_cnn_first:
+                    if (input_height != (num_patches_y * transformer_patchsize_y * 32) ):
+                        print("Error: transformer_patchsize_y or transformer_num_patches_xy height value error . input_height should be equal to ( transformer_num_patches_xy height value * transformer_patchsize_y * 32)")
+                        sys.exit(1)
+                    if (input_width != (num_patches_x * transformer_patchsize_x * 32) ):
+                        print("Error: transformer_patchsize_x or transformer_num_patches_xy width value error . input_width should be equal to ( transformer_num_patches_xy width value * transformer_patchsize_x * 32)")
+                        sys.exit(1)
+                    if (transformer_projection_dim % (transformer_patchsize_y * transformer_patchsize_x)) != 0:
+                        print("Error: transformer_projection_dim error. The remainder when parameter transformer_projection_dim is divided by (transformer_patchsize_y*transformer_patchsize_x) should be zero")
+                        sys.exit(1)
+                        
                     
-                model = vit_resnet50_unet(n_classes, transformer_patchsize_x, transformer_patchsize_y, num_patches, transformer_projection_dim, input_height, input_width, task, weight_decay, pretraining)
+                    model = vit_resnet50_unet(n_classes, transformer_patchsize_x, transformer_patchsize_y, num_patches, transformer_mlp_head_units, transformer_layers, transformer_num_heads, transformer_projection_dim, input_height, input_width, task, weight_decay, pretraining)
+                else:
+                    if (input_height != (num_patches_y * transformer_patchsize_y) ):
+                        print("Error: transformer_patchsize_y or transformer_num_patches_xy height value error . input_height should be equal to ( transformer_num_patches_xy height value * transformer_patchsize_y)")
+                        sys.exit(1)
+                    if (input_width != (num_patches_x * transformer_patchsize_x) ):
+                        print("Error: transformer_patchsize_x or transformer_num_patches_xy width value error . input_width should be equal to ( transformer_num_patches_xy width value * transformer_patchsize_x)")
+                        sys.exit(1)
+                    if (transformer_projection_dim % (transformer_patchsize_y * transformer_patchsize_x)) != 0:
+                        print("Error: transformer_projection_dim error. The remainder when parameter transformer_projection_dim is divided by (transformer_patchsize_y*transformer_patchsize_x) should be zero")
+                        sys.exit(1)
+                    model = vit_resnet50_unet_transformer_before_cnn(n_classes, transformer_patchsize_x, transformer_patchsize_y, num_patches, transformer_mlp_head_units, transformer_layers, transformer_num_heads, transformer_projection_dim, input_height, input_width, task, weight_decay, pretraining)
         
         #if you want to see the model structure just uncomment model summary.
-        #model.summary()
+        model.summary()
 
         
         if (task == "segmentation" or task == "binarization"):
