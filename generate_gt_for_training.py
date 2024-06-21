@@ -163,8 +163,7 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
         #print('########################')
         xml_file = os.path.join(dir_xml,ind_xml )
         f_name = ind_xml.split('.')[0]
-        file_name, id_paragraph, id_header,co_text_paragraph,\
-        co_text_header,tot_region_ref,x_len, y_len,index_tot_regions,img_poly = read_xml(xml_file)
+        _, _, _, file_name, id_paragraph, id_header,co_text_paragraph,co_text_header,tot_region_ref,x_len, y_len,index_tot_regions,img_poly = read_xml(xml_file)
         
         id_all_text = id_paragraph + id_header
         co_text_all = co_text_paragraph + co_text_header
