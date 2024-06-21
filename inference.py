@@ -557,6 +557,10 @@ class sbb_predict:
         res=self.predict()
         if (self.task == 'classification' or self.task == 'reading_order'):
             pass
+        elif self.task == 'enhancement':
+            if self.save:
+                print(self.save)
+                cv2.imwrite(self.save,res)
         else:
             img_seg_overlayed = self.visualize_model_output(res, self.img_org, self.task)
             if self.save:
