@@ -304,8 +304,9 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
             
         if config_file and config_params['use_case']=='layout':
             keys = list(config_params.keys())
-            if "artificial_class_on_boundry" in keys:
-                elements_with_artificial_class = list(config_params['artificial_class_on_boundry'])
+            
+            if "artificial_class_on_boundary" in keys:
+                elements_with_artificial_class = list(config_params['artificial_class_on_boundary'])
                 artificial_class_rgb_color = (255,255,0)
                 artificial_class_label = config_params['artificial_class_label']
             #values = config_params.values()
@@ -567,8 +568,8 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                 elif vv.tag!=link+'Point' and sumi>=1:
                                     break
                             co_noise.append(np.array(c_t_in))
-            
-            if "artificial_class_on_boundry" in keys:
+                            
+            if "artificial_class_on_boundary" in keys:
                 img_boundary = np.zeros( (y_len,x_len) )
                 if "paragraph" in elements_with_artificial_class:
                     erosion_rate = 2
@@ -655,7 +656,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                             img_poly=cv2.fillPoly(img, pts =co_text[element_text], color=color_label)
                         
                         
-                if "artificial_class_on_boundry" in keys:
+                if "artificial_class_on_boundary" in keys:
                     img_poly[:,:,0][img_boundary[:,:]==1] = artificial_class_rgb_color[0]
                     img_poly[:,:,1][img_boundary[:,:]==1] = artificial_class_rgb_color[1]
                     img_poly[:,:,2][img_boundary[:,:]==1] = artificial_class_rgb_color[2]
@@ -706,7 +707,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                             color_label = config_params['textregions'][element_text]
                             img_poly=cv2.fillPoly(img, pts =co_text[element_text], color=color_label)
                         
-                if "artificial_class_on_boundry" in keys:
+                if "artificial_class_on_boundary" in keys:
                     img_poly[:,:][img_boundary[:,:]==1] = artificial_class_label
                 
                 
