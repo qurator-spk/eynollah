@@ -154,7 +154,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 x_new = columns_width_dict[str(num_col)]
                 y_new = int ( x_new * (y_len / float(x_len)) )
             
-        if printspace:
+        if printspace or "printspace_as_class_in_layout" in list(config_params.keys()):
             region_tags = np.unique([x for x in alltags if x.endswith('PrintSpace') or x.endswith('Border')])
             co_use_case = []
 
@@ -279,6 +279,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
             if printspace and config_params['use_case']!='printspace':
                 img_poly = img_poly[bb_xywh[1]:bb_xywh[1]+bb_xywh[3], bb_xywh[0]:bb_xywh[0]+bb_xywh[2], :]
                 
+                
             if 'columns_width' in list(config_params.keys()) and num_col and config_params['use_case']!='printspace':
                 img_poly = resize_image(img_poly, y_new, x_new)
 
@@ -310,6 +311,10 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 artificial_class_rgb_color = (255,255,0)
                 artificial_class_label = config_params['artificial_class_label']
             #values = config_params.values()
+            
+            if "printspace_as_class_in_layout" in list(config_params.keys()):
+                printspace_class_rgb_color = (125,125,255)
+                printspace_class_label = config_params['printspace_as_class_in_layout']
 
             if 'textregions' in keys:
                 types_text_dict = config_params['textregions']
@@ -614,7 +619,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     
                     
                 
-            img = np.zeros( (y_len,x_len,3) ) 
+            img = np.zeros( (y_len,x_len,3) )
 
             if output_type == '3d':
                 if 'graphicregions' in keys:
@@ -660,6 +665,15 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     img_poly[:,:,0][img_boundary[:,:]==1] = artificial_class_rgb_color[0]
                     img_poly[:,:,1][img_boundary[:,:]==1] = artificial_class_rgb_color[1]
                     img_poly[:,:,2][img_boundary[:,:]==1] = artificial_class_rgb_color[2]
+                    
+                    
+                if "printspace_as_class_in_layout" in list(config_params.keys()):
+                    printspace_mask = np.zeros((img_poly.shape[0], img_poly.shape[1]))
+                    printspace_mask[bb_xywh[1]:bb_xywh[1]+bb_xywh[3], bb_xywh[0]:bb_xywh[0]+bb_xywh[2]] = 1
+                    
+                    img_poly[:,:,0][printspace_mask[:,:] == 0] = printspace_class_rgb_color[0]
+                    img_poly[:,:,1][printspace_mask[:,:] == 0] = printspace_class_rgb_color[1]
+                    img_poly[:,:,2][printspace_mask[:,:] == 0] = printspace_class_rgb_color[2]
                     
 
                     
@@ -709,6 +723,14 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                         
                 if "artificial_class_on_boundary" in keys:
                     img_poly[:,:][img_boundary[:,:]==1] = artificial_class_label
+                    
+                if "printspace_as_class_in_layout" in list(config_params.keys()):
+                    printspace_mask = np.zeros((img_poly.shape[0], img_poly.shape[1]))
+                    printspace_mask[bb_xywh[1]:bb_xywh[1]+bb_xywh[3], bb_xywh[0]:bb_xywh[0]+bb_xywh[2]] = 1
+                    
+                    img_poly[:,:,0][printspace_mask[:,:] == 0] = printspace_class_label
+                    img_poly[:,:,1][printspace_mask[:,:] == 0] = printspace_class_label
+                    img_poly[:,:,2][printspace_mask[:,:] == 0] = printspace_class_label
                 
                 
                 
