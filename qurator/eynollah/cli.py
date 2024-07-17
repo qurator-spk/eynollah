@@ -140,6 +140,12 @@ from qurator.eynollah.eynollah import Eynollah
     help="if this parameter set to true, this tool would apply machine based reading order detection",
 )
 @click.option(
+    "--do_ocr",
+    "-ocr/-noocr",
+    is_flag=True,
+    help="if this parameter set to true, this tool will try to do ocr",
+)
+@click.option(
     "--log-level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
@@ -167,6 +173,7 @@ def main(
     headers_off,
     light_version,
     reading_order_machine_based,
+    do_ocr,
     ignore_page_extraction,
     log_level
 ):
@@ -205,6 +212,7 @@ def main(
         light_version=light_version,
         ignore_page_extraction=ignore_page_extraction,
         reading_order_machine_based=reading_order_machine_based,
+        do_ocr=do_ocr,
     )
     eynollah.run()
     #pcgts = eynollah.run()
