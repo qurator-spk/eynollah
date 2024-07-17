@@ -597,6 +597,14 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                         cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
                                     resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
                         indexer += 1
+                if brightening:
+                    for factor in brightness:
+                        cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
+                                    (resize_image(do_brightening(dir_img + '/' +im, factor), input_height, input_width)))
+                        
+                        cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
+                                    resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
+                        indexer += 1
                     
                 if binarization:
                     cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
@@ -605,6 +613,15 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                     cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
                                 resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
                     indexer += 1
+                    
+                if degrading:  
+                    for degrade_scale_ind in degrade_scales:
+                        cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
+                                    (resize_image(do_degrading(cv2.imread(dir_img + '/' + im), degrade_scale_ind), input_height, input_width)))
+                        
+                        cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
+                                    resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
+                        indexer += 1
                     
                     
         if patches:
