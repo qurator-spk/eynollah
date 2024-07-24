@@ -577,8 +577,8 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
             if "artificial_class_on_boundary" in keys:
                 img_boundary = np.zeros( (y_len,x_len) )
                 if "paragraph" in elements_with_artificial_class:
-                    erosion_rate = 2
-                    dilation_rate = 4
+                    erosion_rate = 0#2
+                    dilation_rate = 3#4
                     co_text['paragraph'], img_boundary = update_region_contours(co_text['paragraph'], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "drop-capital" in elements_with_artificial_class:
                     erosion_rate = 0
@@ -586,35 +586,35 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     co_text["drop-capital"], img_boundary = update_region_contours(co_text["drop-capital"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "catch-word" in elements_with_artificial_class:
                     erosion_rate = 0
-                    dilation_rate = 4
+                    dilation_rate = 2#4
                     co_text["catch-word"], img_boundary = update_region_contours(co_text["catch-word"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "page-number" in elements_with_artificial_class:
                     erosion_rate = 0
-                    dilation_rate = 4
+                    dilation_rate = 2#4
                     co_text["page-number"], img_boundary = update_region_contours(co_text["page-number"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "header" in elements_with_artificial_class:
-                    erosion_rate = 1
-                    dilation_rate = 4
+                    erosion_rate = 0#1
+                    dilation_rate = 3#4
                     co_text["header"], img_boundary = update_region_contours(co_text["header"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "heading" in elements_with_artificial_class:
-                    erosion_rate = 1
-                    dilation_rate = 4
+                    erosion_rate = 0#1
+                    dilation_rate = 3#4
                     co_text["heading"], img_boundary = update_region_contours(co_text["heading"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "signature-mark" in elements_with_artificial_class:
                     erosion_rate = 1
                     dilation_rate = 4
                     co_text["signature-mark"], img_boundary = update_region_contours(co_text["signature-mark"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "marginalia" in elements_with_artificial_class:
-                    erosion_rate = 2
-                    dilation_rate = 4
+                    erosion_rate = 0#2
+                    dilation_rate = 3#4
                     co_text["marginalia"], img_boundary = update_region_contours(co_text["marginalia"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "footnote" in elements_with_artificial_class:
-                    erosion_rate = 2
-                    dilation_rate = 4
+                    erosion_rate = 0#2
+                    dilation_rate = 2#4
                     co_text["footnote"], img_boundary = update_region_contours(co_text["footnote"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "footnote-continued" in elements_with_artificial_class:
-                    erosion_rate = 2
-                    dilation_rate = 4
+                    erosion_rate = 0#2
+                    dilation_rate = 2#4
                     co_text["footnote-continued"], img_boundary = update_region_contours(co_text["footnote-continued"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                     
                     
@@ -639,8 +639,6 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                         
                 if 'imageregion' in keys: 
                     img_poly=cv2.fillPoly(img, pts =co_img, color=labels_rgb_color[ config_params['imageregion']])
-                if 'separatorregion' in keys: 
-                    img_poly=cv2.fillPoly(img, pts =co_sep, color=labels_rgb_color[ config_params['separatorregion']])
                 if 'tableregion' in keys:  
                     img_poly=cv2.fillPoly(img, pts =co_table, color=labels_rgb_color[ config_params['tableregion']])
                 if 'noiseregion' in keys:  
@@ -665,6 +663,9 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     img_poly[:,:,0][img_boundary[:,:]==1] = artificial_class_rgb_color[0]
                     img_poly[:,:,1][img_boundary[:,:]==1] = artificial_class_rgb_color[1]
                     img_poly[:,:,2][img_boundary[:,:]==1] = artificial_class_rgb_color[2]
+                    
+                if 'separatorregion' in keys: 
+                    img_poly=cv2.fillPoly(img, pts =co_sep, color=labels_rgb_color[ config_params['separatorregion']])
                     
                     
                 if "printspace_as_class_in_layout" in list(config_params.keys()):
@@ -697,9 +698,6 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 if 'imageregion' in keys:
                     color_label = config_params['imageregion']
                     img_poly=cv2.fillPoly(img, pts =co_img, color=(color_label,color_label,color_label))
-                if 'separatorregion' in keys: 
-                    color_label = config_params['separatorregion']
-                    img_poly=cv2.fillPoly(img, pts =co_sep, color=(color_label,color_label,color_label))
                 if 'tableregion' in keys:
                     color_label = config_params['tableregion']
                     img_poly=cv2.fillPoly(img, pts =co_table, color=(color_label,color_label,color_label))
@@ -723,6 +721,10 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                         
                 if "artificial_class_on_boundary" in keys:
                     img_poly[:,:][img_boundary[:,:]==1] = artificial_class_label
+                    
+                if 'separatorregion' in keys: 
+                    color_label = config_params['separatorregion']
+                    img_poly=cv2.fillPoly(img, pts =co_sep, color=(color_label,color_label,color_label))
                     
                 if "printspace_as_class_in_layout" in list(config_params.keys()):
                     printspace_mask = np.zeros((img_poly.shape[0], img_poly.shape[1]))
