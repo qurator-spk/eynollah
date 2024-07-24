@@ -219,7 +219,7 @@ class sbb_predict:
             
             added_image = cv2.addWeighted(img,0.5,output,0.1,0)
             
-        return added_image
+        return added_image, output
 
     def predict(self):
         self.start_new_session_and_model()
@@ -444,7 +444,7 @@ class sbb_predict:
 
                 if img.shape[1] < self.img_width:
                     img = cv2.resize(img, (self.img_height, img.shape[0]), interpolation=cv2.INTER_NEAREST)
-                margin = int(0 * self.img_width)
+                margin = int(0.1 * self.img_width)
                 width_mid = self.img_width - 2 * margin
                 height_mid = self.img_height - 2 * margin
                 img = img / float(255.0)
@@ -562,9 +562,10 @@ class sbb_predict:
                 print(self.save)
                 cv2.imwrite(self.save,res)
         else:
-            img_seg_overlayed = self.visualize_model_output(res, self.img_org, self.task)
+            img_seg_overlayed, only_prediction  = self.visualize_model_output(res, self.img_org, self.task)
             if self.save:
                 cv2.imwrite(self.save,img_seg_overlayed)
+                cv2.imwrite('./layout.png', only_prediction)
                 
         if self.ground_truth:
             gt_img=cv2.imread(self.ground_truth)
