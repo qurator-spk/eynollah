@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-ocrd"]
+
+[project]
+name = "eynollah"
+version = "0.3.0"
+authors = [
+    {name = "Vahid Rezanezhad"},
+    {name = "Staatsbibliothek zu Berlin - Preußischer Kulturbesitz"},
+]
+description = "Document Layout Analysis"
+readme = "README.md"
+license.file = "LICENSE"
+requires-python = ">=3.8"
+keywords = ["document layout analysis", "image segmentation"]
+
+dynamic = ["dependencies"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+
+[project.scripts]
+eynollah = "eynollah.eynollah.cli:main"
+ocrd-eynollah-segment = "eynollah.eynollah.ocrd_cli:main"
+
+[project.urls]
+Homepage = "https://github.com/qurator-spk/eynollah"
+Repository = "https://github.com/qurator-spk/eynollah.git"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
