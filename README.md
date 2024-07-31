@@ -18,7 +18,7 @@
 * Output in [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML)
 * [OCR-D](https://github.com/qurator-spk/eynollah#use-as-ocr-d-processor) interface
 
-:warning: Eynollah development is currently focused on achieving the best possible quality of results for a wide variety of historical documents and therefore processing can be very slow. We aim to improve this, but contributions are always welcome.
+:warning: Development is currently focused on achieving the best possible quality of results for a wide variety of historical documents and therefore processing can be very slow. We aim to improve this, but contributions are welcome.
 
 ## Installation
 Python `3.8-3.11` with Tensorflow `2.12-2.15` on Linux are currently supported.
@@ -79,7 +79,7 @@ The following options can be used to further configure the processing:
 | `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory               |
 
 If no option is set, the tool performs layout detection of main regions (background, text, images, separators and marginals).
-Best quality output is produced when RGB images are used as input rather than greyscale or binarized images.
+The best output quality is produced when RGB images are used as input rather than greyscale or binarized images.
 
 #### Use as OCR-D processor
 🚧 **Work in progress** 
