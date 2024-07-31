@@ -42,7 +42,7 @@ cd eynollah; pip install -e .
 Alternatively, you can run `make install` or `make install-dev` for editable installation.
 
 ## Models
-Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/) or [huggingface](https://huggingface.co/SBB). 
+Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
 
 ## Train
 🚧 **Work in progress**  
