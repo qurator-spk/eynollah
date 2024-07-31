@@ -61,22 +61,22 @@ eynollah \
 
 The following options can be used to further configure the processing:
 
-| option   |      description      |
-|----------|:-------------|
-| `-fl`  | full layout analysis including all steps and segmentation classes |
-| `-light` | lighter and faster but simpler method for main region detection and deskewing |
-| `-tab` | apply table detection |
-| `-ae`  | apply enhancement (the resulting image is saved to the output directory) |
-| `-as`  | apply scaling |
-| `-cl`  | apply contour detection for curved text lines instead of bounding boxes |
-| `-ib`  | apply binarization (the resulting image is saved to the output directory)  |
-| `-ep`  | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`) |
-| `-ho`  | ignore headers for reading order dectection |
-| `-si <directory>`  | save image regions detected to this directory |
-| `-sd <directory>`  | save deskewed image to this directory |
-| `-sl <directory>`  | save layout prediction as plot to this directory |
-| `-sp <directory>`  | save cropped page image to this directory |
-| `-sa <directory>`  | save all (plot, enhanced/binary image, layout) to this directory |
+| option            | description                                                                    |
+|-------------------|:-------------------------------------------------------------------------------|
+| `-fl`             | full layout analysis including all steps and segmentation classes              |
+| `-light`          | lighter and faster but simpler method for main region detection and deskewing  |
+| `-tab`            | apply table detection                                                          |
+| `-ae`             | apply enhancement (the resulting image is saved to the output directory)       |
+| `-as`             | apply scaling                                                                  |
+| `-cl`             | apply contour detection for curved text lines instead of bounding boxes        |
+| `-ib`             | apply binarization (the resulting image is saved to the output directory)      |
+| `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`) |
+| `-ho`             | ignore headers for reading order dectection                                    |
+| `-si <directory>` | save image regions detected to this directory                                  |
+| `-sd <directory>` | save deskewed image to this directory                                          |
+| `-sl <directory>` | save layout prediction as plot to this directory                               |
+| `-sp <directory>` | save cropped page image to this directory                                      |
+| `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory               |
 
 If no option is set, the tool performs layout detection of main regions (background, text, images, separators and marginals).
 Best quality output is produced when RGB images are used as input rather than greyscale or binarized images.
