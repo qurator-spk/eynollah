@@ -24,12 +24,13 @@ models: models_eynollah
 models_eynollah: models_eynollah.tar.gz
 	# tar xf models_eynollah_renamed.tar.gz --transform 's/models_eynollah_renamed/models_eynollah/'
 	# tar xf models_eynollah_renamed.tar.gz
-	tar xf 2022-04-05.SavedModel.tar.gz --transform 's/models_eynollah_renamed/models_eynollah/'
+	tar xf models_eynollah_renamed_savedmodel.tar.gz --transform 's/models_eynollah_renamed_savedmodel/models_eynollah/'
 
 models_eynollah.tar.gz:
 	# wget 'https://qurator-data.de/eynollah/2021-04-25/models_eynollah.tar.gz'
 	# wget 'https://qurator-data.de/eynollah/2022-04-05/models_eynollah_renamed.tar.gz'
-	wget 'https://ocr-d.kba.cloud/2022-04-05.SavedModel.tar.gz'
+	# wget 'https://ocr-d.kba.cloud/2022-04-05.SavedModel.tar.gz'
+	wget 'https://qurator-data.de/eynollah/2022-04-05/models_eynollah_renamed_savedmodel.tar.gz'
 
 # Install with pip
 install:
