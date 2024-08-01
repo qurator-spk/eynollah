@@ -577,36 +577,36 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
             if "artificial_class_on_boundary" in keys:
                 img_boundary = np.zeros( (y_len,x_len) )
                 if "paragraph" in elements_with_artificial_class:
-                    erosion_rate = 0#2
-                    dilation_rate = 3#4
+                    erosion_rate = 2
+                    dilation_rate = 4
                     co_text['paragraph'], img_boundary = update_region_contours(co_text['paragraph'], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "drop-capital" in elements_with_artificial_class:
-                    erosion_rate = 0
-                    dilation_rate = 4
+                    erosion_rate = 1
+                    dilation_rate = 3
                     co_text["drop-capital"], img_boundary = update_region_contours(co_text["drop-capital"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "catch-word" in elements_with_artificial_class:
                     erosion_rate = 0
-                    dilation_rate = 2#4
+                    dilation_rate = 3#4
                     co_text["catch-word"], img_boundary = update_region_contours(co_text["catch-word"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "page-number" in elements_with_artificial_class:
                     erosion_rate = 0
-                    dilation_rate = 2#4
+                    dilation_rate = 3#4
                     co_text["page-number"], img_boundary = update_region_contours(co_text["page-number"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "header" in elements_with_artificial_class:
-                    erosion_rate = 0#1
-                    dilation_rate = 3#4
+                    erosion_rate = 1
+                    dilation_rate = 4
                     co_text["header"], img_boundary = update_region_contours(co_text["header"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "heading" in elements_with_artificial_class:
-                    erosion_rate = 0#1
-                    dilation_rate = 3#4
+                    erosion_rate = 1
+                    dilation_rate = 4
                     co_text["heading"], img_boundary = update_region_contours(co_text["heading"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "signature-mark" in elements_with_artificial_class:
                     erosion_rate = 1
                     dilation_rate = 4
                     co_text["signature-mark"], img_boundary = update_region_contours(co_text["signature-mark"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "marginalia" in elements_with_artificial_class:
-                    erosion_rate = 0#2
-                    dilation_rate = 3#4
+                    erosion_rate = 2
+                    dilation_rate = 4
                     co_text["marginalia"], img_boundary = update_region_contours(co_text["marginalia"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                 if "footnote" in elements_with_artificial_class:
                     erosion_rate = 0#2
