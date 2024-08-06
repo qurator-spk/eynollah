@@ -260,7 +260,7 @@ class Eynollah:
             
             self.model_page = self.our_load_model(self.model_page_dir)
             self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
-            #self.model_bin = self.our_load_model(self.model_dir_of_binarization)
+            self.model_bin = self.our_load_model(self.model_dir_of_binarization)
             #self.model_textline = self.our_load_model(self.model_textline_dir)
             self.model_region = self.our_load_model(self.model_region_dir_p_ens_light_only_images_extraction)
             #self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
@@ -917,7 +917,8 @@ class Eynollah:
                     ##seg2 = -label_p_pred[0,:,:,2]
                     
                     if self.extract_only_images:
-                        seg_not_base[seg_not_base>0.3] =1
+                        #seg_not_base[seg_not_base>0.3] =1
+                        seg_not_base[seg_not_base>0.5] =1
                         seg_not_base[seg_not_base<1] =0
                     else:
                         seg_not_base[seg_not_base>0.03] =1
@@ -955,7 +956,7 @@ class Eynollah:
                     ##plt.show()
                     #seg[seg==1]=0
                     #seg[seg_test==1]=1
-                    seg[seg_not_base==1]=4
+                    ###seg[seg_not_base==1]=4
                     if not self.extract_only_images:
                         seg[seg_background==1]=0
                     seg[(seg_line==1) & (seg==0)]=3
@@ -1689,7 +1690,13 @@ class Eynollah:
         
         text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
         
-        polygons_of_images = return_contours_of_interested_region(text_regions_p_true, 2, 0.0001)
+        
+        
+        text_regions_p_true[text_regions_p_true.shape[0]-15:text_regions_p_true.shape[0], :] = 0
+        text_regions_p_true[:, text_regions_p_true.shape[1]-15:text_regions_p_true.shape[1]] = 0
+        
+        ##polygons_of_images = return_contours_of_interested_region(text_regions_p_true, 2, 0.0001)
+        polygons_of_images = return_contours_of_interested_region(text_regions_p_true, 2, 0.001)
         
         image_boundary_of_doc = np.zeros((text_regions_p_true.shape[0], text_regions_p_true.shape[1]))
         
