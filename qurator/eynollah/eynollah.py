@@ -1731,11 +1731,14 @@ class Eynollah:
                 polygons_of_images_fin.append(np.array([[page_coord_img[2], page_coord_img[0]], [page_coord_img[3], page_coord_img[0]], [page_coord_img[3], page_coord_img[1]], [page_coord_img[2], page_coord_img[1]]]) )
             """
             x, y, w, h = cv2.boundingRect(ploy_img_ind)
-            box = [x, y, w, h]
-            _, page_coord_img = crop_image_inside_box(box, text_regions_p_true)
-            #cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
-            
-            polygons_of_images_fin.append(np.array([[page_coord_img[2], page_coord_img[0]], [page_coord_img[3], page_coord_img[0]], [page_coord_img[3], page_coord_img[1]], [page_coord_img[2], page_coord_img[1]]]) )
+            if h < 150 or w < 150:
+                pass
+            else:
+                box = [x, y, w, h]
+                _, page_coord_img = crop_image_inside_box(box, text_regions_p_true)
+                #cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
+                
+                polygons_of_images_fin.append(np.array([[page_coord_img[2], page_coord_img[0]], [page_coord_img[3], page_coord_img[0]], [page_coord_img[3], page_coord_img[1]], [page_coord_img[2], page_coord_img[1]]]) )
         
         return text_regions_p_true, erosion_hurts, polygons_lines_xml, polygons_of_images_fin, image_page, page_coord, cont_page
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
@@ -3011,7 +3014,7 @@ class Eynollah:
                 pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], polygons_of_images, [], [], [], [], [], cont_page, [], [])
                 
                 if self.plotter:
-                    self.plotter.write_images_into_directory(polygons_of_images, img_res)
+                    self.plotter.write_images_into_directory(polygons_of_images, image_page)
                 #plt.imshow(text_regions_p_1)
                 #plt.show()
                 
