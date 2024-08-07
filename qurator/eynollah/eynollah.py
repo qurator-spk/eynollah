@@ -241,6 +241,8 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_reading_order_machine_dir = dir_models + "/model_ens_reading_order_machine_based"
+        self.model_region_dir_p_1_2_sp_np = dir_models + "/model_3_eraly_layout_no_patches_1_2_spaltige"
+        self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
         if self.textline_light:
             self.model_textline_dir = dir_models + "/eynollah-textline_light_20210425"
         else:
@@ -263,6 +265,8 @@ class Eynollah:
             self.model_bin = self.our_load_model(self.model_dir_of_binarization)
             self.model_textline = self.our_load_model(self.model_textline_dir)
             self.model_region = self.our_load_model(self.model_region_dir_p_ens_light)
+            self.model_region_1_2 = self.our_load_model(self.model_region_dir_p_1_2_sp_np)
+            self.model_region_fl_new = self.our_load_model(self.model_region_dir_fully_new)
             self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
             self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
             self.model_reading_order_machine = self.our_load_model(self.model_reading_order_machine_dir)
@@ -1069,6 +1073,66 @@ class Eynollah:
             croped_page, page_coord = crop_image_inside_box(box, img)
         return croped_page, page_coord
 
+    def extract_text_regions_new(self, img, patches, cols):
+        self.logger.debug("enter extract_text_regions")
+        img_height_h = img.shape[0]
+        img_width_h = img.shape[1]
+        if not self.dir_in:
+            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_fully_new if patches else self.model_region_dir_fully_np)
+        else:
+            model_region = self.model_region_fl_new if patches else self.model_region_fl_np
+
+        if not patches:
+            img = otsu_copy_binary(img)
+            img = img.astype(np.uint8)
+            prediction_regions2 = None
+        else:
+            if cols == 1:
+                img = otsu_copy_binary(img)
+                img = img.astype(np.uint8)
+
+                img = resize_image(img, int(img_height_h * 1000 / float(img_width_h)), 1000)
+                img = img.astype(np.uint8)
+
+            if cols == 2:
+                img = otsu_copy_binary(img)
+                img = img.astype(np.uint8)
+                img = resize_image(img, int(img_height_h * 1300 / float(img_width_h)), 1300)
+                img = img.astype(np.uint8)
+
+            if cols == 3:
+                img = otsu_copy_binary(img)
+                img = img.astype(np.uint8)
+                img = resize_image(img, int(img_height_h * 1600 / float(img_width_h)), 1600)
+                img = img.astype(np.uint8)
+
+            if cols == 4:
+                img = otsu_copy_binary(img)
+                img = img.astype(np.uint8)
+                img = resize_image(img, int(img_height_h * 1900 / float(img_width_h)), 1900)
+                img = img.astype(np.uint8)
+                
+            if cols == 5:
+                img = otsu_copy_binary(img)
+                img = img.astype(np.uint8)
+                img = resize_image(img, int(img_height_h * 2200 / float(img_width_h)), 2200)
+                img = img.astype(np.uint8)
+
+            if cols >= 6:
+                img = otsu_copy_binary(img)
+                img = img.astype(np.uint8)
+                img = resize_image(img, int(img_height_h * 2500 / float(img_width_h)), 2500)
+                img = img.astype(np.uint8)
+
+        marginal_of_patch_percent = 0.1
+
+        prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent)
+        
+        prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
+        self.logger.debug("exit extract_text_regions")
+        return prediction_regions, prediction_regions
+    
+    
     def extract_text_regions(self, img, patches, cols):
         self.logger.debug("enter extract_text_regions")
         img_height_h = img.shape[0]
@@ -1652,10 +1716,17 @@ class Eynollah:
         textline_mask_tot_ea = self.run_textline(img_bin)
 
         if not self.dir_in:
-            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
-            prediction_regions_org = self.do_prediction_new_concept(True, img_bin, model_region)
+            if num_col_classifier == 1 or num_col_classifier == 2:
+                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
+                prediction_regions_org = self.do_prediction_new_concept(False, img_resized, model_region)
+            else:
+                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
+                prediction_regions_org = self.do_prediction_new_concept(True, img_bin, model_region)
         else:
-            prediction_regions_org = self.do_prediction_new_concept(True, img_bin, self.model_region)
+            if num_col_classifier == 1 or num_col_classifier == 2:
+                prediction_regions_org = self.do_prediction_new_concept(False, img_resized, self.model_region_1_2)
+            else:
+                prediction_regions_org = self.do_prediction_new_concept(True, img_bin, self.model_region)
             
         #plt.imshow(prediction_regions_org[:,:,0])
         #plt.show()
@@ -2828,24 +2899,32 @@ class Eynollah:
         text_regions_p[:, :][text_regions_p[:, :] == 4] = 8
 
         image_page = image_page.astype(np.uint8)
-
-        regions_fully, regions_fully_only_drop = self.extract_text_regions(image_page, True, cols=num_col_classifier)
-        text_regions_p[:,:][regions_fully[:,:,0]==6]=6
-        regions_fully_only_drop = put_drop_out_from_only_drop_model(regions_fully_only_drop, text_regions_p)
-        regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 4] = 4
+        
+        regions_fully, regions_fully_only_drop = self.extract_text_regions_new(image_page, True, cols=num_col_classifier)
+        
+        # 6 is the separators lable in old full layout model
+        # 4 is the drop capital class in old full layout model
+        # in the new full layout drop capital is 3 and separators are 5
+        
+        text_regions_p[:,:][regions_fully[:,:,0]==5]=6
+        regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 3] = 4
+        
+        #text_regions_p[:,:][regions_fully[:,:,0]==6]=6
+        #regions_fully_only_drop = put_drop_out_from_only_drop_model(regions_fully_only_drop, text_regions_p)
+        #regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 4] = 4
 
         regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully)
-        regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
-        if num_col_classifier > 2:
-            regions_fully_np[:, :, 0][regions_fully_np[:, :, 0] == 4] = 0
-        else:
-            regions_fully_np = filter_small_drop_capitals_from_no_patch_layout(regions_fully_np, text_regions_p)
+        ##regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
+        ##if num_col_classifier > 2:
+            ##regions_fully_np[:, :, 0][regions_fully_np[:, :, 0] == 4] = 0
+        ##else:
+            ##regions_fully_np = filter_small_drop_capitals_from_no_patch_layout(regions_fully_np, text_regions_p)
 
-        regions_fully = boosting_headers_by_longshot_region_segmentation(regions_fully, regions_fully_np, img_only_regions)
+        ###regions_fully = boosting_headers_by_longshot_region_segmentation(regions_fully, regions_fully_np, img_only_regions)
         # plt.imshow(regions_fully[:,:,0])
         # plt.show()
         text_regions_p[:, :][regions_fully[:, :, 0] == 4] = 4
-        text_regions_p[:, :][regions_fully_np[:, :, 0] == 4] = 4
+        ####text_regions_p[:, :][regions_fully_np[:, :, 0] == 4] = 4
         #plt.imshow(text_regions_p)
         #plt.show()
         ####if not self.tables:
@@ -3645,8 +3724,13 @@ class Eynollah:
                     else:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
                 self.logger.info("detection of reading order took %.1fs", time.time() - t_order)
-
-                pcgts = self.writer.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_xml)
+                
+                if self.ocr:
+                    ocr_all_textlines = []
+                else:
+                    ocr_all_textlines = None
+                    
+                pcgts = self.writer.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_xml, ocr_all_textlines)
                 self.logger.info("Job done in %.1fs", time.time() - t0)
                 ##return pcgts
                 
