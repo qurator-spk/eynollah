@@ -1083,43 +1083,64 @@ class Eynollah:
             model_region = self.model_region_fl_new if patches else self.model_region_fl_np
 
         if not patches:
-            img = otsu_copy_binary(img)
+            if self.light_version:
+                pass
+            else:
+                img = otsu_copy_binary(img)
             img = img.astype(np.uint8)
             prediction_regions2 = None
         else:
             if cols == 1:
-                img = otsu_copy_binary(img)
+                if self.light_version:
+                    pass
+                else:
+                    img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
 
                 img = resize_image(img, int(img_height_h * 1000 / float(img_width_h)), 1000)
                 img = img.astype(np.uint8)
 
             if cols == 2:
-                img = otsu_copy_binary(img)
+                if self.light_version:
+                    pass
+                else:
+                    img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
                 img = resize_image(img, int(img_height_h * 1300 / float(img_width_h)), 1300)
                 img = img.astype(np.uint8)
 
             if cols == 3:
-                img = otsu_copy_binary(img)
+                if self.light_version:
+                    pass
+                else:
+                    img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
                 img = resize_image(img, int(img_height_h * 1600 / float(img_width_h)), 1600)
                 img = img.astype(np.uint8)
 
             if cols == 4:
-                img = otsu_copy_binary(img)
+                if self.light_version:
+                    pass
+                else:
+                    img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
                 img = resize_image(img, int(img_height_h * 1900 / float(img_width_h)), 1900)
                 img = img.astype(np.uint8)
                 
             if cols == 5:
-                img = otsu_copy_binary(img)
+                if self.light_version:
+                    pass
+                else:
+                    img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
                 img = resize_image(img, int(img_height_h * 2200 / float(img_width_h)), 2200)
                 img = img.astype(np.uint8)
 
             if cols >= 6:
-                img = otsu_copy_binary(img)
+                if self.light_version:
+                    pass
+                else:
+                    img = otsu_copy_binary(img)
                 img = img.astype(np.uint8)
                 img = resize_image(img, int(img_height_h * 2500 / float(img_width_h)), 2500)
                 img = img.astype(np.uint8)
@@ -1611,6 +1632,7 @@ class Eynollah:
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
+        #print(img.shape,'bin shape')
         if not self.dir_in:
             prediction_textline = self.do_prediction(patches, img, model_textline)
         else:
@@ -1664,6 +1686,7 @@ class Eynollah:
         box_sub.put(boxes_sub_new)
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_light_v")
+        t_in = time.time()
         erosion_hurts = False
         img_org = np.copy(img)
         img_height_h = img_org.shape[0]
@@ -1671,7 +1694,7 @@ class Eynollah:
 
         #model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
 
-        
+        #print(num_col_classifier,'num_col_classifier')
         
         if num_col_classifier == 1:
             img_w_new = 1000
@@ -1711,9 +1734,12 @@ class Eynollah:
         #img= np.copy(prediction_bin)
         img_bin = np.copy(prediction_bin)
         
-        
+        #print("inside 1 ", time.time()-t_in)
         
         textline_mask_tot_ea = self.run_textline(img_bin)
+        
+        
+        #print("inside 2 ", time.time()-t_in)
 
         if not self.dir_in:
             if num_col_classifier == 1 or num_col_classifier == 2:
@@ -1727,12 +1753,14 @@ class Eynollah:
                 prediction_regions_org = self.do_prediction_new_concept(False, img_resized, self.model_region_1_2)
             else:
                 prediction_regions_org = self.do_prediction_new_concept(True, img_bin, self.model_region)
-            
+         
+        #print("inside 3 ", time.time()-t_in)
         #plt.imshow(prediction_regions_org[:,:,0])
         #plt.show()
             
         prediction_regions_org = resize_image(prediction_regions_org,img_height_h, img_width_h )
         textline_mask_tot_ea = resize_image(textline_mask_tot_ea,img_height_h, img_width_h )
+        img_bin = resize_image(img_bin,img_height_h, img_width_h )
         
         prediction_regions_org=prediction_regions_org[:,:,0]
             
@@ -1787,8 +1815,8 @@ class Eynollah:
         text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
         
         text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
-        
-        return text_regions_p_true, erosion_hurts, polygons_lines_xml, textline_mask_tot_ea
+        #print("inside 4 ", time.time()-t_in)
+        return text_regions_p_true, erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin
 
     def get_regions_from_xy_2models(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_from_xy_2models")
@@ -2553,7 +2581,11 @@ class Eynollah:
         prediction_table_erode = cv2.erode(prediction_table[:,:,0], KERNEL, iterations=20)
         prediction_table_erode = cv2.dilate(prediction_table_erode, KERNEL, iterations=20)
         return prediction_table_erode.astype(np.int16)
-    def run_graphics_and_columns_light(self, text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts):
+    def run_graphics_and_columns_light(self, text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts, img_bin_light):
+        
+        #print(text_regions_p_1.shape, 'text_regions_p_1 shape run graphics')
+        #print(erosion_hurts, 'erosion_hurts')
+        t_in_gr = time.time()
         img_g = self.imread(grayscale=True, uint8=True)
 
         img_g3 = np.zeros((img_g.shape[0], img_g.shape[1], 3))
@@ -2563,7 +2595,7 @@ class Eynollah:
         img_g3[:, :, 2] = img_g[:, :]
 
         image_page, page_coord, cont_page = self.extract_page()
-        
+        #print("inside graphics 1 ", time.time() - t_in_gr)
         if self.tables:
             table_prediction = self.get_tables_from_model(image_page, num_col_classifier)
         else:
@@ -2574,6 +2606,9 @@ class Eynollah:
 
         text_regions_p_1 = text_regions_p_1[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
         textline_mask_tot_ea = textline_mask_tot_ea[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
+        
+        img_bin_light = img_bin_light[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
+        
         mask_images = (text_regions_p_1[:, :] == 2) * 1
         mask_images = mask_images.astype(np.uint8)
         mask_images = cv2.erode(mask_images[:, :], KERNEL, iterations=10)
@@ -2582,7 +2617,7 @@ class Eynollah:
         img_only_regions_with_sep = ((text_regions_p_1[:, :] != 3) & (text_regions_p_1[:, :] != 0)) * 1
         img_only_regions_with_sep = img_only_regions_with_sep.astype(np.uint8)
         
-        
+        #print("inside graphics 2 ", time.time() - t_in_gr)
         if erosion_hurts:
             img_only_regions = np.copy(img_only_regions_with_sep[:,:])
         else:
@@ -2600,8 +2635,10 @@ class Eynollah:
         except Exception as why:
             self.logger.error(why)
             num_col = None
-        return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea
+        #print("inside graphics 3 ", time.time() - t_in_gr)
+        return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea, img_bin_light
     def run_graphics_and_columns(self, text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts):
+        t_in_gr = time.time()
         img_g = self.imread(grayscale=True, uint8=True)
 
         img_g3 = np.zeros((img_g.shape[0], img_g.shape[1], 3))
@@ -2629,13 +2666,11 @@ class Eynollah:
         img_only_regions_with_sep = ((text_regions_p_1[:, :] != 3) & (text_regions_p_1[:, :] != 0)) * 1
         img_only_regions_with_sep = img_only_regions_with_sep.astype(np.uint8)
         
-        
         if erosion_hurts:
             img_only_regions = np.copy(img_only_regions_with_sep[:,:])
         else:
             img_only_regions = cv2.erode(img_only_regions_with_sep[:,:], KERNEL, iterations=6)
             
-        
         try:
             num_col, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
             num_col = num_col + 1
@@ -2682,6 +2717,7 @@ class Eynollah:
         return textline_mask_tot_ea
 
     def run_deskew(self, textline_mask_tot_ea):
+        #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
         sigma = 2
         main_page_deskew = True
         slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), sigma, main_page_deskew, plotter=self.plotter)
@@ -2805,7 +2841,7 @@ class Eynollah:
         self.logger.debug('exit run_boxes_no_full_layout')
         return polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, boxes, boxes_d, polygons_of_marginals, contours_tables
 
-    def run_boxes_full_layout(self, image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts):
+    def run_boxes_full_layout(self, image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts, img_bin_light):
         self.logger.debug('enter run_boxes_full_layout')
         
         if self.tables:
@@ -2900,20 +2936,23 @@ class Eynollah:
 
         image_page = image_page.astype(np.uint8)
         
-        regions_fully, regions_fully_only_drop = self.extract_text_regions_new(image_page, True, cols=num_col_classifier)
+        if self.light_version:
+            regions_fully, regions_fully_only_drop = self.extract_text_regions_new(img_bin_light, True, cols=num_col_classifier)
+        else:
+            regions_fully, regions_fully_only_drop = self.extract_text_regions_new(image_page, True, cols=num_col_classifier)
         
         # 6 is the separators lable in old full layout model
         # 4 is the drop capital class in old full layout model
         # in the new full layout drop capital is 3 and separators are 5
         
         text_regions_p[:,:][regions_fully[:,:,0]==5]=6
-        regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 3] = 4
+        ###regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 3] = 4
         
         #text_regions_p[:,:][regions_fully[:,:,0]==6]=6
-        #regions_fully_only_drop = put_drop_out_from_only_drop_model(regions_fully_only_drop, text_regions_p)
-        #regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 4] = 4
-
-        regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully)
+        ##regions_fully_only_drop = put_drop_out_from_only_drop_model(regions_fully_only_drop, text_regions_p)
+        ##regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 4] = 4
+        drop_capital_label_in_full_layout_model = 3
+        regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully, drop_capital_label_in_full_layout_model)
         ##regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
         ##if num_col_classifier > 2:
             ##regions_fully_np[:, :, 0][regions_fully_np[:, :, 0] == 4] = 0
@@ -2923,7 +2962,7 @@ class Eynollah:
         ###regions_fully = boosting_headers_by_longshot_region_segmentation(regions_fully, regions_fully_np, img_only_regions)
         # plt.imshow(regions_fully[:,:,0])
         # plt.show()
-        text_regions_p[:, :][regions_fully[:, :, 0] == 4] = 4
+        text_regions_p[:, :][regions_fully[:, :, 0] == drop_capital_label_in_full_layout_model] = 4
         ####text_regions_p[:, :][regions_fully_np[:, :, 0] == 4] = 4
         #plt.imshow(text_regions_p)
         #plt.show()
@@ -3463,22 +3502,41 @@ class Eynollah:
             self.ls_imgs = [1]
         
         for img_name in self.ls_imgs:
+            print(img_name)
             t0 = time.time()
             if self.dir_in:
                 self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
             
             img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
             self.logger.info("Enhancing took %.1fs ", time.time() - t0)
-            
+            #print("text region early -1 in %.1fs", time.time() - t0)
             t1 = time.time()
             if self.light_version:
-                text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea = self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
-                slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
+                text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin_light = self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
+                #print("text region early -2 in %.1fs", time.time() - t0)
+                
+                if num_col_classifier == 1 or num_col_classifier ==2:
+                    if num_col_classifier == 1:
+                        img_w_new = 1000
+                        img_h_new = int(textline_mask_tot_ea.shape[0] / float(textline_mask_tot_ea.shape[1]) * img_w_new)
+                        
+                    elif num_col_classifier == 2:
+                        img_w_new = 1300
+                        img_h_new = int(textline_mask_tot_ea.shape[0] / float(textline_mask_tot_ea.shape[1]) * img_w_new)
+                        
+                    textline_mask_tot_ea_deskew = resize_image(textline_mask_tot_ea,img_h_new, img_w_new )
+                    
+                    slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea_deskew)
+                else:
+                    slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
+                #print("text region early -2,5 in %.1fs", time.time() - t0)
                 #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
-                num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea = \
-                        self.run_graphics_and_columns_light(text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts)
+                num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea, img_bin_light = \
+                        self.run_graphics_and_columns_light(text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts, img_bin_light)
                 #self.logger.info("run graphics %.1fs ", time.time() - t1t)
+                #print("text region early -3 in %.1fs", time.time() - t0)
                 textline_mask_tot_ea_org = np.copy(textline_mask_tot_ea)
+                #print("text region early -4 in %.1fs", time.time() - t0)
             else:
                 text_regions_p_1 ,erosion_hurts, polygons_lines_xml = self.get_regions_from_xy_2models(img_res, is_image_enhanced, num_col_classifier)
                 self.logger.info("Textregion detection took %.1fs ", time.time() - t1)
@@ -3498,7 +3556,7 @@ class Eynollah:
                     continue
                 else:
                     return pcgts
-
+            #print("text region early in %.1fs", time.time() - t0)
             t1 = time.time()
             if not self.light_version:
                 textline_mask_tot_ea = self.run_textline(image_page)
@@ -3513,17 +3571,20 @@ class Eynollah:
 
             textline_mask_tot, text_regions_p, image_page_rotated = self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines, num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
             self.logger.info("detection of marginals took %.1fs", time.time() - t1)
+            #print("text region early 2 marginal in %.1fs", time.time() - t0)
             t1 = time.time()
             if not self.full_layout:
                 polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, boxes, boxes_d, polygons_of_marginals, contours_tables = self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, table_prediction, erosion_hurts)
 
             if self.full_layout:
-                polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts)
+                if not self.light_version:
+                    img_bin_light = None
+                polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts, img_bin_light)
             text_only = ((img_revised_tab[:, :] == 1)) * 1
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 text_only_d = ((text_regions_p_1_n[:, :] == 1)) * 1
             
-            
+            #print("text region early 2 in %.1fs", time.time() - t0)
             ###min_con_area = 0.000005
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 contours_only_text, hir_on_text = return_contours_of_image(text_only)
@@ -3625,13 +3686,16 @@ class Eynollah:
                     # self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))
                 else:
                     pass
+                
+            #print("text region early 3 in %.1fs", time.time() - t0)
             if self.light_version:
                 txt_con_org = get_textregion_contours_in_org_image_light(contours_only_text_parent, self.image, slope_first)
             else:
                 txt_con_org = get_textregion_contours_in_org_image(contours_only_text_parent, self.image, slope_first)
+            #print("text region early 4 in %.1fs", time.time() - t0)
             boxes_text, _ = get_text_region_boxes_by_given_contours(contours_only_text_parent)
             boxes_marginals, _ = get_text_region_boxes_by_given_contours(polygons_of_marginals)
-            
+            #print("text region early 5 in %.1fs", time.time() - t0)
             if not self.curved_line:
                 if self.light_version:
                     if self.textline_light:
@@ -3651,7 +3715,7 @@ class Eynollah:
                 all_found_textline_polygons = small_textlines_to_parent_adherence2(all_found_textline_polygons, textline_mask_tot_ea, num_col_classifier)
                 all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
                 all_found_textline_polygons_marginals = small_textlines_to_parent_adherence2(all_found_textline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
-            
+            #print("text region early 6 in %.1fs", time.time() - t0)
             if self.full_layout:
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                     contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
@@ -3778,7 +3842,10 @@ class Eynollah:
                             #print(x, y, w, h, h/float(w),'ratio')
                             h2w_ratio = h/float(w)
                             mask_poly = np.zeros(image_page.shape)
-                            img_poly_on_img = np.copy(image_page)
+                            if not self.light_version:
+                                img_poly_on_img = np.copy(image_page)
+                            else:
+                                img_poly_on_img = np.copy(img_bin_light)
 
                             mask_poly = cv2.fillPoly(mask_poly, pts=[ind_poly], color=(1, 1, 1))
                             
@@ -3805,8 +3872,10 @@ class Eynollah:
                 pcgts = self.writer.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines)
                 self.logger.info("Job done in %.1fs", time.time() - t0)
                 ##return pcgts
+            #print("text region early 7 in %.1fs", time.time() - t0)
             self.writer.write_pagexml(pcgts)
             #self.logger.info("Job done in %.1fs", time.time() - t0)
+            #print("Job done in %.1fs", time.time() - t0)
             
         if self.dir_in:
             self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)

@@ -775,9 +775,8 @@ def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
 
     return layout_no_patch
 
-def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch):
-
-    drop_only = (layout_in_patch[:, :, 0] == 4) * 1
+def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop_capital_label):
+    drop_only = (layout_in_patch[:, :, 0] == drop_capital_label) * 1
     contours_drop, hir_on_drop = return_contours_of_image(drop_only)
     contours_drop_parent = return_parent_contours(contours_drop, hir_on_drop)
 
@@ -786,13 +785,18 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch):
 
     contours_drop_parent = [contours_drop_parent[jz] for jz in range(len(contours_drop_parent)) if areas_cnt_text[jz] > 0.00001]
 
-    areas_cnt_text = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > 0.001]
+    areas_cnt_text = [areas_cnt_text[jz] for jz in range(len(areas_cnt_text)) if areas_cnt_text[jz] > 0.00001]
 
     contours_drop_parent_final = []
 
     for jj in range(len(contours_drop_parent)):
         x, y, w, h = cv2.boundingRect(contours_drop_parent[jj])
-        layout_in_patch[y : y + h, x : x + w, 0] = 4
+        
+        if ( ( areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) ) / float(w*h) ) > 0.4:
+            
+            layout_in_patch[y : y + h, x : x + w, 0] = drop_capital_label
+        else:
+            layout_in_patch[y : y + h, x : x + w, 0][layout_in_patch[y : y + h, x : x + w, 0] == drop_capital_label] = drop_capital_label
 
     return layout_in_patch
 
