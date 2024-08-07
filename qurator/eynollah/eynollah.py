@@ -3549,7 +3549,8 @@ class Eynollah:
             
             if not num_col:
                 self.logger.info("No columns detected, outputting an empty PAGE-XML")
-                pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [], cont_page, [], [])
+                ocr_all_textlines = None
+                pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [], cont_page, [], [], ocr_all_textlines)
                 self.logger.info("Job done in %.1fs", time.time() - t1)
                 if self.dir_in:
                     self.writer.write_pagexml(pcgts)
