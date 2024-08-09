@@ -28,7 +28,7 @@ Tool to load model and predict for given image.
 """
 
 class sbb_predict:
-    def __init__(self,image, model, task, config_params_model, patches, save, ground_truth, xml_file, out, min_area):
+    def __init__(self,image, model, task, config_params_model, patches, save, save_layout, ground_truth, xml_file, out, min_area):
         self.image=image
         self.patches=patches
         self.save=save
