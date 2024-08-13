@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "setuptools-ocrd"]
+requires = ["setuptools>=61.0", "wheel", "setuptools-ocrd"]
 
 [project]
 name = "eynollah"
@@ -30,9 +30,20 @@ classifiers = [
 eynollah = "eynollah.eynollah.cli:main"
 ocrd-eynollah-segment = "eynollah.eynollah.ocrd_cli:main"
 
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
 [project.urls]
 Homepage = "https://github.com/qurator-spk/eynollah"
 Repository = "https://github.com/qurator-spk/eynollah.git"
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.setuptools.package-data]
+"*" = ["*.json", '*.yml', '*.xml', '*.xsd']
