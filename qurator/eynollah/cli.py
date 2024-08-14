@@ -3,14 +3,60 @@ import click
 from ocrd_utils import initLogging, setOverrideLogLevel
 from qurator.eynollah.eynollah import Eynollah
 
+@click.group()
+def main():
+    pass
 
-@click.command()
+@main.command()
+@click.option(
+    "--dir_xml",
+    "-dx",
+    help="directory of GT page-xml files",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+@click.option(
+    "--dir_out_modal_image",
+    "-domi",
+    help="directory where ground truth images would be written",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+@click.option(
+    "--dir_out_classes",
+    "-docl",
+    help="directory where ground truth classes would be written",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+@click.option(
+    "--input_height",
+    "-ih",
+    help="input height",
+)
+@click.option(
+    "--input_width",
+    "-iw",
+    help="input width",
+)
+@click.option(
+    "--min_area_size",
+    "-min",
+    help="min area size of regions considered for reading order training.",
+)
+
+def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size):
+    xml_files_ind = os.listdir(dir_xml)
+    
+    
+@main.command()
 @click.option(
     "--image",
     "-i",
     help="image filename",
     type=click.Path(exists=True, dir_okay=False),
 )
+
 @click.option(
     "--out",
     "-o",
@@ -146,37 +192,13 @@ from qurator.eynollah.eynollah import Eynollah
     help="if this parameter set to true, this tool will try to do ocr",
 )
 @click.option(
-    "--log-level",
+    "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
-def main(
-    image,
-    out,
-    dir_in,
-    model,
-    save_images,
-    save_layout,
-    save_deskewed,
-    save_all,
-    save_page,
-    enable_plotting,
-    allow_enhancement,
-    curved_line,
-    textline_light,
-    full_layout,
-    tables,
-    right2left,
-    input_binary,
-    allow_scaling,
-    headers_off,
-    light_version,
-    reading_order_machine_based,
-    do_ocr,
-    ignore_page_extraction,
-    log_level
-):
+
+def layout(image, out, dir_in, model, save_images, save_layout, save_deskewed, save_all, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, ignore_page_extraction, log_level):
     if log_level:
         setOverrideLogLevel(log_level)
     initLogging()
@@ -215,8 +237,6 @@ def main(
         do_ocr=do_ocr,
     )
     eynollah.run()
-    #pcgts = eynollah.run()
-    ##eynollah.writer.write_pagexml(pcgts)
 
 if __name__ == "__main__":
     main()

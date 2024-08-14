@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eynollah"
+version = "1.2.3"
+
+
+
+
+dependencies = [
+    "ocrd >= 2.23.3",
+    "tensorflow >= 2.12.0",
+    "scikit-learn >= 0.23.2",
+    "imutils >= 0.5.3",
+    "numpy < 1.24.0",
+    "matplotlib",
+    "torch == 2.0.1",
+    "transformers == 4.30.2",
+    "numba == 0.58.1",
+]
+
+[project.scripts]
+eynollah = "qurator.eynollah.cli:main"
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["qurator"]
