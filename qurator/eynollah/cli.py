@@ -236,7 +236,11 @@ def layout(image, out, dir_in, model, save_images, save_layout, save_deskewed, s
         reading_order_machine_based=reading_order_machine_based,
         do_ocr=do_ocr,
     )
-    eynollah.run()
+    if dir_in:
+        eynollah.run()
+    else:
+        pcgts = eynollah.run()
+        eynollah.writer.write_pagexml(pcgts)
 
 if __name__ == "__main__":
     main()

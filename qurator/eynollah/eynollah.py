@@ -3797,7 +3797,8 @@ class Eynollah:
                     
                 pcgts = self.writer.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_xml, ocr_all_textlines)
                 self.logger.info("Job done in %.1fs", time.time() - t0)
-                ##return pcgts
+                if not self.dir_in:
+                    return pcgts
                 
                 
             else:
@@ -3872,9 +3873,11 @@ class Eynollah:
                 self.logger.info("detection of reading order took %.1fs", time.time() - t_order)
                 pcgts = self.writer.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines)
                 self.logger.info("Job done in %.1fs", time.time() - t0)
-                ##return pcgts
+                if not self.dir_in:
+                    return pcgts
             #print("text region early 7 in %.1fs", time.time() - t0)
-            self.writer.write_pagexml(pcgts)
+            if self.dir_in:
+                self.writer.write_pagexml(pcgts)
             #self.logger.info("Job done in %.1fs", time.time() - t0)
             #print("Job done in %.1fs", time.time() - t0)
             
