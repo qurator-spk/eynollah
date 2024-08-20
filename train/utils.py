@@ -12,6 +12,76 @@ from tensorflow.keras.utils import to_categorical
 from PIL import Image, ImageEnhance
 
 
+def return_shuffled_channels(img, channels_order):
+    """
+    channels order in ordinary case is like this [0, 1, 2]. In the case of shuffling the order should be provided.
+    """
+    img_sh = np.copy(img)
+    
+    img_sh[:,:,0]= img[:,:,channels_order[0]]
+    img_sh[:,:,1]= img[:,:,channels_order[1]]
+    img_sh[:,:,2]= img[:,:,channels_order[2]]
+    return img_sh
+
+def return_binary_image_with_red_textlines(img_bin):
+    img_red = np.copy(img_bin)
+    
+    img_red[:,:,0][img_bin[:,:,0] == 0] = 255
+    return img_red
+
+def return_binary_image_with_given_rgb_background(img_bin, img_rgb_background):
+    img_rgb_background = resize_image(img_rgb_background ,img_bin.shape[0], img_bin.shape[1])
+    
+    img_final = np.copy(img_bin)
+    
+    img_final[:,:,0][img_bin[:,:,0] != 0] = img_rgb_background[:,:,0][img_bin[:,:,0] != 0]
+    img_final[:,:,1][img_bin[:,:,1] != 0] = img_rgb_background[:,:,1][img_bin[:,:,1] != 0]
+    img_final[:,:,2][img_bin[:,:,2] != 0] = img_rgb_background[:,:,2][img_bin[:,:,2] != 0]
+    
+    return img_final
+
+def return_binary_image_with_given_rgb_background_red_textlines(img_bin, img_rgb_background, img_color):
+    img_rgb_background = resize_image(img_rgb_background ,img_bin.shape[0], img_bin.shape[1])
+    
+    img_final = np.copy(img_color)
+    
+    img_final[:,:,0][img_bin[:,:,0] != 0] = img_rgb_background[:,:,0][img_bin[:,:,0] != 0]
+    img_final[:,:,1][img_bin[:,:,1] != 0] = img_rgb_background[:,:,1][img_bin[:,:,1] != 0]
+    img_final[:,:,2][img_bin[:,:,2] != 0] = img_rgb_background[:,:,2][img_bin[:,:,2] != 0]
+    
+    return img_final
+
+def scale_image_for_no_patch(img, label, scale):
+    h_n = int(img.shape[0]*scale)
+    w_n = int(img.shape[1]*scale)
+    
+    channel0_avg = int( np.mean(img[:,:,0]) )
+    channel1_avg = int( np.mean(img[:,:,1]) )
+    channel2_avg = int( np.mean(img[:,:,2]) )
+    
+    h_diff = img.shape[0] - h_n
+    w_diff = img.shape[1] - w_n
+    
+    h_start = int(h_diff / 2.)
+    w_start = int(w_diff / 2.)
+    
+    img_res = resize_image(img, h_n, w_n)
+    label_res = resize_image(label, h_n, w_n)
+    
+    img_scaled_padded = np.copy(img)
+    
+    label_scaled_padded = np.zeros(label.shape)
+    
+    img_scaled_padded[:,:,0] = channel0_avg
+    img_scaled_padded[:,:,1] = channel1_avg
+    img_scaled_padded[:,:,2] = channel2_avg
+    
+    img_scaled_padded[h_start:h_start+h_n, w_start:w_start+w_n,:] = img_res[:,:,:]
+    label_scaled_padded[h_start:h_start+h_n, w_start:w_start+w_n,:] = label_res[:,:,:]
+    
+    return img_scaled_padded, label_scaled_padded
+
+
 def return_number_of_total_training_data(path_classes):
     sub_classes = os.listdir(path_classes)
     n_tot = 0
