@@ -53,7 +53,9 @@ def config_params():
     degrading = False  # If true, degrading will be applied to the image. The amount of degrading is defined with "degrade_scales" in config_params.json.
     brightening = False  # If true, brightening will be applied to the image. The amount of brightening is defined with "brightness" in config_params.json.
     binarization = False  # If true, Otsu thresholding will be applied to augment the input with binarized images.
-    rgb_background = False
+    adding_rgb_background = False
+    add_red_textlines = False
+    channels_shuffling = False
     dir_train = None  # Directory of training dataset with subdirectories having the names "images" and "labels".
     dir_eval = None  # Directory of validation dataset with subdirectories having the names "images" and "labels".
     dir_output = None  # Directory where the output model will be saved.
@@ -65,6 +67,7 @@ def config_params():
     scaling_brightness = False  # If true, a combination of scaling and brightening will be applied to the image.
     scaling_flip = False  # If true, a combination of scaling and flipping will be applied to the image.
     thetha = None  # Rotate image by these angles for augmentation.
+    shuffle_indexes = None
     blur_k = None  # Blur image for augmentation.
     scales = None  # Scale patches for augmentation.
     degrade_scales = None  # Degrade image for augmentation.
@@ -88,6 +91,10 @@ def config_params():
     f1_threshold_classification = None # This threshold is used to consider models with an evaluation f1 scores bigger than it. The selected model weights undergo a weights ensembling. And avreage ensembled model will be written to output.
     classification_classes_name = None # Dictionary of classification classes names.
     backbone_type = None # As backbone we have 2 types of backbones. A vision transformer alongside a CNN and we call it "transformer" and only CNN called "nontransformer"
+    
+    dir_img_bin = None
+    number_of_backgrounds_per_image = 1
+    dir_rgb_backgrounds = None
 
 
 @ex.automain
@@ -95,15 +102,20 @@ def run(_config, n_classes, n_epochs, input_height,
         input_width, weight_decay, weighted_loss,
         index_start, dir_of_start_model, is_loss_soft_dice,
         n_batch, patches, augmentation, flip_aug,
-        blur_aug, padding_white, padding_black, scaling, degrading,
-        brightening, binarization, rgb_background, blur_k, scales, degrade_scales,
+        blur_aug, padding_white, padding_black, scaling, degrading,channels_shuffling,
+        brightening, binarization, adding_rgb_background, add_red_textlines, blur_k, scales, degrade_scales,shuffle_indexes,
         brightness, dir_train, data_is_provided, scaling_bluring,
         scaling_brightness, scaling_binarization, rotation, rotation_not_90,
         thetha, scaling_flip, continue_training, transformer_projection_dim,
         transformer_mlp_head_units, transformer_layers, transformer_num_heads, transformer_cnn_first,
         transformer_patchsize_x, transformer_patchsize_y,
         transformer_num_patches_xy, backbone_type, flip_index, dir_eval, dir_output,
-        pretraining, learning_rate, task, f1_threshold_classification, classification_classes_name):
+        pretraining, learning_rate, task, f1_threshold_classification, classification_classes_name, dir_img_bin, number_of_backgrounds_per_image,dir_rgb_backgrounds):
+    
+    if dir_rgb_backgrounds:
+        list_all_possible_background_images = os.listdir(dir_rgb_backgrounds)
+    else:
+        list_all_possible_background_images = None
     
     if task == "segmentation" or task == "enhancement" or task == "binarization":
         if data_is_provided:
@@ -163,18 +175,18 @@ def run(_config, n_classes, n_epochs, input_height,
             # writing patches into a sub-folder in order to be flowed from directory.
             provide_patches(imgs_list, segs_list, dir_img, dir_seg, dir_flow_train_imgs,
                             dir_flow_train_labels, input_height, input_width, blur_k,
-                            blur_aug, padding_white, padding_black, flip_aug, binarization, rgb_background,
+                            blur_aug, padding_white, padding_black, flip_aug, binarization, adding_rgb_background,add_red_textlines, channels_shuffling,
                             scaling, degrading, brightening, scales, degrade_scales, brightness,
-                            flip_index, scaling_bluring, scaling_brightness, scaling_binarization,
+                            flip_index,shuffle_indexes, scaling_bluring, scaling_brightness, scaling_binarization,
                             rotation, rotation_not_90, thetha, scaling_flip, task, augmentation=augmentation,
-                            patches=patches)
+                            patches=patches, dir_img_bin=dir_img_bin,number_of_backgrounds_per_image=number_of_backgrounds_per_image,list_all_possible_background_images=list_all_possible_background_images, dir_rgb_backgrounds=dir_rgb_backgrounds)
             
             provide_patches(imgs_list_test, segs_list_test, dir_img_val, dir_seg_val,
                             dir_flow_eval_imgs, dir_flow_eval_labels, input_height, input_width,
-                            blur_k, blur_aug, padding_white, padding_black, flip_aug, binarization, rgb_background,
+                            blur_k, blur_aug, padding_white, padding_black, flip_aug, binarization, adding_rgb_background, add_red_textlines, channels_shuffling,
                             scaling, degrading, brightening, scales, degrade_scales, brightness,
-                            flip_index, scaling_bluring, scaling_brightness, scaling_binarization,
-                            rotation, rotation_not_90, thetha, scaling_flip, task, augmentation=False, patches=patches)
+                            flip_index, shuffle_indexes, scaling_bluring, scaling_brightness, scaling_binarization,
+                            rotation, rotation_not_90, thetha, scaling_flip, task, augmentation=False, patches=patches,dir_img_bin=dir_img_bin,number_of_backgrounds_per_image=number_of_backgrounds_per_image,list_all_possible_background_images=list_all_possible_background_images, dir_rgb_backgrounds=dir_rgb_backgrounds)
 
         if weighted_loss:
             weights = np.zeros(n_classes)
