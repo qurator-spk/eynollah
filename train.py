@@ -53,6 +53,7 @@ def config_params():
     degrading = False  # If true, degrading will be applied to the image. The amount of degrading is defined with "degrade_scales" in config_params.json.
     brightening = False  # If true, brightening will be applied to the image. The amount of brightening is defined with "brightness" in config_params.json.
     binarization = False  # If true, Otsu thresholding will be applied to augment the input with binarized images.
+    rgb_background = False
     dir_train = None  # Directory of training dataset with subdirectories having the names "images" and "labels".
     dir_eval = None  # Directory of validation dataset with subdirectories having the names "images" and "labels".
     dir_output = None  # Directory where the output model will be saved.
@@ -95,7 +96,7 @@ def run(_config, n_classes, n_epochs, input_height,
         index_start, dir_of_start_model, is_loss_soft_dice,
         n_batch, patches, augmentation, flip_aug,
         blur_aug, padding_white, padding_black, scaling, degrading,
-        brightening, binarization, blur_k, scales, degrade_scales,
+        brightening, binarization, rgb_background, blur_k, scales, degrade_scales,
         brightness, dir_train, data_is_provided, scaling_bluring,
         scaling_brightness, scaling_binarization, rotation, rotation_not_90,
         thetha, scaling_flip, continue_training, transformer_projection_dim,
@@ -108,6 +109,7 @@ def run(_config, n_classes, n_epochs, input_height,
         if data_is_provided:
             dir_train_flowing = os.path.join(dir_output, 'train')
             dir_eval_flowing = os.path.join(dir_output, 'eval')
+                
 
             dir_flow_train_imgs = os.path.join(dir_train_flowing, 'images')
             dir_flow_train_labels = os.path.join(dir_train_flowing, 'labels')
@@ -161,7 +163,7 @@ def run(_config, n_classes, n_epochs, input_height,
             # writing patches into a sub-folder in order to be flowed from directory.
             provide_patches(imgs_list, segs_list, dir_img, dir_seg, dir_flow_train_imgs,
                             dir_flow_train_labels, input_height, input_width, blur_k,
-                            blur_aug, padding_white, padding_black, flip_aug, binarization,
+                            blur_aug, padding_white, padding_black, flip_aug, binarization, rgb_background,
                             scaling, degrading, brightening, scales, degrade_scales, brightness,
                             flip_index, scaling_bluring, scaling_brightness, scaling_binarization,
                             rotation, rotation_not_90, thetha, scaling_flip, task, augmentation=augmentation,
@@ -169,7 +171,7 @@ def run(_config, n_classes, n_epochs, input_height,
             
             provide_patches(imgs_list_test, segs_list_test, dir_img_val, dir_seg_val,
                             dir_flow_eval_imgs, dir_flow_eval_labels, input_height, input_width,
-                            blur_k, blur_aug, padding_white, padding_black, flip_aug, binarization,
+                            blur_k, blur_aug, padding_white, padding_black, flip_aug, binarization, rgb_background,
                             scaling, degrading, brightening, scales, degrade_scales, brightness,
                             flip_index, scaling_bluring, scaling_brightness, scaling_binarization,
                             rotation, rotation_not_90, thetha, scaling_flip, task, augmentation=False, patches=patches)

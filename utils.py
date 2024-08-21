@@ -695,6 +695,47 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                         cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
                                     resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
                         indexer += 1
+                        
+                if rotation_not_90:
+                    for thetha_i in thetha:
+                        img_max_rotated, label_max_rotated = rotation_not_90_func(cv2.imread(dir_img + '/'+im),
+                                                                                  cv2.imread(dir_of_label_file), thetha_i)
+                        
+                        cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png', resize_image(img_max_rotated, input_height, input_width))
+                        
+                        cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png', resize_image(label_max_rotated, input_height, input_width))
+                        indexer += 1
+                        
+                if channels_shuffling:
+                    for shuffle_index in shuffle_indexes:
+                        cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
+                                    (resize_image(return_shuffled_channels(cv2.imread(dir_img + '/' + im), shuffle_index), input_height, input_width)))
+                        
+                        cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
+                                    resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
+                        indexer += 1
+                        
+                if scaling:
+                    for sc_ind in scales:
+                        img_scaled, label_scaled = scale_image_for_no_patch(cv2.imread(dir_img + '/'+im),
+                                                                                  cv2.imread(dir_of_label_file), sc_ind)
+                        
+                        cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png', resize_image(img_scaled, input_height, input_width))
+                        cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png', resize_image(label_scaled, input_height, input_width))
+                        indexer += 1
+                        
+                if rgb_color_background:
+                    img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
+                    for i_n in range(number_of_backgrounds_per_image):
+                        background_image_chosen_name = random.choice(list_all_possible_background_images)
+                        img_rgb_background_chosen = cv2.imread(dir_rgb_backgrounds + '/' + background_image_chosen_name)
+                        img_with_overlayed_background = return_binary_image_with_given_rgb_background(img_bin_corr, img_rgb_background)
+                        
+                        cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png', resize_image(img_with_overlayed_background, input_height, input_width))
+                        cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
+                                    resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
+                        
+                    
                     
                     
         if patches:
