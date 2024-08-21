@@ -51,6 +51,16 @@ def return_binary_image_with_given_rgb_background_red_textlines(img_bin, img_rgb
     
     return img_final
 
+def return_image_with_red_elements(img, img_bin):
+    img_final = np.copy(img)
+    
+    img_final[:,:,0][img_bin[:,:,0]==0] = 0
+    img_final[:,:,1][img_bin[:,:,0]==0] = 0
+    img_final[:,:,2][img_bin[:,:,0]==0] = 255
+    return img_final
+    
+    
+
 def scale_image_for_no_patch(img, label, scale):
     h_n = int(img.shape[0]*scale)
     w_n = int(img.shape[1]*scale)
@@ -631,10 +641,10 @@ def get_patches_num_scale_new(dir_img_f, dir_seg_f, img, label, height, width, i
 
 def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow_train_imgs,
                     dir_flow_train_labels, input_height, input_width, blur_k, blur_aug,
-                    padding_white, padding_black, flip_aug, binarization, scaling, degrading,
-                    brightening, scales, degrade_scales, brightness, flip_index,
+                    padding_white, padding_black, flip_aug, binarization, adding_rgb_background, add_red_textlines, channels_shuffling, scaling, degrading,
+                    brightening, scales, degrade_scales, brightness, flip_index, shuffle_indexes,
                     scaling_bluring, scaling_brightness, scaling_binarization, rotation,
-                    rotation_not_90, thetha, scaling_flip, task, augmentation=False, patches=False):
+                    rotation_not_90, thetha, scaling_flip, task, augmentation=False, patches=False, dir_img_bin=None,number_of_backgrounds_per_image=None,list_all_possible_background_images=None, dir_rgb_backgrounds=None):
     
     indexer = 0
     for im, seg_i in tqdm(zip(imgs_list_train, segs_list_train)):
@@ -724,16 +734,28 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                         cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png', resize_image(label_scaled, input_height, input_width))
                         indexer += 1
                         
-                if rgb_color_background:
+                if adding_rgb_background:
                     img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
                     for i_n in range(number_of_backgrounds_per_image):
                         background_image_chosen_name = random.choice(list_all_possible_background_images)
                         img_rgb_background_chosen = cv2.imread(dir_rgb_backgrounds + '/' + background_image_chosen_name)
-                        img_with_overlayed_background = return_binary_image_with_given_rgb_background(img_bin_corr, img_rgb_background)
+                        img_with_overlayed_background = return_binary_image_with_given_rgb_background(img_bin_corr, img_rgb_background_chosen)
                         
                         cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png', resize_image(img_with_overlayed_background, input_height, input_width))
                         cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
                                     resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
+                        
+                        indexer += 1
+                        
+                if add_red_textlines:
+                    img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
+                    img_red_context = return_image_with_red_elements(cv2.imread(dir_img + '/'+im), img_bin_corr)
+                    
+                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png', resize_image(img_red_context, input_height, input_width))
+                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
+                                resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
+                    
+                    indexer += 1
                         
                     
                     
