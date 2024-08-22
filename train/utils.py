@@ -690,8 +690,15 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                             pass
                     
                 if binarization:
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                resize_image(otsu_copy(cv2.imread(dir_img + '/' + im)), input_height, input_width))
+                    
+                    if dir_img_bin:
+                        img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
+                        
+                        cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
+                                    resize_image(img_bin_corr, input_height, input_width))
+                    else:
+                        cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
+                                    resize_image(otsu_copy(cv2.imread(dir_img + '/' + im)), input_height, input_width))
                     
                     cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
                                 resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
