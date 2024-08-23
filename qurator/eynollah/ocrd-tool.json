@@ -29,11 +29,11 @@
           "default": true,
           "description": "Try to detect all element subtypes, including drop-caps and headings"
         },
-	"tables": {
-	  "type": "boolean",
-	  "default": false,
-	  "description": "Try to detect table regions"
-	},
+        "tables": {
+          "type": "boolean",
+          "default": false,
+          "description": "Try to detect table regions"
+        },
         "curved_line": {
           "type": "boolean",
           "default": false,
@@ -44,6 +44,11 @@
           "default": false,
           "description": "check the resolution against the number of detected columns and if needed, scale the image up or down during layout detection (heuristic to improve quality and performance)"
         },
+        "allow_enhancement": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool would check that input image need resizing and enhancement or not."
+        },
         "headers_off": {
           "type": "boolean",
           "default": false,
@@ -51,14 +56,14 @@
         }
       },
       "resources": [
-	{
-	  "description": "models for eynollah (TensorFlow format)",
-	  "url": "https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz",
-	  "name": "default",
-	  "size": 1761991295,
-	  "type": "archive",
-	  "path_in_archive": "models_eynollah"
-	}
+        {
+          "description": "models for eynollah (TensorFlow format)",
+          "url": "https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz",
+          "name": "default",
+          "size": 1761991295,
+          "type": "archive",
+          "path_in_archive": "models_eynollah"
+        }
       ]
     }
   }

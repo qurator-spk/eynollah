@@ -20,15 +20,15 @@ class EynollahProcessor(Processor):
         # page_image, _, _ = self.workspace.image_from_page(page, page_id, feature_filter='binarized')
         image_filename = self.workspace.download_file(next(self.workspace.mets.find_files(local_filename=page.imageFilename))).local_filename
         Eynollah(
-            dir_models=self.resolve_resource(self.parameter['models']),
-            allow_enhancement=False,
+            self.resolve_resource(self.parameter['models']),
+            self.logger,
+            allow_enhancement=self.parameter['allow_enhancement'],
             curved_line=self.parameter['curved_line'],
             full_layout=self.parameter['full_layout'],
             allow_scaling=self.parameter['allow_scaling'],
             headers_off=self.parameter['headers_off'],
             tables=self.parameter['tables'],
             override_dpi=self.parameter['dpi'],
-            logger=self.logger,
             pcgts=pcgts,
             image_filename=image_filename
         ).run()
