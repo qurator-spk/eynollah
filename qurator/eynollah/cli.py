@@ -1,6 +1,6 @@
 import sys
 import click
-from ocrd_utils import initLogging, setOverrideLogLevel
+from ocrd_utils import getLogger, initLogging, setOverrideLogLevel
 from qurator.eynollah.eynollah import Eynollah
 
 
@@ -176,10 +176,11 @@ def main(
         print('Error: You used -tll to enable light textline detection but -light is not enabled')
         sys.exit(1)
     eynollah = Eynollah(
+        model,
+        getLogger('Eynollah'),
         image_filename=image,
         dir_out=out,
         dir_in=dir_in,
-        dir_models=model,
         dir_of_cropped_images=save_images,
         dir_of_layout=save_layout,
         dir_of_deskewed=save_deskewed,
