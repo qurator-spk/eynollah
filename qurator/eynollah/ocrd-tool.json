@@ -39,6 +39,11 @@
           "default": false,
           "description": "try to return contour of textlines instead of just rectangle bounding box. Needs more processing time"
         },
+        "ignore_page_extraction": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool would ignore page extraction"
+        },
         "allow_scaling": {
           "type": "boolean",
           "default": false,

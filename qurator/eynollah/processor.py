@@ -31,6 +31,7 @@ class EynollahProcessor(Processor):
             curved_line=self.parameter['curved_line'],
             light_version=self.parameter['light_mode'],
             right2left=self.parameter['right_to_left'],
+            ignore_page_extraction=self.parameter['ignore_page_extraction'],
             textline_light=self.parameter['textline_light'],
             full_layout=self.parameter['full_layout'],
             allow_scaling=self.parameter['allow_scaling'],
