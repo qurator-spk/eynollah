@@ -8,7 +8,7 @@ from .eynollah import Eynollah
 class EynollahProcessor(Processor):
 
     @property
-    def metadata_location(self) -> str:
+    def metadata_filename(self) -> str:
         return 'eynollah/ocrd-tool.json'
 
     def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
