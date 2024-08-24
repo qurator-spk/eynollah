@@ -59,6 +59,11 @@
           "default": false,
           "description": "if this parameter set to true, this tool will try to return contoure of textlines instead of rectangle bounding box of textline with a faster method."
         },
+        "right_to_left": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool will extract right-to-left reading order."
+        },
         "headers_off": {
           "type": "boolean",
           "default": false,

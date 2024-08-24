@@ -30,6 +30,7 @@ class EynollahProcessor(Processor):
             allow_enhancement=self.parameter['allow_enhancement'],
             curved_line=self.parameter['curved_line'],
             light_version=self.parameter['light_mode'],
+            right2left=self.parameter['right_to_left'],
             textline_light=self.parameter['textline_light'],
             full_layout=self.parameter['full_layout'],
             allow_scaling=self.parameter['allow_scaling'],
