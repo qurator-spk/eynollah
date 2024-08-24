@@ -1569,7 +1569,7 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, plotter=None):
     # plt.show()
     return img_patch_ineterst_revised
 
-def return_deskew_slop(img_patch_org, sigma_des, main_page=False, plotter=None):
+def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=False, plotter=None):
 
     if main_page and plotter:
         plotter.save_plot_of_textline_density(img_patch_org)
@@ -1626,7 +1626,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, plotter=None):
             ang_int=0
 
 
-        angels=np.linspace(ang_int-22.5,ang_int+22.5,100)
+        angels=np.linspace(ang_int-22.5,ang_int+22.5,n_tot_angles)
 
         var_res=[]
         for rot in angels:
@@ -1649,7 +1649,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, plotter=None):
 
         #plt.imshow(img_resized)
         #plt.show()
-        angels=np.linspace(-12,12,100)#np.array([0 , 45 , 90 , -45])
+        angels=np.linspace(-12,12,n_tot_angles)#np.array([0 , 45 , 90 , -45])
 
 
         var_res=[]
@@ -1680,7 +1680,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, plotter=None):
 
         early_slope_edge=11
         if abs(ang_int)>early_slope_edge and ang_int<0:
-            angels=np.linspace(-90,-12,100)
+            angels=np.linspace(-90,-12,n_tot_angles)
             var_res=[]
             for rot in angels:
                 img_rot=rotate_image(img_resized,rot)
@@ -1700,7 +1700,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, plotter=None):
 
         elif abs(ang_int)>early_slope_edge and ang_int>0:
 
-            angels=np.linspace(90,12,100)
+            angels=np.linspace(90,12,n_tot_angles)
             var_res=[]
             for rot in angels:
                 img_rot=rotate_image(img_resized,rot)
@@ -1719,7 +1719,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, plotter=None):
             except:
                 ang_int=0
     else:
-        angels=np.linspace(-25,25,60)
+        angels=np.linspace(-25,25,int(n_tot_angles/2.)+10)
         var_res=[]
         indexer=0
         for rot in angels:
@@ -1749,7 +1749,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, plotter=None):
         early_slope_edge=22
         if abs(ang_int)>early_slope_edge and ang_int<0:
 
-            angels=np.linspace(-90,-25,60)
+            angels=np.linspace(-90,-25,int(n_tot_angles/2.)+10)
 
             var_res=[]
 
@@ -1772,7 +1772,7 @@ def return_deskew_slop(img_patch_org, sigma_des, main_page=False, plotter=None):
 
         elif abs(ang_int)>early_slope_edge and ang_int>0:
 
-            angels=np.linspace(90,25,60)
+            angels=np.linspace(90,25,int(n_tot_angles/2.)+10)
 
             var_res=[]
 

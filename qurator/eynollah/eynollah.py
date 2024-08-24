@@ -28,6 +28,7 @@ from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 stderr = sys.stderr
 sys.stderr = open(os.devnull, "w")
 import tensorflow as tf
@@ -299,17 +300,25 @@ class Eynollah:
         
     def _cache_images(self, image_filename=None, image_pil=None):
         ret = {}
+        t_c0 = time.time()
         if image_filename:
             ret['img'] = cv2.imread(image_filename)
-            self.dpi = check_dpi(image_filename)
+            if self.light_version:
+                self.dpi = 100
+            else:
+                self.dpi = check_dpi(image_filename)
         else:
             ret['img'] = pil2cv(image_pil)
-            self.dpi = check_dpi(image_pil)
+            if self.light_version:
+                self.dpi = 100
+            else:
+                self.dpi = check_dpi(image_pil)
         ret['img_grayscale'] = cv2.cvtColor(ret['img'], cv2.COLOR_BGR2GRAY)
         for prefix in ('',  '_grayscale'):
             ret[f'img{prefix}_uint8'] = ret[f'img{prefix}'].astype(np.uint8)
         return ret
     def reset_file_name_dir(self, image_filename):
+        t_c = time.time()
         self._imgs = self._cache_images(image_filename=image_filename)
         self.image_filename = image_filename
         
@@ -491,6 +500,27 @@ class Eynollah:
             num_column_is_classified = True
 
         return img_new, num_column_is_classified
+    
+    def calculate_width_height_by_columns_1_2(self, img, num_col, width_early, label_p_pred):
+        self.logger.debug("enter calculate_width_height_by_columns")
+        if num_col == 1:
+            img_w_new = 1300
+            img_h_new = int(img.shape[0] / float(img.shape[1]) * 1300)
+        else:
+            img_w_new = 1500
+            img_h_new = int(img.shape[0] / float(img.shape[1]) * 1500)
+
+        if label_p_pred[0][int(num_col - 1)] < 0.9 and img_w_new < width_early:
+            img_new = np.copy(img)
+            num_column_is_classified = False
+        elif label_p_pred[0][int(num_col - 1)] < 0.8 and img_h_new >= 8000:
+            img_new = np.copy(img)
+            num_column_is_classified = False
+        else:
+            img_new = resize_image(img, img_h_new, img_w_new)
+            num_column_is_classified = True
+
+        return img_new, num_column_is_classified
 
     def resize_image_with_column_classifier(self, is_image_enhanced, img_bin):
         self.logger.debug("enter resize_image_with_column_classifier")
@@ -600,16 +630,24 @@ class Eynollah:
         self.logger.info("Found %d columns (%s)", num_col, np.around(label_p_pred, decimals=5))
 
         if dpi < DPI_THRESHOLD:
-            img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
+            if light_version and num_col in (1,2):
+                img_new, num_column_is_classified = self.calculate_width_height_by_columns_1_2(img, num_col, width_early, label_p_pred)
+            else:
+                img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
             if light_version:
                 image_res = np.copy(img_new)
             else:
                 image_res = self.predict_enhancement(img_new)
             is_image_enhanced = True
         else:
-            num_column_is_classified = True
-            image_res = np.copy(img)
-            is_image_enhanced = False
+            if light_version and num_col in (1,2):
+                img_new, num_column_is_classified = self.calculate_width_height_by_columns_1_2(img, num_col, width_early, label_p_pred)
+                image_res = np.copy(img_new)
+                is_image_enhanced = True
+            else:
+                num_column_is_classified = True
+                image_res = np.copy(img)
+                is_image_enhanced = False
 
         self.logger.debug("exit resize_and_enhance_image_with_column_classifier")
         return is_image_enhanced, img, image_res, num_col, num_column_is_classified, img_bin
@@ -1175,7 +1213,7 @@ class Eynollah:
 
         marginal_of_patch_percent = 0.1
 
-        prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=marginal_of_patch_percent)
+        prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=marginal_of_patch_percent, n_batch_inference=4)
         
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
@@ -1280,7 +1318,10 @@ class Eynollah:
     
     def get_slopes_and_deskew_new_light(self, contours, contours_par, textline_mask_tot, image_page_rotated, boxes, slope_deskew):
         self.logger.debug("enter get_slopes_and_deskew_new")
-        num_cores = cpu_count()
+        if len(contours)>15:
+            num_cores = cpu_count()
+        else:
+            num_cores = 1
         queue_of_all_params = Queue()
 
         processes = []
@@ -1554,8 +1595,6 @@ class Eynollah:
             mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
             mask_only_con_region = cv2.fillPoly(mask_only_con_region, pts=[contours_par_per_process[mv]], color=(1, 1, 1))
 
-            # plt.imshow(mask_only_con_region)
-            # plt.show()
             
             if self.textline_light:
                 all_text_region_raw = np.copy(textline_mask_tot_ea)
@@ -1660,11 +1699,11 @@ class Eynollah:
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
-        #print(img.shape,'bin shape')
+        #print(img.shape,'bin shape textline')
         if not self.dir_in:
-            prediction_textline = self.do_prediction(patches, img, model_textline, n_batch_inference=4)
+            prediction_textline = self.do_prediction(patches, img, model_textline, n_batch_inference=3)
         else:
-            prediction_textline = self.do_prediction(patches, img, self.model_textline, n_batch_inference=4)
+            prediction_textline = self.do_prediction(patches, img, self.model_textline, n_batch_inference=3)
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
         if not self.dir_in:
             prediction_textline_longshot = self.do_prediction(False, img, model_textline)
@@ -1747,11 +1786,14 @@ class Eynollah:
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
         img_resized = resize_image(img,img_h_new, img_w_new )
         
+        t_bin = time.time()
         if not self.dir_in:
             model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-            prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
+            prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=10)
         else:
-            prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
+            prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=10)
+            
+        #print("inside bin ", time.time()-t_bin)
         prediction_bin=prediction_bin[:,:,0]
         prediction_bin = (prediction_bin[:,:]==0)*1
         prediction_bin = prediction_bin*255
@@ -2710,10 +2752,10 @@ class Eynollah:
         return num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction
 
     def run_enhancement(self,light_version):
+        t_in = time.time()
         self.logger.info("Resizing and enhancing image...")
         is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified, img_bin = self.resize_and_enhance_image_with_column_classifier(light_version)
         self.logger.info("Image was %senhanced.", '' if is_image_enhanced else 'not ')
-
         scale = 1
         if is_image_enhanced:
             if self.allow_enhancement:
@@ -2731,6 +2773,7 @@ class Eynollah:
             if self.allow_scaling:
                 img_org, img_res, is_image_enhanced = self.resize_image_with_column_classifier(is_image_enhanced, img_bin)
                 self.get_image_and_scales_after_enhancing(img_org, img_res)
+        #print("enhancement in ", time.time()-t_in)
         return img_res, is_image_enhanced, num_col_classifier, num_column_is_classified
 
     def run_textline(self, image_page):
@@ -2748,7 +2791,8 @@ class Eynollah:
         #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
         sigma = 2
         main_page_deskew = True
-        slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), sigma, main_page_deskew, plotter=self.plotter)
+        n_total_angles = 30
+        slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), sigma, n_total_angles, main_page_deskew, plotter=self.plotter)
         slope_first = 0
 
         if self.plotter:
@@ -2871,7 +2915,7 @@ class Eynollah:
 
     def run_boxes_full_layout(self, image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts, img_bin_light):
         self.logger.debug('enter run_boxes_full_layout')
-        
+        t_full0 = time.time()
         if self.tables:
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 image_page_rotated_n,textline_mask_tot_d,text_regions_p_1_n , table_prediction_n = rotation_not_90_func(image_page, textline_mask_tot, text_regions_p, table_prediction, slope_deskew)
@@ -2963,12 +3007,12 @@ class Eynollah:
         text_regions_p[:, :][text_regions_p[:, :] == 4] = 8
 
         image_page = image_page.astype(np.uint8)
-        
+        #print("full inside 1", time.time()- t_full0)
         if self.light_version:
             regions_fully, regions_fully_only_drop = self.extract_text_regions_new(img_bin_light, True, cols=num_col_classifier)
         else:
             regions_fully, regions_fully_only_drop = self.extract_text_regions_new(image_page, True, cols=num_col_classifier)
-        
+        #print("full inside 2", time.time()- t_full0)
         # 6 is the separators lable in old full layout model
         # 4 is the drop capital class in old full layout model
         # in the new full layout drop capital is 3 and separators are 5
@@ -3012,6 +3056,7 @@ class Eynollah:
         img_revised_tab = np.copy(text_regions_p[:, :])
         polygons_of_images = return_contours_of_interested_region(img_revised_tab, 5)
         self.logger.debug('exit run_boxes_full_layout')
+        #print("full inside 3", time.time()- t_full0)
         return polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables
     
     def our_load_model(self, model_file):
@@ -3534,6 +3579,7 @@ class Eynollah:
             t0 = time.time()
             if self.dir_in:
                 self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
+                #print("text region early -11 in %.1fs", time.time() - t0)
             
             img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
             self.logger.info("Enhancing took %.1fs ", time.time() - t0)
@@ -3922,7 +3968,7 @@ class Eynollah:
             if self.dir_in:
                 self.writer.write_pagexml(pcgts)
             #self.logger.info("Job done in %.1fs", time.time() - t0)
-            #print("Job done in %.1fs", time.time() - t0)
+            print("Job done in %.1fs", time.time() - t0)
             
         if self.dir_in:
             self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
