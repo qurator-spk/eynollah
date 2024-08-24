@@ -11,6 +11,10 @@ class EynollahProcessor(Processor):
     def metadata_filename(self) -> str:
         return 'eynollah/ocrd-tool.json'
 
+    def setup(self) -> None:
+        if self.parameter['textline_light'] and not self.parameter['light_mode']:
+            raise ValueError("Error: You set parameter 'textline_light' to enable light textline detection but parameter 'light_mode' is not enabled")
+
     def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
         assert input_pcgts
         assert input_pcgts[0]
@@ -26,6 +30,7 @@ class EynollahProcessor(Processor):
             allow_enhancement=self.parameter['allow_enhancement'],
             curved_line=self.parameter['curved_line'],
             light_version=self.parameter['light_mode'],
+            textline_light=self.parameter['textline_light'],
             full_layout=self.parameter['full_layout'],
             allow_scaling=self.parameter['allow_scaling'],
             headers_off=self.parameter['headers_off'],
