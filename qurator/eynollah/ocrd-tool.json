@@ -49,6 +49,11 @@
           "default": false,
           "description": "if this parameter set to true, this tool would check that input image need resizing and enhancement or not."
         },
+        "light mode": {
+          "type": "boolean",
+          "default": false,
+          "description": "lighter and faster but simpler method for main region detection and deskewing"
+        },
         "headers_off": {
           "type": "boolean",
           "default": false,

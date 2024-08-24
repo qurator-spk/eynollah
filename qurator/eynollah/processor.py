@@ -14,6 +14,7 @@ class EynollahProcessor(Processor):
     def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
         assert input_pcgts
         assert input_pcgts[0]
+        assert self.parameter
         pcgts = input_pcgts[0]
         page = pcgts.get_Page()
         # XXX loses DPI information
@@ -24,6 +25,7 @@ class EynollahProcessor(Processor):
             self.logger,
             allow_enhancement=self.parameter['allow_enhancement'],
             curved_line=self.parameter['curved_line'],
+            light_version=self.parameter['light_mode'],
             full_layout=self.parameter['full_layout'],
             allow_scaling=self.parameter['allow_scaling'],
             headers_off=self.parameter['headers_off'],
