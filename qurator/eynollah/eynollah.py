@@ -504,11 +504,11 @@ class Eynollah:
     def calculate_width_height_by_columns_1_2(self, img, num_col, width_early, label_p_pred):
         self.logger.debug("enter calculate_width_height_by_columns")
         if num_col == 1:
+            img_w_new = 1000
+            img_h_new = int(img.shape[0] / float(img.shape[1]) * 1000)
+        else:
             img_w_new = 1300
             img_h_new = int(img.shape[0] / float(img.shape[1]) * 1300)
-        else:
-            img_w_new = 1500
-            img_h_new = int(img.shape[0] / float(img.shape[1]) * 1500)
 
         if label_p_pred[0][int(num_col - 1)] < 0.9 and img_w_new < width_early:
             img_new = np.copy(img)
@@ -1213,7 +1213,7 @@ class Eynollah:
 
         marginal_of_patch_percent = 0.1
 
-        prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=marginal_of_patch_percent, n_batch_inference=4)
+        prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=marginal_of_patch_percent, n_batch_inference=3)
         
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
@@ -1810,7 +1810,8 @@ class Eynollah:
         
         
         #print("inside 2 ", time.time()-t_in)
-
+        
+        #print(img_resized.shape, num_col_classifier, "num_col_classifier")
         if not self.dir_in:
             if num_col_classifier == 1 or num_col_classifier == 2:
                 model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
