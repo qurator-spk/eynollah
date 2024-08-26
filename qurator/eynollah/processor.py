@@ -27,7 +27,6 @@ class EynollahProcessor(Processor):
         # else:
         #     # could be a URL with file:// or truly remote
         #     image_filename = self.workspace.download_file(next(self.workspace.mets.find_files(url=page.imageFilename))).local_filename
-        # XXX loses DPI information
         page_image, _, _ = self.workspace.image_from_page(
             page, page_id,
             # avoid any features that would change the coordinate system: cropped,deskewed
