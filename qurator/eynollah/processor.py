@@ -1,7 +1,6 @@
 from typing import Optional
-from ocrd import OcrdPageResult
 from ocrd_models import OcrdPage
-from ocrd import Processor
+from ocrd import Processor, OcrdPageResult
 
 from .eynollah import Eynollah
 
