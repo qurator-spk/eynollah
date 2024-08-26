@@ -1,5 +1,5 @@
 from typing import Optional
-from ocrd.processor.ocrd_page_result import OcrdPageResult
+from ocrd import OcrdPageResult
 from ocrd_models import OcrdPage
 from ocrd import Processor
 
