@@ -89,7 +89,7 @@ from .utils.xml import order_and_id_of_texts
 from .plot import EynollahPlotter
 from .writer import EynollahXmlWriter
 
-MIN_AREA_REGION = 0.0005
+MIN_AREA_REGION = 0.00001
 SLOPE_THRESHOLD = 0.13
 RATIO_OF_TWO_MODEL_THRESHOLD = 95.50 #98.45:
 DPI_THRESHOLD = 298
@@ -182,6 +182,7 @@ class Eynollah:
         logger=None,
         pcgts=None,
     ):
+        self.light_version = light_version
         if not dir_in:
             if image_pil:
                 self._imgs = self._cache_images(image_pil=image_pil)
@@ -209,7 +210,6 @@ class Eynollah:
         self.input_binary = input_binary
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
-        self.light_version = light_version
         self.ignore_page_extraction = ignore_page_extraction
         self.ocr = do_ocr
         self.pcgts = pcgts
@@ -828,7 +828,6 @@ class Eynollah:
                     batch_indexer = batch_indexer + 1
                     
                     if batch_indexer == n_batch_inference:
-                        
                         label_p_pred = model.predict(img_patch,verbose=0)
                         
                         seg = np.argmax(label_p_pred, axis=3)
@@ -885,6 +884,65 @@ class Eynollah:
                         batch_indexer = 0
                         
                         img_patch = np.zeros((n_batch_inference, img_height_model, img_width_model, 3))
+                        
+                    elif i==(nxf-1) and j==(nyf-1):
+                        label_p_pred = model.predict(img_patch,verbose=0)
+                        
+                        seg = np.argmax(label_p_pred, axis=3)
+                        
+                        indexer_inside_batch = 0
+                        for i_batch, j_batch in zip(list_i_s, list_j_s):
+                            seg_in = seg[indexer_inside_batch,:,:]
+                            seg_color = np.repeat(seg_in[:, :, np.newaxis], 3, axis=2)
+                            
+                            index_y_u_in = list_y_u[indexer_inside_batch]
+                            index_y_d_in = list_y_d[indexer_inside_batch]
+                            
+                            index_x_u_in = list_x_u[indexer_inside_batch]
+                            index_x_d_in = list_x_d[indexer_inside_batch]
+                            
+                            if i_batch == 0 and j_batch == 0:
+                                seg_color = seg_color[0 : seg_color.shape[0] - margin, 0 : seg_color.shape[1] - margin, :]
+                                prediction_true[index_y_d_in + 0 : index_y_u_in - margin, index_x_d_in + 0 : index_x_u_in - margin, :] = seg_color
+                            elif i_batch == nxf - 1 and j_batch == nyf - 1:
+                                seg_color = seg_color[margin : seg_color.shape[0] - 0, margin : seg_color.shape[1] - 0, :]
+                                prediction_true[index_y_d_in + margin : index_y_u_in - 0, index_x_d_in + margin : index_x_u_in - 0, :] = seg_color
+                            elif i_batch == 0 and j_batch == nyf - 1:
+                                seg_color = seg_color[margin : seg_color.shape[0] - 0, 0 : seg_color.shape[1] - margin, :]
+                                prediction_true[index_y_d_in + margin : index_y_u_in - 0, index_x_d_in + 0 : index_x_u_in - margin, :] = seg_color
+                            elif i_batch == nxf - 1 and j_batch == 0:
+                                seg_color = seg_color[0 : seg_color.shape[0] - margin, margin : seg_color.shape[1] - 0, :]
+                                prediction_true[index_y_d_in + 0 : index_y_u_in - margin, index_x_d_in + margin : index_x_u_in - 0, :] = seg_color
+                            elif i_batch == 0 and j_batch != 0 and j_batch != nyf - 1:
+                                seg_color = seg_color[margin : seg_color.shape[0] - margin, 0 : seg_color.shape[1] - margin, :]
+                                prediction_true[index_y_d_in + margin : index_y_u_in - margin, index_x_d_in + 0 : index_x_u_in - margin, :] = seg_color
+                            elif i_batch == nxf - 1 and j_batch != 0 and j_batch != nyf - 1:
+                                seg_color = seg_color[margin : seg_color.shape[0] - margin, margin : seg_color.shape[1] - 0, :]
+                                prediction_true[index_y_d_in + margin : index_y_u_in - margin, index_x_d_in + margin : index_x_u_in - 0, :] = seg_color
+                            elif i_batch != 0 and i_batch != nxf - 1 and j_batch == 0:
+                                seg_color = seg_color[0 : seg_color.shape[0] - margin, margin : seg_color.shape[1] - margin, :]
+                                prediction_true[index_y_d_in + 0 : index_y_u_in - margin, index_x_d_in + margin : index_x_u_in - margin, :] = seg_color
+                            elif i_batch != 0 and i_batch != nxf - 1 and j_batch == nyf - 1:
+                                seg_color = seg_color[margin : seg_color.shape[0] - 0, margin : seg_color.shape[1] - margin, :]
+                                prediction_true[index_y_d_in + margin : index_y_u_in - 0, index_x_d_in + margin : index_x_u_in - margin, :] = seg_color
+                            else:
+                                seg_color = seg_color[margin : seg_color.shape[0] - margin, margin : seg_color.shape[1] - margin, :]
+                                prediction_true[index_y_d_in + margin : index_y_u_in - margin, index_x_d_in + margin : index_x_u_in - margin, :] = seg_color
+                                
+                            indexer_inside_batch = indexer_inside_batch +1
+                                
+                        
+                        list_i_s = []
+                        list_j_s = []
+                        list_x_u = []
+                        list_x_d = []
+                        list_y_u = []
+                        list_y_d = []
+                        
+                        batch_indexer = 0
+                        
+                        img_patch = np.zeros((n_batch_inference, img_height_model, img_width_model, 3))
+                        
             prediction_true = prediction_true.astype(np.uint8)
         #del model
         #gc.collect()
@@ -1789,9 +1847,9 @@ class Eynollah:
         t_bin = time.time()
         if not self.dir_in:
             model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-            prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=10)
+            prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
         else:
-            prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=10)
+            prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
             
         #print("inside bin ", time.time()-t_bin)
         prediction_bin=prediction_bin[:,:,0]
@@ -1807,7 +1865,6 @@ class Eynollah:
         #print("inside 1 ", time.time()-t_in)
         
         textline_mask_tot_ea = self.run_textline(img_bin)
-        
         
         #print("inside 2 ", time.time()-t_in)
         
@@ -1838,6 +1895,10 @@ class Eynollah:
         mask_lines_only = (prediction_regions_org[:,:] ==3)*1
         
         mask_texts_only = (prediction_regions_org[:,:] ==1)*1
+        
+        mask_texts_only = mask_texts_only.astype('uint8')
+        
+        mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=3)
         
         mask_images_only=(prediction_regions_org[:,:] ==2)*1
         
