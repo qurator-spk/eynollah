@@ -88,11 +88,14 @@ def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
     contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy, max_area=1, min_area=min_area)
 
     return contours_imgs
-def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y_len, x_len):
+def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y_len, x_len, dilation_early=None):
     co_text_eroded = []
     for con in co_text:
         img_boundary_in = np.zeros( (y_len,x_len) )
         img_boundary_in = cv2.fillPoly(img_boundary_in, pts=[con], color=(1, 1, 1))
+        
+        if dilation_early:
+            img_boundary_in = cv2.dilate(img_boundary_in[:,:], KERNEL, iterations=dilation_early)
         
         #img_boundary_in = cv2.erode(img_boundary_in[:,:], KERNEL, iterations=7)#asiatica
         if erosion_rate > 0:
@@ -258,22 +261,25 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                         
             if "artificial_class_label" in keys:
                 img_boundary = np.zeros((y_len, x_len))
-                erosion_rate = 1
+                erosion_rate = 0#1
                 dilation_rate = 3
-                co_use_case, img_boundary = update_region_contours(co_use_case, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                dilation_early = 2
+                co_use_case, img_boundary = update_region_contours(co_use_case, img_boundary, erosion_rate, dilation_rate, y_len, x_len, dilation_early=dilation_early )
             
                 
             img = np.zeros((y_len, x_len, 3))
             if output_type == '2d':
                 img_poly = cv2.fillPoly(img, pts=co_use_case, color=(1, 1, 1))
                 if "artificial_class_label" in keys:
-                    img_poly[:,:][img_boundary[:,:]==1] = artificial_class_label
+                    img_mask = np.copy(img_poly)
+                    img_poly[:,:][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=1)] = artificial_class_label
             elif output_type == '3d':
                 img_poly = cv2.fillPoly(img, pts=co_use_case, color=textline_rgb_color)
                 if "artificial_class_label" in keys:
-                    img_poly[:,:,0][img_boundary[:,:]==1] = artificial_class_rgb_color[0]
-                    img_poly[:,:,1][img_boundary[:,:]==1] = artificial_class_rgb_color[1]
-                    img_poly[:,:,2][img_boundary[:,:]==1] = artificial_class_rgb_color[2]
+                    img_mask = np.copy(img_poly)
+                    img_poly[:,:,0][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=255)] = artificial_class_rgb_color[0]
+                    img_poly[:,:,1][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=255)] = artificial_class_rgb_color[1]
+                    img_poly[:,:,2][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=255)] = artificial_class_rgb_color[2]
                     
                     
             if printspace and config_params['use_case']!='printspace':
