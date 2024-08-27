@@ -3,7 +3,6 @@ requires = ["setuptools>=61.0", "wheel", "setuptools-ocrd"]
 
 [project]
 name = "eynollah"
-version = "0.3.1"
 authors = [
     {name = "Vahid Rezanezhad"},
     {name = "Staatsbibliothek zu Berlin - Preußischer Kulturbesitz"},
@@ -14,7 +13,7 @@ license.file = "LICENSE"
 requires-python = ">=3.8"
 keywords = ["document layout analysis", "image segmentation"]
 
-dynamic = ["dependencies"]
+dynamic = ["dependencies", "version"]
 
 classifiers = [
     "Development Status :: 4 - Beta",
