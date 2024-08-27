@@ -5,6 +5,12 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Fixed:
+
+  * regression in OCR-D processor, #106
+  * Expected Ptrcv::UMat for argument 'contour', #110
+  * Memory usage explosion with very narrow images (e.g. book spine), #67
+
 ## [0.3.0] - 2023-05-13
 
 Changed:
