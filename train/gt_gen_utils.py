@@ -8,6 +8,7 @@ from tqdm import tqdm
 import cv2
 from shapely import geometry
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 
 KERNEL = np.ones((5, 5), np.uint8)
@@ -83,9 +84,13 @@ def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
     contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
+    #print(len(contours_imgs), hierarchy)
 
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
-    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy, max_area=1, min_area=min_area)
+    
+    #print(len(contours_imgs), "iki")
+    #contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy, max_area=1, min_area=min_area)
 
     return contours_imgs
 def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y_len, x_len, dilation_early=None):
@@ -103,12 +108,15 @@ def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y
         
         pixel = 1
         min_size = 0
+        
+        img_boundary_in =  img_boundary_in.astype("uint8")
+        
         con_eroded = return_contours_of_interested_region(img_boundary_in,pixel, min_size )
         
-        try:
-            co_text_eroded.append(con_eroded[0])
-        except:
-            co_text_eroded.append(con)
+        #try:
+        co_text_eroded.append(con_eroded[0])
+        #except:
+            #co_text_eroded.append(con)
         
 
         img_boundary_in_dilated = cv2.dilate(img_boundary_in[:,:], KERNEL, iterations=dilation_rate)
@@ -262,8 +270,8 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
             if "artificial_class_label" in keys:
                 img_boundary = np.zeros((y_len, x_len))
                 erosion_rate = 0#1
-                dilation_rate = 3
-                dilation_early = 2
+                dilation_rate = 2
+                dilation_early = 1
                 co_use_case, img_boundary = update_region_contours(co_use_case, img_boundary, erosion_rate, dilation_rate, y_len, x_len, dilation_early=dilation_early )
             
                 
