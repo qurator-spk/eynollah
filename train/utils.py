@@ -40,6 +40,25 @@ def return_binary_image_with_given_rgb_background(img_bin, img_rgb_background):
     
     return img_final
 
+def return_binary_image_with_given_rgb_background_and_given_foreground_rgb(img_bin, img_rgb_background, rgb_foreground):
+    img_rgb_background = resize_image(img_rgb_background ,img_bin.shape[0], img_bin.shape[1])
+    
+    img_final = np.copy(img_bin)
+    img_foreground = np.zeros(img_bin.shape)
+    
+    
+    img_foreground[:,:,0][img_bin[:,:,0] == 0] = rgb_foreground[0]
+    img_foreground[:,:,1][img_bin[:,:,0] == 0] = rgb_foreground[1]
+    img_foreground[:,:,2][img_bin[:,:,0] == 0] = rgb_foreground[2]
+    
+    
+    img_final[:,:,0][img_bin[:,:,0] != 0] = img_rgb_background[:,:,0][img_bin[:,:,0] != 0]
+    img_final[:,:,1][img_bin[:,:,1] != 0] = img_rgb_background[:,:,1][img_bin[:,:,1] != 0]
+    img_final[:,:,2][img_bin[:,:,2] != 0] = img_rgb_background[:,:,2][img_bin[:,:,2] != 0]
+    
+    img_final = img_final + img_foreground
+    return img_final
+
 def return_binary_image_with_given_rgb_background_red_textlines(img_bin, img_rgb_background, img_color):
     img_rgb_background = resize_image(img_rgb_background ,img_bin.shape[0], img_bin.shape[1])
     
@@ -641,10 +660,10 @@ def get_patches_num_scale_new(dir_img_f, dir_seg_f, img, label, height, width, i
 
 def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow_train_imgs,
                     dir_flow_train_labels, input_height, input_width, blur_k, blur_aug,
-                    padding_white, padding_black, flip_aug, binarization, adding_rgb_background, add_red_textlines, channels_shuffling, scaling, degrading,
+                    padding_white, padding_black, flip_aug, binarization, adding_rgb_background, adding_rgb_foreground, add_red_textlines, channels_shuffling, scaling, degrading,
                     brightening, scales, degrade_scales, brightness, flip_index, shuffle_indexes,
                     scaling_bluring, scaling_brightness, scaling_binarization, rotation,
-                    rotation_not_90, thetha, scaling_flip, task, augmentation=False, patches=False, dir_img_bin=None,number_of_backgrounds_per_image=None,list_all_possible_background_images=None, dir_rgb_backgrounds=None):
+                    rotation_not_90, thetha, scaling_flip, task, augmentation=False, patches=False, dir_img_bin=None,number_of_backgrounds_per_image=None,list_all_possible_background_images=None, dir_rgb_backgrounds=None, dir_rgb_foregrounds=None, list_all_possible_foreground_rgbs=None):
     
     indexer = 0
     for im, seg_i in tqdm(zip(imgs_list_train, segs_list_train)):
@@ -747,6 +766,23 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                         background_image_chosen_name = random.choice(list_all_possible_background_images)
                         img_rgb_background_chosen = cv2.imread(dir_rgb_backgrounds + '/' + background_image_chosen_name)
                         img_with_overlayed_background = return_binary_image_with_given_rgb_background(img_bin_corr, img_rgb_background_chosen)
+                        
+                        cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png', resize_image(img_with_overlayed_background, input_height, input_width))
+                        cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
+                                    resize_image(cv2.imread(dir_of_label_file), input_height, input_width))
+                        
+                        indexer += 1
+                        
+                if adding_rgb_foreground:
+                    img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
+                    for i_n in range(number_of_backgrounds_per_image):
+                        background_image_chosen_name = random.choice(list_all_possible_background_images)
+                        foreground_rgb_chosen_name = random.choice(list_all_possible_foreground_rgbs)
+                        
+                        img_rgb_background_chosen = cv2.imread(dir_rgb_backgrounds + '/' + background_image_chosen_name)
+                        foreground_rgb_chosen = np.load(dir_rgb_foregrounds + '/' + foreground_rgb_chosen_name)
+                        
+                        img_with_overlayed_background = return_binary_image_with_given_rgb_background_and_given_foreground_rgb(img_bin_corr, img_rgb_background_chosen, foreground_rgb_chosen)
                         
                         cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png', resize_image(img_with_overlayed_background, input_height, input_width))
                         cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',

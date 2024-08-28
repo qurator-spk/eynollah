@@ -13,13 +13,14 @@
     "augmentation" : true,
     "flip_aug" : false,
     "blur_aug" : false,
-    "scaling" : true,
+    "scaling" : false,
     "adding_rgb_background": true,
-    "add_red_textlines": true,
-    "channels_shuffling": true,
+    "adding_rgb_foreground": true,
+    "add_red_textlines": false,
+    "channels_shuffling": false,
     "degrading": false,
     "brightening": false,
-    "binarization" : false,
+    "binarization" : true,
     "scaling_bluring" : false,
     "scaling_binarization" : false,
     "scaling_flip" : false,
@@ -51,6 +52,7 @@
     "dir_eval": "/home/vahid/Documents/test/sbb_pixelwise_segmentation/test_label/pageextractor_test/eval_new",
     "dir_output": "/home/vahid/Documents/test/sbb_pixelwise_segmentation/test_label/pageextractor_test/output_new",
     "dir_rgb_backgrounds": "/home/vahid/Documents/1_2_test_eynollah/set_rgb_background",
+    "dir_rgb_foregrounds": "/home/vahid/Documents/1_2_test_eynollah/out_set_rgb_foreground",
     "dir_img_bin": "/home/vahid/Documents/test/sbb_pixelwise_segmentation/test_label/pageextractor_test/train_new/images_bin"
     
 }
