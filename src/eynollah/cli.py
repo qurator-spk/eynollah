@@ -1,7 +1,7 @@
 import sys
 import click
 from ocrd_utils import initLogging, setOverrideLogLevel
-from qurator.eynollah.eynollah import Eynollah
+from eynollah.eynollah import Eynollah
 
 
 @click.command()

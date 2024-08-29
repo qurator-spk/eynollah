@@ -1,6 +1,6 @@
 import cv2
 from pathlib import Path
-from qurator.eynollah.utils.pil_cv2 import check_dpi
+from eynollah.utils.pil_cv2 import check_dpi
 from tests.base import main
 
 def test_dpi():
