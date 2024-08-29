@@ -26,8 +26,8 @@ classifiers = [
 ]
 
 [project.scripts]
-eynollah = "qurator.eynollah.cli:main"
-ocrd-eynollah-segment = "qurator.eynollah.ocrd_cli:main"
+eynollah = "eynollah.cli:main"
+ocrd-eynollah-segment = "eynollah.ocrd_cli:main"
 
 [project.urls]
 Homepage = "https://github.com/qurator-spk/eynollah"
@@ -37,7 +37,7 @@ Repository = "https://github.com/qurator-spk/eynollah.git"
 dependencies = {file = ["requirements.txt"]}
 
 [tool.setuptools.packages.find]
-where = ["qurator"]
+where = ["src"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", '*.yml', '*.xml', '*.xsd']
