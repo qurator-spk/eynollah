@@ -37,8 +37,5 @@ Repository = "https://github.com/qurator-spk/eynollah.git"
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 
-[tool.setuptools.packages.find]
-where = ["qurator"]
-
 [tool.setuptools.package-data]
 "*" = ["*.json", '*.yml', '*.xml', '*.xsd']
