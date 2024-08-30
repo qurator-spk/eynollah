@@ -823,6 +823,53 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                                               img_max_rotated,
                                               label_max_rotated,
                                               input_height, input_width, indexer=indexer)
+                        
+                if channels_shuffling:
+                    for shuffle_index in shuffle_indexes:
+                        indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
+                                              return_shuffled_channels(cv2.imread(dir_img + '/' + im), shuffle_index),
+                                              cv2.imread(dir_of_label_file),
+                                              input_height, input_width, indexer=indexer)
+                        
+                if adding_rgb_background:
+                    img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
+                    for i_n in range(number_of_backgrounds_per_image):
+                        background_image_chosen_name = random.choice(list_all_possible_background_images)
+                        img_rgb_background_chosen = cv2.imread(dir_rgb_backgrounds + '/' + background_image_chosen_name)
+                        img_with_overlayed_background = return_binary_image_with_given_rgb_background(img_bin_corr, img_rgb_background_chosen)
+                        
+                        indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
+                                              img_with_overlayed_background,
+                                              cv2.imread(dir_of_label_file),
+                                              input_height, input_width, indexer=indexer)
+                        
+                        
+                if adding_rgb_foreground:
+                    img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
+                    for i_n in range(number_of_backgrounds_per_image):
+                        background_image_chosen_name = random.choice(list_all_possible_background_images)
+                        foreground_rgb_chosen_name = random.choice(list_all_possible_foreground_rgbs)
+                        
+                        img_rgb_background_chosen = cv2.imread(dir_rgb_backgrounds + '/' + background_image_chosen_name)
+                        foreground_rgb_chosen = np.load(dir_rgb_foregrounds + '/' + foreground_rgb_chosen_name)
+                        
+                        img_with_overlayed_background = return_binary_image_with_given_rgb_background_and_given_foreground_rgb(img_bin_corr, img_rgb_background_chosen, foreground_rgb_chosen)
+                        
+                        indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
+                                              img_with_overlayed_background,
+                                              cv2.imread(dir_of_label_file),
+                                              input_height, input_width, indexer=indexer)
+                        
+                        
+                if add_red_textlines:
+                    img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
+                    img_red_context = return_image_with_red_elements(cv2.imread(dir_img + '/'+im), img_bin_corr)
+                    
+                    indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
+                                            img_red_context,
+                                            cv2.imread(dir_of_label_file),
+                                            input_height, input_width, indexer=indexer)
+                
                 if flip_aug:
                     for f_i in flip_index:
                         indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
@@ -871,10 +918,19 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                                               input_height, input_width, indexer=indexer)
                         
                 if binarization:
-                    indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
-                                          otsu_copy(cv2.imread(dir_img + '/' + im)),
-                                          cv2.imread(dir_of_label_file),
-                                          input_height, input_width, indexer=indexer)
+                    if dir_img_bin:
+                        img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
+                        
+                        indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
+                                            img_bin_corr,
+                                            cv2.imread(dir_of_label_file),
+                                            input_height, input_width, indexer=indexer)
+                        
+                    else:
+                        indexer = get_patches(dir_flow_train_imgs, dir_flow_train_labels,
+                                            otsu_copy(cv2.imread(dir_img + '/' + im)),
+                                            cv2.imread(dir_of_label_file),
+                                            input_height, input_width, indexer=indexer)
 
                 if scaling_brightness:
                     for sc_ind in scales:
