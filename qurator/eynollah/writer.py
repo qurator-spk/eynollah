@@ -136,6 +136,29 @@ class EynollahXmlWriter():
                         points_co += str(int((contour_textline[0][1] + region_bboxes[0]+page_coord[0])/self.scale_y))
                 points_co += ' '
             coords.set_points(points_co[:-1])
+            
+    def serialize_lines_in_dropcapital(self, text_region, all_found_textline_polygons, region_idx, page_coord, all_box_coord, slopes, counter, ocr_all_textlines_textregion):
+        self.logger.debug('enter serialize_lines_in_region')
+        for j in range(1):
+            coords = CoordsType()
+            textline = TextLineType(id=counter.next_line_id, Coords=coords)
+            if ocr_all_textlines_textregion:
+                textline.set_TextEquiv( [ TextEquivType(Unicode=ocr_all_textlines_textregion[j]) ] )
+            text_region.add_TextLine(textline)
+            #region_bboxes = all_box_coord[region_idx]
+            points_co = ''
+            for idx_contour_textline, contour_textline in enumerate(all_found_textline_polygons[j]):
+                if len(contour_textline) == 2:
+                    points_co += str(int((contour_textline[0] + page_coord[2]) / self.scale_x))
+                    points_co += ','
+                    points_co += str(int((contour_textline[1] + page_coord[0]) / self.scale_y))
+                else:
+                    points_co += str(int((contour_textline[0][0] + page_coord[2]) / self.scale_x))
+                    points_co += ','
+                    points_co += str(int((contour_textline[0][1] + page_coord[0])/self.scale_y))
+
+                points_co += ' '
+            coords.set_points(points_co[:-1])
 
     def write_pagexml(self, pcgts):
         out_fname = os.path.join(self.dir_out, self.image_filename_stem) + ".xml"
@@ -251,8 +274,12 @@ class EynollahXmlWriter():
             self.serialize_lines_in_marginal(marginal, all_found_textline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter)
 
         for mm in range(len(found_polygons_drop_capitals)):
-            page.add_TextRegion(TextRegionType(id=counter.next_region_id, type_='drop-capital',
-                    Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_drop_capitals[mm], page_coord))))
+            dropcapital = TextRegionType(id=counter.next_region_id, type_='drop-capital',
+                    Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_drop_capitals[mm], page_coord)))
+            page.add_TextRegion(dropcapital)
+            all_box_coord_drop = None
+            slopes_drop = None
+            self.serialize_lines_in_dropcapital(dropcapital, [found_polygons_drop_capitals[mm]], mm, page_coord, all_box_coord_drop, slopes_drop, counter, ocr_all_textlines_textregion=None)
 
         for mm in range(len(found_polygons_text_region_img)):
             page.add_ImageRegion(ImageRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region_img[mm], page_coord))))

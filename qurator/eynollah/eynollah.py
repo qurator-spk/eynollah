@@ -3735,9 +3735,9 @@ class Eynollah:
                     contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent) if areas_cnt_text[jz] > MIN_AREA_REGION]
                     areas_cnt_text_parent = [area for area in areas_cnt_text if area > MIN_AREA_REGION]
                     index_con_parents = np.argsort(areas_cnt_text_parent)
-                    if len(contours_only_text_parent)>1:
+                    try:
                         contours_only_text_parent = list(np.array(contours_only_text_parent,dtype=object)[index_con_parents])
-                    else:
+                    except:
                         contours_only_text_parent = list(np.array(contours_only_text_parent,dtype=np.int32)[index_con_parents])
                     areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
 
@@ -3753,10 +3753,11 @@ class Eynollah:
                     if len(areas_cnt_text_d)>0:
                         contours_biggest_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
                         index_con_parents_d = np.argsort(areas_cnt_text_d)
-                        if len(contours_only_text_parent_d)>1:
+                        try:
                             contours_only_text_parent_d = list(np.array(contours_only_text_parent_d,dtype=object)[index_con_parents_d])
-                        else:
+                        except:
                             contours_only_text_parent_d = list(np.array(contours_only_text_parent_d,dtype=np.int32)[index_con_parents_d])
+                            
                         areas_cnt_text_d = list(np.array(areas_cnt_text_d)[index_con_parents_d])
 
                         cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest_d])
@@ -3819,9 +3820,9 @@ class Eynollah:
                     areas_cnt_text_parent = [area for area in areas_cnt_text if area > MIN_AREA_REGION]
 
                     index_con_parents = np.argsort(areas_cnt_text_parent)
-                    if len(contours_only_text_parent)>1:
+                    try:
                         contours_only_text_parent = list(np.array(contours_only_text_parent,dtype=object)[index_con_parents])
-                    else:
+                    except:
                         contours_only_text_parent = list(np.array(contours_only_text_parent,dtype=np.int32)[index_con_parents])
                     areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
 
@@ -3864,10 +3865,10 @@ class Eynollah:
             #print("text region early 6 in %.1fs", time.time() - t0)
             if self.full_layout:
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                    if len(contours_only_text_parent_d_ordered)>1:
-                        contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
-                    else:
+                    try:
                         contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=np.int32)[index_by_text_par_con])
+                    except:
+                        contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
                     if self.light_version:
                         text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_textline_polygons, all_found_textline_polygons_h, slopes, slopes_h, contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered = check_any_text_region_in_model_one_is_main_or_header_light(text_regions_p, regions_fully, contours_only_text_parent, all_box_coord, all_found_textline_polygons, slopes, contours_only_text_parent_d_ordered)
                     else:
@@ -3957,9 +3958,9 @@ class Eynollah:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
                     else:
-                        if len(contours_only_text_parent_d_ordered)>1:
+                        try:
                             contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
-                        else:
+                        except:
                             contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=np.int32)[index_by_text_par_con])
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
                     
