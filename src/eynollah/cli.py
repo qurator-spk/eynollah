@@ -1,7 +1,7 @@
 import sys
 import click
 from ocrd_utils import initLogging, setOverrideLogLevel
-from qurator.eynollah.eynollah import Eynollah
+from eynollah.eynollah import Eynollah
 
 
 @click.command()
@@ -209,9 +209,11 @@ def main(
         light_version=light_version,
         ignore_page_extraction=ignore_page_extraction,
     )
-    eynollah.run()
-    #pcgts = eynollah.run()
-    ##eynollah.writer.write_pagexml(pcgts)
+    if dir_in:
+        eynollah.run()
+    else:
+        pcgts = eynollah.run()
+        eynollah.writer.write_pagexml(pcgts)
 
 if __name__ == "__main__":
     main()

@@ -29,7 +29,8 @@ warnings.filterwarnings("ignore")
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d
-from tensorflow.python.keras.backend import set_session
+# use tf1 compatibility for keras backend
+from tensorflow.compat.v1.keras.backend import set_session
 from tensorflow.keras import layers
 
 from .utils.contour import (
@@ -257,7 +258,7 @@ class Eynollah:
             config.gpu_options.allow_growth = True
             session = tf.compat.v1.Session(config=config)
             set_session(session)
-            
+
             self.model_page = self.our_load_model(self.model_page_dir)
             self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
             self.model_bin = self.our_load_model(self.model_dir_of_binarization)
@@ -265,9 +266,9 @@ class Eynollah:
             self.model_region = self.our_load_model(self.model_region_dir_p_ens_light_only_images_extraction)
             #self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
             #self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
-            
+
             self.ls_imgs  = os.listdir(self.dir_in)
-            
+
         if dir_in and not (light_version or self.extract_only_images):
             config = tf.compat.v1.ConfigProto()
             config.gpu_options.allow_growth = True
@@ -285,7 +286,6 @@ class Eynollah:
             self.model_enhancement = self.our_load_model(self.model_dir_of_enhancement)
             
             self.ls_imgs  = os.listdir(self.dir_in)
-            
             
         
     def _cache_images(self, image_filename=None, image_pil=None):
@@ -482,7 +482,7 @@ class Eynollah:
             num_column_is_classified = True
 
         return img_new, num_column_is_classified
-    
+
     def calculate_width_height_by_columns_extract_only_images(self, img, num_col, width_early, label_p_pred):
         self.logger.debug("enter calculate_width_height_by_columns")
         if num_col == 1:
@@ -552,7 +552,7 @@ class Eynollah:
             is_image_enhanced = True
 
         return img, img_new, is_image_enhanced
-    
+
     def resize_and_enhance_image_with_column_classifier(self,light_version):
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
         dpi = self.dpi
@@ -610,7 +610,7 @@ class Eynollah:
         num_col = np.argmax(label_p_pred[0]) + 1
         
         self.logger.info("Found %d columns (%s)", num_col, np.around(label_p_pred, decimals=5))
-        
+
         if not self.extract_only_images:
             if dpi < DPI_THRESHOLD:
                 img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
@@ -624,9 +624,6 @@ class Eynollah:
                 image_res = np.copy(img)
                 is_image_enhanced = False
         else:
-            #img_new, num_column_is_classified = self.calculate_width_height_by_columns_extract_only_images(img, num_col, width_early, label_p_pred)
-            #image_res = np.copy(img_new)
-            #is_image_enhanced = True
             num_column_is_classified = True
             image_res = np.copy(img)
             is_image_enhanced = False
@@ -924,6 +921,7 @@ class Eynollah:
                         seg_not_base[seg_not_base>0.03] =1
                         seg_not_base[seg_not_base<1] =0
 
+                    
                     
                     seg_test = label_p_pred[0,:,:,1]
                     ##seg2 = -label_p_pred[0,:,:,2]
@@ -1623,7 +1621,7 @@ class Eynollah:
         q.put(slopes_sub)
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new)
-        
+
     def get_regions_light_v_extract_only_images(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_extract_images_only")
         erosion_hurts = False
@@ -1646,7 +1644,7 @@ class Eynollah:
         img_h_new = int(img.shape[0] / float(img.shape[1]) * img_w_new)
 
         img_resized = resize_image(img,img_h_new, img_w_new )
-        
+
 
 
         if not self.dir_in:
@@ -1654,61 +1652,61 @@ class Eynollah:
             prediction_regions_org = self.do_prediction_new_concept(True, img_resized, model_region)
         else:
             prediction_regions_org = self.do_prediction_new_concept(True, img_resized, self.model_region)
-            
+
         #plt.imshow(prediction_regions_org[:,:,0])
         #plt.show()
-            
+
         prediction_regions_org = resize_image(prediction_regions_org,img_height_h, img_width_h )
-        
+
         image_page, page_coord, cont_page = self.extract_page()
-        
-        
+
+
         prediction_regions_org = prediction_regions_org[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
 
-        
+
         prediction_regions_org=prediction_regions_org[:,:,0]
-            
+
         mask_lines_only = (prediction_regions_org[:,:] ==3)*1
-        
+
         mask_texts_only = (prediction_regions_org[:,:] ==1)*1
-        
+
         mask_images_only=(prediction_regions_org[:,:] ==2)*1
-        
+
         polygons_lines_xml, hir_lines_xml = return_contours_of_image(mask_lines_only)
         polygons_lines_xml = textline_con_fil = filter_contours_area_of_image(mask_lines_only, polygons_lines_xml, hir_lines_xml, max_area=1, min_area=0.00001)
-        
-        
+
+
         polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
-        
+
         polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
-        
+
         text_regions_p_true = np.zeros(prediction_regions_org.shape)
-        
+
         text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_lines, color=(3,3,3))
-        
+
         text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
-        
+
         text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
-        
-        
-        
+
+
+
         text_regions_p_true[text_regions_p_true.shape[0]-15:text_regions_p_true.shape[0], :] = 0
         text_regions_p_true[:, text_regions_p_true.shape[1]-15:text_regions_p_true.shape[1]] = 0
-        
+
         ##polygons_of_images = return_contours_of_interested_region(text_regions_p_true, 2, 0.0001)
         polygons_of_images = return_contours_of_interested_region(text_regions_p_true, 2, 0.001)
-        
+
         image_boundary_of_doc = np.zeros((text_regions_p_true.shape[0], text_regions_p_true.shape[1]))
-        
+
         ###image_boundary_of_doc[:6, :] = 1
         ###image_boundary_of_doc[text_regions_p_true.shape[0]-6:text_regions_p_true.shape[0], :] = 1
-        
+
         ###image_boundary_of_doc[:, :6] = 1
         ###image_boundary_of_doc[:, text_regions_p_true.shape[1]-6:text_regions_p_true.shape[1]] = 1
-        
+
         #plt.imshow(image_boundary_of_doc)
         #plt.show()
-        
+
         polygons_of_images_fin = []
         for ploy_img_ind in polygons_of_images:
             """
@@ -1737,9 +1735,9 @@ class Eynollah:
                 box = [x, y, w, h]
                 _, page_coord_img = crop_image_inside_box(box, text_regions_p_true)
                 #cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
-                
+
                 polygons_of_images_fin.append(np.array([[page_coord_img[2], page_coord_img[0]], [page_coord_img[3], page_coord_img[0]], [page_coord_img[3], page_coord_img[1]], [page_coord_img[2], page_coord_img[1]]]) )
-        
+
         return text_regions_p_true, erosion_hurts, polygons_lines_xml, polygons_of_images_fin, image_page, page_coord, cont_page
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_light_v")
@@ -2592,7 +2590,7 @@ class Eynollah:
         prediction_table_erode = cv2.erode(prediction_table[:,:,0], KERNEL, iterations=20)
         prediction_table_erode = cv2.dilate(prediction_table_erode, KERNEL, iterations=20)
         return prediction_table_erode.astype(np.int16)
-    
+
     def run_graphics_and_columns_light(self, text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts):
         img_g = self.imread(grayscale=True, uint8=True)
 
@@ -3004,26 +3002,26 @@ class Eynollah:
             if self.dir_in:
                 self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
             
-            
+
             if self.extract_only_images:
                 img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
                 self.logger.info("Enhancing took %.1fs ", time.time() - t0)
-                
+
                 text_regions_p_1 ,erosion_hurts, polygons_lines_xml,polygons_of_images,image_page, page_coord, cont_page = self.get_regions_light_v_extract_only_images(img_res, is_image_enhanced, num_col_classifier)
-                
+
                 pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], polygons_of_images, [], [], [], [], [], cont_page, [], [])
-                
+
                 if self.plotter:
                     self.plotter.write_images_into_directory(polygons_of_images, image_page)
                 #plt.imshow(text_regions_p_1)
                 #plt.show()
-                
+
                 self.writer.write_pagexml(pcgts)
 
             else:
                 img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
                 self.logger.info("Enhancing took %.1fs ", time.time() - t0)
-                
+
                 t1 = time.time()
                 if self.light_version:
                     text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea = self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
@@ -3042,7 +3040,7 @@ class Eynollah:
                             self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts)
                     self.logger.info("Graphics detection took %.1fs ", time.time() - t1)
                     #self.logger.info('cont_page %s', cont_page)
-                
+
                 if not num_col:
                     self.logger.info("No columns detected, outputting an empty PAGE-XML")
                     pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], [], [], [], [], [], [], cont_page, [], [])
@@ -3076,13 +3074,13 @@ class Eynollah:
                 text_only = ((img_revised_tab[:, :] == 1)) * 1
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                     text_only_d = ((text_regions_p_1_n[:, :] == 1)) * 1
-                
-                
+
+
                 min_con_area = 0.000005
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                     contours_only_text, hir_on_text = return_contours_of_image(text_only)
                     contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
-                                
+
                     if len(contours_only_text_parent) > 0:
                         areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
                         areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
@@ -3102,7 +3100,7 @@ class Eynollah:
 
                         areas_cnt_text_d = np.array([cv2.contourArea(c) for c in contours_only_text_parent_d])
                         areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
-                        
+
                         if len(areas_cnt_text_d)>0:
                             contours_biggest_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
                             index_con_parents_d = np.argsort(areas_cnt_text_d)
@@ -3122,7 +3120,7 @@ class Eynollah:
                                     cy_biggest_d_last5 = cy_biggest_d[-len(cx_bigest_d):]
                                     dists_d = [math.sqrt((cx_bigest_big[0]-cx_bigest_d_last5[j])**2 + (cy_biggest_big[0]-cy_biggest_d_last5[j])**2) for j in range(len(cy_biggest_d_last5))]
                                     ind_largest = len(cx_bigest_d) - len(cx_bigest_d) + np.argmin(dists_d)
-                                    
+
                                 cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
                                 cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
                             except Exception as why:
@@ -3151,7 +3149,7 @@ class Eynollah:
                             contours_only_text_parent_d_ordered = []
                             contours_only_text_parent_d = []
                             contours_only_text_parent = []
-                            
+
                     else:
                         contours_only_text_parent_d_ordered = []
                         contours_only_text_parent_d = []
@@ -3159,7 +3157,7 @@ class Eynollah:
                 else:
                     contours_only_text, hir_on_text = return_contours_of_image(text_only)
                     contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
-                    
+
                     if len(contours_only_text_parent) > 0:
                         areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
                         areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
@@ -3185,7 +3183,7 @@ class Eynollah:
                     txt_con_org = get_textregion_contours_in_org_image(contours_only_text_parent, self.image, slope_first)
                 boxes_text, _ = get_text_region_boxes_by_given_contours(contours_only_text_parent)
                 boxes_marginals, _ = get_text_region_boxes_by_given_contours(polygons_of_marginals)
-                
+
                 if not self.curved_line:
                     if self.light_version:
                         if self.textline_light:
@@ -3199,13 +3197,13 @@ class Eynollah:
                         slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
 
                 else:
-                    
+
                     scale_param = 1
                     all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_curved(txt_con_org, contours_only_text_parent, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_text, text_only, num_col_classifier, scale_param, slope_deskew)
                     all_found_textline_polygons = small_textlines_to_parent_adherence2(all_found_textline_polygons, textline_mask_tot_ea, num_col_classifier)
                     all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
                     all_found_textline_polygons_marginals = small_textlines_to_parent_adherence2(all_found_textline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
-                
+
                 if self.full_layout:
                     if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                         contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
@@ -3224,12 +3222,12 @@ class Eynollah:
                     if self.plotter:
                         self.plotter.save_plot_of_layout(text_regions_p, image_page)
                         self.plotter.save_plot_of_layout_all(text_regions_p, image_page)
-            
+
                     pixel_img = 4
                     polygons_of_drop_capitals = return_contours_of_interested_region_by_min_size(text_regions_p, pixel_img)
                     all_found_textline_polygons = adhere_drop_capital_region_into_corresponding_textline(text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, all_found_textline_polygons, all_found_textline_polygons_h, kernel=KERNEL, curved_line=self.curved_line)
                     pixel_lines = 6
-                    
+
 
                     if not self.headers_off:
                         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
@@ -3250,12 +3248,12 @@ class Eynollah:
                         else:
                             regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
                             regions_without_separators_d = cv2.erode(regions_without_separators_d[:, :], KERNEL, iterations=6)
-                            
+
 
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables, self.right2left)
                     else:
-                        boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables, self.right2left)     
+                        boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables, self.right2left)
 
                 #print(boxes_d,'boxes_d')
                 #img_once = np.zeros((textline_mask_tot_d.shape[0],textline_mask_tot_d.shape[1]))
@@ -3273,19 +3271,23 @@ class Eynollah:
                     else:
                         order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
 
-                    pcgts = self.writer.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_xml)
-                    self.logger.info("Job done in %.1fs", time.time() - t0)
-                    ##return pcgts
+                pcgts = self.writer.build_pagexml_full_layout(contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h, polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_xml)
+                self.logger.info("Job done in %.1fs", time.time() - t0)
+                if not self.dir_in:
+                    return pcgts
+            else:
+                contours_only_text_parent_h = None
+                if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                    order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
                 else:
-                    contours_only_text_parent_h = None
-                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                        order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
-                    else:
-                        contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
-                        order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
-                    pcgts = self.writer.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_xml, contours_tables)
-                    self.logger.info("Job done in %.1fs", time.time() - t0)
-                    ##return pcgts
+                    contours_only_text_parent_d_ordered = list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
+                    order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
+                pcgts = self.writer.build_pagexml_no_full_layout(txt_con_org, page_coord, order_text_new, id_of_texts_tot, all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_xml, contours_tables)
+                self.logger.info("Job done in %.1fs", time.time() - t0)
+                if not self.dir_in:
+                    return pcgts
+
+            if self.dir_in:
                 self.writer.write_pagexml(pcgts)
                 #self.logger.info("Job done in %.1fs", time.time() - t0)
         if self.dir_in:
