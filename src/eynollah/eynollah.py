@@ -6,14 +6,18 @@
 document layout analysis (segmentation) with output in PAGE-XML
 """
 
+from logging import Logger
 import math
 import os
 import sys
 import time
+from typing import Optional
 import warnings
 from pathlib import Path
 from multiprocessing import Process, Queue, cpu_count
 import gc
+from PIL.Image import Image
+from ocrd import OcrdPage
 from ocrd_utils import getLogger
 import cv2
 import numpy as np
@@ -142,32 +146,32 @@ class PatchEncoder(layers.Layer):
 class Eynollah:
     def __init__(
         self,
-        dir_models,
-        image_filename=None,
-        image_pil=None,
-        image_filename_stem=None,
-        dir_out=None,
-        dir_in=None,
-        dir_of_cropped_images=None,
-        dir_of_layout=None,
-        dir_of_deskewed=None,
-        dir_of_all=None,
-        dir_save_page=None,
-        enable_plotting=False,
-        allow_enhancement=False,
-        curved_line=False,
-        textline_light=False,
-        full_layout=False,
-        tables=False,
-        right2left=False,
-        input_binary=False,
-        allow_scaling=False,
-        headers_off=False,
-        light_version=False,
-        ignore_page_extraction=False,
-        override_dpi=None,
-        logger=None,
-        pcgts=None,
+        dir_models : str,
+        logger : Logger,
+        image_filename : Optional[str] = None,
+        image_pil : Optional[Image] = None,
+        image_filename_stem : Optional[str] = None,
+        dir_out : Optional[str] = None,
+        dir_in : Optional[str] = None,
+        dir_of_cropped_images : Optional[str] = None,
+        dir_of_layout : Optional[str] = None,
+        dir_of_deskewed : Optional[str] = None,
+        dir_of_all : Optional[str] = None,
+        dir_save_page : Optional[str] = None,
+        enable_plotting : bool = False,
+        allow_enhancement : bool = False,
+        curved_line : bool = False,
+        textline_light : bool = False,
+        full_layout : bool = False,
+        tables : bool = False,
+        right2left : bool = False,
+        input_binary : bool = False,
+        allow_scaling : bool = False,
+        headers_off : bool = False,
+        light_version : bool = False,
+        ignore_page_extraction : bool = False,
+        override_dpi : Optional[int] = None,
+        pcgts : Optional[OcrdPage] = None,
     ):
         if not dir_in:
             if image_pil:
@@ -213,7 +217,7 @@ class Eynollah:
                 curved_line=self.curved_line,
                 textline_light = self.textline_light,
                 pcgts=pcgts)
-        self.logger = logger if logger else getLogger('eynollah')
+        self.logger = logger
         self.dir_models = dir_models
 
         self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
