@@ -6,8 +6,8 @@
       "executable": "ocrd-eynollah-segment",
       "categories": ["Layout analysis"],
       "description": "Segment page into regions and lines and do reading order detection with eynollah",
-      "input_file_grp": ["OCR-D-IMG", "OCR-D-SEG-PAGE", "OCR-D-GT-SEG-PAGE"],
-      "output_file_grp": ["OCR-D-SEG-LINE"],
+      "input_file_grp_cardinality": 1,
+      "output_file_grp_cardinality": 1,
       "steps": ["layout/segmentation/region", "layout/segmentation/line"],
       "parameters": {
         "models": {

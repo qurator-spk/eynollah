@@ -6,10 +6,6 @@ from .eynollah import Eynollah
 
 class EynollahProcessor(Processor):
 
-    @property
-    def metadata_filename(self) -> str:
-        return 'eynollah/ocrd-tool.json'
-
     def setup(self) -> None:
         # for caching models
         self.models = None
