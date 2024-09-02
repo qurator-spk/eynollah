@@ -2,7 +2,7 @@ from os import environ
 from pathlib import Path
 from ocrd_utils import pushd_popd
 from tests.base import CapturingTestCase as TestCase, main
-from qurator.eynollah.cli import main as eynollah_cli
+from eynollah.cli import main as eynollah_cli
 
 testdir = Path(__file__).parent.resolve()
 
