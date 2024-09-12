@@ -89,7 +89,7 @@ from .utils.xml import order_and_id_of_texts
 from .plot import EynollahPlotter
 from .writer import EynollahXmlWriter
 
-MIN_AREA_REGION = 0.00001
+MIN_AREA_REGION = 0.000001
 SLOPE_THRESHOLD = 0.13
 RATIO_OF_TWO_MODEL_THRESHOLD = 95.50 #98.45:
 DPI_THRESHOLD = 298
@@ -237,15 +237,16 @@ class Eynollah:
         self.model_region_dir_p = dir_models + "/eynollah-main-regions-aug-scaling_20210425"
         self.model_region_dir_p2 = dir_models + "/eynollah-main-regions-aug-rotation_20210425"
         self.model_region_dir_fully_np = dir_models + "/eynollah-full-regions-1column_20210425"
-        self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425"
+        #self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425"
         self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425"
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_reading_order_machine_dir = dir_models + "/model_ens_reading_order_machine_based"
-        self.model_region_dir_p_1_2_sp_np = dir_models + "/model_3_eraly_layout_no_patches_1_2_spaltige"
-        self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
+        self.model_region_dir_p_1_2_sp_np = dir_models + "/modelens_1_2_4_5_early_lay_1_2_spaltige"#"/model_3_eraly_layout_no_patches_1_2_spaltige"
+        ##self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
+        self.model_region_dir_fully = dir_models + "/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
         if self.textline_light:
-            self.model_textline_dir = dir_models + "/eynollah-textline_light_20210425"
+            self.model_textline_dir = dir_models + "/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_9_12_13_14_15"#"/eynollah-textline_light_20210425"#
         else:
             self.model_textline_dir = dir_models + "/eynollah-textline_20210425"
         if self.ocr:
@@ -267,7 +268,7 @@ class Eynollah:
             self.model_textline = self.our_load_model(self.model_textline_dir)
             self.model_region = self.our_load_model(self.model_region_dir_p_ens_light)
             self.model_region_1_2 = self.our_load_model(self.model_region_dir_p_1_2_sp_np)
-            self.model_region_fl_new = self.our_load_model(self.model_region_dir_fully_new)
+            ###self.model_region_fl_new = self.our_load_model(self.model_region_dir_fully_new)
             self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
             self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
             self.model_reading_order_machine = self.our_load_model(self.model_reading_order_machine_dir)
@@ -993,9 +994,16 @@ class Eynollah:
             img = resize_image(img, img_height_model, img_width_model)
 
             label_p_pred = model.predict(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]), verbose=0)
-
+            
+            seg_not_base = label_p_pred[0,:,:,4]
+            
+            seg_not_base[seg_not_base>0.4] =1
+            seg_not_base[seg_not_base<1] =0
 
             seg = np.argmax(label_p_pred, axis=3)[0]
+            
+            seg[seg_not_base==1]=4
+            
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
             prediction_true = resize_image(seg_color, img_h_page, img_w_page)
             prediction_true = prediction_true.astype(np.uint8)
@@ -1781,7 +1789,7 @@ class Eynollah:
             all_box_coord_per_process.append(crop_coor)
         queue_of_all_params.put([slopes_per_each_subprocess, textlines_rectangles_per_each_subprocess, bounding_box_of_textregion_per_each_subprocess, contours_textregion_per_each_subprocess, contours_textregion_par_per_each_subprocess, all_box_coord_per_process, index_by_text_region_contours])
 
-    def textline_contours(self, img, patches, scaler_h, scaler_w):
+    def textline_contours(self, img, patches, scaler_h, scaler_w, num_col_classifier=None):
         self.logger.debug('enter textline_contours')
         if not self.dir_in:
             model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir if patches else self.model_textline_dir_np)
@@ -1792,10 +1800,34 @@ class Eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
         #print(img.shape,'bin shape textline')
         if not self.dir_in:
-            prediction_textline = self.do_prediction(patches, img, model_textline, n_batch_inference=3)
+            prediction_textline = self.do_prediction(patches, img, model_textline, marginal_of_patch_percent=0.2, n_batch_inference=3)
+            if num_col_classifier==1:
+                prediction_textline_nopatch = self.do_prediction(False, img, model_textline)
+                prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
         else:
-            prediction_textline = self.do_prediction(patches, img, self.model_textline, n_batch_inference=3)
+            prediction_textline = self.do_prediction(patches, img, self.model_textline, marginal_of_patch_percent=0.2, n_batch_inference=3)
+            if num_col_classifier==1:
+                prediction_textline_nopatch = self.do_prediction(False, img, model_textline)
+                prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
+        
+        textline_mask_tot_ea_art = (prediction_textline[:,:]==2)*1
+        
+        old_art = np.copy(textline_mask_tot_ea_art)
+        
+        textline_mask_tot_ea_art = textline_mask_tot_ea_art.astype('uint8')
+        textline_mask_tot_ea_art = cv2.dilate(textline_mask_tot_ea_art, KERNEL, iterations=1)
+        
+        prediction_textline[:,:][textline_mask_tot_ea_art[:,:]==1]=2
+        
+        textline_mask_tot_ea_lines = (prediction_textline[:,:]==1)*1
+        textline_mask_tot_ea_lines = textline_mask_tot_ea_lines.astype('uint8')
+        textline_mask_tot_ea_lines = cv2.dilate(textline_mask_tot_ea_lines, KERNEL, iterations=1)
+        
+        prediction_textline[:,:][textline_mask_tot_ea_lines[:,:]==1]=1
+        
+        prediction_textline[:,:][old_art[:,:]==1]=2
+        
         if not self.dir_in:
             prediction_textline_longshot = self.do_prediction(False, img, model_textline)
         else:
@@ -1855,49 +1887,58 @@ class Eynollah:
         #print(num_col_classifier,'num_col_classifier')
         
         if num_col_classifier == 1:
-            img_w_new = 1000
+            img_w_new = 900#1000
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
             
         elif num_col_classifier == 2:
-            img_w_new = 1500
+            img_w_new = 1300#1500
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
             
         elif num_col_classifier == 3:
-            img_w_new = 2000
+            img_w_new = 1600#2000
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
             
         elif num_col_classifier == 4:
-            img_w_new = 2500
+            img_w_new = 1900#2500
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
         elif num_col_classifier == 5:
-            img_w_new = 3000
+            img_w_new = 2300#3000
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
         else:
-            img_w_new = 4000
+            img_w_new = 3300#4000
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
         img_resized = resize_image(img,img_h_new, img_w_new )
         
         t_bin = time.time()
-        if not self.dir_in:
-            model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-            prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
-        else:
-            prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
+        
+        #if (not self.input_binary) or self.full_layout:
+        #if self.input_binary:
+            #img_bin = np.copy(img_resized)
+        if (not self.input_binary and self.full_layout) or (not self.input_binary and num_col_classifier >= 3):
+            if not self.dir_in:
+                model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+                prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
+            else:
+                prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
+                
+            #print("inside bin ", time.time()-t_bin)
+            prediction_bin=prediction_bin[:,:,0]
+            prediction_bin = (prediction_bin[:,:]==0)*1
+            prediction_bin = prediction_bin*255
             
-        #print("inside bin ", time.time()-t_bin)
-        prediction_bin=prediction_bin[:,:,0]
-        prediction_bin = (prediction_bin[:,:]==0)*1
-        prediction_bin = prediction_bin*255
-        
-        prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
-        
-        prediction_bin = prediction_bin.astype(np.uint16)
-        #img= np.copy(prediction_bin)
-        img_bin = np.copy(prediction_bin)
+            prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
+            
+            prediction_bin = prediction_bin.astype(np.uint16)
+            #img= np.copy(prediction_bin)
+            img_bin = np.copy(prediction_bin)
+        else:
+            img_bin = np.copy(img_resized)
         
         #print("inside 1 ", time.time()-t_in)
         
-        textline_mask_tot_ea = self.run_textline(img_bin)
+        ###textline_mask_tot_ea = self.run_textline(img_bin)
+        textline_mask_tot_ea = self.run_textline(img_bin, num_col_classifier)
+        
         
         textline_mask_tot_ea = resize_image(textline_mask_tot_ea,img_height_h, img_width_h )
         
@@ -1906,20 +1947,20 @@ class Eynollah:
             
             #print(img_resized.shape, num_col_classifier, "num_col_classifier")
             if not self.dir_in:
-                ###if num_col_classifier == 1 or num_col_classifier == 2:
-                    ###model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
-                    ###prediction_regions_org = self.do_prediction_new_concept(False, img_resized, model_region)
-                ###else:
-                    ###model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
-                    ###prediction_regions_org = self.do_prediction_new_concept(True, img_bin, model_region)
-                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
-                prediction_regions_org = self.do_prediction(True, img_bin, model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
+                if num_col_classifier == 1 or num_col_classifier == 2:
+                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
+                    prediction_regions_org = self.do_prediction_new_concept(False, img_resized, model_region)
+                else:
+                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
+                    prediction_regions_org = self.do_prediction_new_concept(True, img_bin, model_region)
+                ##model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
+                ##prediction_regions_org = self.do_prediction(True, img_bin, model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
             else:
-                ##if num_col_classifier == 1 or num_col_classifier == 2:
-                    ##prediction_regions_org = self.do_prediction_new_concept(False, img_resized, self.model_region_1_2)
-                ##else:
-                    ##prediction_regions_org = self.do_prediction_new_concept(True, img_bin, self.model_region)
-                prediction_regions_org = self.do_prediction(True, img_bin, self.model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
+                if num_col_classifier == 1 or num_col_classifier == 2:
+                    prediction_regions_org = self.do_prediction_new_concept(False, img_resized, self.model_region_1_2)
+                else:
+                    prediction_regions_org = self.do_prediction_new_concept(True, img_bin, self.model_region)
+                ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
             
             #print("inside 3 ", time.time()-t_in)
             #plt.imshow(prediction_regions_org[:,:,0])
@@ -1937,7 +1978,7 @@ class Eynollah:
             
             mask_texts_only = mask_texts_only.astype('uint8')
             
-            mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=3)
+            mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=2)
             
             mask_images_only=(prediction_regions_org[:,:] ==2)*1
             
@@ -2899,10 +2940,11 @@ class Eynollah:
         #print("enhancement in ", time.time()-t_in)
         return img_res, is_image_enhanced, num_col_classifier, num_column_is_classified
 
-    def run_textline(self, image_page):
-        scaler_h_textline = 1  # 1.2#1.2
-        scaler_w_textline = 1  # 0.9#1
-        textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline)
+    def run_textline(self, image_page, num_col_classifier=None):
+        scaler_h_textline = 1#1.3  # 1.2#1.2
+        scaler_w_textline = 1#1.3  # 0.9#1
+        #print(image_page.shape)
+        textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline, num_col_classifier)
         if self.textline_light:
             textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
 
@@ -3147,6 +3189,17 @@ class Eynollah:
         ##regions_fully_only_drop = put_drop_out_from_only_drop_model(regions_fully_only_drop, text_regions_p)
         ##regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 4] = 4
         drop_capital_label_in_full_layout_model = 3
+        
+        drops = (regions_fully[:,:,0]==drop_capital_label_in_full_layout_model)*1
+        
+        drops= drops.astype(np.uint8)
+        
+        regions_fully[:,:,0][regions_fully[:,:,0]==drop_capital_label_in_full_layout_model] = 1
+        
+        drops = cv2.erode(drops[:,:], KERNEL, iterations=1)
+        regions_fully[:,:,0][drops[:,:]==1] = drop_capital_label_in_full_layout_model
+        
+        
         regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully, drop_capital_label_in_full_layout_model)
         ##regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
         ##if num_col_classifier > 2:
@@ -3695,7 +3748,7 @@ class Eynollah:
         """
         self.logger.debug("enter run")
         
-        skip_layout_ro = True
+        skip_layout_ro = False#True
 
         t0_tot = time.time()
 
