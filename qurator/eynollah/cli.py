@@ -192,13 +192,23 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
     help="if this parameter set to true, this tool will try to do ocr",
 )
 @click.option(
+    "--num_col_upper",
+    "-ncu",
+    help="lower limit of columns in document image",
+)
+@click.option(
+    "--num_col_lower",
+    "-ncl",
+    help="upper limit of columns in document image",
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
 
-def layout(image, out, dir_in, model, save_images, save_layout, save_deskewed, save_all, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, ignore_page_extraction, log_level):
+def layout(image, out, dir_in, model, save_images, save_layout, save_deskewed, save_all, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, num_col_upper, num_col_lower, ignore_page_extraction, log_level):
     if log_level:
         setOverrideLogLevel(log_level)
     initLogging()
@@ -235,6 +245,8 @@ def layout(image, out, dir_in, model, save_images, save_layout, save_deskewed, s
         ignore_page_extraction=ignore_page_extraction,
         reading_order_machine_based=reading_order_machine_based,
         do_ocr=do_ocr,
+        num_col_upper=num_col_upper,
+        num_col_lower=num_col_lower,
     )
     if dir_in:
         eynollah.run()
