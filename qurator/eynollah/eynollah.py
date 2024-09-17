@@ -256,7 +256,7 @@ class Eynollah:
         ##self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
         self.model_region_dir_fully = dir_models + "/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
         if self.textline_light:
-            self.model_textline_dir = dir_models + "/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_9_12_13_14_15"#"/eynollah-textline_light_20210425"#
+            self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"#"/modelens_textline_1_4_16092024"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_1_3_4_20240915"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_9_12_13_14_15"#"/eynollah-textline_light_20210425"#
         else:
             self.model_textline_dir = dir_models + "/eynollah-textline_20210425"
         if self.ocr:
@@ -796,7 +796,7 @@ class Eynollah:
 
         return model, None
 
-    def do_prediction(self, patches, img, model, n_batch_inference=1, marginal_of_patch_percent=0.1, thresholding_for_some_classes_in_light_version=False):
+    def do_prediction(self, patches, img, model, n_batch_inference=1, marginal_of_patch_percent=0.1, thresholding_for_some_classes_in_light_version=False, thresholding_for_artificial_class_in_light_version=False):
         self.logger.debug("enter do_prediction")
 
         img_height_model = model.layers[len(model.layers) - 1].output_shape[1]
@@ -903,6 +903,13 @@ class Eynollah:
                             seg[seg_not_base==1]=4
                             seg[seg_background==1]=0
                             seg[(seg_line==1) & (seg==0)]=3
+                        if thresholding_for_artificial_class_in_light_version:
+                            seg_art = label_p_pred[:,:,:,2]
+                            
+                            seg_art[seg_art<0.2] = 0
+                            seg_art[seg_art>0] =1
+                            
+                            seg[seg_art==1]=2
                         
                         indexer_inside_batch = 0
                         for i_batch, j_batch in zip(list_i_s, list_j_s):
@@ -977,6 +984,14 @@ class Eynollah:
                             seg[seg_not_base==1]=4
                             seg[seg_background==1]=0
                             seg[(seg_line==1) & (seg==0)]=3
+                            
+                        if thresholding_for_artificial_class_in_light_version:
+                            seg_art = label_p_pred[:,:,:,2]
+                            
+                            seg_art[seg_art<0.2] = 0
+                            seg_art[seg_art>0] =1
+                            
+                            seg[seg_art==1]=2
                         
                         indexer_inside_batch = 0
                         for i_batch, j_batch in zip(list_i_s, list_j_s):
@@ -1845,42 +1860,50 @@ class Eynollah:
 
     def textline_contours(self, img, patches, scaler_h, scaler_w, num_col_classifier=None):
         self.logger.debug('enter textline_contours')
+        thresholding_for_artificial_class_in_light_version = True#False
         if not self.dir_in:
             model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir if patches else self.model_textline_dir_np)
-        img = img.astype(np.uint8)
+        #img = img.astype(np.uint8)
         img_org = np.copy(img)
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
-        #print(img.shape,'bin shape textline')
+        
         if not self.dir_in:
-            prediction_textline = self.do_prediction(patches, img, model_textline, marginal_of_patch_percent=0.2, n_batch_inference=3)
-            if num_col_classifier==1:
-                prediction_textline_nopatch = self.do_prediction(False, img, model_textline)
-                prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
+            prediction_textline = self.do_prediction(patches, img, model_textline, marginal_of_patch_percent=0.2, n_batch_inference=3, thresholding_for_artificial_class_in_light_version=thresholding_for_artificial_class_in_light_version)
+            
+            #if not thresholding_for_artificial_class_in_light_version:
+                #if num_col_classifier==1:
+                    #prediction_textline_nopatch = self.do_prediction(False, img, model_textline)
+                    #prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
         else:
-            prediction_textline = self.do_prediction(patches, img, self.model_textline, marginal_of_patch_percent=0.2, n_batch_inference=3)
-            if num_col_classifier==1:
-                prediction_textline_nopatch = self.do_prediction(False, img, model_textline)
-                prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
+            prediction_textline = self.do_prediction(patches, img, self.model_textline, marginal_of_patch_percent=0.2, n_batch_inference=3,thresholding_for_artificial_class_in_light_version=thresholding_for_artificial_class_in_light_version)
+            #if not thresholding_for_artificial_class_in_light_version:
+                #if num_col_classifier==1:
+                    #prediction_textline_nopatch = self.do_prediction(False, img, model_textline)
+                    #prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
         
         textline_mask_tot_ea_art = (prediction_textline[:,:]==2)*1
         
         old_art = np.copy(textline_mask_tot_ea_art)
         
-        textline_mask_tot_ea_art = textline_mask_tot_ea_art.astype('uint8')
-        textline_mask_tot_ea_art = cv2.dilate(textline_mask_tot_ea_art, KERNEL, iterations=1)
-        
-        prediction_textline[:,:][textline_mask_tot_ea_art[:,:]==1]=2
+        if not thresholding_for_artificial_class_in_light_version:
+            textline_mask_tot_ea_art = textline_mask_tot_ea_art.astype('uint8')
+            textline_mask_tot_ea_art = cv2.dilate(textline_mask_tot_ea_art, KERNEL, iterations=1)
+            
+            prediction_textline[:,:][textline_mask_tot_ea_art[:,:]==1]=2
         
         textline_mask_tot_ea_lines = (prediction_textline[:,:]==1)*1
         textline_mask_tot_ea_lines = textline_mask_tot_ea_lines.astype('uint8')
-        textline_mask_tot_ea_lines = cv2.dilate(textline_mask_tot_ea_lines, KERNEL, iterations=1)
+        
+        if not thresholding_for_artificial_class_in_light_version:
+            textline_mask_tot_ea_lines = cv2.dilate(textline_mask_tot_ea_lines, KERNEL, iterations=1)
         
         prediction_textline[:,:][textline_mask_tot_ea_lines[:,:]==1]=1
         
-        prediction_textline[:,:][old_art[:,:]==1]=2
+        if not thresholding_for_artificial_class_in_light_version:
+            prediction_textline[:,:][old_art[:,:]==1]=2
         
         if not self.dir_in:
             prediction_textline_longshot = self.do_prediction(False, img, model_textline)
@@ -1959,7 +1982,7 @@ class Eynollah:
             img_w_new = 2300#3000
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
         else:
-            img_w_new = 3300#4000
+            img_w_new = 3000#4000
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
         img_resized = resize_image(img,img_h_new, img_w_new )
         
@@ -1968,7 +1991,7 @@ class Eynollah:
         #if (not self.input_binary) or self.full_layout:
         #if self.input_binary:
             #img_bin = np.copy(img_resized)
-        if (not self.input_binary and self.full_layout) or (not self.input_binary and num_col_classifier >= 3):
+        if (not self.input_binary and self.full_layout):# or (not self.input_binary and num_col_classifier >= 3):
             if not self.dir_in:
                 model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
                 prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
@@ -3794,15 +3817,146 @@ class Eynollah:
         return textline_contour
     def return_list_of_contours_with_desired_order(self, ls_cons, sorted_indexes):
         return [ls_cons[sorted_indexes[index]] for index in range(len(sorted_indexes))]
-        
+    
+    def scale_contours(self,all_found_textline_polygons):
+        for i in range(len(all_found_textline_polygons[0])):
+            con_ind = all_found_textline_polygons[0][i]
+            x_min = np.min( con_ind[:,0,0] )
+            y_min = np.min( con_ind[:,0,1] )
+            
+            x_max = np.max( con_ind[:,0,0] )
+            y_max = np.max( con_ind[:,0,1] )
+            
+            x_mean = np.mean( con_ind[:,0,0] )
+            y_mean = np.mean( con_ind[:,0,1] )
+            
+            arg_y_max = np.argmax( con_ind[:,0,1] )
+            arg_y_min = np.argmin( con_ind[:,0,1] )
+            
+            x_cor_y_max = con_ind[arg_y_max,0,0]
+            x_cor_y_min = con_ind[arg_y_min,0,0]
+            
+            m_con = (y_max - y_min) / float(x_cor_y_max - x_cor_y_min)
+            
+            con_scaled = con_ind*1
+            
+            con_scaled = con_scaled.astype(np.float)
+            
+            con_scaled[:,0,0] = con_scaled[:,0,0] - int(x_mean)
+            con_scaled[:,0,1] = con_scaled[:,0,1] - int(y_mean)
+            
 
+            if (x_max - x_min) > (y_max - y_min):
+            
+                if (y_max-y_min)<=15:
+                    con_scaled[:,0,1] = con_ind[:,0,1]*1.8
+                    
+                    y_max_scaled = np.max(con_scaled[:,0,1])
+                    y_min_scaled = np.min(con_scaled[:,0,1])
+                    
+                    y_max_expected = ( m_con*1.8*(x_cor_y_max-x_cor_y_min) + y_min_scaled )
+                elif (y_max-y_min)<=30 and (y_max-y_min)>15:
+                    con_scaled[:,0,1] = con_ind[:,0,1]*1.6
+                    y_max_scaled = np.max(con_scaled[:,0,1])
+                    y_min_scaled = np.min(con_scaled[:,0,1])
+                    
+                    y_max_expected = ( m_con*1.6*(x_cor_y_max-x_cor_y_min) + y_min_scaled )
+                elif (y_max-y_min)>30 and (y_max-y_min)<100:
+                    con_scaled[:,0,1] = con_ind[:,0,1]*1.35
+                    y_max_scaled = np.max(con_scaled[:,0,1])
+                    y_min_scaled = np.min(con_scaled[:,0,1])
+                    
+                    y_max_expected = ( m_con*1.35*(x_cor_y_max-x_cor_y_min) + y_min_scaled )
+                else:
+                    con_scaled[:,0,1] = con_ind[:,0,1]*1.2
+                    y_max_scaled = np.max(con_scaled[:,0,1])
+                    y_min_scaled = np.min(con_scaled[:,0,1])
+                    
+                    y_max_expected = ( m_con*1.2*(x_cor_y_max-x_cor_y_min) + y_min_scaled )
+                con_scaled[:,0,0] = con_ind[:,0,0]*1.03
+                
+
+                
+                
+                if y_max_expected<=y_max_scaled:
+                    con_scaled[:,0,1] = con_scaled[:,0,1] - y_min_scaled
+                    
+                    con_scaled[:,0,1] = con_scaled[:,0,1]*(y_max_expected - y_min_scaled)/ (y_max_scaled - y_min_scaled)
+                    con_scaled[:,0,1] = con_scaled[:,0,1] + y_min_scaled
+                
+            else:
+                
+                if (x_max-x_min)<=15:
+                    con_scaled[:,0,0] = con_ind[:,0,0]*1.8
+                elif (x_max-x_min)<=30 and (x_max-x_min)>15:
+                    con_scaled[:,0,0] = con_ind[:,0,0]*1.6
+                elif (x_max-x_min)>30 and (x_max-x_min)<100:
+                    con_scaled[:,0,0] = con_ind[:,0,0]*1.35
+                else:
+                    con_scaled[:,0,0] = con_ind[:,0,0]*1.2
+                con_scaled[:,0,1] = con_ind[:,0,1]*1.03
+                
+        
+            x_min_n = np.min( con_scaled[:,0,0] )
+            y_min_n = np.min( con_scaled[:,0,1] )
+            
+            x_mean_n = np.mean( con_scaled[:,0,0] )
+            y_mean_n = np.mean( con_scaled[:,0,1] )
+        
+            ##diff_x = (x_min_n - x_min)*1
+            ##diff_y = (y_min_n - y_min)*1
+            
+            diff_x = (x_mean_n - x_mean)*1
+            diff_y = (y_mean_n - y_mean)*1
+            
+            
+            con_scaled[:,0,0] = (con_scaled[:,0,0] - diff_x) 
+            con_scaled[:,0,1] = (con_scaled[:,0,1] - diff_y)
+            
+            x_max_n = np.max( con_scaled[:,0,0] )
+            y_max_n = np.max( con_scaled[:,0,1] )
+            
+            diff_disp_x  = (x_max_n - x_max) / 2.
+            diff_disp_y  = (y_max_n - y_max) / 2.
+            
+            x_vals = np.array( np.abs(con_scaled[:,0,0] - diff_disp_x) ).astype(np.int16)
+            y_vals = np.array( np.abs(con_scaled[:,0,1] - diff_disp_y) ).astype(np.int16)
+            all_found_textline_polygons[0][i][:,0,0] = x_vals[:]
+            all_found_textline_polygons[0][i][:,0,1] = y_vals[:]
+        return all_found_textline_polygons
+    
+    def scale_contours_new(self, textline_mask_tot_ea):
+        
+        cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(textline_mask_tot_ea)
+        all_found_textline_polygons1 = filter_contours_area_of_image(textline_mask_tot_ea, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
+    
+        
+        textline_mask_tot_ea_res = resize_image(textline_mask_tot_ea, int( textline_mask_tot_ea.shape[0]*1.6),  textline_mask_tot_ea.shape[1])
+        cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(textline_mask_tot_ea_res)
+        ##all_found_textline_polygons = filter_contours_area_of_image(textline_mask_tot_ea_res, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
+        all_found_textline_polygons = filter_contours_area_of_image(textline_mask_tot_ea_res, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
+        
+        for i in range(len(all_found_textline_polygons)):
+            
+            #x_mean_1 = np.mean( all_found_textline_polygons1[i][:,0,0] )
+            y_mean_1 = np.mean( all_found_textline_polygons1[i][:,0,1] )
+            
+            #x_mean = np.mean( all_found_textline_polygons[i][:,0,0] )
+            y_mean = np.mean( all_found_textline_polygons[i][:,0,1] )
+            
+            ydiff = y_mean - y_mean_1
+            
+            all_found_textline_polygons[i][:,0,1] = all_found_textline_polygons[i][:,0,1] - ydiff
+        return all_found_textline_polygons
+    
+    
     def run(self):
         """
         Get image and scales, then extract the page of scanned image
         """
         self.logger.debug("enter run")
         
-        skip_layout_ro = False#True
+        skip_layout_ro = True
 
         t0_tot = time.time()
 
@@ -3820,7 +3974,6 @@ class Eynollah:
             self.logger.info("Enhancing took %.1fs ", time.time() - t0)
             #print("text region early -1 in %.1fs", time.time() - t0)
             t1 = time.time()
-            
             if not skip_layout_ro:
                 if self.light_version:
                     text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin_light = self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
@@ -4032,6 +4185,7 @@ class Eynollah:
                         if self.textline_light:
                             slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea_org, image_page_rotated, boxes_text, slope_deskew)
                             slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea_org, image_page_rotated, boxes_marginals, slope_deskew)
+                            
                         else:
                             slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
                             slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
@@ -4212,10 +4366,17 @@ class Eynollah:
                 
                 page_coord, image_page, textline_mask_tot_ea, img_bin_light, cont_page = self.run_graphics_and_columns_without_layout(textline_mask_tot_ea, img_bin_light)
                 
+                
+                ##all_found_textline_polygons =self.scale_contours_new(textline_mask_tot_ea)
+                
                 cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(textline_mask_tot_ea)
                 all_found_textline_polygons = filter_contours_area_of_image(textline_mask_tot_ea, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
                 
                 all_found_textline_polygons=[ all_found_textline_polygons ]
+                
+                all_found_textline_polygons = self.scale_contours(all_found_textline_polygons)
+                
+                
                 order_text_new = [0]
                 slopes =[0]
                 id_of_texts_tot =['region_0001']
