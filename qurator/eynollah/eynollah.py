@@ -3821,23 +3821,51 @@ class Eynollah:
     def scale_contours(self,all_found_textline_polygons):
         for i in range(len(all_found_textline_polygons[0])):
             con_ind = all_found_textline_polygons[0][i]
-            x_min = np.min( con_ind[:,0,0] )
-            y_min = np.min( con_ind[:,0,1] )
             
-            x_max = np.max( con_ind[:,0,0] )
-            y_max = np.max( con_ind[:,0,1] )
+            con_ind = con_ind.astype(np.float)
+            x_differential = np.diff( con_ind[:,0,0])
+            y_differential = np.diff( con_ind[:,0,1])
             
-            x_mean = np.mean( con_ind[:,0,0] )
-            y_mean = np.mean( con_ind[:,0,1] )
+            
+            m_arr = y_differential / x_differential
+            
+            #print(x_differential, 'x_differential')
+            
+            #print(y_differential, 'y_differential')
+            
+            #print(m_arr)
+            
+            x_min = float(np.min( con_ind[:,0,0] ))
+            y_min = float(np.min( con_ind[:,0,1] ))
+            
+            x_max = float(np.max( con_ind[:,0,0] ))
+            y_max = float(np.max( con_ind[:,0,1] ))
+            
+            x_mean = float(np.mean( con_ind[:,0,0] ))
+            y_mean = float(np.mean( con_ind[:,0,1] ))
             
             arg_y_max = np.argmax( con_ind[:,0,1] )
             arg_y_min = np.argmin( con_ind[:,0,1] )
             
-            x_cor_y_max = con_ind[arg_y_max,0,0]
-            x_cor_y_min = con_ind[arg_y_min,0,0]
             
-            m_con = (y_max - y_min) / float(x_cor_y_max - x_cor_y_min)
+            arg_x_max = np.argmax( con_ind[:,0,0] )
+            arg_x_min = np.argmin( con_ind[:,0,0] )
             
+            x_cor_y_max = float(con_ind[arg_y_max,0,0])
+            x_cor_y_min = float(con_ind[arg_y_min,0,0])
+            
+            
+            y_cor_x_max = float(con_ind[arg_x_max,0,1])
+            y_cor_x_min = float(con_ind[arg_x_min,0,1])
+            
+            if (x_cor_y_max - x_cor_y_min) != 0:
+                m_con = (y_max - y_min) / (x_cor_y_max - x_cor_y_min)
+            else:
+                m_con= None
+            
+            
+            m_con_x = (x_max - x_min) / (y_cor_x_max - y_cor_x_min)
+            #print(m_con,m_con_x, 'm_con')
             con_scaled = con_ind*1
             
             con_scaled = con_scaled.astype(np.float)
@@ -3845,7 +3873,6 @@ class Eynollah:
             con_scaled[:,0,0] = con_scaled[:,0,0] - int(x_mean)
             con_scaled[:,0,1] = con_scaled[:,0,1] - int(y_mean)
             
-
             if (x_max - x_min) > (y_max - y_min):
             
                 if (y_max-y_min)<=15:
@@ -3877,7 +3904,7 @@ class Eynollah:
                 
 
                 
-                
+                #print(m_con, (x_cor_y_max-x_cor_y_min),y_min_scaled,  y_max_expected, y_max_scaled, "y_max_scaled")
                 if y_max_expected<=y_max_scaled:
                     con_scaled[:,0,1] = con_scaled[:,0,1] - y_min_scaled
                     
@@ -3885,16 +3912,47 @@ class Eynollah:
                     con_scaled[:,0,1] = con_scaled[:,0,1] + y_min_scaled
                 
             else:
-                
+                #print(x_max-x_min, m_con_x,'m_con_x')
                 if (x_max-x_min)<=15:
                     con_scaled[:,0,0] = con_ind[:,0,0]*1.8
+                    
+                    x_max_scaled = np.max(con_scaled[:,0,0])
+                    x_min_scaled = np.min(con_scaled[:,0,0])
+                    
+                    x_max_expected = ( m_con_x*1.8*(y_cor_x_max-y_cor_x_min) + x_min_scaled )
+                    
                 elif (x_max-x_min)<=30 and (x_max-x_min)>15:
                     con_scaled[:,0,0] = con_ind[:,0,0]*1.6
+                    
+                    x_max_scaled = np.max(con_scaled[:,0,0])
+                    x_min_scaled = np.min(con_scaled[:,0,0])
+                    
+                    x_max_expected = ( m_con_x*1.6*(y_cor_x_max-y_cor_x_min) + x_min_scaled )
+                    
                 elif (x_max-x_min)>30 and (x_max-x_min)<100:
                     con_scaled[:,0,0] = con_ind[:,0,0]*1.35
+                    
+                    x_max_scaled = np.max(con_scaled[:,0,0])
+                    x_min_scaled = np.min(con_scaled[:,0,0])
+                    
+                    x_max_expected = ( m_con_x*1.35*(y_cor_x_max-y_cor_x_min) + x_min_scaled )
+                    
                 else:
                     con_scaled[:,0,0] = con_ind[:,0,0]*1.2
+                    
+                    x_max_scaled = np.max(con_scaled[:,0,0])
+                    x_min_scaled = np.min(con_scaled[:,0,0])
+                    
+                    x_max_expected = ( m_con_x*1.2*(y_cor_x_max-y_cor_x_min) + x_min_scaled )
+                    
                 con_scaled[:,0,1] = con_ind[:,0,1]*1.03
+                
+                #print(x_max_expected, x_max_scaled, "x_max_scaled")
+                if x_max_expected<=x_max_scaled:
+                    con_scaled[:,0,0] = con_scaled[:,0,0] - x_min_scaled
+                    
+                    con_scaled[:,0,0] = con_scaled[:,0,0]*(x_max_expected - x_min_scaled)/ (x_max_scaled - x_min_scaled)
+                    con_scaled[:,0,0] = con_scaled[:,0,0] + x_min_scaled
                 
         
             x_min_n = np.min( con_scaled[:,0,0] )
