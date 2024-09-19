@@ -3013,10 +3013,11 @@ class Eynollah:
 
                 if self.plotter:
                     self.plotter.write_images_into_directory(polygons_of_images, image_page)
-                #plt.imshow(text_regions_p_1)
-                #plt.show()
 
-                self.writer.write_pagexml(pcgts)
+                if self.dir_in:
+                    self.writer.write_pagexml(pcgts)
+                else:
+                    return pcgts
 
             else:
                 img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
