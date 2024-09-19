@@ -1964,7 +1964,7 @@ class Eynollah:
         #print(num_col_classifier,'num_col_classifier')
         
         if num_col_classifier == 1:
-            img_w_new = 900#1000
+            img_w_new = 800#1000
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
             
         elif num_col_classifier == 2:
@@ -3818,196 +3818,132 @@ class Eynollah:
     def return_list_of_contours_with_desired_order(self, ls_cons, sorted_indexes):
         return [ls_cons[sorted_indexes[index]] for index in range(len(sorted_indexes))]
     
-    def scale_contours(self,all_found_textline_polygons):
+    def dilate_textlines(self,all_found_textline_polygons):
         for i in range(len(all_found_textline_polygons[0])):
             con_ind = all_found_textline_polygons[0][i]
             
             con_ind = con_ind.astype(np.float)
+            
             x_differential = np.diff( con_ind[:,0,0])
             y_differential = np.diff( con_ind[:,0,1])
-            
-            
-            m_arr = y_differential / x_differential
-            
-            #print(x_differential, 'x_differential')
-            
-            #print(y_differential, 'y_differential')
-            
-            #print(m_arr)
             
             x_min = float(np.min( con_ind[:,0,0] ))
             y_min = float(np.min( con_ind[:,0,1] ))
             
             x_max = float(np.max( con_ind[:,0,0] ))
             y_max = float(np.max( con_ind[:,0,1] ))
-            
-            x_mean = float(np.mean( con_ind[:,0,0] ))
-            y_mean = float(np.mean( con_ind[:,0,1] ))
-            
-            arg_y_max = np.argmax( con_ind[:,0,1] )
-            arg_y_min = np.argmin( con_ind[:,0,1] )
-            
-            
-            arg_x_max = np.argmax( con_ind[:,0,0] )
-            arg_x_min = np.argmin( con_ind[:,0,0] )
-            
-            x_cor_y_max = float(con_ind[arg_y_max,0,0])
-            x_cor_y_min = float(con_ind[arg_y_min,0,0])
-            
-            
-            y_cor_x_max = float(con_ind[arg_x_max,0,1])
-            y_cor_x_min = float(con_ind[arg_x_min,0,1])
-            
-            if (x_cor_y_max - x_cor_y_min) != 0:
-                m_con = (y_max - y_min) / (x_cor_y_max - x_cor_y_min)
-            else:
-                m_con= None
-            
-            
-            m_con_x = (x_max - x_min) / (y_cor_x_max - y_cor_x_min)
-            #print(m_con,m_con_x, 'm_con')
-            con_scaled = con_ind*1
-            
-            con_scaled = con_scaled.astype(np.float)
-            
-            con_scaled[:,0,0] = con_scaled[:,0,0] - int(x_mean)
-            con_scaled[:,0,1] = con_scaled[:,0,1] - int(y_mean)
-            
-            if (x_max - x_min) > (y_max - y_min):
-            
-                if (y_max-y_min)<=15:
-                    con_scaled[:,0,1] = con_ind[:,0,1]*1.8
-                    
-                    y_max_scaled = np.max(con_scaled[:,0,1])
-                    y_min_scaled = np.min(con_scaled[:,0,1])
-                    
-                    y_max_expected = ( m_con*1.8*(x_cor_y_max-x_cor_y_min) + y_min_scaled )
-                elif (y_max-y_min)<=30 and (y_max-y_min)>15:
-                    con_scaled[:,0,1] = con_ind[:,0,1]*1.6
-                    y_max_scaled = np.max(con_scaled[:,0,1])
-                    y_min_scaled = np.min(con_scaled[:,0,1])
-                    
-                    y_max_expected = ( m_con*1.6*(x_cor_y_max-x_cor_y_min) + y_min_scaled )
-                elif (y_max-y_min)>30 and (y_max-y_min)<100:
-                    con_scaled[:,0,1] = con_ind[:,0,1]*1.35
-                    y_max_scaled = np.max(con_scaled[:,0,1])
-                    y_min_scaled = np.min(con_scaled[:,0,1])
-                    
-                    y_max_expected = ( m_con*1.35*(x_cor_y_max-x_cor_y_min) + y_min_scaled )
-                else:
-                    con_scaled[:,0,1] = con_ind[:,0,1]*1.2
-                    y_max_scaled = np.max(con_scaled[:,0,1])
-                    y_min_scaled = np.min(con_scaled[:,0,1])
-                    
-                    y_max_expected = ( m_con*1.2*(x_cor_y_max-x_cor_y_min) + y_min_scaled )
-                con_scaled[:,0,0] = con_ind[:,0,0]*1.03
-                
 
+            
+            if (y_max - y_min) > (x_max - x_min) and (x_max - x_min)<70:
                 
-                #print(m_con, (x_cor_y_max-x_cor_y_min),y_min_scaled,  y_max_expected, y_max_scaled, "y_max_scaled")
-                if y_max_expected<=y_max_scaled:
-                    con_scaled[:,0,1] = con_scaled[:,0,1] - y_min_scaled
+                x_biger_than_x = np.abs(x_differential) > np.abs(y_differential)
+                
+                mult = x_biger_than_x*x_differential
+                
+                arg_min_mult = np.argmin(mult)
+                arg_max_mult = np.argmax(mult)
+                
+                if y_differential[0]==0:
+                    y_differential[0] = 0.1
+                
+                if y_differential[-1]==0:
+                    y_differential[-1]= 0.1
                     
-                    con_scaled[:,0,1] = con_scaled[:,0,1]*(y_max_expected - y_min_scaled)/ (y_max_scaled - y_min_scaled)
-                    con_scaled[:,0,1] = con_scaled[:,0,1] + y_min_scaled
+                    
+                    
+                y_differential = [y_differential[ind] if y_differential[ind]!=0 else (y_differential[ind-1] + y_differential[ind+1])/2. for ind in range(len(y_differential)) ]
                 
+                
+                if y_differential[0]==0.1:
+                    y_differential[0] = y_differential[1]
+                if y_differential[-1]==0.1:
+                    y_differential[-1] = y_differential[-2]
+                    
+                y_differential.append(y_differential[0])
+                
+                y_differential = [-1 if y_differential[ind]<0 else 1 for ind in range(len(y_differential))]
+                
+                y_differential = np.array(y_differential)
+                
+                
+                con_scaled = con_ind*1
+                
+                con_scaled[:,0, 0] = con_ind[:,0,0] - 8*y_differential
+                
+                con_scaled[arg_min_mult,0, 1] = con_ind[arg_min_mult,0,1] + 8
+                con_scaled[arg_min_mult+1,0, 1] = con_ind[arg_min_mult+1,0,1] + 8
+                
+                try:
+                    con_scaled[arg_min_mult-1,0, 1] = con_ind[arg_min_mult-1,0,1] + 5
+                    con_scaled[arg_min_mult+2,0, 1] = con_ind[arg_min_mult+2,0,1] + 5
+                except:
+                    pass
+                
+                con_scaled[arg_max_mult,0, 1] = con_ind[arg_max_mult,0,1] - 8
+                con_scaled[arg_max_mult+1,0, 1] = con_ind[arg_max_mult+1,0,1] - 8
+                
+                try:
+                    con_scaled[arg_max_mult-1,0, 1] = con_ind[arg_max_mult-1,0,1] - 5
+                    con_scaled[arg_max_mult+2,0, 1] = con_ind[arg_max_mult+2,0,1] - 5
+                except:
+                    pass
+            
+            
             else:
-                #print(x_max-x_min, m_con_x,'m_con_x')
-                if (x_max-x_min)<=15:
-                    con_scaled[:,0,0] = con_ind[:,0,0]*1.8
-                    
-                    x_max_scaled = np.max(con_scaled[:,0,0])
-                    x_min_scaled = np.min(con_scaled[:,0,0])
-                    
-                    x_max_expected = ( m_con_x*1.8*(y_cor_x_max-y_cor_x_min) + x_min_scaled )
-                    
-                elif (x_max-x_min)<=30 and (x_max-x_min)>15:
-                    con_scaled[:,0,0] = con_ind[:,0,0]*1.6
-                    
-                    x_max_scaled = np.max(con_scaled[:,0,0])
-                    x_min_scaled = np.min(con_scaled[:,0,0])
-                    
-                    x_max_expected = ( m_con_x*1.6*(y_cor_x_max-y_cor_x_min) + x_min_scaled )
-                    
-                elif (x_max-x_min)>30 and (x_max-x_min)<100:
-                    con_scaled[:,0,0] = con_ind[:,0,0]*1.35
-                    
-                    x_max_scaled = np.max(con_scaled[:,0,0])
-                    x_min_scaled = np.min(con_scaled[:,0,0])
-                    
-                    x_max_expected = ( m_con_x*1.35*(y_cor_x_max-y_cor_x_min) + x_min_scaled )
-                    
-                else:
-                    con_scaled[:,0,0] = con_ind[:,0,0]*1.2
-                    
-                    x_max_scaled = np.max(con_scaled[:,0,0])
-                    x_min_scaled = np.min(con_scaled[:,0,0])
-                    
-                    x_max_expected = ( m_con_x*1.2*(y_cor_x_max-y_cor_x_min) + x_min_scaled )
-                    
-                con_scaled[:,0,1] = con_ind[:,0,1]*1.03
+            
+                y_biger_than_x = np.abs(y_differential) > np.abs(x_differential)
                 
-                #print(x_max_expected, x_max_scaled, "x_max_scaled")
-                if x_max_expected<=x_max_scaled:
-                    con_scaled[:,0,0] = con_scaled[:,0,0] - x_min_scaled
-                    
-                    con_scaled[:,0,0] = con_scaled[:,0,0]*(x_max_expected - x_min_scaled)/ (x_max_scaled - x_min_scaled)
-                    con_scaled[:,0,0] = con_scaled[:,0,0] + x_min_scaled
+                mult = y_biger_than_x*y_differential
                 
-        
-            x_min_n = np.min( con_scaled[:,0,0] )
-            y_min_n = np.min( con_scaled[:,0,1] )
+                arg_min_mult = np.argmin(mult)
+                arg_max_mult = np.argmax(mult)
+                
+                if x_differential[0]==0:
+                    x_differential[0] = 0.1
+                
+                if x_differential[-1]==0:
+                    x_differential[-1]= 0.1
+                    
+                    
+                    
+                x_differential = [x_differential[ind] if x_differential[ind]!=0 else (x_differential[ind-1] + x_differential[ind+1])/2. for ind in range(len(x_differential)) ]
+                
+                
+                if x_differential[0]==0.1:
+                    x_differential[0] = x_differential[1]
+                if x_differential[-1]==0.1:
+                    x_differential[-1] = x_differential[-2]
+                    
+                x_differential.append(x_differential[0])
+                
+                x_differential = [-1 if x_differential[ind]<0 else 1 for ind in range(len(x_differential))]
+                
+                x_differential = np.array(x_differential)
+                
+                con_scaled = con_ind*1
+                
+                con_scaled[:,0, 1] = con_ind[:,0,1] + 8*x_differential
+                
+                con_scaled[arg_min_mult,0, 0] = con_ind[arg_min_mult,0,0] + 8
+                con_scaled[arg_min_mult+1,0, 0] = con_ind[arg_min_mult+1,0,0] + 8
+                
+                con_scaled[arg_min_mult-1,0, 0] = con_ind[arg_min_mult-1,0,0] + 5
+                con_scaled[arg_min_mult+2,0, 0] = con_ind[arg_min_mult+2,0,0] + 5
+                
+                con_scaled[arg_max_mult,0, 0] = con_ind[arg_max_mult,0,0] - 8
+                con_scaled[arg_max_mult+1,0, 0] = con_ind[arg_max_mult+1,0,0] - 8
+                
+                con_scaled[arg_max_mult-1,0, 0] = con_ind[arg_max_mult-1,0,0] - 5
+                con_scaled[arg_max_mult+2,0, 0] = con_ind[arg_max_mult+2,0,0] - 5
+                
             
-            x_mean_n = np.mean( con_scaled[:,0,0] )
-            y_mean_n = np.mean( con_scaled[:,0,1] )
-        
-            ##diff_x = (x_min_n - x_min)*1
-            ##diff_y = (y_min_n - y_min)*1
+            con_scaled[:,0, 1][con_scaled[:,0, 1]<0] = 0
+            con_scaled[:,0, 0][con_scaled[:,0, 0]<0] = 0
             
-            diff_x = (x_mean_n - x_mean)*1
-            diff_y = (y_mean_n - y_mean)*1
+            all_found_textline_polygons[0][i][:,0,1] = con_scaled[:,0, 1]
+            all_found_textline_polygons[0][i][:,0,0] = con_scaled[:,0, 0]
             
-            
-            con_scaled[:,0,0] = (con_scaled[:,0,0] - diff_x) 
-            con_scaled[:,0,1] = (con_scaled[:,0,1] - diff_y)
-            
-            x_max_n = np.max( con_scaled[:,0,0] )
-            y_max_n = np.max( con_scaled[:,0,1] )
-            
-            diff_disp_x  = (x_max_n - x_max) / 2.
-            diff_disp_y  = (y_max_n - y_max) / 2.
-            
-            x_vals = np.array( np.abs(con_scaled[:,0,0] - diff_disp_x) ).astype(np.int16)
-            y_vals = np.array( np.abs(con_scaled[:,0,1] - diff_disp_y) ).astype(np.int16)
-            all_found_textline_polygons[0][i][:,0,0] = x_vals[:]
-            all_found_textline_polygons[0][i][:,0,1] = y_vals[:]
         return all_found_textline_polygons
-    
-    def scale_contours_new(self, textline_mask_tot_ea):
-        
-        cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(textline_mask_tot_ea)
-        all_found_textline_polygons1 = filter_contours_area_of_image(textline_mask_tot_ea, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
-    
-        
-        textline_mask_tot_ea_res = resize_image(textline_mask_tot_ea, int( textline_mask_tot_ea.shape[0]*1.6),  textline_mask_tot_ea.shape[1])
-        cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(textline_mask_tot_ea_res)
-        ##all_found_textline_polygons = filter_contours_area_of_image(textline_mask_tot_ea_res, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
-        all_found_textline_polygons = filter_contours_area_of_image(textline_mask_tot_ea_res, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
-        
-        for i in range(len(all_found_textline_polygons)):
-            
-            #x_mean_1 = np.mean( all_found_textline_polygons1[i][:,0,0] )
-            y_mean_1 = np.mean( all_found_textline_polygons1[i][:,0,1] )
-            
-            #x_mean = np.mean( all_found_textline_polygons[i][:,0,0] )
-            y_mean = np.mean( all_found_textline_polygons[i][:,0,1] )
-            
-            ydiff = y_mean - y_mean_1
-            
-            all_found_textline_polygons[i][:,0,1] = all_found_textline_polygons[i][:,0,1] - ydiff
-        return all_found_textline_polygons
-    
-    
     def run(self):
         """
         Get image and scales, then extract the page of scanned image
@@ -4432,7 +4368,7 @@ class Eynollah:
                 
                 all_found_textline_polygons=[ all_found_textline_polygons ]
                 
-                all_found_textline_polygons = self.scale_contours(all_found_textline_polygons)
+                all_found_textline_polygons = self.dilate_textlines(all_found_textline_polygons)
                 
                 
                 order_text_new = [0]
