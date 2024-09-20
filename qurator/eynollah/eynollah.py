@@ -260,7 +260,7 @@ class Eynollah:
         if self.textline_light:
             self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"#"/modelens_textline_1_4_16092024"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_1_3_4_20240915"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_9_12_13_14_15"#"/eynollah-textline_light_20210425"#
         else:
-            self.model_textline_dir = dir_models + "/eynollah-textline_20210425"
+            self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"#"/eynollah-textline_20210425"
         if self.ocr:
             self.model_ocr_dir = dir_models + "/checkpoint-166692_printed_trocr"
             
@@ -1916,11 +1916,7 @@ class Eynollah:
             prediction_textline_longshot = self.do_prediction(False, img, self.model_textline)
         prediction_textline_longshot_true_size = resize_image(prediction_textline_longshot, img_h, img_w)
         
-
-        if self.textline_light:
-            return (prediction_textline[:, :, 0]==1)*1, (prediction_textline_longshot_true_size[:, :, 0]==1)*1
-        else:
-            return prediction_textline[:, :, 0], prediction_textline_longshot_true_size[:, :, 0]
+        return ((prediction_textline[:, :, 0]==1)*1).astype('uint8'), ((prediction_textline_longshot_true_size[:, :, 0]==1)*1).astype('uint8')
 
 
     def do_work_of_slopes(self, q, poly, box_sub, boxes_per_process, textline_mask_tot, contours_per_process):
@@ -1996,7 +1992,7 @@ class Eynollah:
         #if (not self.input_binary) or self.full_layout:
         #if self.input_binary:
             #img_bin = np.copy(img_resized)
-        if (not self.input_binary and self.full_layout):# or (not self.input_binary and num_col_classifier >= 3):
+        if (not self.input_binary and self.full_layout) or (not self.input_binary and num_col_classifier >= 3):
             if not self.dir_in:
                 model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
                 prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
@@ -4066,8 +4062,35 @@ class Eynollah:
                 t1 = time.time()
                 #plt.imshow(table_prediction)
                 #plt.show()
-
+                if self.light_version and num_col_classifier in (1,2):
+                    org_h_l_m = textline_mask_tot_ea.shape[0]
+                    org_w_l_m = textline_mask_tot_ea.shape[1]
+                    if num_col_classifier == 1:
+                        img_w_new = 2000
+                        img_h_new = int(textline_mask_tot_ea.shape[0] / float(textline_mask_tot_ea.shape[1]) * img_w_new)
+                        
+                    elif num_col_classifier == 2:
+                        img_w_new = 2400
+                        img_h_new = int(textline_mask_tot_ea.shape[0] / float(textline_mask_tot_ea.shape[1]) * img_w_new)
+                        
+                    image_page = resize_image(image_page,img_h_new, img_w_new )
+                    textline_mask_tot_ea = resize_image(textline_mask_tot_ea,img_h_new, img_w_new )
+                    mask_images = resize_image(mask_images,img_h_new, img_w_new )
+                    mask_lines = resize_image(mask_lines,img_h_new, img_w_new )
+                    text_regions_p_1 = resize_image(text_regions_p_1,img_h_new, img_w_new )
+                    table_prediction = resize_image(table_prediction,img_h_new, img_w_new )
+                    
                 textline_mask_tot, text_regions_p, image_page_rotated = self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines, num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
+                
+                if self.light_version and num_col_classifier in (1,2):
+                    image_page = resize_image(image_page,org_h_l_m, org_w_l_m )
+                    textline_mask_tot_ea = resize_image(textline_mask_tot_ea,org_h_l_m, org_w_l_m )
+                    text_regions_p = resize_image(text_regions_p,org_h_l_m, org_w_l_m )
+                    textline_mask_tot = resize_image(textline_mask_tot,org_h_l_m, org_w_l_m )
+                    text_regions_p_1 = resize_image(text_regions_p_1,org_h_l_m, org_w_l_m )
+                    table_prediction = resize_image(table_prediction,org_h_l_m, org_w_l_m )
+                    image_page_rotated = resize_image(image_page_rotated,org_h_l_m, org_w_l_m )
+                    
                 self.logger.info("detection of marginals took %.1fs", time.time() - t1)
                 #print("text region early 2 marginal in %.1fs", time.time() - t0)
                 t1 = time.time()
@@ -4222,18 +4245,20 @@ class Eynollah:
                             all_found_textline_polygons = self.dilate_textlines(all_found_textline_polygons)
                             
                         else:
+                            textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
                             slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
                             slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
                     else:
+                        textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
                         slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
                         slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
 
                 else:
                     
                     scale_param = 1
-                    all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_curved(txt_con_org, contours_only_text_parent, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_text, text_only, num_col_classifier, scale_param, slope_deskew)
+                    all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_curved(txt_con_org, contours_only_text_parent, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=2), image_page_rotated, boxes_text, text_only, num_col_classifier, scale_param, slope_deskew)
                     all_found_textline_polygons = small_textlines_to_parent_adherence2(all_found_textline_polygons, textline_mask_tot_ea, num_col_classifier)
-                    all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
+                    all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new_curved(polygons_of_marginals, polygons_of_marginals, cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=2), image_page_rotated, boxes_marginals, text_only, num_col_classifier, scale_param, slope_deskew)
                     all_found_textline_polygons_marginals = small_textlines_to_parent_adherence2(all_found_textline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
                 #print("text region early 6 in %.1fs", time.time() - t0)
                 if self.full_layout:
