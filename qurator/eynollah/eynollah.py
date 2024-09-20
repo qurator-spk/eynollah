@@ -180,6 +180,7 @@ class Eynollah:
         do_ocr=False,
         num_col_upper=None,
         num_col_lower=None,
+        skip_layout_and_reading_order = False,
         override_dpi=None,
         logger=None,
         pcgts=None,
@@ -213,6 +214,7 @@ class Eynollah:
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
         self.ignore_page_extraction = ignore_page_extraction
+        self.skip_layout_and_reading_order = skip_layout_and_reading_order
         self.ocr = do_ocr
         if num_col_upper:
             self.num_col_upper = int(num_col_upper)
@@ -1951,7 +1953,7 @@ class Eynollah:
         q.put(slopes_sub)
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new)
-    def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier, skip_layout_ro=False):
+    def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier, skip_layout_and_reading_order=False):
         self.logger.debug("enter get_regions_light_v")
         t_in = time.time()
         erosion_hurts = False
@@ -2019,7 +2021,7 @@ class Eynollah:
         
         textline_mask_tot_ea = resize_image(textline_mask_tot_ea,img_height_h, img_width_h )
         
-        if not skip_layout_ro:
+        if not skip_layout_and_reading_order:
             #print("inside 2 ", time.time()-t_in)
             
             #print(img_resized.shape, num_col_classifier, "num_col_classifier")
@@ -3818,6 +3820,30 @@ class Eynollah:
     def return_list_of_contours_with_desired_order(self, ls_cons, sorted_indexes):
         return [ls_cons[sorted_indexes[index]] for index in range(len(sorted_indexes))]
     
+    def return_it_in_two_groups(self,x_differential):
+        split = [ind if x_differential[ind]!=x_differential[ind+1] else -1 for ind in range(len(x_differential)-1)]
+
+        split_masked = list( np.array(split[:])[np.array(split[:])!=-1] )
+
+        if 0 not in split_masked:
+            split_masked.insert(0, -1)
+
+        split_masked.append(len(x_differential)-1)
+
+        split_masked = np.array(split_masked) +1
+
+        sums = [np.sum(x_differential[split_masked[ind]:split_masked[ind+1]]) for ind in range(len(split_masked)-1)]
+
+        indexes_to_bec_changed = [ind if ( np.abs(sums[ind-1]) > np.abs(sums[ind]) and  np.abs(sums[ind+1]) > np.abs(sums[ind])) else -1 for ind in range(1,len(sums)-1)  ]
+
+        indexes_to_bec_changed_filtered = np.array(indexes_to_bec_changed)[np.array(indexes_to_bec_changed)!=-1]
+
+        x_differential_new = np.copy(x_differential)
+        for i in indexes_to_bec_changed_filtered:
+            x_differential_new[split_masked[i]:split_masked[i+1]] = -1*np.array(x_differential)[split_masked[i]:split_masked[i+1]]
+            
+        return x_differential_new
+    
     def dilate_textlines(self,all_found_textline_polygons):
         for i in range(len(all_found_textline_polygons[0])):
             con_ind = all_found_textline_polygons[0][i]
@@ -3863,6 +3889,8 @@ class Eynollah:
                 
                 y_differential = [-1 if y_differential[ind]<0 else 1 for ind in range(len(y_differential))]
                 
+                y_differential = self.return_it_in_two_groups(y_differential)
+                
                 y_differential = np.array(y_differential)
                 
                 
@@ -3890,7 +3918,6 @@ class Eynollah:
             
             
             else:
-            
                 y_biger_than_x = np.abs(y_differential) > np.abs(x_differential)
                 
                 mult = y_biger_than_x*y_differential
@@ -3918,7 +3945,9 @@ class Eynollah:
                 
                 x_differential = [-1 if x_differential[ind]<0 else 1 for ind in range(len(x_differential))]
                 
+                x_differential = self.return_it_in_two_groups(x_differential)
                 x_differential = np.array(x_differential)
+                
                 
                 con_scaled = con_ind*1
                 
@@ -3949,8 +3978,6 @@ class Eynollah:
         Get image and scales, then extract the page of scanned image
         """
         self.logger.debug("enter run")
-        
-        skip_layout_ro = True
 
         t0_tot = time.time()
 
@@ -3968,7 +3995,7 @@ class Eynollah:
             self.logger.info("Enhancing took %.1fs ", time.time() - t0)
             #print("text region early -1 in %.1fs", time.time() - t0)
             t1 = time.time()
-            if not skip_layout_ro:
+            if not self.skip_layout_and_reading_order:
                 if self.light_version:
                     text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin_light = self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
                     #print("text region early -2 in %.1fs", time.time() - t0)
@@ -4356,7 +4383,7 @@ class Eynollah:
                         return pcgts
                 #print("text region early 7 in %.1fs", time.time() - t0)
             else:
-                _ ,_, _, textline_mask_tot_ea, img_bin_light = self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier, skip_layout_ro=skip_layout_ro)
+                _ ,_, _, textline_mask_tot_ea, img_bin_light = self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier, skip_layout_and_reading_order=self.skip_layout_and_reading_order)
                 
                 page_coord, image_page, textline_mask_tot_ea, img_bin_light, cont_page = self.run_graphics_and_columns_without_layout(textline_mask_tot_ea, img_bin_light)
                 
