@@ -1862,7 +1862,10 @@ class Eynollah:
 
     def textline_contours(self, img, patches, scaler_h, scaler_w, num_col_classifier=None):
         self.logger.debug('enter textline_contours')
-        thresholding_for_artificial_class_in_light_version = True#False
+        if self.textline_light:
+            thresholding_for_artificial_class_in_light_version = True#False
+        else:
+            thresholding_for_artificial_class_in_light_version = False
         if not self.dir_in:
             model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir if patches else self.model_textline_dir_np)
         #img = img.astype(np.uint8)
@@ -2016,7 +2019,7 @@ class Eynollah:
         #print("inside 1 ", time.time()-t_in)
         
         ###textline_mask_tot_ea = self.run_textline(img_bin)
-        textline_mask_tot_ea = self.run_textline(img_bin, num_col_classifier)
+        textline_mask_tot_ea = self.run_textline(img_resized, num_col_classifier)
         
         
         textline_mask_tot_ea = resize_image(textline_mask_tot_ea,img_height_h, img_width_h )
@@ -2057,7 +2060,8 @@ class Eynollah:
             
             mask_texts_only = mask_texts_only.astype('uint8')
             
-            mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=2)
+            #mask_texts_only = cv2.erode(mask_texts_only, KERNEL, iterations=1)
+            #mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=1)
             
             mask_images_only=(prediction_regions_org[:,:] ==2)*1
             
@@ -2096,6 +2100,7 @@ class Eynollah:
             #sys.exit()
             
             polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
+            
             
             polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
             
@@ -3845,132 +3850,139 @@ class Eynollah:
         return x_differential_new
     
     def dilate_textlines(self,all_found_textline_polygons):
-        for i in range(len(all_found_textline_polygons[0])):
-            con_ind = all_found_textline_polygons[0][i]
-            
-            con_ind = con_ind.astype(np.float)
-            
-            x_differential = np.diff( con_ind[:,0,0])
-            y_differential = np.diff( con_ind[:,0,1])
-            
-            x_min = float(np.min( con_ind[:,0,0] ))
-            y_min = float(np.min( con_ind[:,0,1] ))
-            
-            x_max = float(np.max( con_ind[:,0,0] ))
-            y_max = float(np.max( con_ind[:,0,1] ))
+        for j in range(len(all_found_textline_polygons)):
+            for i in range(len(all_found_textline_polygons[j])):
+                con_ind = all_found_textline_polygons[j][i]
+                
+                con_ind = con_ind.astype(np.float)
+                
+                x_differential = np.diff( con_ind[:,0,0])
+                y_differential = np.diff( con_ind[:,0,1])
+                
+                x_min = float(np.min( con_ind[:,0,0] ))
+                y_min = float(np.min( con_ind[:,0,1] ))
+                
+                x_max = float(np.max( con_ind[:,0,0] ))
+                y_max = float(np.max( con_ind[:,0,1] ))
 
-            
-            if (y_max - y_min) > (x_max - x_min) and (x_max - x_min)<70:
                 
-                x_biger_than_x = np.abs(x_differential) > np.abs(y_differential)
-                
-                mult = x_biger_than_x*x_differential
-                
-                arg_min_mult = np.argmin(mult)
-                arg_max_mult = np.argmax(mult)
-                
-                if y_differential[0]==0:
-                    y_differential[0] = 0.1
-                
-                if y_differential[-1]==0:
-                    y_differential[-1]= 0.1
+                if (y_max - y_min) > (x_max - x_min) and (x_max - x_min)<70:
+                    
+                    x_biger_than_x = np.abs(x_differential) > np.abs(y_differential)
+                    
+                    mult = x_biger_than_x*x_differential
+                    
+                    arg_min_mult = np.argmin(mult)
+                    arg_max_mult = np.argmax(mult)
+                    
+                    if y_differential[0]==0:
+                        y_differential[0] = 0.1
+                    
+                    if y_differential[-1]==0:
+                        y_differential[-1]= 0.1
+                        
+                        
+                        
+                    y_differential = [y_differential[ind] if y_differential[ind]!=0 else (y_differential[ind-1] + y_differential[ind+1])/2. for ind in range(len(y_differential)) ]
                     
                     
+                    if y_differential[0]==0.1:
+                        y_differential[0] = y_differential[1]
+                    if y_differential[-1]==0.1:
+                        y_differential[-1] = y_differential[-2]
+                        
+                    y_differential.append(y_differential[0])
                     
-                y_differential = [y_differential[ind] if y_differential[ind]!=0 else (y_differential[ind-1] + y_differential[ind+1])/2. for ind in range(len(y_differential)) ]
-                
-                
-                if y_differential[0]==0.1:
-                    y_differential[0] = y_differential[1]
-                if y_differential[-1]==0.1:
-                    y_differential[-1] = y_differential[-2]
+                    y_differential = [-1 if y_differential[ind]<0 else 1 for ind in range(len(y_differential))]
                     
-                y_differential.append(y_differential[0])
-                
-                y_differential = [-1 if y_differential[ind]<0 else 1 for ind in range(len(y_differential))]
-                
-                y_differential = self.return_it_in_two_groups(y_differential)
-                
-                y_differential = np.array(y_differential)
-                
-                
-                con_scaled = con_ind*1
-                
-                con_scaled[:,0, 0] = con_ind[:,0,0] - 8*y_differential
-                
-                con_scaled[arg_min_mult,0, 1] = con_ind[arg_min_mult,0,1] + 8
-                con_scaled[arg_min_mult+1,0, 1] = con_ind[arg_min_mult+1,0,1] + 8
-                
-                try:
-                    con_scaled[arg_min_mult-1,0, 1] = con_ind[arg_min_mult-1,0,1] + 5
-                    con_scaled[arg_min_mult+2,0, 1] = con_ind[arg_min_mult+2,0,1] + 5
-                except:
-                    pass
-                
-                con_scaled[arg_max_mult,0, 1] = con_ind[arg_max_mult,0,1] - 8
-                con_scaled[arg_max_mult+1,0, 1] = con_ind[arg_max_mult+1,0,1] - 8
-                
-                try:
-                    con_scaled[arg_max_mult-1,0, 1] = con_ind[arg_max_mult-1,0,1] - 5
-                    con_scaled[arg_max_mult+2,0, 1] = con_ind[arg_max_mult+2,0,1] - 5
-                except:
-                    pass
-            
-            
-            else:
-                y_biger_than_x = np.abs(y_differential) > np.abs(x_differential)
-                
-                mult = y_biger_than_x*y_differential
-                
-                arg_min_mult = np.argmin(mult)
-                arg_max_mult = np.argmax(mult)
-                
-                if x_differential[0]==0:
-                    x_differential[0] = 0.1
-                
-                if x_differential[-1]==0:
-                    x_differential[-1]= 0.1
+                    y_differential = self.return_it_in_two_groups(y_differential)
+                    
+                    y_differential = np.array(y_differential)
                     
                     
+                    con_scaled = con_ind*1
                     
-                x_differential = [x_differential[ind] if x_differential[ind]!=0 else (x_differential[ind-1] + x_differential[ind+1])/2. for ind in range(len(x_differential)) ]
-                
-                
-                if x_differential[0]==0.1:
-                    x_differential[0] = x_differential[1]
-                if x_differential[-1]==0.1:
-                    x_differential[-1] = x_differential[-2]
+                    con_scaled[:,0, 0] = con_ind[:,0,0] - 8*y_differential
                     
-                x_differential.append(x_differential[0])
+                    con_scaled[arg_min_mult,0, 1] = con_ind[arg_min_mult,0,1] + 8
+                    con_scaled[arg_min_mult+1,0, 1] = con_ind[arg_min_mult+1,0,1] + 8
+                    
+                    try:
+                        con_scaled[arg_min_mult-1,0, 1] = con_ind[arg_min_mult-1,0,1] + 5
+                        con_scaled[arg_min_mult+2,0, 1] = con_ind[arg_min_mult+2,0,1] + 5
+                    except:
+                        pass
+                    
+                    con_scaled[arg_max_mult,0, 1] = con_ind[arg_max_mult,0,1] - 8
+                    con_scaled[arg_max_mult+1,0, 1] = con_ind[arg_max_mult+1,0,1] - 8
+                    
+                    try:
+                        con_scaled[arg_max_mult-1,0, 1] = con_ind[arg_max_mult-1,0,1] - 5
+                        con_scaled[arg_max_mult+2,0, 1] = con_ind[arg_max_mult+2,0,1] - 5
+                    except:
+                        pass
                 
-                x_differential = [-1 if x_differential[ind]<0 else 1 for ind in range(len(x_differential))]
                 
-                x_differential = self.return_it_in_two_groups(x_differential)
-                x_differential = np.array(x_differential)
+                else:
+                    y_biger_than_x = np.abs(y_differential) > np.abs(x_differential)
+                    
+                    mult = y_biger_than_x*y_differential
+                    
+                    arg_min_mult = np.argmin(mult)
+                    arg_max_mult = np.argmax(mult)
+                    
+                    if x_differential[0]==0:
+                        x_differential[0] = 0.1
+                    
+                    if x_differential[-1]==0:
+                        x_differential[-1]= 0.1
+                        
+                        
+                        
+                    x_differential = [x_differential[ind] if x_differential[ind]!=0 else (x_differential[ind-1] + x_differential[ind+1])/2. for ind in range(len(x_differential)) ]
+                    
+                    
+                    if x_differential[0]==0.1:
+                        x_differential[0] = x_differential[1]
+                    if x_differential[-1]==0.1:
+                        x_differential[-1] = x_differential[-2]
+                        
+                    x_differential.append(x_differential[0])
+                    
+                    x_differential = [-1 if x_differential[ind]<0 else 1 for ind in range(len(x_differential))]
+                    
+                    x_differential = self.return_it_in_two_groups(x_differential)
+                    x_differential = np.array(x_differential)
+                    
+                    
+                    con_scaled = con_ind*1
+                    
+                    con_scaled[:,0, 1] = con_ind[:,0,1] + 8*x_differential
+                    
+                    con_scaled[arg_min_mult,0, 0] = con_ind[arg_min_mult,0,0] + 8
+                    con_scaled[arg_min_mult+1,0, 0] = con_ind[arg_min_mult+1,0,0] + 8
+                    
+                    try:
+                        con_scaled[arg_min_mult-1,0, 0] = con_ind[arg_min_mult-1,0,0] + 5
+                        con_scaled[arg_min_mult+2,0, 0] = con_ind[arg_min_mult+2,0,0] + 5
+                    except:
+                        pass
+                    
+                    con_scaled[arg_max_mult,0, 0] = con_ind[arg_max_mult,0,0] - 8
+                    con_scaled[arg_max_mult+1,0, 0] = con_ind[arg_max_mult+1,0,0] - 8
+                    
+                    try:
+                        con_scaled[arg_max_mult-1,0, 0] = con_ind[arg_max_mult-1,0,0] - 5
+                        con_scaled[arg_max_mult+2,0, 0] = con_ind[arg_max_mult+2,0,0] - 5
+                    except:
+                        pass
+                    
                 
+                con_scaled[:,0, 1][con_scaled[:,0, 1]<0] = 0
+                con_scaled[:,0, 0][con_scaled[:,0, 0]<0] = 0
                 
-                con_scaled = con_ind*1
-                
-                con_scaled[:,0, 1] = con_ind[:,0,1] + 8*x_differential
-                
-                con_scaled[arg_min_mult,0, 0] = con_ind[arg_min_mult,0,0] + 8
-                con_scaled[arg_min_mult+1,0, 0] = con_ind[arg_min_mult+1,0,0] + 8
-                
-                con_scaled[arg_min_mult-1,0, 0] = con_ind[arg_min_mult-1,0,0] + 5
-                con_scaled[arg_min_mult+2,0, 0] = con_ind[arg_min_mult+2,0,0] + 5
-                
-                con_scaled[arg_max_mult,0, 0] = con_ind[arg_max_mult,0,0] - 8
-                con_scaled[arg_max_mult+1,0, 0] = con_ind[arg_max_mult+1,0,0] - 8
-                
-                con_scaled[arg_max_mult-1,0, 0] = con_ind[arg_max_mult-1,0,0] - 5
-                con_scaled[arg_max_mult+2,0, 0] = con_ind[arg_max_mult+2,0,0] - 5
-                
-            
-            con_scaled[:,0, 1][con_scaled[:,0, 1]<0] = 0
-            con_scaled[:,0, 0][con_scaled[:,0, 0]<0] = 0
-            
-            all_found_textline_polygons[0][i][:,0,1] = con_scaled[:,0, 1]
-            all_found_textline_polygons[0][i][:,0,0] = con_scaled[:,0, 0]
+                all_found_textline_polygons[j][i][:,0,1] = con_scaled[:,0, 1]
+                all_found_textline_polygons[j][i][:,0,0] = con_scaled[:,0, 0]
             
         return all_found_textline_polygons
     def run(self):
@@ -4206,6 +4218,8 @@ class Eynollah:
                         if self.textline_light:
                             slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea_org, image_page_rotated, boxes_text, slope_deskew)
                             slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea_org, image_page_rotated, boxes_marginals, slope_deskew)
+                            
+                            all_found_textline_polygons = self.dilate_textlines(all_found_textline_polygons)
                             
                         else:
                             slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
