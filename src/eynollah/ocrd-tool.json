@@ -52,10 +52,10 @@
       },
       "resources": [
 	{
-	  "description": "models for eynollah (TensorFlow format)",
-	  "url": "https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz",
+	  "description": "models for eynollah (TensorFlow SavedModel format)",
+	  "url": "https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz",
 	  "name": "default",
-	  "size": 1761991295,
+	  "size": 1894627041,
 	  "type": "archive",
 	  "path_in_archive": "models_eynollah"
 	}
