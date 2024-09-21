@@ -37,9 +37,7 @@ from tensorflow.keras.models import load_model
 sys.stderr = stderr
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
-from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter1d
 from tensorflow.python.keras.backend import set_session
 from tensorflow.keras import layers
 
@@ -2056,8 +2054,8 @@ class Eynollah:
             
             mask_texts_only = mask_texts_only.astype('uint8')
             
-            #mask_texts_only = cv2.erode(mask_texts_only, KERNEL, iterations=1)
-            #mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=1)
+            mask_texts_only = cv2.erode(mask_texts_only, KERNEL, iterations=1)
+            mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=1)
             
             mask_images_only=(prediction_regions_org[:,:] ==2)*1
             
@@ -2096,6 +2094,8 @@ class Eynollah:
             #sys.exit()
             
             polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
+            
+            ##polygons_of_only_texts = self.dilate_textregions_contours(polygons_of_only_texts)
             
             
             polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
@@ -3845,6 +3845,79 @@ class Eynollah:
             
         return x_differential_new
     
+    def dilate_textregions_contours(self,all_found_textline_polygons):
+        for j in range(len(all_found_textline_polygons)):
+            
+            con_ind = all_found_textline_polygons[j]
+            
+            con_ind = con_ind.astype(np.float)
+            
+            x_differential = np.diff( con_ind[:,0,0])
+            y_differential = np.diff( con_ind[:,0,1])
+            
+            x_differential = gaussian_filter1d(x_differential, 3)
+            y_differential = gaussian_filter1d(y_differential, 3)
+            
+            x_min = float(np.min( con_ind[:,0,0] ))
+            y_min = float(np.min( con_ind[:,0,1] ))
+            
+            x_max = float(np.max( con_ind[:,0,0] ))
+            y_max = float(np.max( con_ind[:,0,1] ))
+            
+            x_differential_mask_nonzeros = [ ind/abs(ind) if ind!=0 else ind for ind in x_differential]
+            y_differential_mask_nonzeros = [ ind/abs(ind) if ind!=0 else ind for ind in y_differential]
+            
+            abs_diff=abs(abs(x_differential)- abs(y_differential) )
+            
+            inc_x = np.zeros(len(x_differential)+1)
+            inc_y = np.zeros(len(x_differential)+1)
+            
+            for i in range(len(x_differential)):
+                if abs_diff[i]==0:
+                    inc_x[i+1] = 7*(-1*y_differential_mask_nonzeros[i])
+                    inc_y[i+1] = 7*(x_differential_mask_nonzeros[i])
+                elif abs_diff[i]!=0 and x_differential_mask_nonzeros[i]==0 and y_differential_mask_nonzeros[i]!=0:
+                    inc_x[i+1]= 12*(-1*y_differential_mask_nonzeros[i])
+                elif abs_diff[i]!=0 and x_differential_mask_nonzeros[i]!=0 and y_differential_mask_nonzeros[i]==0:
+                    inc_y[i+1] = 12*(x_differential_mask_nonzeros[i])
+                
+                elif abs_diff[i]!=0 and abs_diff[i]>=3:
+                    if abs(x_differential[i])>abs(y_differential[i]):
+                        inc_y[i+1] = 12*(x_differential_mask_nonzeros[i])
+                    else:
+                        inc_x[i+1]= 12*(-1*y_differential_mask_nonzeros[i])
+                else:
+                    inc_x[i+1] = 7*(-1*y_differential_mask_nonzeros[i])
+                    inc_y[i+1] = 7*(x_differential_mask_nonzeros[i])
+                    
+            ###inc_x =list(inc_x)
+            ###inc_x.append(inc_x[0])
+            
+            ###inc_y =list(inc_y)
+            ###inc_y.append(inc_y[0])
+            
+            inc_x[0] = inc_x[-1]
+            inc_y[0] = inc_y[-1]
+            
+            con_scaled = con_ind*1
+            
+            con_scaled[:,0, 0] = con_ind[:,0,0] + np.array(inc_x)[:]
+            con_scaled[:,0, 1] = con_ind[:,0,1] + np.array(inc_y)[:]
+            
+            con_scaled[:,0, 1][con_scaled[:,0, 1]<0] = 0
+            con_scaled[:,0, 0][con_scaled[:,0, 0]<0] = 0
+            
+            all_found_textline_polygons[j][:,0,1] = con_scaled[:,0, 1]
+            all_found_textline_polygons[j][:,0,0] = con_scaled[:,0, 0]
+        return all_found_textline_polygons
+                    
+            
+                    
+                    
+                    
+                
+                
+    
     def dilate_textlines(self,all_found_textline_polygons):
         for j in range(len(all_found_textline_polygons)):
             for i in range(len(all_found_textline_polygons[j])):
@@ -4096,7 +4169,7 @@ class Eynollah:
                 t1 = time.time()
                 if not self.full_layout:
                     polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, boxes, boxes_d, polygons_of_marginals, contours_tables = self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, table_prediction, erosion_hurts)
-
+                    polygons_of_marginals = self.dilate_textregions_contours(polygons_of_marginals)
                 if self.full_layout:
                     if not self.light_version:
                         img_bin_light = None
@@ -4230,6 +4303,7 @@ class Eynollah:
                 #print("text region early 3 in %.1fs", time.time() - t0)
                 if self.light_version:
                     txt_con_org = get_textregion_contours_in_org_image_light(contours_only_text_parent, self.image, slope_first)
+                    txt_con_org = self.dilate_textregions_contours(txt_con_org)
                 else:
                     txt_con_org = get_textregion_contours_in_org_image(contours_only_text_parent, self.image, slope_first)
                 #print("text region early 4 in %.1fs", time.time() - t0)
