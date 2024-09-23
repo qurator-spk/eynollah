@@ -3950,16 +3950,26 @@ class Eynollah:
                     ##dilation_m1 = 12
                     ##dilation_m2 = int(dilation_m1/2.) +1 
                 
-                if (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))<0.3 and (x_max-x_min)>50:
+                if (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))<0.15 and (x_max-x_min)>50:
                     dilation_m1 = int( (y_max-y_min) * 5/20.0 )
+                elif (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))>=0.15 and ((y_max-y_min)/(x_max-x_min))<0.3 and (x_max-x_min)>50:
+                    dilation_m1 = int( (y_max-y_min) * 2/20.0 )
                 elif (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))>=0.3 and (x_max-x_min)>50:
                     dilation_m1 = int( (y_max-y_min) * 1/20.0 )
-                elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))<0.3 and (y_max-y_min)>50:
+                elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))<0.15 and (y_max-y_min)>50:
                     dilation_m1 = int( (x_max-x_min) * 5/20.0 )
+                elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))>=0.15 and ((x_max-x_min)/(y_max-y_min))<0.3 and (y_max-y_min)>50:
+                    dilation_m1 = int( (x_max-x_min) * 2/20.0 )
                 elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))>=0.3 and (y_max-y_min)>50:
                     dilation_m1 = int( (x_max-x_min) * 1/20.0 )
                 else:
                     dilation_m1 = int( (y_max-y_min) * 4/20.0 )
+                  
+                if dilation_m1>12:
+                    dilation_m1 = 12
+                if dilation_m1<4:
+                    dilation_m1 = 4
+                #print(dilation_m1, 'dilation_m1')
                 dilation_m2 = int(dilation_m1/2.) +1 
                 
                 for i in range(len(x_differential)):
