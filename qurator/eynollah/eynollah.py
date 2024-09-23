@@ -3855,6 +3855,7 @@ class Eynollah:
             x_differential = np.diff( con_ind[:,0,0])
             y_differential = np.diff( con_ind[:,0,1])
             
+            
             x_differential = gaussian_filter1d(x_differential, 3)
             y_differential = gaussian_filter1d(y_differential, 3)
             
@@ -3912,6 +3913,93 @@ class Eynollah:
         return all_found_textline_polygons
                     
             
+    def dilate_textline_contours(self,all_found_textline_polygons):
+        for j in range(len(all_found_textline_polygons)):
+            for ij in range(len(all_found_textline_polygons[j])):
+            
+                con_ind = all_found_textline_polygons[j][ij]
+                
+                con_ind = con_ind.astype(np.float)
+                
+                x_differential = np.diff( con_ind[:,0,0])
+                y_differential = np.diff( con_ind[:,0,1])
+                
+                x_differential = gaussian_filter1d(x_differential, 3)
+                y_differential = gaussian_filter1d(y_differential, 3)
+                
+                x_min = float(np.min( con_ind[:,0,0] ))
+                y_min = float(np.min( con_ind[:,0,1] ))
+                
+                x_max = float(np.max( con_ind[:,0,0] ))
+                y_max = float(np.max( con_ind[:,0,1] ))
+                
+                x_differential_mask_nonzeros = [ ind/abs(ind) if ind!=0 else ind for ind in x_differential]
+                y_differential_mask_nonzeros = [ ind/abs(ind) if ind!=0 else ind for ind in y_differential]
+                
+                abs_diff=abs(abs(x_differential)- abs(y_differential) )
+                
+                inc_x = np.zeros(len(x_differential)+1)
+                inc_y = np.zeros(len(x_differential)+1)
+                
+                
+                #print(y_max-y_min, x_max-x_min,(y_max-y_min)/(x_max-x_min), (x_max-x_min)/(y_max-y_min) )
+                ##if (y_max-y_min)<40:
+                    ##dilation_m1 = 5
+                    ##dilation_m2 = int(dilation_m1/2.) +1 
+                ##else:
+                    ##dilation_m1 = 12
+                    ##dilation_m2 = int(dilation_m1/2.) +1 
+                
+                if (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))<0.3 and (x_max-x_min)>50:
+                    dilation_m1 = int( (y_max-y_min) * 5/20.0 )
+                elif (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))>=0.3 and (x_max-x_min)>50:
+                    dilation_m1 = int( (y_max-y_min) * 1/20.0 )
+                elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))<0.3 and (y_max-y_min)>50:
+                    dilation_m1 = int( (x_max-x_min) * 5/20.0 )
+                elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))>=0.3 and (y_max-y_min)>50:
+                    dilation_m1 = int( (x_max-x_min) * 1/20.0 )
+                else:
+                    dilation_m1 = int( (y_max-y_min) * 4/20.0 )
+                dilation_m2 = int(dilation_m1/2.) +1 
+                
+                for i in range(len(x_differential)):
+                    if abs_diff[i]==0:
+                        inc_x[i+1] = dilation_m2*(-1*y_differential_mask_nonzeros[i])
+                        inc_y[i+1] = dilation_m2*(x_differential_mask_nonzeros[i])
+                    elif abs_diff[i]!=0 and x_differential_mask_nonzeros[i]==0 and y_differential_mask_nonzeros[i]!=0:
+                        inc_x[i+1]= dilation_m1*(-1*y_differential_mask_nonzeros[i])
+                    elif abs_diff[i]!=0 and x_differential_mask_nonzeros[i]!=0 and y_differential_mask_nonzeros[i]==0:
+                        inc_y[i+1] = dilation_m1*(x_differential_mask_nonzeros[i])
+                    
+                    elif abs_diff[i]!=0 and abs_diff[i]>=3:
+                        if abs(x_differential[i])>abs(y_differential[i]):
+                            inc_y[i+1] = dilation_m1*(x_differential_mask_nonzeros[i])
+                        else:
+                            inc_x[i+1]= dilation_m1*(-1*y_differential_mask_nonzeros[i])
+                    else:
+                        inc_x[i+1] = dilation_m2*(-1*y_differential_mask_nonzeros[i])
+                        inc_y[i+1] = dilation_m2*(x_differential_mask_nonzeros[i])
+                        
+                ###inc_x =list(inc_x)
+                ###inc_x.append(inc_x[0])
+                
+                ###inc_y =list(inc_y)
+                ###inc_y.append(inc_y[0])
+                
+                inc_x[0] = inc_x[-1]
+                inc_y[0] = inc_y[-1]
+                
+                con_scaled = con_ind*1
+                
+                con_scaled[:,0, 0] = con_ind[:,0,0] + np.array(inc_x)[:]
+                con_scaled[:,0, 1] = con_ind[:,0,1] + np.array(inc_y)[:]
+                
+                con_scaled[:,0, 1][con_scaled[:,0, 1]<0] = 0
+                con_scaled[:,0, 0][con_scaled[:,0, 0]<0] = 0
+                
+                all_found_textline_polygons[j][ij][:,0,1] = con_scaled[:,0, 1]
+                all_found_textline_polygons[j][ij][:,0,0] = con_scaled[:,0, 0]
+        return all_found_textline_polygons
                     
                     
                     
@@ -4174,6 +4262,7 @@ class Eynollah:
                     if not self.light_version:
                         img_bin_light = None
                     polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts, img_bin_light)
+                    polygons_of_marginals = self.dilate_textregions_contours(polygons_of_marginals)
                 text_only = ((img_revised_tab[:, :] == 1)) * 1
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                     text_only_d = ((text_regions_p_1_n[:, :] == 1)) * 1
@@ -4304,6 +4393,7 @@ class Eynollah:
                 if self.light_version:
                     txt_con_org = get_textregion_contours_in_org_image_light(contours_only_text_parent, self.image, slope_first)
                     txt_con_org = self.dilate_textregions_contours(txt_con_org)
+                    contours_only_text_parent = self.dilate_textregions_contours(contours_only_text_parent)
                 else:
                     txt_con_org = get_textregion_contours_in_org_image(contours_only_text_parent, self.image, slope_first)
                 #print("text region early 4 in %.1fs", time.time() - t0)
@@ -4316,7 +4406,9 @@ class Eynollah:
                             slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea_org, image_page_rotated, boxes_text, slope_deskew)
                             slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea_org, image_page_rotated, boxes_marginals, slope_deskew)
                             
-                            all_found_textline_polygons = self.dilate_textlines(all_found_textline_polygons)
+                            #all_found_textline_polygons = self.dilate_textlines(all_found_textline_polygons)
+                            all_found_textline_polygons = self.dilate_textline_contours(all_found_textline_polygons)
+                            all_found_textline_polygons_marginals = self.dilate_textline_contours(all_found_textline_polygons_marginals)
                             
                         else:
                             textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
@@ -4508,7 +4600,7 @@ class Eynollah:
                 
                 all_found_textline_polygons=[ all_found_textline_polygons ]
                 
-                all_found_textline_polygons = self.dilate_textlines(all_found_textline_polygons)
+                all_found_textline_polygons = self.dilate_textline_contours(all_found_textline_polygons)
                 
                 
                 order_text_new = [0]
