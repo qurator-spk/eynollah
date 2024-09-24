@@ -3919,6 +3919,8 @@ class Eynollah:
             
                 con_ind = all_found_textline_polygons[j][ij]
                 
+                area = cv2.contourArea(con_ind)
+                
                 con_ind = con_ind.astype(np.float)
                 
                 x_differential = np.diff( con_ind[:,0,0])
@@ -3943,6 +3945,7 @@ class Eynollah:
                 
                 
                 #print(y_max-y_min, x_max-x_min,(y_max-y_min)/(x_max-x_min), (x_max-x_min)/(y_max-y_min) )
+                #print(area / (x_max-x_min))
                 ##if (y_max-y_min)<40:
                     ##dilation_m1 = 5
                     ##dilation_m2 = int(dilation_m1/2.) +1 
@@ -3950,20 +3953,26 @@ class Eynollah:
                     ##dilation_m1 = 12
                     ##dilation_m2 = int(dilation_m1/2.) +1 
                 
-                if (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))<0.15 and (x_max-x_min)>50:
-                    dilation_m1 = int( (y_max-y_min) * 5/20.0 )
-                elif (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))>=0.15 and ((y_max-y_min)/(x_max-x_min))<0.3 and (x_max-x_min)>50:
-                    dilation_m1 = int( (y_max-y_min) * 2/20.0 )
-                elif (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))>=0.3 and (x_max-x_min)>50:
-                    dilation_m1 = int( (y_max-y_min) * 1/20.0 )
-                elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))<0.15 and (y_max-y_min)>50:
-                    dilation_m1 = int( (x_max-x_min) * 5/20.0 )
-                elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))>=0.15 and ((x_max-x_min)/(y_max-y_min))<0.3 and (y_max-y_min)>50:
-                    dilation_m1 = int( (x_max-x_min) * 2/20.0 )
-                elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))>=0.3 and (y_max-y_min)>50:
-                    dilation_m1 = int( (x_max-x_min) * 1/20.0 )
+                #########if (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))<0.15 and (x_max-x_min)>50:
+                    #########dilation_m1 = int( (y_max-y_min) * 5/20.0 )
+                #########elif (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))>=0.15 and ((y_max-y_min)/(x_max-x_min))<0.3 and (x_max-x_min)>50:
+                    #########dilation_m1 = int( (y_max-y_min) * 2/20.0 )
+                #########elif (y_max-y_min) <= (x_max-x_min) and ((y_max-y_min)/(x_max-x_min))>=0.3 and (x_max-x_min)>50:
+                    #########dilation_m1 = int( (y_max-y_min) * 1/20.0 )
+                #########elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))<0.15 and (y_max-y_min)>50:
+                    #########dilation_m1 = int( (x_max-x_min) * 5/20.0 )
+                #########elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))>=0.15 and ((x_max-x_min)/(y_max-y_min))<0.3 and (y_max-y_min)>50:
+                    #########dilation_m1 = int( (x_max-x_min) * 2/20.0 )
+                #########elif (x_max-x_min) < (y_max-y_min) and ((x_max-x_min)/(y_max-y_min))>=0.3 and (y_max-y_min)>50:
+                    #########dilation_m1 = int( (x_max-x_min) * 1/20.0 )
+                #########else:
+                    #########dilation_m1 = int( (y_max-y_min) * 4/20.0 )
+                    
+                if (y_max-y_min) <= (x_max-x_min):
+                    dilation_m1 = round(area / (x_max-x_min) * 0.35)
                 else:
-                    dilation_m1 = int( (y_max-y_min) * 4/20.0 )
+                    dilation_m1 = round(area / (y_max-y_min) * 0.35)
+                    
                   
                 if dilation_m1>12:
                     dilation_m1 = 12
