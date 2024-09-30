@@ -2225,10 +2225,13 @@ class Eynollah:
             
             if not self.dir_in:
                 if num_col_classifier == 1 or num_col_classifier == 2:
-                    prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
                     model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
-                    prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
-                    prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
+                    if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
+                        prediction_regions_org = self.do_prediction_new_concept(True, img_resized, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
+                    else:
+                        prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
+                        prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
+                        prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
                 else:
                     model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
                     prediction_regions_org = self.do_prediction_new_concept(True, img_bin, model_region)
@@ -2236,9 +2239,12 @@ class Eynollah:
                 ##prediction_regions_org = self.do_prediction(True, img_bin, model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
             else:
                 if num_col_classifier == 1 or num_col_classifier == 2:
-                    prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
-                    prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, self.model_region_1_2, n_batch_inference=1, thresholding_for_artificial_class_in_light_version=True)
-                    prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
+                    if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
+                        prediction_regions_org = self.do_prediction_new_concept(True, img_resized, self.model_region_1_2, n_batch_inference=1, thresholding_for_artificial_class_in_light_version=True)
+                    else:
+                        prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
+                        prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, self.model_region_1_2, n_batch_inference=1, thresholding_for_artificial_class_in_light_version=True)
+                        prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
                 else:
                     prediction_regions_org = self.do_prediction_new_concept(True, img_bin, self.model_region, n_batch_inference=3)
                 ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
@@ -4356,6 +4362,8 @@ class Eynollah:
             cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
             cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
             
+
+            
             areas_ratio = np.array(areas)/ area_tot
             contours_index_small = [ind for ind in range(len(contours)) if areas_ratio[ind] < 1e-3]
             contours_index_big = [ind  for ind in range(len(contours)) if areas_ratio[ind] >= 1e-3]
@@ -4379,64 +4387,75 @@ class Eynollah:
             
             if len(indexes_to_be_removed)>0:
                 indexes_to_be_removed = np.unique(indexes_to_be_removed)
+                indexes_to_be_removed = np.sort(indexes_to_be_removed)[::-1]
                 for ind in indexes_to_be_removed:
                     contours.pop(ind)
+
             return contours
                     
                 
         else:
             contours_txtline_of_all_textregions = []
+            indexes_of_textline_tot = []
+            index_textline_inside_textregion = []
             
             for jj in range(len(contours)):
                 contours_txtline_of_all_textregions = contours_txtline_of_all_textregions + contours[jj]
+                
+                ind_ins = np.zeros( len(contours[jj]) ) + jj
+                list_ind_ins = list(ind_ins)
+                
+                ind_textline_inside_tr = np.array (range(len(contours[jj])) )
+                
+                list_ind_textline_inside_tr = list(ind_textline_inside_tr)
+                                                  
+                index_textline_inside_textregion = index_textline_inside_textregion + list_ind_textline_inside_tr
+                
+                indexes_of_textline_tot = indexes_of_textline_tot + list_ind_ins
+                
                 
             M_main_tot = [cv2.moments(contours_txtline_of_all_textregions[j]) for j in range(len(contours_txtline_of_all_textregions))]
             cx_main_tot = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
             cy_main_tot = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
             
+            
             areas_tot = [cv2.contourArea(con_ind) for con_ind in contours_txtline_of_all_textregions]
             area_tot_tot = image.shape[0]*image.shape[1]
             
-            areas_ratio_tot = np.array(areas_tot)/ area_tot_tot
-            
-            contours_index_big_tot = [ind  for ind in range(len(contours_txtline_of_all_textregions)) if areas_ratio_tot[ind] >= 1e-2]
-            
-            
-            for jj in range(len(contours)):
-                contours_in = contours[jj]
-                #print(len(contours_in))
-                areas = [cv2.contourArea(con_ind) for con_ind in contours_in]
-                area_tot = image.shape[0]*image.shape[1]
+            textregion_index_to_del = []
+            textline_in_textregion_index_to_del = []
+            for ij in range(len(contours_txtline_of_all_textregions)):
                 
-                M_main = [cv2.moments(contours_in[j]) for j in range(len(contours_in))]
-                cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-                cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+                args_all = list(np.array(range(len(contours_txtline_of_all_textregions))))
                 
-                areas_ratio = np.array(areas)/ area_tot
+                args_all.pop(ij)
                 
-                if len(areas_ratio)>=1:
-                    #print(np.max(areas_ratio), np.min(areas_ratio))
-                    contours_index_small = [ind for ind in range(len(contours_in)) if areas_ratio[ind] < 1e-2]
-                    #contours_index_big = [ind  for ind in range(len(contours_in)) if areas_ratio[ind] >= 1e-3]
-                    
-                    if len(contours_index_small)>0:
-                        indexes_to_be_removed = []
-                        for ind_small in contours_index_small:
-                            results = [cv2.pointPolygonTest(contours_txtline_of_all_textregions[ind], (cx_main[ind_small], cy_main[ind_small]), False) for ind in contours_index_big_tot ]
-                            
-                        results = np.array(results)
+                areas_without = np.array(areas_tot)[args_all]
+                area_of_con_interest = areas_tot[ij]
+                
+                args_with_bigger_area = np.array(args_all)[areas_without > area_of_con_interest]
+                
+                if len(args_with_bigger_area)>0:
+                    results = [cv2.pointPolygonTest(contours_txtline_of_all_textregions[ind], (cx_main_tot[ij], cy_main_tot[ij]), False) for ind in args_with_bigger_area ]
+                    results = np.array(results)
+                    if np.any(results==1):
+                        #print(indexes_of_textline_tot[ij], index_textline_inside_textregion[ij])
+                        textregion_index_to_del.append(int(indexes_of_textline_tot[ij]))
+                        textline_in_textregion_index_to_del.append(int(index_textline_inside_textregion[ij]))
+                        #contours[int(indexes_of_textline_tot[ij])].pop(int(index_textline_inside_textregion[ij]))
                         
-                        if np.any(results==1):
-                            indexes_to_be_removed.append(ind_small)
-                            
-                                        
-                        if len(indexes_to_be_removed)>0:
-                            indexes_to_be_removed = np.unique(indexes_to_be_removed)
-                            
-                            for ind in indexes_to_be_removed:
-                                contours[jj].pop(ind)
-                                
-            return contours            
+            uniqe_args_trs = np.unique(textregion_index_to_del)
+            
+            for ind_u_a_trs in uniqe_args_trs:
+                textline_in_textregion_index_to_del_ind = np.array(textline_in_textregion_index_to_del)[np.array(textregion_index_to_del)==ind_u_a_trs]
+                textline_in_textregion_index_to_del_ind = np.sort(textline_in_textregion_index_to_del_ind)[::-1]
+                
+                for ittrd in textline_in_textregion_index_to_del_ind:
+                    contours[ind_u_a_trs].pop(ittrd)
+                        
+            return contours
+        
+            
                     
                     
         
@@ -4852,6 +4871,8 @@ class Eynollah:
                             textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
                             slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
                             slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
+                            
+                            #all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(all_found_textline_polygons, textline_mask_tot_ea_org, type_contour="textline")
                     else:
                         textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
                         slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
