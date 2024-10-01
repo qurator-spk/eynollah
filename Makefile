@@ -1,6 +1,11 @@
 EYNOLLAH_MODELS ?= $(PWD)/models_eynollah
 export EYNOLLAH_MODELS
 
+# DOCKER_BASE_IMAGE = artefakt.dev.sbb.berlin:5000/sbb/ocrd_core:v2.68.0
+DOCKER_BASE_IMAGE = docker.io/ocrd/core:v2.68.0
+DOCKER_TAG = ocrd/eynollah
+
+
 # BEGIN-EVAL makefile-parser --make-help Makefile
 
 help:
@@ -45,3 +50,12 @@ smoke-test:
 # Run unit tests
 test:
 	pytest tests
+
+# Build docker image
+docker:
+	docker build \
+	--build-arg DOCKER_BASE_IMAGE=$(DOCKER_BASE_IMAGE) \
+	--build-arg VCS_REF=$$(git rev-parse --short HEAD) \
+	--build-arg BUILD_DATE=$$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+	-t $(DOCKER_TAG) .
+
