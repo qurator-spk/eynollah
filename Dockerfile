@@ -14,7 +14,7 @@ ENV PYTHONIOENCODING=utf8
 ENV XDG_DATA_HOME=/usr/local/share
 
 WORKDIR /build-eynollah
-COPY qurator/ ./qurator
+COPY src/ ./src
 COPY pyproject.toml .
 COPY requirements.txt .
 COPY README.md .
