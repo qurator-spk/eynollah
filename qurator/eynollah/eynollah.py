@@ -252,7 +252,7 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_reading_order_machine_dir = dir_models + "/model_ens_reading_order_machine_based"
-        self.model_region_dir_p_1_2_sp_np = dir_models + "/modelens_earlylay12sp_0_2"#"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"#"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"#"/modelens_1_2_4_5_early_lay_1_2_spaltige"#"/model_3_eraly_layout_no_patches_1_2_spaltige"
+        self.model_region_dir_p_1_2_sp_np = dir_models + "/modelens_earlyla_12_0_2_con_18_22"#"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"#"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"#"/modelens_1_2_4_5_early_lay_1_2_spaltige"#"/model_3_eraly_layout_no_patches_1_2_spaltige"
         ##self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
         self.model_region_dir_fully = dir_models + "/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
         if self.textline_light:
@@ -1055,6 +1055,35 @@ class Eynollah:
         #del model
         #gc.collect()
         return prediction_true
+    def do_padding_with_scale(self,img, scale):
+        h_n = int(img.shape[0]*scale)
+        w_n = int(img.shape[1]*scale)
+        
+        channel0_avg = int( np.mean(img[:,:,0]) )
+        channel1_avg = int( np.mean(img[:,:,1]) )
+        channel2_avg = int( np.mean(img[:,:,2]) )
+        
+        h_diff = img.shape[0] - h_n
+        w_diff = img.shape[1] - w_n
+        
+        h_start = int(h_diff / 2.)
+        w_start = int(w_diff / 2.)
+        
+        img_res = resize_image(img, h_n, w_n)
+        #label_res = resize_image(label, h_n, w_n)
+        
+        img_scaled_padded = np.copy(img)
+        
+        #label_scaled_padded = np.zeros(label.shape)
+        
+        img_scaled_padded[:,:,0] = channel0_avg
+        img_scaled_padded[:,:,1] = channel1_avg
+        img_scaled_padded[:,:,2] = channel2_avg
+        
+        img_scaled_padded[h_start:h_start+h_n, w_start:w_start+w_n,:] = img_res[:,:,:]
+        #label_scaled_padded[h_start:h_start+h_n, w_start:w_start+w_n,:] = label_res[:,:,:]
+        
+        return img_scaled_padded#, label_scaled_padded
     def do_prediction_new_concept(self, patches, img, model, n_batch_inference=1, marginal_of_patch_percent=0.1, thresholding_for_some_classes_in_light_version=False, thresholding_for_artificial_class_in_light_version=False):
         self.logger.debug("enter do_prediction")
 
@@ -4348,6 +4377,38 @@ class Eynollah:
                 
                 con_scaled[:,0, 1][con_scaled[:,0, 1]<0] = 0
                 con_scaled[:,0, 0][con_scaled[:,0, 0]<0] = 0
+                
+                
+                con_ind = con_ind.astype(np.int32)
+                
+                results = [cv2.pointPolygonTest(con_ind, (con_scaled[ind,0, 0], con_scaled[ind,0, 1]), False) for ind in range(len(con_scaled[:,0, 1])) ]
+                
+                results = np.array(results)
+                
+                results[results==0] = 1
+                
+                
+                diff_result = np.diff(results)
+                
+                indices_2 = [ind for ind in range(len(diff_result)) if diff_result[ind]==2]
+                indices_m2 = [ind for ind in range(len(diff_result)) if diff_result[ind]==-2]
+                    
+                if results[0]==1:
+                    con_scaled[:indices_m2[0]+1,0, 1] = con_ind[:indices_m2[0]+1,0,1]
+                    con_scaled[:indices_m2[0]+1,0, 0] = con_ind[:indices_m2[0]+1,0,0]
+                    indices_m2 = indices_m2[1:]
+                    
+                    
+                    
+                if len(indices_2)>len(indices_m2):
+                    con_scaled[indices_2[-1]+1:,0, 1] = con_ind[indices_2[-1]+1:,0,1]
+                    con_scaled[indices_2[-1]+1:,0, 0] = con_ind[indices_2[-1]+1:,0,0]
+                    indices_2 = indices_2[:-1]
+                    
+                
+                for ii in range(len(indices_2)):
+                    con_scaled[indices_2[ii]+1:indices_m2[ii]+1,0, 1] = con_scaled[indices_2[ii],0, 1]
+                    con_scaled[indices_2[ii]+1:indices_m2[ii]+1,0, 0] = con_scaled[indices_2[ii],0, 0]
                 
                 all_found_textline_polygons[j][ij][:,0,1] = con_scaled[:,0, 1]
                 all_found_textline_polygons[j][ij][:,0,0] = con_scaled[:,0, 0]

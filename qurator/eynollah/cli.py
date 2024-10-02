@@ -227,6 +227,9 @@ def layout(image, out, dir_in, model, save_images, save_layout, save_deskewed, s
     if textline_light and not light_version:
         print('Error: You used -tll to enable light textline detection but -light is not enabled')
         sys.exit(1)
+    if light_version and not textline_light:
+        print('Error: You used -light without -tll. Light version need light textline to be enabled.')
+        sys.exit(1)
     eynollah = Eynollah(
         image_filename=image,
         dir_out=out,
