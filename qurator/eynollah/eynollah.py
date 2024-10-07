@@ -252,7 +252,7 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_reading_order_machine_dir = dir_models + "/model_ens_reading_order_machine_based"
-        self.model_region_dir_p_1_2_sp_np = dir_models + "/modelens_earlyla_12_0_2_con_18_22"#"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"#"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"#"/modelens_1_2_4_5_early_lay_1_2_spaltige"#"/model_3_eraly_layout_no_patches_1_2_spaltige"
+        self.model_region_dir_p_1_2_sp_np = dir_models + "/modelens_12sp_elay_0_3_4__3_6_n"#"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"#"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"#"/modelens_1_2_4_5_early_lay_1_2_spaltige"#"/model_3_eraly_layout_no_patches_1_2_spaltige"
         ##self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
         self.model_region_dir_fully = dir_models + "/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
         if self.textline_light:
@@ -2189,7 +2189,7 @@ class Eynollah:
         #print(num_col_classifier,'num_col_classifier')
         
         if num_col_classifier == 1:
-            img_w_new = 800
+            img_w_new = 1000
             img_h_new = int(img_org.shape[0] / float(img_org.shape[1]) * img_w_new)
             
         elif num_col_classifier == 2:
@@ -2299,9 +2299,9 @@ class Eynollah:
             
             mask_texts_only = mask_texts_only.astype('uint8')
             
-            #if num_col_classifier == 1 or num_col_classifier == 2:
-                #mask_texts_only = cv2.erode(mask_texts_only, KERNEL, iterations=1)
-                #mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=1)
+            ##if num_col_classifier == 1 or num_col_classifier == 2:
+                ###mask_texts_only = cv2.erode(mask_texts_only, KERNEL, iterations=1)
+                ##mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=1)
             
             mask_texts_only = cv2.dilate(mask_texts_only, kernel=np.ones((2,2), np.uint8), iterations=1)
             
@@ -4153,7 +4153,7 @@ class Eynollah:
             if dilation_m1<6:
                 dilation_m1 = 6
             #print(dilation_m1, 'dilation_m1')
-            dilation_m1 = 5
+            dilation_m1 = 6
             dilation_m2 = int(dilation_m1/2.) +1 
             
             for i in range(len(x_differential)):
@@ -4657,6 +4657,31 @@ class Eynollah:
                 all_found_textline_polygons[j][i][:,0,0] = con_scaled[:,0, 0]
             
         return all_found_textline_polygons
+    
+    def delete_regions_without_textlines(self,slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, index_by_text_par_con):
+        slopes_rem = []
+        all_found_textline_polygons_rem = []
+        boxes_text_rem = []
+        txt_con_org_rem = []
+        contours_only_text_parent_rem = []
+        index_by_text_par_con_rem = []
+        
+        for i, ind_con in enumerate(all_found_textline_polygons):
+            if len(ind_con):
+                all_found_textline_polygons_rem.append(ind_con)
+                slopes_rem.append(slopes[i])
+                boxes_text_rem.append(boxes_text[i])
+                txt_con_org_rem.append(txt_con_org[i])
+                contours_only_text_parent_rem.append(contours_only_text_parent[i])
+                index_by_text_par_con_rem.append(index_by_text_par_con[i])
+                
+        index_sort = np.argsort(index_by_text_par_con_rem)
+        indexes_new = np.array(range(len(index_by_text_par_con_rem)))
+        
+        index_by_text_par_con_rem_sort = [indexes_new[index_sort==j][0] for j in range(len(index_by_text_par_con_rem))]
+                
+        return slopes_rem, all_found_textline_polygons_rem, boxes_text_rem, txt_con_org_rem, contours_only_text_parent_rem, index_by_text_par_con_rem_sort
+
     def run(self):
         """
         Get image and scales, then extract the page of scanned image
@@ -4923,6 +4948,9 @@ class Eynollah:
                             slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea_org, image_page_rotated, boxes_text, slope_deskew)
                             slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea_org, image_page_rotated, boxes_marginals, slope_deskew)
                             
+                            #slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, index_by_text_par_con = self.delete_regions_without_textlines(slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, index_by_text_par_con)
+                            
+                            #slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, polygons_of_marginals, polygons_of_marginals, _ = self.delete_regions_without_textlines(slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, polygons_of_marginals, polygons_of_marginals, np.array(range(len(polygons_of_marginals))))
                             #all_found_textline_polygons = self.dilate_textlines(all_found_textline_polygons)
                             all_found_textline_polygons = self.dilate_textline_contours(all_found_textline_polygons)
                             all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(all_found_textline_polygons, textline_mask_tot_ea_org, type_contour="textline")
@@ -5121,6 +5149,7 @@ class Eynollah:
                 all_found_textline_polygons=[ all_found_textline_polygons ]
                 
                 all_found_textline_polygons = self.dilate_textline_contours(all_found_textline_polygons)
+                all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(all_found_textline_polygons, textline_mask_tot_ea, type_contour="textline")
                 
                 
                 order_text_new = [0]
