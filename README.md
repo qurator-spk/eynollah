@@ -21,7 +21,7 @@
 :warning: Development is currently focused on achieving the best possible quality of results for a wide variety of historical documents and therefore processing can be very slow. We aim to improve this, but contributions are welcome.
 
 ## Installation
-Python `3.8-3.11` with Tensorflow `2.12-2.15` on Linux are currently supported.
+Python `3.8-3.11` with Tensorflow `<2.13` on Linux are currently supported.
 
 For (limited) GPU support the CUDA toolkit needs to be installed.
 
