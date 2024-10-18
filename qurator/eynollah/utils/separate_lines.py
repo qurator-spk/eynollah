@@ -3,7 +3,8 @@ import cv2
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 import os
-
+from multiprocessing import Process, Queue, cpu_count
+from multiprocessing import Pool
 from .rotate import rotate_image
 from .contour import (
     return_parent_contours,
@@ -1569,8 +1570,21 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, plotter=None):
     # plt.show()
     return img_patch_ineterst_revised
 
-def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=False, plotter=None):
+def do_image_rotation(queue_of_all_params,angels_per_process, img_resized, sigma_des):
+    angels_per_each_subprocess = []
+    for mv in range(len(angels_per_process)):
+        img_rot=rotate_image(img_resized,angels_per_process[mv])
+        img_rot[img_rot!=0]=1
+        try:
+            var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
+        except:
+            var_spectrum=0
+            angels_per_each_subprocess.append(var_spectrum)
+            
+    queue_of_all_params.put([angels_per_each_subprocess])
 
+def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=False, plotter=None):
+    num_cores = cpu_count()
     if main_page and plotter:
         plotter.save_plot_of_textline_density(img_patch_org)
 
@@ -1603,22 +1617,44 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
         #plt.imshow(img_resized)
         #plt.show()
         angels=np.array([-45, 0 , 45 , 90 , ])#np.linspace(-12,12,100)#np.array([0 , 45 , 90 , -45])
-
+        
+        queue_of_all_params = Queue()
+        processes = []
+        nh = np.linspace(0, len(angels), num_cores + 1)
+        
+        for i in range(num_cores):
+            angels_per_process = angels[int(nh[i]) : int(nh[i + 1])]
+            processes.append(Process(target=do_image_rotation, args=(queue_of_all_params, angels_per_process, img_resized, sigma_des)))
+            
+        for i in range(num_cores):
+            processes[i].start()
+        
         var_res=[]
+        for i in range(num_cores):
+            list_all_par = queue_of_all_params.get(True)
+            angles_for_subprocess = list_all_par[0]
+            for j in range(len(angles_for_subprocess)):
+                var_res.append(angles_for_subprocess[j])
+                
+        for i in range(num_cores):
+            processes[i].join()
 
-        for rot in angels:
-            img_rot=rotate_image(img_resized,rot)
-            #plt.imshow(img_rot)
-            #plt.show()
-            img_rot[img_rot!=0]=1
-            #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
-            #print(var_spectrum,'var_spectrum')
-            try:
-                var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-                ##print(rot,var_spectrum,'var_spectrum')
-            except:
-                var_spectrum=0
-            var_res.append(var_spectrum)
+        ###for rot in angels:
+            ###img_rot=rotate_image(img_resized,rot)
+            ####plt.imshow(img_rot)
+            ####plt.show()
+            ###img_rot[img_rot!=0]=1
+            ####neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+            ####print(var_spectrum,'var_spectrum')
+            ###try:
+                ###var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
+                #####print(rot,var_spectrum,'var_spectrum')
+            ###except:
+                ###var_spectrum=0
+            ###var_res.append(var_spectrum)
+            
+            
+            
         try:
             var_res=np.array(var_res)
             ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
@@ -1628,17 +1664,38 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
 
         angels=np.linspace(ang_int-22.5,ang_int+22.5,n_tot_angles)
 
+        queue_of_all_params = Queue()
+        processes = []
+        nh = np.linspace(0, len(angels), num_cores + 1)
+        
+        for i in range(num_cores):
+            angels_per_process = angels[int(nh[i]) : int(nh[i + 1])]
+            processes.append(Process(target=do_image_rotation, args=(queue_of_all_params, angels_per_process, img_resized, sigma_des)))
+            
+        for i in range(num_cores):
+            processes[i].start()
+        
         var_res=[]
-        for rot in angels:
-            img_rot=rotate_image(img_resized,rot)
-            ##plt.imshow(img_rot)
-            ##plt.show()
-            img_rot[img_rot!=0]=1
-            try:
-                var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-            except:
-                var_spectrum=0
-            var_res.append(var_spectrum)
+        for i in range(num_cores):
+            list_all_par = queue_of_all_params.get(True)
+            angles_for_subprocess = list_all_par[0]
+            for j in range(len(angles_for_subprocess)):
+                var_res.append(angles_for_subprocess[j])
+                
+        for i in range(num_cores):
+            processes[i].join()
+            
+        ##var_res=[]
+        ##for rot in angels:
+            ##img_rot=rotate_image(img_resized,rot)
+            ####plt.imshow(img_rot)
+            ####plt.show()
+            ##img_rot[img_rot!=0]=1
+            ##try:
+                ##var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
+            ##except:
+                ##var_spectrum=0
+            ##var_res.append(var_spectrum)
         try:
             var_res=np.array(var_res)
             ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
@@ -1650,24 +1707,46 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
         #plt.imshow(img_resized)
         #plt.show()
         angels=np.linspace(-12,12,n_tot_angles)#np.array([0 , 45 , 90 , -45])
-
-
+        
+        
+        queue_of_all_params = Queue()
+        processes = []
+        nh = np.linspace(0, len(angels), num_cores + 1)
+        
+        for i in range(num_cores):
+            angels_per_process = angels[int(nh[i]) : int(nh[i + 1])]
+            processes.append(Process(target=do_image_rotation, args=(queue_of_all_params, angels_per_process, img_resized, sigma_des)))
+            
+        for i in range(num_cores):
+            processes[i].start()
+        
         var_res=[]
+        for i in range(num_cores):
+            list_all_par = queue_of_all_params.get(True)
+            angles_for_subprocess = list_all_par[0]
+            for j in range(len(angles_for_subprocess)):
+                var_res.append(angles_for_subprocess[j])
+                
+        for i in range(num_cores):
+            processes[i].join()
 
-        for rot in angels:
-            img_rot=rotate_image(img_resized,rot)
-            #plt.imshow(img_rot)
-            #plt.show()
-            img_rot[img_rot!=0]=1
-            #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
-            #print(var_spectrum,'var_spectrum')
-            try:
-                var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
 
-            except:
-                var_spectrum=0
+        ##var_res=[]
 
-            var_res.append(var_spectrum)
+        ##for rot in angels:
+            ##img_rot=rotate_image(img_resized,rot)
+            ###plt.imshow(img_rot)
+            ###plt.show()
+            ##img_rot[img_rot!=0]=1
+            ###neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+            ###print(var_spectrum,'var_spectrum')
+            ##try:
+                ##var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
+
+            ##except:
+                ##var_spectrum=0
+
+            ##var_res.append(var_spectrum)
 
 
         if plotter:
@@ -1681,17 +1760,38 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
         early_slope_edge=11
         if abs(ang_int)>early_slope_edge and ang_int<0:
             angels=np.linspace(-90,-12,n_tot_angles)
+            
+            queue_of_all_params = Queue()
+            processes = []
+            nh = np.linspace(0, len(angels), num_cores + 1)
+            
+            for i in range(num_cores):
+                angels_per_process = angels[int(nh[i]) : int(nh[i + 1])]
+                processes.append(Process(target=do_image_rotation, args=(queue_of_all_params, angels_per_process, img_resized, sigma_des)))
+                
+            for i in range(num_cores):
+                processes[i].start()
+            
             var_res=[]
-            for rot in angels:
-                img_rot=rotate_image(img_resized,rot)
-                ##plt.imshow(img_rot)
-                ##plt.show()
-                img_rot[img_rot!=0]=1
-                try:
-                    var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-                except:
-                    var_spectrum=0
-                var_res.append(var_spectrum)
+            for i in range(num_cores):
+                list_all_par = queue_of_all_params.get(True)
+                angles_for_subprocess = list_all_par[0]
+                for j in range(len(angles_for_subprocess)):
+                    var_res.append(angles_for_subprocess[j])
+                    
+            for i in range(num_cores):
+                processes[i].join()
+            ##var_res=[]
+            ##for rot in angels:
+                ##img_rot=rotate_image(img_resized,rot)
+                ####plt.imshow(img_rot)
+                ####plt.show()
+                ##img_rot[img_rot!=0]=1
+                ##try:
+                    ##var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
+                ##except:
+                    ##var_spectrum=0
+                ##var_res.append(var_spectrum)
             try:
                 var_res=np.array(var_res)
                 ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
@@ -1701,18 +1801,41 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
         elif abs(ang_int)>early_slope_edge and ang_int>0:
 
             angels=np.linspace(90,12,n_tot_angles)
+            
+            queue_of_all_params = Queue()
+            processes = []
+            nh = np.linspace(0, len(angels), num_cores + 1)
+            
+            for i in range(num_cores):
+                angels_per_process = angels[int(nh[i]) : int(nh[i + 1])]
+                processes.append(Process(target=do_image_rotation, args=(queue_of_all_params, angels_per_process, img_resized, sigma_des)))
+                
+            for i in range(num_cores):
+                processes[i].start()
+            
             var_res=[]
-            for rot in angels:
-                img_rot=rotate_image(img_resized,rot)
-                ##plt.imshow(img_rot)
-                ##plt.show()
-                img_rot[img_rot!=0]=1
-                try:
-                    var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-                    #print(indexer,'indexer')
-                except:
-                    var_spectrum=0
-                var_res.append(var_spectrum)
+            for i in range(num_cores):
+                list_all_par = queue_of_all_params.get(True)
+                angles_for_subprocess = list_all_par[0]
+                for j in range(len(angles_for_subprocess)):
+                    var_res.append(angles_for_subprocess[j])
+                    
+            for i in range(num_cores):
+                processes[i].join()
+            
+            
+            ###var_res=[]
+            ###for rot in angels:
+                ###img_rot=rotate_image(img_resized,rot)
+                #####plt.imshow(img_rot)
+                #####plt.show()
+                ###img_rot[img_rot!=0]=1
+                ###try:
+                    ###var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
+                    ####print(indexer,'indexer')
+                ###except:
+                    ###var_spectrum=0
+                ###var_res.append(var_spectrum)
             try:
                 var_res=np.array(var_res)
                 ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
@@ -1720,20 +1843,42 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
                 ang_int=0
     else:
         angels=np.linspace(-25,25,int(n_tot_angles/2.)+10)
-        var_res=[]
         indexer=0
-        for rot in angels:
-            img_rot=rotate_image(img_resized,rot)
-            #plt.imshow(img_rot)
-            #plt.show()
-            img_rot[img_rot!=0]=1
-            #neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
-            #print(var_spectrum,'var_spectrum')
-            try:
-                var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-            except:
-                var_spectrum=0
-            var_res.append(var_spectrum)
+        
+        queue_of_all_params = Queue()
+        processes = []
+        nh = np.linspace(0, len(angels), num_cores + 1)
+        
+        for i in range(num_cores):
+            angels_per_process = angels[int(nh[i]) : int(nh[i + 1])]
+            processes.append(Process(target=do_image_rotation, args=(queue_of_all_params, angels_per_process, img_resized, sigma_des)))
+            
+        for i in range(num_cores):
+            processes[i].start()
+        
+        var_res=[]
+        for i in range(num_cores):
+            list_all_par = queue_of_all_params.get(True)
+            angles_for_subprocess = list_all_par[0]
+            for j in range(len(angles_for_subprocess)):
+                var_res.append(angles_for_subprocess[j])
+                
+        for i in range(num_cores):
+            processes[i].join()
+        ####var_res=[]
+        
+        ####for rot in angels:
+            ####img_rot=rotate_image(img_resized,rot)
+            #####plt.imshow(img_rot)
+            #####plt.show()
+            ####img_rot[img_rot!=0]=1
+            #####neg_peaks,var_spectrum=self.find_num_col_deskew(img_rot,sigma_des,20.3  )
+            #####print(var_spectrum,'var_spectrum')
+            ####try:
+                ####var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
+            ####except:
+                ####var_spectrum=0
+            ####var_res.append(var_spectrum)
         try:
             var_res=np.array(var_res)
             ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
@@ -1750,19 +1895,40 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
         if abs(ang_int)>early_slope_edge and ang_int<0:
 
             angels=np.linspace(-90,-25,int(n_tot_angles/2.)+10)
-
+            
+            queue_of_all_params = Queue()
+            processes = []
+            nh = np.linspace(0, len(angels), num_cores + 1)
+            
+            for i in range(num_cores):
+                angels_per_process = angels[int(nh[i]) : int(nh[i + 1])]
+                processes.append(Process(target=do_image_rotation, args=(queue_of_all_params, angels_per_process, img_resized, sigma_des)))
+                
+            for i in range(num_cores):
+                processes[i].start()
+            
             var_res=[]
+            for i in range(num_cores):
+                list_all_par = queue_of_all_params.get(True)
+                angles_for_subprocess = list_all_par[0]
+                for j in range(len(angles_for_subprocess)):
+                    var_res.append(angles_for_subprocess[j])
+                    
+            for i in range(num_cores):
+                processes[i].join()
 
-            for rot in angels:
-                img_rot=rotate_image(img_resized,rot)
-                ##plt.imshow(img_rot)
-                ##plt.show()
-                img_rot[img_rot!=0]=1
-                try:
-                    var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-                except:
-                    var_spectrum=0
-                var_res.append(var_spectrum)
+            ###var_res=[]
+
+            ###for rot in angels:
+                ###img_rot=rotate_image(img_resized,rot)
+                #####plt.imshow(img_rot)
+                #####plt.show()
+                ###img_rot[img_rot!=0]=1
+                ###try:
+                    ###var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
+                ###except:
+                    ###var_spectrum=0
+                ###var_res.append(var_spectrum)
 
             try:
                 var_res=np.array(var_res)
@@ -1773,22 +1939,44 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
         elif abs(ang_int)>early_slope_edge and ang_int>0:
 
             angels=np.linspace(90,25,int(n_tot_angles/2.)+10)
-
-            var_res=[]
-
             indexer=0
-            for rot in angels:
-                img_rot=rotate_image(img_resized,rot)
-                ##plt.imshow(img_rot)
-                ##plt.show()
-                img_rot[img_rot!=0]=1
-                try:
-                    var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-                    #print(indexer,'indexer')
-                except:
-                    var_spectrum=0
+            
+            queue_of_all_params = Queue()
+            processes = []
+            nh = np.linspace(0, len(angels), num_cores + 1)
+            
+            for i in range(num_cores):
+                angels_per_process = angels[int(nh[i]) : int(nh[i + 1])]
+                processes.append(Process(target=do_image_rotation, args=(queue_of_all_params, angels_per_process, img_resized, sigma_des)))
+                
+            for i in range(num_cores):
+                processes[i].start()
+            
+            var_res=[]
+            for i in range(num_cores):
+                list_all_par = queue_of_all_params.get(True)
+                angles_for_subprocess = list_all_par[0]
+                for j in range(len(angles_for_subprocess)):
+                    var_res.append(angles_for_subprocess[j])
+                    
+            for i in range(num_cores):
+                processes[i].join()
 
-                var_res.append(var_spectrum)
+            ###var_res=[]
+
+            
+            ###for rot in angels:
+                ###img_rot=rotate_image(img_resized,rot)
+                #####plt.imshow(img_rot)
+                #####plt.show()
+                ###img_rot[img_rot!=0]=1
+                ###try:
+                    ###var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
+                    ####print(indexer,'indexer')
+                ###except:
+                    ###var_spectrum=0
+
+                ###var_res.append(var_spectrum)
             try:
                 var_res=np.array(var_res)
                 ang_int=angels[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]

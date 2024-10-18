@@ -7,7 +7,7 @@ import cv2
 import imutils
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-
+import time
 from .is_nan import isNaN
 from .contour import (contours_in_same_horizon,
                       find_new_features_of_contours,
@@ -1342,7 +1342,7 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     return peaks_neg_tot
 
 def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, pixel_lines, contours_h=None):
-
+    t_ins_c0 = time.time()
     separators_closeup=( (region_pre_p[:,:,:]==pixel_lines))*1
     
     separators_closeup[0:110,:,:]=0
@@ -1356,84 +1356,47 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     
 
     separators_closeup_new=np.zeros((separators_closeup.shape[0] ,separators_closeup.shape[1] ))
-    
-    
-    
-    ##_,separators_closeup_n=self.combine_hor_lines_and_delete_cross_points_and_get_lines_features_back(region_pre_p[:,:,0])
     separators_closeup_n=np.copy(separators_closeup)
     
     separators_closeup_n=separators_closeup_n.astype(np.uint8)
-    ##plt.imshow(separators_closeup_n[:,:,0])
-    ##plt.show()
     
     separators_closeup_n_binary=np.zeros(( separators_closeup_n.shape[0],separators_closeup_n.shape[1]) )
     separators_closeup_n_binary[:,:]=separators_closeup_n[:,:,0]
     
     separators_closeup_n_binary[:,:][separators_closeup_n_binary[:,:]!=0]=1
-    #separators_closeup_n_binary[:,:][separators_closeup_n_binary[:,:]==0]=255
-    #separators_closeup_n_binary[:,:][separators_closeup_n_binary[:,:]==-255]=0
-    
-    
-    #separators_closeup_n_binary=(separators_closeup_n_binary[:,:]==2)*1
-    
-    #gray = cv2.cvtColor(separators_closeup_n, cv2.COLOR_BGR2GRAY)
-    
-    ###
-    
-    #print(separators_closeup_n_binary.shape)
+
     gray_early=np.repeat(separators_closeup_n_binary[:, :, np.newaxis], 3, axis=2)
     gray_early=gray_early.astype(np.uint8)
     
-    #print(gray_early.shape,'burda')
     imgray_e = cv2.cvtColor(gray_early, cv2.COLOR_BGR2GRAY)
-    #print('burda2')
     ret_e, thresh_e = cv2.threshold(imgray_e, 0, 255, 0)
     
-    #print('burda3')
     contours_line_e,hierarchy_e=cv2.findContours(thresh_e,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-    
-    #slope_lines_e,dist_x_e, x_min_main_e ,x_max_main_e ,cy_main_e,slope_lines_org_e,y_min_main_e, y_max_main_e, cx_main_e=self.find_features_of_lines(contours_line_e)
     
     slope_linese,dist_xe, x_min_maine ,x_max_maine ,cy_maine,slope_lines_orge,y_min_maine, y_max_maine, cx_maine=find_features_of_lines(contours_line_e)
     
     dist_ye=y_max_maine-y_min_maine
-    #print(y_max_maine-y_min_maine,'y')
-    #print(dist_xe,'x')
     
     
     args_e=np.array(range(len(contours_line_e)))
     args_hor_e=args_e[(dist_ye<=50) & (dist_xe>=3*dist_ye)]
     
-    #print(args_hor_e,'jidi',len(args_hor_e),'jilva')
     
     cnts_hor_e=[]
     for ce in args_hor_e:
         cnts_hor_e.append(contours_line_e[ce])
-    #print(len(slope_linese),'lieee')
     
     figs_e=np.zeros(thresh_e.shape)
     figs_e=cv2.fillPoly(figs_e,pts=cnts_hor_e,color=(1,1,1))
-    
-    #plt.imshow(figs_e)
-    #plt.show()
-    
-    ###
     
     separators_closeup_n_binary=cv2.fillPoly(separators_closeup_n_binary,pts=cnts_hor_e,color=(0,0,0))
     
     gray = cv2.bitwise_not(separators_closeup_n_binary)
     gray=gray.astype(np.uint8)
     
-
-    #plt.imshow(gray)
-    #plt.show()
-    
-    
     bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, \
                                 cv2.THRESH_BINARY, 15, -2)
-    ##plt.imshow(bw[:,:])
-    ##plt.show()
-    
+
     horizontal = np.copy(bw)
     vertical = np.copy(bw)
     
@@ -1451,16 +1414,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     horizontal = cv2.dilate(horizontal,kernel,iterations = 2)
     horizontal = cv2.erode(horizontal,kernel,iterations = 2)
     
-    
-    ###
-    #print(np.unique(horizontal),'uni')
     horizontal=cv2.fillPoly(horizontal,pts=cnts_hor_e,color=(255,255,255))
-    ###
-    
-    
-    
-    #plt.imshow(horizontal)
-    #plt.show()
     
     rows = vertical.shape[0]
     verticalsize = rows // 30
@@ -1471,35 +1425,21 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     vertical = cv2.dilate(vertical, verticalStructure)
     
     vertical = cv2.dilate(vertical,kernel,iterations = 1)
-    # Show extracted vertical lines
 
     horizontal,special_separators=combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(vertical,horizontal,num_col_classifier)
     
-    
-    #plt.imshow(horizontal)
-    #plt.show()
-    #print(vertical.shape,np.unique(vertical),'verticalvertical')
     separators_closeup_new[:,:][vertical[:,:]!=0]=1
     separators_closeup_new[:,:][horizontal[:,:]!=0]=1
     
-    ##plt.imshow(separators_closeup_new)
-    ##plt.show()
-    ##separators_closeup_n
     vertical=np.repeat(vertical[:, :, np.newaxis], 3, axis=2)
     vertical=vertical.astype(np.uint8)
     
-    ##plt.plot(vertical[:,:,0].sum(axis=0))
-    ##plt.show()
-    
-    #plt.plot(vertical[:,:,0].sum(axis=1))
-    #plt.show()
-
     imgray = cv2.cvtColor(vertical, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
     
     contours_line_vers,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     slope_lines,dist_x, x_min_main ,x_max_main ,cy_main,slope_lines_org,y_min_main, y_max_main, cx_main=find_features_of_lines(contours_line_vers)
-    #print(slope_lines,'vertical')
+
     args=np.array( range(len(slope_lines) ))
     args_ver=args[slope_lines==1]
     dist_x_ver=dist_x[slope_lines==1]
@@ -1511,9 +1451,6 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     dist_y_ver=y_max_main_ver-y_min_main_ver
     len_y=separators_closeup.shape[0]/3.0
     
-    
-    #plt.imshow(horizontal)
-    #plt.show()
     
     horizontal=np.repeat(horizontal[:, :, np.newaxis], 3, axis=2)
     horizontal=horizontal.astype(np.uint8)
@@ -1582,8 +1519,6 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
 
     matrix_of_lines_ch[len(cy_main_hor):,9]=1
     
-    
-    
     if contours_h is not None:
         slope_lines_head,dist_x_head, x_min_main_head ,x_max_main_head ,cy_main_head,slope_lines_org_head,y_min_main_head, y_max_main_head, cx_main_head=find_features_of_lines(contours_h)
         matrix_l_n=np.zeros((matrix_of_lines_ch.shape[0]+len(cy_main_head),matrix_of_lines_ch.shape[1]))
@@ -1629,8 +1564,6 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     
     args_big_parts=np.array(range(len(splitter_y_new_diff))) [ splitter_y_new_diff>22 ]
     
-    
-            
     regions_without_separators=return_regions_without_separators(region_pre_p)
     
     
@@ -1640,19 +1573,8 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     peaks_neg_fin_fin=[]
     
     for itiles in args_big_parts:
-        
-        
         regions_without_separators_tile=regions_without_separators[int(splitter_y_new[itiles]):int(splitter_y_new[itiles+1]),:,0]
-        #image_page_background_zero_tile=image_page_background_zero[int(splitter_y_new[itiles]):int(splitter_y_new[itiles+1]),:]
-        
-        #print(regions_without_separators_tile.shape)
-        ##plt.imshow(regions_without_separators_tile)
-        ##plt.show()
-        
-        #num_col, peaks_neg_fin=self.find_num_col(regions_without_separators_tile,multiplier=6.0)
-        
-        #regions_without_separators_tile=cv2.erode(regions_without_separators_tile,kernel,iterations = 3)
-        #
+
         try:
             num_col, peaks_neg_fin = find_num_col(regions_without_separators_tile, num_col_classifier, tables, multiplier=7.0)
         except:
@@ -1670,9 +1592,6 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
         peaks_neg_fin=peaks_neg_fin[peaks_neg_fin<=(vertical.shape[1]-500)]
         peaks_neg_fin_fin=peaks_neg_fin[:]
         
-        #print(peaks_neg_fin_fin,'peaks_neg_fin_fintaza')
-        
-    
     return num_col_fin, peaks_neg_fin_fin,matrix_of_lines_ch,splitter_y_new,separators_closeup_n
         
 
