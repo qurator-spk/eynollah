@@ -240,7 +240,6 @@ class Eynollah:
                 pcgts=pcgts)
         self.logger = logger if logger else getLogger('eynollah')
         self.dir_models = dir_models
-
         self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
         self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425"
         self.model_dir_of_col_classifier = dir_models + "/eynollah-column-classifier_20210425"
@@ -4769,9 +4768,9 @@ class Eynollah:
                             
                         textline_mask_tot_ea_deskew = resize_image(textline_mask_tot_ea,img_h_new, img_w_new )
                         
-                        slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea_deskew)
+                        slope_deskew, slope_first = 0, 0#self.run_deskew(textline_mask_tot_ea_deskew)
                     else:
-                        slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
+                        slope_deskew, slope_first = 0, 0#self.run_deskew(textline_mask_tot_ea)
                     #print("text region early -2,5 in %.1fs", time.time() - t0)
                     #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
                     num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea, img_bin_light = \

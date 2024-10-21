@@ -2,6 +2,7 @@ import sys
 import click
 from ocrd_utils import initLogging, setOverrideLogLevel
 from qurator.eynollah.eynollah import Eynollah
+from qurator.eynollah.sbb_binarize import SbbBinarizer
 
 @click.group()
 def main():
@@ -47,6 +48,38 @@ def main():
 
 def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size):
     xml_files_ind = os.listdir(dir_xml)
+    
+@main.command()
+@click.option('--patches/--no-patches', default=True, help='by enabling this parameter you let the model to see the image in patches.')
+
+@click.option('--model_dir', '-m', type=click.Path(exists=True, file_okay=False), required=True, help='directory containing models for prediction')
+
+@click.argument('input_image')
+
+@click.argument('output_image')
+@click.option(
+    "--dir_in",
+    "-di",
+    help="directory of images",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
+    "--dir_out",
+    "-do",
+    help="directory where the binarized images will be written",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out):
+    if not dir_out and (dir_in):
+        print("Error: You used -di but did not set -do")
+        sys.exit(1)
+    elif dir_out and not (dir_in):
+        print("Error: You used -do to write out binarized images but have not set -di")
+        sys.exit(1)
+    SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, save=output_image, dir_in=dir_in, dir_out=dir_out)
+    
+    
     
     
 @main.command()
