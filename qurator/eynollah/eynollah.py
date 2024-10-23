@@ -2120,7 +2120,7 @@ class Eynollah:
         else:
             thresholding_for_artificial_class_in_light_version = False
         if not self.dir_in:
-            model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir if patches else self.model_textline_dir_np)
+            model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir)
         #img = img.astype(np.uint8)
         img_org = np.copy(img)
         img_h = img_org.shape[0]
@@ -3311,7 +3311,8 @@ class Eynollah:
         scaler_h_textline = 1#1.3  # 1.2#1.2
         scaler_w_textline = 1#1.3  # 0.9#1
         #print(image_page.shape)
-        textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline, num_col_classifier)
+        patches = False
+        textline_mask_tot_ea, _ = self.textline_contours(image_page, patches, scaler_h_textline, scaler_w_textline, num_col_classifier)
         if self.textline_light:
             textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
 
