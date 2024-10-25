@@ -2131,7 +2131,7 @@ class Eynollah:
         else:
             thresholding_for_artificial_class_in_light_version = False
         if not self.dir_in:
-            model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir if patches else self.model_textline_dir_np)
+            model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir)
         #img = img.astype(np.uint8)
         img_org = np.copy(img)
         img_h = img_org.shape[0]
