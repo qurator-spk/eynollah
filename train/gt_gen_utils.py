@@ -93,7 +93,7 @@ def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
     #contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy, max_area=1, min_area=min_area)
 
     return contours_imgs
-def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y_len, x_len, dilation_early=None):
+def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y_len, x_len, dilation_early=None, erosion_early=None):
     co_text_eroded = []
     for con in co_text:
         img_boundary_in = np.zeros( (y_len,x_len) )
@@ -101,6 +101,9 @@ def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y
         
         if dilation_early:
             img_boundary_in = cv2.dilate(img_boundary_in[:,:], KERNEL, iterations=dilation_early)
+            
+        if erosion_early:
+            img_boundary_in = cv2.erode(img_boundary_in[:,:], KERNEL, iterations=erosion_early)
         
         #img_boundary_in = cv2.erode(img_boundary_in[:,:], KERNEL, iterations=7)#asiatica
         if erosion_rate > 0:
@@ -137,6 +140,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
         ls_org_imgs_stem = [item.split('.')[0] for item in ls_org_imgs]
     for index in tqdm(range(len(gt_list))):
         #try:
+        print(gt_list[index])
         tree1 = ET.parse(dir_in+'/'+gt_list[index], parser = ET.XMLParser(encoding = 'iso-8859-5'))
         root1=tree1.getroot()
         alltags=[elem.tag for elem in root1.iter()]
@@ -271,8 +275,9 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 img_boundary = np.zeros((y_len, x_len))
                 erosion_rate = 0#1
                 dilation_rate = 2
-                dilation_early = 1
-                co_use_case, img_boundary = update_region_contours(co_use_case, img_boundary, erosion_rate, dilation_rate, y_len, x_len, dilation_early=dilation_early )
+                dilation_early = 0
+                erosion_early = 2
+                co_use_case, img_boundary = update_region_contours(co_use_case, img_boundary, erosion_rate, dilation_rate, y_len, x_len, dilation_early=dilation_early, erosion_early=erosion_early)
             
                 
             img = np.zeros((y_len, x_len, 3))
@@ -280,7 +285,8 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 img_poly = cv2.fillPoly(img, pts=co_use_case, color=(1, 1, 1))
                 if "artificial_class_label" in keys:
                     img_mask = np.copy(img_poly)
-                    img_poly[:,:][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=1)] = artificial_class_label
+                    ##img_poly[:,:][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=1)] = artificial_class_label
+                    img_poly[:,:][img_boundary[:,:]==1] = artificial_class_label
             elif output_type == '3d':
                 img_poly = cv2.fillPoly(img, pts=co_use_case, color=textline_rgb_color)
                 if "artificial_class_label" in keys:
