@@ -1204,17 +1204,12 @@ def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
         top = peaks_neg_new[i]
         down = peaks_neg_new[i + 1]
 
-        # print(top,down,'topdown')
-
         indexes_in = matrix_of_orders[:, 0][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
         cxs_in = matrix_of_orders[:, 2][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
         cys_in = matrix_of_orders[:, 3][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
         types_of_text = matrix_of_orders[:, 1][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
         index_types_of_text = matrix_of_orders[:, 4][(matrix_of_orders[:, 3] >= top) & ((matrix_of_orders[:, 3] < down))]
 
-        # print(top,down)
-        # print(cys_in,'cyyyins')
-        # print(indexes_in,'indexes')
         sorted_inside = np.argsort(cxs_in)
 
         ind_in_int = indexes_in[sorted_inside]
@@ -1228,11 +1223,17 @@ def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
 
     ##matrix_of_orders[:len_main,4]=final_indexers_sorted[:]
 
-    # print(peaks_neg_new,'peaks')
-    # print(final_indexers_sorted,'indexsorted')
-    # print(final_types,'types')
-    # print(final_index_type,'final_index_type')
-
+    # This fix is applied if the sum of the lengths of contours and contours_h does not match final_indexers_sorted. However, this is not the optimal solution..
+    if (len(cy_main)+len(cy_header) ) == len(final_index_type):
+        pass
+    else:
+        indexes_missed = set(list( np.array( range((len(cy_main)+len(cy_header) ) )) )) - set(final_indexers_sorted)
+        for ind_missed in indexes_missed:
+            final_indexers_sorted.append(ind_missed)
+            final_types.append(1)
+            final_index_type.append(ind_missed)
+            
+            
     return final_indexers_sorted, matrix_of_orders, final_types, final_index_type
 
 def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(img_p_in_ver, img_in_hor,num_col_classifier):

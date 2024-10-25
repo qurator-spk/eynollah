@@ -245,7 +245,7 @@ class Eynollah:
         self.model_dir_of_col_classifier = dir_models + "/eynollah-column-classifier_20210425"
         self.model_region_dir_p = dir_models + "/eynollah-main-regions-aug-scaling_20210425"
         self.model_region_dir_p2 = dir_models + "/eynollah-main-regions-aug-rotation_20210425"
-        self.model_region_dir_fully_np = dir_models + "/eynollah-full-regions-1column_20210425"
+        self.model_region_dir_fully_np = dir_models + "/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/eynollah-full-regions-1column_20210425"
         #self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425"
         self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425"
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
@@ -253,11 +253,11 @@ class Eynollah:
         self.model_reading_order_machine_dir = dir_models + "/model_ens_reading_order_machine_based"
         self.model_region_dir_p_1_2_sp_np = dir_models + "/modelens_e_l_all_sp_0_1_2_3_4_171024"#"/modelens_12sp_elay_0_3_4__3_6_n"#"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"#"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"#"/modelens_1_2_4_5_early_lay_1_2_spaltige"#"/model_3_eraly_layout_no_patches_1_2_spaltige"
         ##self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
-        self.model_region_dir_fully = dir_models + "/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
+        self.model_region_dir_fully = dir_models + "/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
         if self.textline_light:
-            self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"#"/modelens_textline_1_4_16092024"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_1_3_4_20240915"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_9_12_13_14_15"#"/eynollah-textline_light_20210425"#
+            self.model_textline_dir = dir_models + "/model_textline_ens_5_6_7_8_10_11_nopatch"#"/modelens_textline_0_1__2_4_16092024"#"/modelens_textline_1_4_16092024"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_1_3_4_20240915"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_9_12_13_14_15"#"/eynollah-textline_light_20210425"#
         else:
-            self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"#"/eynollah-textline_20210425"
+            self.model_textline_dir = dir_models + "/model_textline_ens_5_6_7_8_10_11_nopatch"#"/modelens_textline_0_1__2_4_16092024"#"/eynollah-textline_20210425"
         if self.ocr:
             self.model_ocr_dir = dir_models + "/checkpoint-166692_printed_trocr"
             
@@ -816,6 +816,14 @@ class Eynollah:
                                          verbose=0)
 
             seg = np.argmax(label_p_pred, axis=3)[0]
+            
+            if thresholding_for_artificial_class_in_light_version:
+                seg_art = label_p_pred[0,:,:,2]
+                
+                seg_art[seg_art<0.2] = 0
+                seg_art[seg_art>0] =1
+                
+                seg[seg_art==1]=2
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
             prediction_true = resize_image(seg_color, img_h_page, img_w_page)
             prediction_true = prediction_true.astype(np.uint8)
@@ -1546,7 +1554,7 @@ class Eynollah:
                 pass
             else:
                 img = otsu_copy_binary(img)
-            img = img.astype(np.uint8)
+            #img = img.astype(np.uint8)
             prediction_regions2 = None
         else:
             if cols == 1:
@@ -1605,8 +1613,11 @@ class Eynollah:
                 img = img.astype(np.uint8)
 
         marginal_of_patch_percent = 0.1
-
+        
         prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=marginal_of_patch_percent, n_batch_inference=3)
+        
+        
+        ##prediction_regions = self.do_prediction(False, img, model_region, marginal_of_patch_percent=marginal_of_patch_percent, n_batch_inference=3)
         
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
@@ -2148,7 +2159,7 @@ class Eynollah:
         
         if not thresholding_for_artificial_class_in_light_version:
             textline_mask_tot_ea_art = textline_mask_tot_ea_art.astype('uint8')
-            textline_mask_tot_ea_art = cv2.dilate(textline_mask_tot_ea_art, KERNEL, iterations=1)
+            #textline_mask_tot_ea_art = cv2.dilate(textline_mask_tot_ea_art, KERNEL, iterations=1)
             
             prediction_textline[:,:][textline_mask_tot_ea_art[:,:]==1]=2
         
@@ -2245,26 +2256,27 @@ class Eynollah:
         #if (not self.input_binary) or self.full_layout:
         #if self.input_binary:
             #img_bin = np.copy(img_resized)
-        if (not self.input_binary and self.full_layout) or (not self.input_binary and num_col_classifier >= 30):
-            if not self.dir_in:
-                model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
-            else:
-                prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
+        ###if (not self.input_binary and self.full_layout) or (not self.input_binary and num_col_classifier >= 30):
+            ###if not self.dir_in:
+                ###model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+                ###prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
+            ###else:
+                ###prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
                 
-            #print("inside bin ", time.time()-t_bin)
-            prediction_bin=prediction_bin[:,:,0]
-            prediction_bin = (prediction_bin[:,:]==0)*1
-            prediction_bin = prediction_bin*255
+            ####print("inside bin ", time.time()-t_bin)
+            ###prediction_bin=prediction_bin[:,:,0]
+            ###prediction_bin = (prediction_bin[:,:]==0)*1
+            ###prediction_bin = prediction_bin*255
             
-            prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
+            ###prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
             
-            prediction_bin = prediction_bin.astype(np.uint16)
-            #img= np.copy(prediction_bin)
-            img_bin = np.copy(prediction_bin)
-        else:
-            img_bin = np.copy(img_resized)
+            ###prediction_bin = prediction_bin.astype(np.uint16)
+            ####img= np.copy(prediction_bin)
+            ###img_bin = np.copy(prediction_bin)
+        ###else:
+            ###img_bin = np.copy(img_resized)
         
+        img_bin = np.copy(img_resized)
         #print("inside 1 ", time.time()-t_in)
         
         ###textline_mask_tot_ea = self.run_textline(img_bin)
@@ -3311,7 +3323,8 @@ class Eynollah:
         scaler_h_textline = 1#1.3  # 1.2#1.2
         scaler_w_textline = 1#1.3  # 0.9#1
         #print(image_page.shape)
-        textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline, num_col_classifier)
+        patches = False
+        textline_mask_tot_ea, _ = self.textline_contours(image_page, patches, scaler_h_textline, scaler_w_textline, num_col_classifier)
         if self.textline_light:
             textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
 
@@ -3564,9 +3577,9 @@ class Eynollah:
         image_page = image_page.astype(np.uint8)
         #print("full inside 1", time.time()- t_full0)
         if self.light_version:
-            regions_fully, regions_fully_only_drop = self.extract_text_regions_new(img_bin_light, True, cols=num_col_classifier)
+            regions_fully, regions_fully_only_drop = self.extract_text_regions_new(img_bin_light, False, cols=num_col_classifier)
         else:
-            regions_fully, regions_fully_only_drop = self.extract_text_regions_new(image_page, True, cols=num_col_classifier)
+            regions_fully, regions_fully_only_drop = self.extract_text_regions_new(image_page, False, cols=num_col_classifier)
         #print("full inside 2", time.time()- t_full0)
         # 6 is the separators lable in old full layout model
         # 4 is the drop capital class in old full layout model
@@ -3590,7 +3603,7 @@ class Eynollah:
         regions_fully[:,:,0][drops[:,:]==1] = drop_capital_label_in_full_layout_model
         
         
-        regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully, drop_capital_label_in_full_layout_model)
+        ##regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully, drop_capital_label_in_full_layout_model)
         ##regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
         ##if num_col_classifier > 2:
             ##regions_fully_np[:, :, 0][regions_fully_np[:, :, 0] == 4] = 0
@@ -4768,9 +4781,9 @@ class Eynollah:
                             
                         textline_mask_tot_ea_deskew = resize_image(textline_mask_tot_ea,img_h_new, img_w_new )
                         
-                        slope_deskew, slope_first = 0, 0#self.run_deskew(textline_mask_tot_ea_deskew)
+                        slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea_deskew)
                     else:
-                        slope_deskew, slope_first = 0, 0#self.run_deskew(textline_mask_tot_ea)
+                        slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
                     #print("text region early -2,5 in %.1fs", time.time() - t0)
                     #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
                     num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea, img_bin_light = \
