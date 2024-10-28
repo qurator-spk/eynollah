@@ -245,7 +245,7 @@ class Eynollah:
         self.model_dir_of_col_classifier = dir_models + "/eynollah-column-classifier_20210425"
         self.model_region_dir_p = dir_models + "/eynollah-main-regions-aug-scaling_20210425"
         self.model_region_dir_p2 = dir_models + "/eynollah-main-regions-aug-rotation_20210425"
-        self.model_region_dir_fully_np = dir_models + "/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/eynollah-full-regions-1column_20210425"
+        self.model_region_dir_fully_np = dir_models + "/modelens_full_lay_13__3_19_241024"#"/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/eynollah-full-regions-1column_20210425"
         #self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425"
         self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425"
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
@@ -253,11 +253,11 @@ class Eynollah:
         self.model_reading_order_machine_dir = dir_models + "/model_ens_reading_order_machine_based"
         self.model_region_dir_p_1_2_sp_np = dir_models + "/modelens_e_l_all_sp_0_1_2_3_4_171024"#"/modelens_12sp_elay_0_3_4__3_6_n"#"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"#"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"#"/modelens_1_2_4_5_early_lay_1_2_spaltige"#"/model_3_eraly_layout_no_patches_1_2_spaltige"
         ##self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
-        self.model_region_dir_fully = dir_models + "/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
+        self.model_region_dir_fully = dir_models + "/modelens_full_lay_13__3_19_241024"#"/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
         if self.textline_light:
-            self.model_textline_dir = dir_models + "/model_textline_ens_5_6_7_8_10_11_nopatch"#"/modelens_textline_0_1__2_4_16092024"#"/modelens_textline_1_4_16092024"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_1_3_4_20240915"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_9_12_13_14_15"#"/eynollah-textline_light_20210425"#
+            self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"#"/modelens_textline_1_4_16092024"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_1_3_4_20240915"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_9_12_13_14_15"#"/eynollah-textline_light_20210425"#
         else:
-            self.model_textline_dir = dir_models + "/model_textline_ens_5_6_7_8_10_11_nopatch"#"/modelens_textline_0_1__2_4_16092024"#"/eynollah-textline_20210425"
+            self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"#"/eynollah-textline_20210425"
         if self.ocr:
             self.model_ocr_dir = dir_models + "/checkpoint-166692_printed_trocr"
             
@@ -502,7 +502,8 @@ class Eynollah:
         if label_p_pred[0][int(num_col - 1)] < 0.9 and img_w_new < width_early:
             img_new = np.copy(img)
             num_column_is_classified = False
-        elif label_p_pred[0][int(num_col - 1)] < 0.8 and img_h_new >= 8000:
+        #elif label_p_pred[0][int(num_col - 1)] < 0.8 and img_h_new >= 8000:
+        elif img_h_new >= 8000:
             img_new = np.copy(img)
             num_column_is_classified = False
         else:
@@ -523,7 +524,8 @@ class Eynollah:
         if label_p_pred[0][int(num_col - 1)] < 0.9 and img_w_new < width_early:
             img_new = np.copy(img)
             num_column_is_classified = False
-        elif label_p_pred[0][int(num_col - 1)] < 0.8 and img_h_new >= 8000:
+        #elif label_p_pred[0][int(num_col - 1)] < 0.8 and img_h_new >= 8000:
+        elif img_h_new >= 8000:
             img_new = np.copy(img)
             num_column_is_classified = False
         else:
@@ -3323,7 +3325,7 @@ class Eynollah:
         scaler_h_textline = 1#1.3  # 1.2#1.2
         scaler_w_textline = 1#1.3  # 0.9#1
         #print(image_page.shape)
-        patches = False
+        patches = True
         textline_mask_tot_ea, _ = self.textline_contours(image_page, patches, scaler_h_textline, scaler_w_textline, num_col_classifier)
         if self.textline_light:
             textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
@@ -3634,6 +3636,7 @@ class Eynollah:
             regions_without_separators = (text_regions_p[:, :] == 1) * 1
         img_revised_tab = np.copy(text_regions_p[:, :])
         polygons_of_images = return_contours_of_interested_region(img_revised_tab, 5)
+        
         self.logger.debug('exit run_boxes_full_layout')
         #print("full inside 3", time.time()- t_full0)
         return polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables
@@ -4169,7 +4172,123 @@ class Eynollah:
             x_differential_new[split_masked[i]:split_masked[i+1]] = -1*np.array(x_differential)[split_masked[i]:split_masked[i+1]]
             
         return x_differential_new
-    
+    def dilate_textregions_contours_textline_version(self,all_found_textline_polygons):
+        #print(all_found_textline_polygons)
+        
+        for j in range(len(all_found_textline_polygons)):
+            for ij in range(len(all_found_textline_polygons[j])):
+                
+                con_ind = all_found_textline_polygons[j][ij]
+                area = cv2.contourArea(con_ind)
+                con_ind = con_ind.astype(np.float)
+                
+                x_differential = np.diff( con_ind[:,0,0])
+                y_differential = np.diff( con_ind[:,0,1])
+                
+                
+                x_differential = gaussian_filter1d(x_differential, 0.1)
+                y_differential = gaussian_filter1d(y_differential, 0.1)
+                
+                x_min = float(np.min( con_ind[:,0,0] ))
+                y_min = float(np.min( con_ind[:,0,1] ))
+                
+                x_max = float(np.max( con_ind[:,0,0] ))
+                y_max = float(np.max( con_ind[:,0,1] ))
+                
+                x_differential_mask_nonzeros = [ ind/abs(ind) if ind!=0 else ind for ind in x_differential]
+                y_differential_mask_nonzeros = [ ind/abs(ind) if ind!=0 else ind for ind in y_differential]
+                
+                abs_diff=abs(abs(x_differential)- abs(y_differential) )
+                
+                inc_x = np.zeros(len(x_differential)+1)
+                inc_y = np.zeros(len(x_differential)+1)
+                
+                
+                if (y_max-y_min) <= (x_max-x_min):
+                    dilation_m1 = round(area / (x_max-x_min) * 0.12)
+                else:
+                    dilation_m1 = round(area / (y_max-y_min) * 0.12)
+                    
+                if dilation_m1>8:
+                    dilation_m1 = 8
+                if dilation_m1<6:
+                    dilation_m1 = 6
+                #print(dilation_m1, 'dilation_m1')
+                dilation_m1 = 6
+                dilation_m2 = int(dilation_m1/2.) +1 
+            
+                for i in range(len(x_differential)):
+                    if abs_diff[i]==0:
+                        inc_x[i+1] = dilation_m2*(-1*y_differential_mask_nonzeros[i])
+                        inc_y[i+1] = dilation_m2*(x_differential_mask_nonzeros[i])
+                    elif abs_diff[i]!=0 and x_differential_mask_nonzeros[i]==0 and y_differential_mask_nonzeros[i]!=0:
+                        inc_x[i+1]= dilation_m1*(-1*y_differential_mask_nonzeros[i])
+                    elif abs_diff[i]!=0 and x_differential_mask_nonzeros[i]!=0 and y_differential_mask_nonzeros[i]==0:
+                        inc_y[i+1] = dilation_m1*(x_differential_mask_nonzeros[i])
+                    
+                    elif abs_diff[i]!=0 and abs_diff[i]>=3:
+                        if abs(x_differential[i])>abs(y_differential[i]):
+                            inc_y[i+1] = dilation_m1*(x_differential_mask_nonzeros[i])
+                        else:
+                            inc_x[i+1]= dilation_m1*(-1*y_differential_mask_nonzeros[i])
+                    else:
+                        inc_x[i+1] = dilation_m2*(-1*y_differential_mask_nonzeros[i])
+                        inc_y[i+1] = dilation_m2*(x_differential_mask_nonzeros[i])
+                
+                
+                inc_x[0] = inc_x[-1]
+                inc_y[0] = inc_y[-1]
+                
+                con_scaled = con_ind*1
+                
+                con_scaled[:,0, 0] = con_ind[:,0,0] + np.array(inc_x)[:]
+                con_scaled[:,0, 1] = con_ind[:,0,1] + np.array(inc_y)[:]
+                
+                con_scaled[:,0, 1][con_scaled[:,0, 1]<0] = 0
+                con_scaled[:,0, 0][con_scaled[:,0, 0]<0] = 0
+                
+                area_scaled = cv2.contourArea(con_scaled.astype(np.int32))
+                
+                con_ind = con_ind.astype(np.int32)
+                
+                results = [cv2.pointPolygonTest(con_ind, (con_scaled[ind,0, 0], con_scaled[ind,0, 1]), False) for ind in range(len(con_scaled[:,0, 1])) ]
+                
+                results = np.array(results)
+                
+                #print(results,'results')
+                
+                results[results==0] = 1
+                
+                
+                diff_result = np.diff(results)
+                
+                indices_2 = [ind for ind in range(len(diff_result)) if diff_result[ind]==2]
+                indices_m2 = [ind for ind in range(len(diff_result)) if diff_result[ind]==-2]
+
+                    
+                if results[0]==1:
+                    con_scaled[:indices_m2[0]+1,0, 1] = con_ind[:indices_m2[0]+1,0,1]
+                    con_scaled[:indices_m2[0]+1,0, 0] = con_ind[:indices_m2[0]+1,0,0]
+                    #indices_2 = indices_2[1:]
+                    indices_m2 = indices_m2[1:]
+                    
+                    
+                    
+                if len(indices_2)>len(indices_m2):
+                    con_scaled[indices_2[-1]+1:,0, 1] = con_ind[indices_2[-1]+1:,0,1]
+                    con_scaled[indices_2[-1]+1:,0, 0] = con_ind[indices_2[-1]+1:,0,0]
+                    
+                    indices_2 = indices_2[:-1]
+                    
+                
+                for ii in range(len(indices_2)):
+                    con_scaled[indices_2[ii]+1:indices_m2[ii]+1,0, 1] = con_scaled[indices_2[ii],0, 1]
+                    con_scaled[indices_2[ii]+1:indices_m2[ii]+1,0, 0] = con_scaled[indices_2[ii],0, 0]
+                    
+
+                all_found_textline_polygons[j][ij][:,0,1] = con_scaled[:,0, 1]
+                all_found_textline_polygons[j][ij][:,0,0] = con_scaled[:,0, 0]
+        return all_found_textline_polygons
     def dilate_textregions_contours(self,all_found_textline_polygons):
         #print(all_found_textline_polygons)
         for j in range(len(all_found_textline_polygons)):
@@ -4178,9 +4297,6 @@ class Eynollah:
             #print(len(con_ind[:,0,0]),'con_ind[:,0,0]')
             area = cv2.contourArea(con_ind)
             con_ind = con_ind.astype(np.float)
-            
-            #con_ind[:,0,0] = gaussian_filter1d(con_ind[:,0,0], 0.5)
-            #con_ind[:,0,1] = gaussian_filter1d(con_ind[:,0,1], 0.5)
             
             x_differential = np.diff( con_ind[:,0,0])
             y_differential = np.diff( con_ind[:,0,1])
@@ -4235,29 +4351,6 @@ class Eynollah:
                     inc_x[i+1] = dilation_m2*(-1*y_differential_mask_nonzeros[i])
                     inc_y[i+1] = dilation_m2*(x_differential_mask_nonzeros[i])
             
-            ###for i in range(len(x_differential)):
-                ###if abs_diff[i]==0:
-                    ###inc_x[i+1] = 7*(-1*y_differential_mask_nonzeros[i])
-                    ###inc_y[i+1] = 7*(x_differential_mask_nonzeros[i])
-                ###elif abs_diff[i]!=0 and x_differential_mask_nonzeros[i]==0 and y_differential_mask_nonzeros[i]!=0:
-                    ###inc_x[i+1]= 12*(-1*y_differential_mask_nonzeros[i])
-                ###elif abs_diff[i]!=0 and x_differential_mask_nonzeros[i]!=0 and y_differential_mask_nonzeros[i]==0:
-                    ###inc_y[i+1] = 12*(x_differential_mask_nonzeros[i])
-                
-                ###elif abs_diff[i]!=0 and abs_diff[i]>=3:
-                    ###if abs(x_differential[i])>abs(y_differential[i]):
-                        ###inc_y[i+1] = 12*(x_differential_mask_nonzeros[i])
-                    ###else:
-                        ###inc_x[i+1]= 12*(-1*y_differential_mask_nonzeros[i])
-                ###else:
-                    ###inc_x[i+1] = 7*(-1*y_differential_mask_nonzeros[i])
-                    ###inc_y[i+1] = 7*(x_differential_mask_nonzeros[i])
-                    
-            ###inc_x =list(inc_x)
-            ###inc_x.append(inc_x[0])
-            
-            ###inc_y =list(inc_y)
-            ###inc_y.append(inc_y[0])
             
             inc_x[0] = inc_x[-1]
             inc_y[0] = inc_y[-1]
@@ -4288,21 +4381,6 @@ class Eynollah:
             indices_2 = [ind for ind in range(len(diff_result)) if diff_result[ind]==2]
             indices_m2 = [ind for ind in range(len(diff_result)) if diff_result[ind]==-2]
 
-            #print(area_scaled / area, "ratio")
-            #print(results,'results')
-            #if results[0]==1 and diff_result[-1]==-2:
-                ##indices_2 = indices_2[1:]
-                ##indices_m2 = indices_m2[1:]
-                
-                #con_scaled[:indices_m2[0]+1,0, 1] = con_scaled[indices_m2[-1],0, 1]
-                #con_scaled[:indices_m2[0]+1,0, 0] = con_scaled[indices_m2[-1],0, 0]
-                
-                
-                #con_scaled[indices_2[-1]+1:,0, 1] = con_scaled[indices_m2[-1],0, 1]
-                #con_scaled[indices_2[-1]+1:,0, 0] = con_scaled[indices_m2[-1],0, 0]
-                
-                #indices_2 = indices_2[:-1]
-                #indices_m2 = indices_m2[1:-1]
                 
             if results[0]==1:
                 con_scaled[:indices_m2[0]+1,0, 1] = con_ind[:indices_m2[0]+1,0,1]
@@ -4318,50 +4396,12 @@ class Eynollah:
                 
                 indices_2 = indices_2[:-1]
                 
-                
-            
-            #diff_neg_pos = np.array(indices_m2) - np.array(indices_2)
-            
-            
-            #print(diff_neg_pos,'diff')
-            ##print(indices_2, 'indices_2')
-            #indices_2 = np.array(indices_2)[diff_neg_pos>1]
-            #indices_m2 = np.array(indices_m2)[diff_neg_pos>1]
             
             for ii in range(len(indices_2)):
-                #x_inner = con_ind[indices_2[ii]+1:indices_m2[ii]+1,0, 0]
-                #y_inner = con_ind[indices_2[ii]+1:indices_m2[ii]+1,0, 1]
-                
-                #if x_inner[-1]>=x_inner[0]:
-                    #x_interest = np.min(x_inner)
-                #else:
-                    #x_interest = np.max(x_inner)
-                
-                #if y_inner[-1]>=y_inner[0]:
-                    #y_interest = np.min(y_inner)
-                #else:
-                    #y_interest = np.max(y_inner)
-                
                 con_scaled[indices_2[ii]+1:indices_m2[ii]+1,0, 1] = con_scaled[indices_2[ii],0, 1]
                 con_scaled[indices_2[ii]+1:indices_m2[ii]+1,0, 0] = con_scaled[indices_2[ii],0, 0]
                 
 
-            
-            #con_scaled[:,0, 1][results[:]>0] = con_ind[:,0,1][results[:]>0]
-            #con_scaled[:,0, 0][results[:]>0] = con_ind[:,0,0][results[:]>0]
-            
-            #print(list(results), 'results')
-            #print(list(diff_result), 'diff_result')
-            #print(indices_2,'2')
-            #print(indices_m2,'-2')
-            #print(diff_neg_pos,'diff_neg_pos')
-            
-            ##con_scaled[:,0, 1] = gaussian_filter1d(con_scaled[:,0, 1], 0.1)
-            ##con_scaled[:,0, 0] = gaussian_filter1d(con_scaled[:,0, 0], 0.1)
-            
-            #con_scaled[-1,0, 1] = con_scaled[0,0, 1]
-            #con_scaled[-1,0, 0] = con_scaled[0,0, 0]
-            ##print(len(con_scaled[:,0,0]),'con_scaled[:,0,0]')
             all_found_textline_polygons[j][:,0,1] = con_scaled[:,0, 1]
             all_found_textline_polygons[j][:,0,0] = con_scaled[:,0, 0]
         return all_found_textline_polygons
@@ -4865,6 +4905,12 @@ class Eynollah:
                         img_bin_light = None
                     polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts, img_bin_light)
                     ###polygons_of_marginals = self.dilate_textregions_contours(polygons_of_marginals)
+                    
+                    if self.light_version:
+                        drop_label_in_full_layout = 4
+                        textline_mask_tot_ea_org[img_revised_tab==drop_label_in_full_layout] = 0
+                        
+                    
                 text_only = ((img_revised_tab[:, :] == 1)) * 1
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                     text_only_d = ((text_regions_p_1_n[:, :] == 1)) * 1
@@ -5018,7 +5064,8 @@ class Eynollah:
                             
                             #slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, polygons_of_marginals, polygons_of_marginals, _ = self.delete_regions_without_textlines(slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, polygons_of_marginals, polygons_of_marginals, np.array(range(len(polygons_of_marginals))))
                             #all_found_textline_polygons = self.dilate_textlines(all_found_textline_polygons)
-                            all_found_textline_polygons = self.dilate_textline_contours(all_found_textline_polygons)
+                            #####all_found_textline_polygons = self.dilate_textline_contours(all_found_textline_polygons)
+                            all_found_textline_polygons = self.dilate_textregions_contours_textline_version(all_found_textline_polygons)
                             all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(all_found_textline_polygons, textline_mask_tot_ea_org, type_contour="textline")
                             all_found_textline_polygons_marginals = self.dilate_textline_contours(all_found_textline_polygons_marginals)
                             
