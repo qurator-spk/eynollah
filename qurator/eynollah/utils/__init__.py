@@ -792,7 +792,7 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop
     for jj in range(len(contours_drop_parent)):
         x, y, w, h = cv2.boundingRect(contours_drop_parent[jj])
         
-        if ( ( areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) ) / float(w*h) ) > 0.8:
+        if ( ( areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) ) / float(w*h) ) > 0.4:
             
             layout_in_patch[y : y + h, x : x + w, 0] = drop_capital_label
         else:

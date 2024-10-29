@@ -1726,6 +1726,7 @@ class Eynollah:
         
         polygons_of_textlines = return_contours_of_interested_region(textline_mask_tot,1,0.00001)
         
+        
         M_main_tot = [cv2.moments(polygons_of_textlines[j]) for j in range(len(polygons_of_textlines))]
         cx_main_tot = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
         cy_main_tot = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
@@ -3605,7 +3606,7 @@ class Eynollah:
         regions_fully[:,:,0][drops[:,:]==1] = drop_capital_label_in_full_layout_model
         
         
-        ##regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully, drop_capital_label_in_full_layout_model)
+        regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(regions_fully, drop_capital_label_in_full_layout_model)
         ##regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
         ##if num_col_classifier > 2:
             ##regions_fully_np[:, :, 0][regions_fully_np[:, :, 0] == 4] = 0
@@ -4901,6 +4902,7 @@ class Eynollah:
                     polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, boxes, boxes_d, polygons_of_marginals, contours_tables = self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, table_prediction, erosion_hurts)
                     ###polygons_of_marginals = self.dilate_textregions_contours(polygons_of_marginals)
                 if self.full_layout:
+                    cv2.imwrite('dewar_page.png', image_page)
                     if not self.light_version:
                         img_bin_light = None
                     polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts, img_bin_light)
@@ -5067,7 +5069,7 @@ class Eynollah:
                             #####all_found_textline_polygons = self.dilate_textline_contours(all_found_textline_polygons)
                             all_found_textline_polygons = self.dilate_textregions_contours_textline_version(all_found_textline_polygons)
                             all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(all_found_textline_polygons, textline_mask_tot_ea_org, type_contour="textline")
-                            all_found_textline_polygons_marginals = self.dilate_textline_contours(all_found_textline_polygons_marginals)
+                            all_found_textline_polygons_marginals = self.dilate_textregions_contours_textline_version(all_found_textline_polygons_marginals)
                             
                         else:
                             textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
@@ -5261,7 +5263,7 @@ class Eynollah:
                 
                 all_found_textline_polygons=[ all_found_textline_polygons ]
                 
-                all_found_textline_polygons = self.dilate_textline_contours(all_found_textline_polygons)
+                all_found_textline_polygons = self.dilate_textregions_contours_textline_version(all_found_textline_polygons)
                 all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(all_found_textline_polygons, textline_mask_tot_ea, type_contour="textline")
                 
                 
