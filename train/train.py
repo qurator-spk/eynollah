@@ -50,6 +50,7 @@ def config_params():
     padding_white = False # If true, white padding will be applied to the image.
     padding_black = False # If true, black padding will be applied to the image.
     scaling = False  # If true, scaling will be applied to the image. The amount of scaling is defined with "scales" in config_params.json.
+    shifting = False
     degrading = False  # If true, degrading will be applied to the image. The amount of degrading is defined with "degrade_scales" in config_params.json.
     brightening = False  # If true, brightening will be applied to the image. The amount of brightening is defined with "brightness" in config_params.json.
     binarization = False  # If true, Otsu thresholding will be applied to augment the input with binarized images.
@@ -104,7 +105,7 @@ def run(_config, n_classes, n_epochs, input_height,
         input_width, weight_decay, weighted_loss,
         index_start, dir_of_start_model, is_loss_soft_dice,
         n_batch, patches, augmentation, flip_aug,
-        blur_aug, padding_white, padding_black, scaling, degrading,channels_shuffling,
+        blur_aug, padding_white, padding_black, scaling, shifting, degrading,channels_shuffling,
         brightening, binarization, adding_rgb_background, adding_rgb_foreground, add_red_textlines, blur_k, scales, degrade_scales,shuffle_indexes,
         brightness, dir_train, data_is_provided, scaling_bluring,
         scaling_brightness, scaling_binarization, rotation, rotation_not_90,
@@ -183,7 +184,7 @@ def run(_config, n_classes, n_epochs, input_height,
             provide_patches(imgs_list, segs_list, dir_img, dir_seg, dir_flow_train_imgs,
                             dir_flow_train_labels, input_height, input_width, blur_k,
                             blur_aug, padding_white, padding_black, flip_aug, binarization, adding_rgb_background,adding_rgb_foreground, add_red_textlines, channels_shuffling,
-                            scaling, degrading, brightening, scales, degrade_scales, brightness,
+                            scaling, shifting, degrading, brightening, scales, degrade_scales, brightness,
                             flip_index,shuffle_indexes, scaling_bluring, scaling_brightness, scaling_binarization,
                             rotation, rotation_not_90, thetha, scaling_flip, task, augmentation=augmentation,
                             patches=patches, dir_img_bin=dir_img_bin,number_of_backgrounds_per_image=number_of_backgrounds_per_image,list_all_possible_background_images=list_all_possible_background_images, dir_rgb_backgrounds=dir_rgb_backgrounds, dir_rgb_foregrounds=dir_rgb_foregrounds,list_all_possible_foreground_rgbs=list_all_possible_foreground_rgbs)
@@ -191,7 +192,7 @@ def run(_config, n_classes, n_epochs, input_height,
             provide_patches(imgs_list_test, segs_list_test, dir_img_val, dir_seg_val,
                             dir_flow_eval_imgs, dir_flow_eval_labels, input_height, input_width,
                             blur_k, blur_aug, padding_white, padding_black, flip_aug, binarization, adding_rgb_background, adding_rgb_foreground, add_red_textlines, channels_shuffling,
-                            scaling, degrading, brightening, scales, degrade_scales, brightness,
+                            scaling, shifting, degrading, brightening, scales, degrade_scales, brightness,
                             flip_index, shuffle_indexes, scaling_bluring, scaling_brightness, scaling_binarization,
                             rotation, rotation_not_90, thetha, scaling_flip, task, augmentation=False, patches=patches,dir_img_bin=dir_img_bin,number_of_backgrounds_per_image=number_of_backgrounds_per_image,list_all_possible_background_images=list_all_possible_background_images, dir_rgb_backgrounds=dir_rgb_backgrounds,dir_rgb_foregrounds=dir_rgb_foregrounds,list_all_possible_foreground_rgbs=list_all_possible_foreground_rgbs )
 
