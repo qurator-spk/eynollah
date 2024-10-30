@@ -2296,9 +2296,8 @@ class Eynollah:
         #plt.show()
         if not skip_layout_and_reading_order:
             #print("inside 2 ", time.time()-t_in)
-            
             if not self.dir_in:
-                if num_col_classifier == 1 or num_col_classifier >= 2:
+                if num_col_classifier == 1 or num_col_classifier == 2:
                     model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
                     if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
                         prediction_regions_org = self.do_prediction_new_concept(True, img_resized, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
@@ -2307,12 +2306,12 @@ class Eynollah:
                         prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
                         prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
                 else:
-                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
-                    prediction_regions_org = self.do_prediction_new_concept(True, img_bin, model_region)
+                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
+                    prediction_regions_org = self.do_prediction_new_concept(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), model_region)
                 ##model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
                 ##prediction_regions_org = self.do_prediction(True, img_bin, model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
             else:
-                if num_col_classifier == 1 or num_col_classifier >= 2:
+                if num_col_classifier == 1 or num_col_classifier == 2:
                     if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
                         prediction_regions_org = self.do_prediction_new_concept(True, img_resized, self.model_region_1_2, n_batch_inference=1, thresholding_for_artificial_class_in_light_version=True)
                     else:
@@ -2320,7 +2319,7 @@ class Eynollah:
                         prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, self.model_region_1_2, n_batch_inference=1, thresholding_for_artificial_class_in_light_version=True)
                         prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
                 else:
-                    prediction_regions_org = self.do_prediction_new_concept(True, img_bin, self.model_region, n_batch_inference=3)
+                    prediction_regions_org = self.do_prediction_new_concept(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), self.model_region_1_2, n_batch_inference=2)
                 ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
             
             #print("inside 3 ", time.time()-t_in)
