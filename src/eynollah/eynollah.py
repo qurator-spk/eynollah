@@ -158,6 +158,7 @@ class Eynollah:
         dir_out=None,
         dir_in=None,
         dir_of_cropped_images=None,
+        extract_only_images=False,
         dir_of_layout=None,
         dir_of_deskewed=None,
         dir_of_all=None,
@@ -211,6 +212,8 @@ class Eynollah:
         self.input_binary = input_binary
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
+        self.light_version = light_version
+        self.extract_only_images = extract_only_images
         self.ignore_page_extraction = ignore_page_extraction
         self.skip_layout_and_reading_order = skip_layout_and_reading_order
         self.ocr = do_ocr
@@ -254,6 +257,7 @@ class Eynollah:
         self.model_region_dir_p_1_2_sp_np = dir_models + "/modelens_e_l_all_sp_0_1_2_3_4_171024"#"/modelens_12sp_elay_0_3_4__3_6_n"#"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"#"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"#"/modelens_1_2_4_5_early_lay_1_2_spaltige"#"/model_3_eraly_layout_no_patches_1_2_spaltige"
         ##self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
         self.model_region_dir_fully = dir_models + "/modelens_full_lay_1_3_031124"#"/modelens_full_lay_13__3_19_241024"#"/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
+        self.model_region_dir_p_ens_light_only_images_extraction = dir_models + "/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18"
         if self.textline_light:
             self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"#"/modelens_textline_1_4_16092024"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_1_3_4_20240915"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_9_12_13_14_15"#"/eynollah-textline_light_20210425"#
         else:
@@ -288,7 +292,23 @@ class Eynollah:
             
             self.ls_imgs  = os.listdir(self.dir_in)
             
-        if dir_in and not light_version:
+        if dir_in and self.extract_only_images:
+            config = tf.compat.v1.ConfigProto()
+            config.gpu_options.allow_growth = True
+            session = tf.compat.v1.Session(config=config)
+            set_session(session)
+
+            self.model_page = self.our_load_model(self.model_page_dir)
+            self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
+            self.model_bin = self.our_load_model(self.model_dir_of_binarization)
+            #self.model_textline = self.our_load_model(self.model_textline_dir)
+            self.model_region = self.our_load_model(self.model_region_dir_p_ens_light_only_images_extraction)
+            #self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
+            #self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
+
+            self.ls_imgs  = os.listdir(self.dir_in)
+
+        if dir_in and not (light_version or self.extract_only_images):
             config = tf.compat.v1.ConfigProto()
             config.gpu_options.allow_growth = True
             session = tf.compat.v1.Session(config=config)
@@ -534,6 +554,27 @@ class Eynollah:
 
         return img_new, num_column_is_classified
 
+    def calculate_width_height_by_columns_extract_only_images(self, img, num_col, width_early, label_p_pred):
+        self.logger.debug("enter calculate_width_height_by_columns")
+        if num_col == 1:
+            img_w_new = 700
+        elif num_col == 2:
+            img_w_new = 900
+        elif num_col == 3:
+            img_w_new = 1500
+        elif num_col == 4:
+            img_w_new = 1800
+        elif num_col == 5:
+            img_w_new = 2200
+        elif num_col == 6:
+            img_w_new = 2500
+        img_h_new = int(img.shape[0] / float(img.shape[1]) * img_w_new)
+
+        img_new = resize_image(img, img_h_new, img_w_new)
+        num_column_is_classified = True
+
+        return img_new, num_column_is_classified
+
     def resize_image_with_column_classifier(self, is_image_enhanced, img_bin):
         self.logger.debug("enter resize_image_with_column_classifier")
         if self.input_binary:
@@ -690,25 +731,30 @@ class Eynollah:
         
         self.logger.info("Found %d columns (%s)", num_col, np.around(label_p_pred, decimals=5))
 
-        if dpi < DPI_THRESHOLD:
-            if light_version and num_col in (1,2):
-                img_new, num_column_is_classified = self.calculate_width_height_by_columns_1_2(img, num_col, width_early, label_p_pred)
-            else:
-                img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
-            if light_version:
-                image_res = np.copy(img_new)
-            else:
-                image_res = self.predict_enhancement(img_new)
-            is_image_enhanced = True
-        else:
-            if light_version and num_col in (1,2):
-                img_new, num_column_is_classified = self.calculate_width_height_by_columns_1_2(img, num_col, width_early, label_p_pred)
-                image_res = np.copy(img_new)
+        if not self.extract_only_images:
+            if dpi < DPI_THRESHOLD:
+                if light_version and num_col in (1,2):
+                    img_new, num_column_is_classified = self.calculate_width_height_by_columns_1_2(img, num_col, width_early, label_p_pred)
+                else:
+                    img_new, num_column_is_classified = self.calculate_width_height_by_columns(img, num_col, width_early, label_p_pred)
+                if light_version:
+                    image_res = np.copy(img_new)
+                else:
+                    image_res = self.predict_enhancement(img_new)
                 is_image_enhanced = True
             else:
-                num_column_is_classified = True
-                image_res = np.copy(img)
-                is_image_enhanced = False
+                if light_version and num_col in (1,2):
+                    img_new, num_column_is_classified = self.calculate_width_height_by_columns_1_2(img, num_col, width_early, label_p_pred)
+                    image_res = np.copy(img_new)
+                    is_image_enhanced = True
+                else:
+                    num_column_is_classified = True
+                    image_res = np.copy(img)
+                    is_image_enhanced = False
+        else:
+            num_column_is_classified = True
+            image_res = np.copy(img)
+            is_image_enhanced = False
 
         self.logger.debug("exit resize_and_enhance_image_with_column_classifier")
         return is_image_enhanced, img, image_res, num_col, num_column_is_classified, img_bin
@@ -1190,106 +1236,6 @@ class Eynollah:
                     img_patch[batch_indexer,:,:,:] = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
                     
                     batch_indexer = batch_indexer + 1
-
-                    #img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-                    #label_p_pred = model.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]),
-                                                 #verbose=0)
-                    #seg = np.argmax(label_p_pred, axis=3)[0]
-                    
-                    
-                    ######seg_not_base = label_p_pred[0,:,:,4]
-                    ########seg2 = -label_p_pred[0,:,:,2]
-                    
-                    
-                    ######seg_not_base[seg_not_base>0.03] =1
-                    ######seg_not_base[seg_not_base<1] =0
-                    
-                    
-                    
-                    ######seg_test = label_p_pred[0,:,:,1]
-                    ########seg2 = -label_p_pred[0,:,:,2]
-                    
-                    
-                    ######seg_test[seg_test>0.75] =1
-                    ######seg_test[seg_test<1] =0
-                    
-                    
-                    ######seg_line = label_p_pred[0,:,:,3]
-                    ########seg2 = -label_p_pred[0,:,:,2]
-                    
-                    
-                    ######seg_line[seg_line>0.1] =1
-                    ######seg_line[seg_line<1] =0
-                    
-                    
-                    ######seg_background = label_p_pred[0,:,:,0]
-                    ########seg2 = -label_p_pred[0,:,:,2]
-                    
-                    
-                    ######seg_background[seg_background>0.25] =1
-                    ######seg_background[seg_background<1] =0
-                    ##seg = seg+seg2
-                    #seg = label_p_pred[0,:,:,2]
-                    #seg[seg>0.4] =1
-                    #seg[seg<1] =0
-                    
-                    ##plt.imshow(seg_test)
-                    ##plt.show()
-                    
-                    ##plt.imshow(seg_background)
-                    ##plt.show()
-                    #seg[seg==1]=0
-                    #seg[seg_test==1]=1
-                    ######seg[seg_not_base==1]=4
-                    ######seg[seg_background==1]=0
-                    ######seg[(seg_line==1) & (seg==0)]=3
-                    #seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
-
-                    #if i == 0 and j == 0:
-                        #seg_color = seg_color[0 : seg_color.shape[0] - margin, 0 : seg_color.shape[1] - margin, :]
-                        #seg = seg[0 : seg.shape[0] - margin, 0 : seg.shape[1] - margin]
-                        #mask_true[index_y_d + 0 : index_y_u - margin, index_x_d + 0 : index_x_u - margin] = seg
-                        #prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + 0 : index_x_u - margin, :] = seg_color
-                    #elif i == nxf - 1 and j == nyf - 1:
-                        #seg_color = seg_color[margin : seg_color.shape[0] - 0, margin : seg_color.shape[1] - 0, :]
-                        #seg = seg[margin : seg.shape[0] - 0, margin : seg.shape[1] - 0]
-                        #mask_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - 0] = seg
-                        #prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - 0, :] = seg_color
-                    #elif i == 0 and j == nyf - 1:
-                        #seg_color = seg_color[margin : seg_color.shape[0] - 0, 0 : seg_color.shape[1] - margin, :]
-                        #seg = seg[margin : seg.shape[0] - 0, 0 : seg.shape[1] - margin]
-                        #mask_true[index_y_d + margin : index_y_u - 0, index_x_d + 0 : index_x_u - margin] = seg
-                        #prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + 0 : index_x_u - margin, :] = seg_color
-                    #elif i == nxf - 1 and j == 0:
-                        #seg_color = seg_color[0 : seg_color.shape[0] - margin, margin : seg_color.shape[1] - 0, :]
-                        #seg = seg[0 : seg.shape[0] - margin, margin : seg.shape[1] - 0]
-                        #mask_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - 0] = seg
-                        #prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - 0, :] = seg_color
-                    #elif i == 0 and j != 0 and j != nyf - 1:
-                        #seg_color = seg_color[margin : seg_color.shape[0] - margin, 0 : seg_color.shape[1] - margin, :]
-                        #seg = seg[margin : seg.shape[0] - margin, 0 : seg.shape[1] - margin]
-                        #mask_true[index_y_d + margin : index_y_u - margin, index_x_d + 0 : index_x_u - margin] = seg
-                        #prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + 0 : index_x_u - margin, :] = seg_color
-                    #elif i == nxf - 1 and j != 0 and j != nyf - 1:
-                        #seg_color = seg_color[margin : seg_color.shape[0] - margin, margin : seg_color.shape[1] - 0, :]
-                        #seg = seg[margin : seg.shape[0] - margin, margin : seg.shape[1] - 0]
-                        #mask_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - 0] = seg
-                        #prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - 0, :] = seg_color
-                    #elif i != 0 and i != nxf - 1 and j == 0:
-                        #seg_color = seg_color[0 : seg_color.shape[0] - margin, margin : seg_color.shape[1] - margin, :]
-                        #seg = seg[0 : seg.shape[0] - margin, margin : seg.shape[1] - margin]
-                        #mask_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - margin] = seg
-                        #prediction_true[index_y_d + 0 : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg_color
-                    #elif i != 0 and i != nxf - 1 and j == nyf - 1:
-                        #seg_color = seg_color[margin : seg_color.shape[0] - 0, margin : seg_color.shape[1] - margin, :]
-                        #seg = seg[margin : seg.shape[0] - 0, margin : seg.shape[1] - margin]
-                        #mask_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - margin] = seg
-                        #prediction_true[index_y_d + margin : index_y_u - 0, index_x_d + margin : index_x_u - margin, :] = seg_color
-                    #else:
-                        #seg_color = seg_color[margin : seg_color.shape[0] - margin, margin : seg_color.shape[1] - margin, :]
-                        #seg = seg[margin : seg.shape[0] - margin, margin : seg.shape[1] - margin]
-                        #mask_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin] = seg
-                        #prediction_true[index_y_d + margin : index_y_u - margin, index_x_d + margin : index_x_u - margin, :] = seg_color
                         
                         
                     if batch_indexer == n_batch_inference:
@@ -1302,18 +1248,11 @@ class Eynollah:
                             seg_art = label_p_pred[:,:,:,4]
                             seg_art[seg_art<0.2] =0
                             seg_art[seg_art>0] =1
-                            ###seg[seg_art==1]=4
-                            ##seg_not_base = label_p_pred[:,:,:,4]
-                            ##seg_not_base[seg_not_base>0.03] =1
-                            ##seg_not_base[seg_not_base<1] =0
                             
                             seg_line = label_p_pred[:,:,:,3]
                             seg_line[seg_line>0.1] =1
                             seg_line[seg_line<1] =0
                             
-                            ##seg_background = label_p_pred[:,:,:,0]
-                            ##seg_background[seg_background>0.25] =1
-                            ##seg_background[seg_background<1] =0
                             
                             seg[seg_art==1]=4
                             ##seg[seg_background==1]=0
@@ -1384,20 +1323,15 @@ class Eynollah:
                         
                         seg = np.argmax(label_p_pred, axis=3)
                         if thresholding_for_some_classes_in_light_version:
-                            seg_not_base = label_p_pred[:,:,:,4]
-                            seg_not_base[seg_not_base>0.03] =1
-                            seg_not_base[seg_not_base<1] =0
+                            seg_art = label_p_pred[:,:,:,4]
+                            seg_art[seg_art<0.2] =0
+                            seg_art[seg_art>0] =1
                             
                             seg_line = label_p_pred[:,:,:,3]
                             seg_line[seg_line>0.1] =1
                             seg_line[seg_line<1] =0
                             
-                            seg_background = label_p_pred[:,:,:,0]
-                            seg_background[seg_background>0.25] =1
-                            seg_background[seg_background<1] =0
-                            
-                            seg[seg_not_base==1]=4
-                            seg[seg_background==1]=0
+                            seg[seg_art==1]=4
                             seg[(seg_line==1) & (seg==0)]=3
                             
                         if thresholding_for_artificial_class_in_light_version:
@@ -2224,6 +2158,119 @@ class Eynollah:
         q.put(slopes_sub)
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new)
+
+    def get_regions_light_v_extract_only_images(self,img,is_image_enhanced, num_col_classifier):
+        self.logger.debug("enter get_regions_extract_images_only")
+        erosion_hurts = False
+        img_org = np.copy(img)
+        img_height_h = img_org.shape[0]
+        img_width_h = img_org.shape[1]
+
+        if num_col_classifier == 1:
+            img_w_new = 700
+        elif num_col_classifier == 2:
+            img_w_new = 900
+        elif num_col_classifier == 3:
+            img_w_new = 1500
+        elif num_col_classifier == 4:
+            img_w_new = 1800
+        elif num_col_classifier == 5:
+            img_w_new = 2200
+        elif num_col_classifier == 6:
+            img_w_new = 2500
+        img_h_new = int(img.shape[0] / float(img.shape[1]) * img_w_new)
+
+        img_resized = resize_image(img,img_h_new, img_w_new )
+
+
+
+        if not self.dir_in:
+            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light_only_images_extraction)
+            prediction_regions_org = self.do_prediction_new_concept(True, img_resized, model_region)
+        else:
+            prediction_regions_org = self.do_prediction_new_concept(True, img_resized, self.model_region)
+
+        prediction_regions_org = resize_image(prediction_regions_org,img_height_h, img_width_h )
+
+        image_page, page_coord, cont_page = self.extract_page()
+
+
+        prediction_regions_org = prediction_regions_org[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
+
+
+        prediction_regions_org=prediction_regions_org[:,:,0]
+
+        mask_lines_only = (prediction_regions_org[:,:] ==3)*1
+
+        mask_texts_only = (prediction_regions_org[:,:] ==1)*1
+
+        mask_images_only=(prediction_regions_org[:,:] ==2)*1
+
+        polygons_lines_xml, hir_lines_xml = return_contours_of_image(mask_lines_only)
+        polygons_lines_xml = textline_con_fil = filter_contours_area_of_image(mask_lines_only, polygons_lines_xml, hir_lines_xml, max_area=1, min_area=0.00001)
+
+
+        polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
+
+        polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
+
+        text_regions_p_true = np.zeros(prediction_regions_org.shape)
+
+        text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_lines, color=(3,3,3))
+
+        text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
+
+        text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
+
+
+
+        text_regions_p_true[text_regions_p_true.shape[0]-15:text_regions_p_true.shape[0], :] = 0
+        text_regions_p_true[:, text_regions_p_true.shape[1]-15:text_regions_p_true.shape[1]] = 0
+
+        ##polygons_of_images = return_contours_of_interested_region(text_regions_p_true, 2, 0.0001)
+        polygons_of_images = return_contours_of_interested_region(text_regions_p_true, 2, 0.001)
+
+        image_boundary_of_doc = np.zeros((text_regions_p_true.shape[0], text_regions_p_true.shape[1]))
+
+        ###image_boundary_of_doc[:6, :] = 1
+        ###image_boundary_of_doc[text_regions_p_true.shape[0]-6:text_regions_p_true.shape[0], :] = 1
+
+        ###image_boundary_of_doc[:, :6] = 1
+        ###image_boundary_of_doc[:, text_regions_p_true.shape[1]-6:text_regions_p_true.shape[1]] = 1
+
+
+        polygons_of_images_fin = []
+        for ploy_img_ind in polygons_of_images:
+            """
+            test_poly_image = np.zeros((text_regions_p_true.shape[0], text_regions_p_true.shape[1]))
+            test_poly_image = cv2.fillPoly(test_poly_image, pts = [ploy_img_ind], color=(1,1,1))
+            
+            test_poly_image = test_poly_image[:,:] + image_boundary_of_doc[:,:]
+            test_poly_image_intersected_area = ( test_poly_image[:,:]==2 )*1
+            
+            test_poly_image_intersected_area = test_poly_image_intersected_area.sum()
+            
+            if test_poly_image_intersected_area==0:
+                ##polygons_of_images_fin.append(ploy_img_ind)
+                
+                x, y, w, h = cv2.boundingRect(ploy_img_ind)
+                box = [x, y, w, h]
+                _, page_coord_img = crop_image_inside_box(box, text_regions_p_true)
+                #cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
+                
+                polygons_of_images_fin.append(np.array([[page_coord_img[2], page_coord_img[0]], [page_coord_img[3], page_coord_img[0]], [page_coord_img[3], page_coord_img[1]], [page_coord_img[2], page_coord_img[1]]]) )
+            """
+            x, y, w, h = cv2.boundingRect(ploy_img_ind)
+            if h < 150 or w < 150:
+                pass
+            else:
+                box = [x, y, w, h]
+                _, page_coord_img = crop_image_inside_box(box, text_regions_p_true)
+                #cont_page.append(np.array([[page_coord[2], page_coord[0]], [page_coord[3], page_coord[0]], [page_coord[3], page_coord[1]], [page_coord[2], page_coord[1]]]))
+
+                polygons_of_images_fin.append(np.array([[page_coord_img[2], page_coord_img[0]], [page_coord_img[3], page_coord_img[0]], [page_coord_img[3], page_coord_img[1]], [page_coord_img[2], page_coord_img[1]]]) )
+
+        return text_regions_p_true, erosion_hurts, polygons_lines_xml, polygons_of_images_fin, image_page, page_coord, cont_page
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier, skip_layout_and_reading_order=False):
         self.logger.debug("enter get_regions_light_v")
         t_in = time.time()
@@ -3179,11 +3226,13 @@ class Eynollah:
         prediction_table_erode = cv2.erode(prediction_table[:,:,0], KERNEL, iterations=20)
         prediction_table_erode = cv2.dilate(prediction_table_erode, KERNEL, iterations=20)
         return prediction_table_erode.astype(np.int16)
+
     def run_graphics_and_columns_light(self, text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts, img_bin_light):
         
         #print(text_regions_p_1.shape, 'text_regions_p_1 shape run graphics')
         #print(erosion_hurts, 'erosion_hurts')
         t_in_gr = time.time()
+
         img_g = self.imread(grayscale=True, uint8=True)
 
         img_g3 = np.zeros((img_g.shape[0], img_g.shape[1], 3))
@@ -3667,12 +3716,12 @@ class Eynollah:
         img_poly[text_regions_p[:,:]==2] = 2
         img_poly[text_regions_p[:,:]==3] = 4
         img_poly[text_regions_p[:,:]==6] = 5
-            
-
+        
         model_ro_machine, _ = self.start_new_session_and_model(self.model_reading_order_machine_dir)
 
         height1 =672#448
         width1 = 448#224
+        t0_tot = time.time()
 
         height2 =672#448
         width2= 448#224
@@ -3684,7 +3733,6 @@ class Eynollah:
         
         if contours_only_text_parent_h:
             _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(contours_only_text_parent_h)
-            
             for j in range(len(cy_main)):
                 img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,int(x_min_main[j]):int(x_max_main[j]) ] = 1 
             

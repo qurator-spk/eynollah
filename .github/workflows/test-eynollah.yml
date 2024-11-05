@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Python package
+name: Test
 
 on: [push]
 
@@ -14,8 +14,8 @@ jobs:
         python-version: ['3.8', '3.9', '3.10', '3.11']
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/cache@v2
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v4
       id: model_cache
       with:
         path: models_eynollah
@@ -24,7 +24,7 @@ jobs:
       if: steps.model_cache.outputs.cache-hit != 'true'
       run: make models
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
@@ -34,3 +34,5 @@ jobs:
         pip install -r requirements-test.txt
     - name: Test with pytest
       run: make test
+    - name: Test docker build
+      run: make docker

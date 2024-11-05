@@ -202,10 +202,18 @@ class EynollahXmlWriter():
             page.add_ImageRegion(img_region)
             points_co = ''
             for lmm in range(len(found_polygons_text_region_img[mm])):
-                points_co += str(int((found_polygons_text_region_img[mm][lmm,0,0] + page_coord[2]) / self.scale_x))
-                points_co += ','
-                points_co += str(int((found_polygons_text_region_img[mm][lmm,0,1] + page_coord[0]) / self.scale_y))
-                points_co += ' '
+                try:
+                    points_co += str(int((found_polygons_text_region_img[mm][lmm,0,0] + page_coord[2]) / self.scale_x))
+                    points_co += ','
+                    points_co += str(int((found_polygons_text_region_img[mm][lmm,0,1] + page_coord[0]) / self.scale_y))
+                    points_co += ' '
+                except:
+
+                    points_co +=  str(int((found_polygons_text_region_img[mm][lmm][0] + page_coord[2])/ self.scale_x  ))
+                    points_co += ','
+                    points_co += str(int((found_polygons_text_region_img[mm][lmm][1] + page_coord[0])/ self.scale_y  ))
+                    points_co += ' '
+                    
             img_region.get_Coords().set_points(points_co[:-1])
             
         for mm in range(len(polygons_lines_to_be_written_in_xml)):

@@ -1,8 +1,8 @@
 import sys
 import click
 from ocrd_utils import initLogging, setOverrideLogLevel
-from qurator.eynollah.eynollah import Eynollah
-from qurator.eynollah.sbb_binarize import SbbBinarizer
+from eynollah.eynollah import Eynollah
+from eynollah.sbb_binarize import SbbBinarizer
 
 @click.group()
 def main():
@@ -147,6 +147,12 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
     help="If set, will plot intermediary files and images",
 )
 @click.option(
+    "--extract_only_images/--disable-extracting_only_images",
+    "-eoi/-noeoi",
+    is_flag=True,
+    help="If a directory is given, only images in documents will be cropped and saved there and the other processing will not be done",
+)
+@click.option(
     "--allow-enhancement/--no-allow-enhancement",
     "-ae/-noae",
     is_flag=True,
@@ -262,6 +268,8 @@ def layout(image, out, dir_in, model, save_images, save_layout, save_deskewed, s
         sys.exit(1)
     if light_version and not textline_light:
         print('Error: You used -light without -tll. Light version need light textline to be enabled.')
+    if extract_only_images and  (allow_enhancement or allow_scaling or light_version or curved_line or textline_light or full_layout or tables or right2left or headers_off) :
+        print('Error: You used -eoi which can not be enabled alongside light_version -light or allow_scaling -as or allow_enhancement -ae or curved_line -cl or textline_light -tll or full_layout -fl or tables -tab or right2left -r2l or headers_off -ho')
         sys.exit(1)
     eynollah = Eynollah(
         image_filename=image,
@@ -269,6 +277,7 @@ def layout(image, out, dir_in, model, save_images, save_layout, save_deskewed, s
         dir_in=dir_in,
         dir_models=model,
         dir_of_cropped_images=save_images,
+        extract_only_images=extract_only_images,
         dir_of_layout=save_layout,
         dir_of_deskewed=save_deskewed,
         dir_of_all=save_all,
