@@ -1,7 +1,7 @@
 def test_utils_import():
-    import qurator.eynollah.utils
-    import qurator.eynollah.utils.contour
-    import qurator.eynollah.utils.drop_capitals
-    import qurator.eynollah.utils.drop_capitals
-    import qurator.eynollah.utils.is_nan
-    import qurator.eynollah.utils.rotate
+    import eynollah.utils
+    import eynollah.utils.contour
+    import eynollah.utils.drop_capitals
+    import eynollah.utils.drop_capitals
+    import eynollah.utils.is_nan
+    import eynollah.utils.rotate
