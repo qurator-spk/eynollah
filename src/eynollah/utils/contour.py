@@ -263,7 +263,7 @@ def get_textregion_contours_in_org_image(cnts, img, slope_first):
 
     return cnts_org
 
-def get_textregion_contours_in_org_image_light(cnts, img, slope_first):
+def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
     
     h_o = img.shape[0]
     w_o = img.shape[1]
@@ -278,14 +278,7 @@ def get_textregion_contours_in_org_image_light(cnts, img, slope_first):
         img_copy = np.zeros(img.shape)
         img_copy = cv2.fillPoly(img_copy, pts=[cnts[i]], color=(1, 1, 1))
 
-        # plt.imshow(img_copy)
-        # plt.show()
-
-        # print(img.shape,'img')
         img_copy = rotation_image_new(img_copy, -slope_first)
-        ##print(img_copy.shape,'img_copy')
-        # plt.imshow(img_copy)
-        # plt.show()
 
         img_copy = img_copy.astype(np.uint8)
         imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
@@ -297,6 +290,70 @@ def get_textregion_contours_in_org_image_light(cnts, img, slope_first):
         cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
         # print(np.shape(cont_int[0]))
         cnts_org.append(cont_int[0]*3)
+
+    return cnts_org
+
+def return_list_of_contours_with_desired_order(ls_cons, sorted_indexes):
+    return [ls_cons[sorted_indexes[index]] for index in range(len(sorted_indexes))]
+def do_back_rotation_and_get_cnt_back(queue_of_all_params, contours_par_per_process,indexes_r_con_per_pro, img, slope_first):
+    contours_textregion_per_each_subprocess = []
+    index_by_text_region_contours = []
+    for mv in range(len(contours_par_per_process)):
+        img_copy = np.zeros(img.shape)
+        img_copy = cv2.fillPoly(img_copy, pts=[contours_par_per_process[mv]], color=(1, 1, 1))
+
+        img_copy = rotation_image_new(img_copy, -slope_first)
+
+        img_copy = img_copy.astype(np.uint8)
+        imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+        cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
+        cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
+        # print(np.shape(cont_int[0]))
+        contours_textregion_per_each_subprocess.append(cont_int[0]*6)
+        index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
+        
+    queue_of_all_params.put([contours_textregion_per_each_subprocess, index_by_text_region_contours])
+
+def get_textregion_contours_in_org_image_light(cnts, img, slope_first):
+    num_cores = cpu_count()
+    queue_of_all_params = Queue()
+    processes = []
+    nh = np.linspace(0, len(cnts), num_cores + 1)
+    indexes_by_text_con = np.array(range(len(cnts)))
+    
+    h_o = img.shape[0]
+    w_o = img.shape[1]
+    
+    img = cv2.resize(img, (int(img.shape[1]/6.), int(img.shape[0]/6.)), interpolation=cv2.INTER_NEAREST)
+    ##cnts = list( (np.array(cnts)/2).astype(np.int16) )
+    #cnts = cnts/2
+    cnts = [(i/ 6).astype(np.int32) for i in cnts]
+    
+    for i in range(num_cores):
+        contours_par_per_process = cnts[int(nh[i]) : int(nh[i + 1])]
+        indexes_text_con_per_process = indexes_by_text_con[int(nh[i]) : int(nh[i + 1])]
+        processes.append(Process(target=do_back_rotation_and_get_cnt_back, args=(queue_of_all_params, contours_par_per_process, indexes_text_con_per_process, img, slope_first)))
+        
+    for i in range(num_cores):
+        processes[i].start()
+        
+    cnts_org = []
+    all_index_text_con = []
+    for i in range(num_cores):
+        list_all_par = queue_of_all_params.get(True)
+        contours_for_subprocess = list_all_par[0]
+        indexes_for_subprocess = list_all_par[1]
+        for j in range(len(contours_for_subprocess)):
+            cnts_org.append(contours_for_subprocess[j])
+            all_index_text_con.append(indexes_for_subprocess[j])
+    for i in range(num_cores):
+        processes[i].join()
+        
+    cnts_org = return_list_of_contours_with_desired_order(cnts_org, all_index_text_con)
 
     return cnts_org
 
