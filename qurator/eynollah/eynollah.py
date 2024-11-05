@@ -245,7 +245,7 @@ class Eynollah:
         self.model_dir_of_col_classifier = dir_models + "/eynollah-column-classifier_20210425"
         self.model_region_dir_p = dir_models + "/eynollah-main-regions-aug-scaling_20210425"
         self.model_region_dir_p2 = dir_models + "/eynollah-main-regions-aug-rotation_20210425"
-        self.model_region_dir_fully_np = dir_models + "/modelens_full_lay_13__3_19_241024"#"/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/eynollah-full-regions-1column_20210425"
+        self.model_region_dir_fully_np = dir_models + "/modelens_full_lay_1_3_031124"#"/modelens_full_lay_13__3_19_241024"#"/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/eynollah-full-regions-1column_20210425"
         #self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425"
         self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425"
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
@@ -253,7 +253,7 @@ class Eynollah:
         self.model_reading_order_machine_dir = dir_models + "/model_ens_reading_order_machine_based"
         self.model_region_dir_p_1_2_sp_np = dir_models + "/modelens_e_l_all_sp_0_1_2_3_4_171024"#"/modelens_12sp_elay_0_3_4__3_6_n"#"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"#"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"#"/modelens_1_2_4_5_early_lay_1_2_spaltige"#"/model_3_eraly_layout_no_patches_1_2_spaltige"
         ##self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
-        self.model_region_dir_fully = dir_models + "/modelens_full_lay_13__3_19_241024"#"/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
+        self.model_region_dir_fully = dir_models + "/modelens_full_lay_1_3_031124"#"/modelens_full_lay_13__3_19_241024"#"/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
         if self.textline_light:
             self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"#"/modelens_textline_1_4_16092024"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_1_3_4_20240915"#"/model_textline_ens_3_4_5_6_artificial"#"/modelens_textline_9_12_13_14_15"#"/eynollah-textline_light_20210425"#
         else:
@@ -743,7 +743,7 @@ class Eynollah:
     def get_image_and_scales_after_enhancing(self, img_org, img_res):
         self.logger.debug("enter get_image_and_scales_after_enhancing")
         self.image = np.copy(img_res)
-        #self.image = self.image.astype(np.uint8)
+        self.image = self.image.astype(np.uint8)
         self.image_org = np.copy(img_org)
         self.height_org = self.image_org.shape[0]
         self.width_org = self.image_org.shape[1]
@@ -1298,20 +1298,25 @@ class Eynollah:
                         seg = np.argmax(label_p_pred, axis=3)
                         
                         if thresholding_for_some_classes_in_light_version:
-                            seg_not_base = label_p_pred[:,:,:,4]
-                            seg_not_base[seg_not_base>0.03] =1
-                            seg_not_base[seg_not_base<1] =0
+                            
+                            seg_art = label_p_pred[:,:,:,4]
+                            seg_art[seg_art<0.2] =0
+                            seg_art[seg_art>0] =1
+                            ###seg[seg_art==1]=4
+                            ##seg_not_base = label_p_pred[:,:,:,4]
+                            ##seg_not_base[seg_not_base>0.03] =1
+                            ##seg_not_base[seg_not_base<1] =0
                             
                             seg_line = label_p_pred[:,:,:,3]
                             seg_line[seg_line>0.1] =1
                             seg_line[seg_line<1] =0
                             
-                            seg_background = label_p_pred[:,:,:,0]
-                            seg_background[seg_background>0.25] =1
-                            seg_background[seg_background<1] =0
+                            ##seg_background = label_p_pred[:,:,:,0]
+                            ##seg_background[seg_background>0.25] =1
+                            ##seg_background[seg_background<1] =0
                             
-                            seg[seg_not_base==1]=4
-                            seg[seg_background==1]=0
+                            seg[seg_art==1]=4
+                            ##seg[seg_background==1]=0
                             seg[(seg_line==1) & (seg==0)]=3
                         if thresholding_for_artificial_class_in_light_version:
                             seg_art = label_p_pred[:,:,:,2]
@@ -2300,26 +2305,26 @@ class Eynollah:
                 if num_col_classifier == 1 or num_col_classifier == 2:
                     model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
                     if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
-                        prediction_regions_org = self.do_prediction_new_concept(True, img_resized, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
+                        prediction_regions_org = self.do_prediction_new_concept(True, img_resized, model_region, n_batch_inference=1, thresholding_for_some_classes_in_light_version = True)
                     else:
                         prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
                         prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
                         prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
                 else:
                     model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
-                    prediction_regions_org = self.do_prediction_new_concept(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), model_region)
+                    prediction_regions_org = self.do_prediction_new_concept(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), model_region, n_batch_inference=2, thresholding_for_some_classes_in_light_version=True)
                 ##model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
                 ##prediction_regions_org = self.do_prediction(True, img_bin, model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
             else:
                 if num_col_classifier == 1 or num_col_classifier == 2:
                     if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
-                        prediction_regions_org = self.do_prediction_new_concept(True, img_resized, self.model_region_1_2, n_batch_inference=1, thresholding_for_artificial_class_in_light_version=True)
+                        prediction_regions_org = self.do_prediction_new_concept(True, img_resized, self.model_region_1_2, n_batch_inference=1, thresholding_for_some_classes_in_light_version=True)
                     else:
                         prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
                         prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, self.model_region_1_2, n_batch_inference=1, thresholding_for_artificial_class_in_light_version=True)
                         prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
                 else:
-                    prediction_regions_org = self.do_prediction_new_concept(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), self.model_region_1_2, n_batch_inference=2)
+                    prediction_regions_org = self.do_prediction_new_concept(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), self.model_region_1_2, n_batch_inference=2, thresholding_for_some_classes_in_light_version=True)
                 ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
             
             #print("inside 3 ", time.time()-t_in)
@@ -4595,7 +4600,7 @@ class Eynollah:
                 areas_without = np.array(areas_tot)[args_all]
                 area_of_con_interest = areas_tot[ij]
                 
-                args_with_bigger_area = np.array(args_all)[areas_without > area_of_con_interest]
+                args_with_bigger_area = np.array(args_all)[areas_without > 1.5*area_of_con_interest]
                 
                 if len(args_with_bigger_area)>0:
                     results = [cv2.pointPolygonTest(contours_txtline_of_all_textregions[ind], (cx_main_tot[ij], cy_main_tot[ij]), False) for ind in args_with_bigger_area ]
