@@ -4964,7 +4964,6 @@ class Eynollah:
                         polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, boxes, boxes_d, polygons_of_marginals, contours_tables = self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, table_prediction, erosion_hurts)
                         ###polygons_of_marginals = self.dilate_textregions_contours(polygons_of_marginals)
                     if self.full_layout:
-                        cv2.imwrite('dewar_page.png', image_page)
                         if not self.light_version:
                             img_bin_light = None
                         polygons_of_images, img_revised_tab, text_regions_p_1_n, textline_mask_tot_d, regions_without_separators_d, regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew, num_col_classifier, img_only_regions, table_prediction, erosion_hurts, img_bin_light)

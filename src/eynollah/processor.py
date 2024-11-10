@@ -49,6 +49,8 @@ class EynollahProcessor(Processor):
                 'curved_line': self.parameter['curved_line'],
                 'full_layout': self.parameter['full_layout'],
                 'allow_scaling': self.parameter['allow_scaling'],
+                'light_version': self.parameter['light_version'],
+                'textline_light': self.parameter['textline_light'],
                 'headers_off': self.parameter['headers_off'],
                 'tables': self.parameter['tables'],
                 'override_dpi': self.parameter['dpi'],

@@ -1,0 +1,47 @@
+{
+  "version": "0.1.0",
+  "git_url": "https://github.com/qurator-spk/sbb_binarization",
+  "tools": {
+    "ocrd-sbb-binarize": {
+      "executable": "ocrd-sbb-binarize",
+      "description": "Pixelwise binarization with selectional auto-encoders in Keras",
+      "categories": ["Image preprocessing"],
+      "steps": ["preprocessing/optimization/binarization"],
+      "input_file_grp": [],
+      "output_file_grp": [],
+      "parameters": {
+        "operation_level": {
+          "type": "string",
+          "enum": ["page", "region"],
+          "default": "page",
+          "description": "PAGE XML hierarchy level to operate on"
+        },
+        "model": {
+          "description": "Directory containing HDF5 or SavedModel/ProtoBuf models. Can be an absolute path or a path relative to the OCR-D resource location, the current working directory or the $SBB_BINARIZE_DATA environment variable (if set)",
+          "type": "string",
+          "format": "uri",
+          "content-type": "text/directory",
+          "required": true
+        }
+      },
+      "resources": [
+        {
+          "url": "https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2020_01_16.zip",
+          "name": "default",
+          "type": "archive",
+          "path_in_archive": "saved_model_2020_01_16",
+          "size": 563147331,
+          "description": "default models provided by github.com/qurator-spk (SavedModel format)"
+        },
+        {
+          "url": "https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2021_03_09.zip",
+          "name": "default-2021-03-09",
+          "type": "archive",
+          "path_in_archive": ".",
+          "size": 133230419,
+          "description": "updated default models provided by github.com/qurator-spk (SavedModel format)"
+        }
+      ]
+    }
+  }
+}
