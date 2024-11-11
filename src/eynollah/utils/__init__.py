@@ -775,7 +775,7 @@ def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
 
     return layout_no_patch
 
-def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop_capital_label):
+def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop_capital_label, text_regions_p):
     drop_only = (layout_in_patch[:, :, 0] == drop_capital_label) * 1
     contours_drop, hir_on_drop = return_contours_of_image(drop_only)
     contours_drop_parent = return_parent_contours(contours_drop, hir_on_drop)
@@ -791,12 +791,26 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop
 
     for jj in range(len(contours_drop_parent)):
         x, y, w, h = cv2.boundingRect(contours_drop_parent[jj])
+        mask_of_drop_cpaital_in_early_layout = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1]))
         
-        if ( ( areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) ) / float(w*h) ) > 0.4:
+        mask_of_drop_cpaital_in_early_layout[y : y + h, x : x + w] = text_regions_p[y : y + h, x : x + w]
+        
+        all_drop_capital_pixels_which_is_text_in_early_lo = np.sum( mask_of_drop_cpaital_in_early_layout[y : y + h, x : x + w]==1 )
+        
+        mask_of_drop_cpaital_in_early_layout[y : y + h, x : x + w]=1 
+        all_drop_capital_pixels = np.sum(mask_of_drop_cpaital_in_early_layout==1 )
+        
+        percent_text_to_all_in_drop = all_drop_capital_pixels_which_is_text_in_early_lo / float(all_drop_capital_pixels)
+        
+        
+        if ( ( areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) ) / float(w*h) ) > 0.6 and percent_text_to_all_in_drop>=0.3:
             
             layout_in_patch[y : y + h, x : x + w, 0] = drop_capital_label
         else:
-            layout_in_patch[y : y + h, x : x + w, 0][layout_in_patch[y : y + h, x : x + w, 0] == drop_capital_label] = 1#drop_capital_label
+            layout_in_patch[y : y + h, x : x + w, 0][layout_in_patch[y : y + h, x : x + w, 0] == drop_capital_label] = drop_capital_label
+            layout_in_patch[y : y + h, x : x + w, 0][layout_in_patch[y : y + h, x : x + w, 0] == 0] = drop_capital_label
+            layout_in_patch[y : y + h, x : x + w, 0][layout_in_patch[y : y + h, x : x + w, 0] == 4] = drop_capital_label# images
+            #layout_in_patch[y : y + h, x : x + w, 0][layout_in_patch[y : y + h, x : x + w, 0] == drop_capital_label] = 1#drop_capital_label
 
     return layout_in_patch
 
