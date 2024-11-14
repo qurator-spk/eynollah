@@ -6,6 +6,6 @@ tensorflow < 2.13
 imutils >= 0.5.3
 matplotlib
 setuptools >= 50
-transformers
-torch
-numba
+transformers <= 4.30.2
+torch <= 2.0.1
+numba <= 0.58.1
