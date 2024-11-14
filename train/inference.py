@@ -442,10 +442,11 @@ class sbb_predict:
                 self.img_org = np.copy(img)
                 
                 if img.shape[0] < self.img_height:
-                    img = cv2.resize(img, (img.shape[1], self.img_width), interpolation=cv2.INTER_NEAREST)
+                    img = self.resize_image(img, self.img_height, img.shape[1])
 
                 if img.shape[1] < self.img_width:
-                    img = cv2.resize(img, (self.img_height, img.shape[0]), interpolation=cv2.INTER_NEAREST)
+                    img = self.resize_image(img, img.shape[0], self.img_width)
+                    
                 margin = int(0.1 * self.img_width)
                 width_mid = self.img_width - 2 * margin
                 height_mid = self.img_height - 2 * margin
