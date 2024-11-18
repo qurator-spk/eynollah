@@ -2678,17 +2678,29 @@ class Eynollah:
         try:
             arg_text_con = []
             for ii in range(len(cx_text_only)):
+                check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
                     if (x_min_text_only[ii] + 80) >= boxes[jj][0] and (x_min_text_only[ii] + 80) < boxes[jj][1] and y_cor_x_min_main[ii] >= boxes[jj][2] and y_cor_x_min_main[ii] < boxes[jj][3]:
                         arg_text_con.append(jj)
+                        check_if_textregion_located_in_a_box = True
                         break
+                if not check_if_textregion_located_in_a_box:
+                    dists_tr_from_box = [math.sqrt((cx_text_only[ii] - boxes[jj][1]) ** 2 + (cy_text_only[ii] - boxes[jj][2]) ** 2) for jj in range(len(boxes))]
+                    ind_min = np.argmin(dists_tr_from_box)
+                    arg_text_con.append(ind_min)
             args_contours = np.array(range(len(arg_text_con)))
             arg_text_con_h = []
             for ii in range(len(cx_text_only_h)):
+                check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
                     if (x_min_text_only_h[ii] + 80) >= boxes[jj][0] and (x_min_text_only_h[ii] + 80) < boxes[jj][1] and y_cor_x_min_main_h[ii] >= boxes[jj][2] and y_cor_x_min_main_h[ii] < boxes[jj][3]:
                         arg_text_con_h.append(jj)
+                        check_if_textregion_located_in_a_box = True
                         break
+                if not check_if_textregion_located_in_a_box:
+                    dists_tr_from_box = [math.sqrt((cx_text_only_h[ii] - boxes[jj][1]) ** 2 + (cy_text_only_h[ii] - boxes[jj][2]) ** 2) for jj in range(len(boxes))]
+                    ind_min = np.argmin(dists_tr_from_box)
+                    arg_text_con_h.append(ind_min)
             args_contours_h = np.array(range(len(arg_text_con_h)))
 
             order_by_con_head = np.zeros(len(arg_text_con_h))
@@ -2742,15 +2754,22 @@ class Eynollah:
             order_text_new = []
             for iii in range(len(order_of_texts_tot)):
                 order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
-
+        
         except Exception as why:
             self.logger.error(why)
             arg_text_con = []
             for ii in range(len(cx_text_only)):
+                check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
                     if cx_text_only[ii] >= boxes[jj][0] and cx_text_only[ii] < boxes[jj][1] and cy_text_only[ii] >= boxes[jj][2] and cy_text_only[ii] < boxes[jj][3]:  # this is valid if the center of region identify in which box it is located
                         arg_text_con.append(jj)
+                        check_if_textregion_located_in_a_box = True
                         break
+                    
+                if not check_if_textregion_located_in_a_box:
+                    dists_tr_from_box = [math.sqrt((cx_text_only[ii] - boxes[jj][1]) ** 2 + (cy_text_only[ii] - boxes[jj][2]) ** 2) for jj in range(len(boxes))]
+                    ind_min = np.argmin(dists_tr_from_box)
+                    arg_text_con.append(ind_min)
             args_contours = np.array(range(len(arg_text_con)))
 
             order_by_con_main = np.zeros(len(arg_text_con))
@@ -2759,10 +2778,16 @@ class Eynollah:
 
             arg_text_con_h = []
             for ii in range(len(cx_text_only_h)):
+                check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
                     if cx_text_only_h[ii] >= boxes[jj][0] and cx_text_only_h[ii] < boxes[jj][1] and cy_text_only_h[ii] >= boxes[jj][2] and cy_text_only_h[ii] < boxes[jj][3]:  # this is valid if the center of region identify in which box it is located
                         arg_text_con_h.append(jj)
+                        check_if_textregion_located_in_a_box = True
                         break
+                if not check_if_textregion_located_in_a_box:
+                    dists_tr_from_box = [math.sqrt((cx_text_only_h[ii] - boxes[jj][1]) ** 2 + (cy_text_only_h[ii] - boxes[jj][2]) ** 2) for jj in range(len(boxes))]
+                    ind_min = np.argmin(dists_tr_from_box)
+                    arg_text_con_h.append(ind_min)
             args_contours_h = np.array(range(len(arg_text_con_h)))
 
             order_by_con_head = np.zeros(len(arg_text_con_h))
@@ -2814,6 +2839,7 @@ class Eynollah:
             order_text_new = []
             for iii in range(len(order_of_texts_tot)):
                 order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
+        
         return order_text_new, id_of_texts_tot
 
     def do_order_of_regions_no_full_layout(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
@@ -2823,10 +2849,16 @@ class Eynollah:
         try:
             arg_text_con = []
             for ii in range(len(cx_text_only)):
+                check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
                     if (x_min_text_only[ii] + 80) >= boxes[jj][0] and (x_min_text_only[ii] + 80) < boxes[jj][1] and y_cor_x_min_main[ii] >= boxes[jj][2] and y_cor_x_min_main[ii] < boxes[jj][3]:
                         arg_text_con.append(jj)
+                        check_if_textregion_located_in_a_box = True
                         break
+                if not check_if_textregion_located_in_a_box:
+                    dists_tr_from_box = [math.sqrt((cx_text_only[ii] - boxes[jj][1]) ** 2 + (cy_text_only[ii] - boxes[jj][2]) ** 2) for jj in range(len(boxes))]
+                    ind_min = np.argmin(dists_tr_from_box)
+                    arg_text_con.append(ind_min)
             args_contours = np.array(range(len(arg_text_con)))
             order_by_con_main = np.zeros(len(arg_text_con))
 
@@ -2868,10 +2900,16 @@ class Eynollah:
             self.logger.error(why)
             arg_text_con = []
             for ii in range(len(cx_text_only)):
+                check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
                     if cx_text_only[ii] >= boxes[jj][0] and cx_text_only[ii] < boxes[jj][1] and cy_text_only[ii] >= boxes[jj][2] and cy_text_only[ii] < boxes[jj][3]:  # this is valid if the center of region identify in which box it is located
                         arg_text_con.append(jj)
+                        check_if_textregion_located_in_a_box = True
                         break
+                if not check_if_textregion_located_in_a_box:
+                    dists_tr_from_box = [math.sqrt((cx_text_only[ii] - boxes[jj][1]) ** 2 + (cy_text_only[ii] - boxes[jj][2]) ** 2) for jj in range(len(boxes))]
+                    ind_min = np.argmin(dists_tr_from_box)
+                    arg_text_con.append(ind_min)
             args_contours = np.array(range(len(arg_text_con)))
 
             order_by_con_main = np.zeros(len(arg_text_con))
