@@ -116,10 +116,10 @@ def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y
         
         con_eroded = return_contours_of_interested_region(img_boundary_in,pixel, min_size )
         
-        #try:
-        co_text_eroded.append(con_eroded[0])
-        #except:
-            #co_text_eroded.append(con)
+        try:
+            co_text_eroded.append(con_eroded[0])
+        except:
+            co_text_eroded.append(con)
         
 
         img_boundary_in_dilated = cv2.dilate(img_boundary_in[:,:], KERNEL, iterations=dilation_rate)
@@ -636,6 +636,10 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     erosion_rate = 0#2
                     dilation_rate = 2#4
                     co_text["footnote-continued"], img_boundary = update_region_contours(co_text["footnote-continued"], img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                if "tableregion" in elements_with_artificial_class:
+                    erosion_rate = 0#2
+                    dilation_rate = 3#4
+                    co_table, img_boundary = update_region_contours(co_table, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                     
                     
                 
