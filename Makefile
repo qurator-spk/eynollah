@@ -32,9 +32,9 @@ models_eynollah: models_eynollah.tar.gz
 models_eynollah.tar.gz:
 	# wget 'https://qurator-data.de/eynollah/2021-04-25/models_eynollah.tar.gz'
 	# wget 'https://qurator-data.de/eynollah/2022-04-05/models_eynollah_renamed.tar.gz'
-	# wget 'https://qurator-data.de/eynollah/2022-04-05/models_eynollah_renamed_savedmodel.tar.gz'
+	wget 'https://qurator-data.de/eynollah/2022-04-05/models_eynollah_renamed_savedmodel.tar.gz'
 	# wget 'https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz'
-	wget 'https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz'
+	# wget 'https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz'
 
 # Install with pip
 install:
