@@ -264,9 +264,13 @@ class Eynollah:
         else:
             self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"#"/eynollah-textline_20210425"
         if self.ocr:
-            self.model_ocr_dir = dir_models + "/checkpoint-166692_printed_trocr"
+            self.model_ocr_dir = dir_models + "/trocr_model_ens_of_3_checkpoints_201124"
             
-        self.model_tables = dir_models + "/eynollah-tables_20210319"
+        if self.tables:
+            if self.light_version:
+                self.model_table_dir = dir_models + "/modelens_table_0t4_201124"
+            else:
+                self.model_table_dir = dir_models + "/eynollah-tables_20210319"
         
         self.models = {}
         
@@ -290,6 +294,9 @@ class Eynollah:
                 self.model_ocr = VisionEncoderDecoderModel.from_pretrained(self.model_ocr_dir)
                 self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                 self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")#("microsoft/trocr-base-printed")#("microsoft/trocr-base-handwritten")
+            if self.tables:
+                self.model_table = self.our_load_model(self.model_table_dir)
+                
             
             self.ls_imgs  = os.listdir(self.dir_in)
             
@@ -325,8 +332,12 @@ class Eynollah:
             self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
             self.model_enhancement = self.our_load_model(self.model_dir_of_enhancement)
             self.model_reading_order_machine = self.our_load_model(self.model_reading_order_machine_dir)
-            
+            if self.tables:
+                self.model_table = self.our_load_model(self.model_table_dir)
+                
             self.ls_imgs  = os.listdir(self.dir_in)
+            
+
             
         
     def _cache_images(self, image_filename=None, image_pil=None):
@@ -2326,8 +2337,23 @@ class Eynollah:
             ###img_bin = np.copy(prediction_bin)
         ###else:
             ###img_bin = np.copy(img_resized)
-        
-        img_bin = np.copy(img_resized)
+        if self.ocr and not self.input_binary:
+            if not self.dir_in:
+                model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
+                prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
+            else:
+                prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
+            prediction_bin=prediction_bin[:,:,0]
+            prediction_bin = (prediction_bin[:,:]==0)*1
+            prediction_bin = prediction_bin*255
+            
+            prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
+            
+            prediction_bin = prediction_bin.astype(np.uint16)
+            #img= np.copy(prediction_bin)
+            img_bin = np.copy(prediction_bin)
+        else:
+            img_bin = np.copy(img_resized)
         #print("inside 1 ", time.time()-t_in)
         
         ###textline_mask_tot_ea = self.run_textline(img_bin)
@@ -3175,91 +3201,101 @@ class Eynollah:
         img_height_h = img_org.shape[0]
         img_width_h = img_org.shape[1]
         
-        model_region, session_region = self.start_new_session_and_model(self.model_tables)
+        
+        
+        if self.dir_in:
+            pass
+        else:
+            self.model_table, _ = self.start_new_session_and_model(self.model_table_dir)
         
         patches = False
         
-        if num_col_classifier < 4 and num_col_classifier > 2:
-            prediction_table = self.do_prediction(patches, img, model_region)
-            pre_updown = self.do_prediction(patches, cv2.flip(img[:,:,:], -1), model_region)
-            pre_updown = cv2.flip(pre_updown, -1)
-            
-            prediction_table[:,:,0][pre_updown[:,:,0]==1]=1
+        if self.light_version:
+            prediction_table = self.do_prediction_new_concept(patches, img, self.model_table)
             prediction_table = prediction_table.astype(np.int16)
-            
-        elif num_col_classifier ==2:
-            height_ext = 0#int( img.shape[0]/4. )
-            h_start = int(height_ext/2.)
-            width_ext = int( img.shape[1]/8. )
-            w_start = int(width_ext/2.)
-        
-            height_new = img.shape[0]+height_ext
-            width_new = img.shape[1]+width_ext
-            
-            img_new =np.ones((height_new,width_new,img.shape[2])).astype(float)*0
-            img_new[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ] =img[:,:,:]
-
-            prediction_ext = self.do_prediction(patches, img_new, model_region)
-            pre_updown = self.do_prediction(patches, cv2.flip(img_new[:,:,:], -1), model_region)
-            pre_updown = cv2.flip(pre_updown, -1)
-            
-            prediction_table = prediction_ext[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
-            prediction_table_updown = pre_updown[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
-            
-            prediction_table[:,:,0][prediction_table_updown[:,:,0]==1]=1
-            prediction_table = prediction_table.astype(np.int16)
-
-        elif num_col_classifier ==1:
-            height_ext = 0# int( img.shape[0]/4. )
-            h_start = int(height_ext/2.)
-            width_ext = int( img.shape[1]/4. )
-            w_start = int(width_ext/2.)
-        
-            height_new = img.shape[0]+height_ext
-            width_new = img.shape[1]+width_ext
-            
-            img_new =np.ones((height_new,width_new,img.shape[2])).astype(float)*0
-            img_new[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ] =img[:,:,:]
-
-            prediction_ext = self.do_prediction(patches, img_new, model_region)
-            pre_updown = self.do_prediction(patches, cv2.flip(img_new[:,:,:], -1), model_region)
-            pre_updown = cv2.flip(pre_updown, -1)
-            
-            prediction_table = prediction_ext[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
-            prediction_table_updown = pre_updown[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
-            
-            prediction_table[:,:,0][prediction_table_updown[:,:,0]==1]=1
-            prediction_table = prediction_table.astype(np.int16)
-
+            return prediction_table[:,:,0]
         else:
-            prediction_table = np.zeros(img.shape)
-            img_w_half = int(img.shape[1]/2.)
+            if num_col_classifier < 4 and num_col_classifier > 2:
+                prediction_table = self.do_prediction(patches, img, self.model_table)
+                pre_updown = self.do_prediction(patches, cv2.flip(img[:,:,:], -1), self.model_table)
+                pre_updown = cv2.flip(pre_updown, -1)
+                
+                prediction_table[:,:,0][pre_updown[:,:,0]==1]=1
+                prediction_table = prediction_table.astype(np.int16)
+                
+            elif num_col_classifier ==2:
+                height_ext = 0#int( img.shape[0]/4. )
+                h_start = int(height_ext/2.)
+                width_ext = int( img.shape[1]/8. )
+                w_start = int(width_ext/2.)
+            
+                height_new = img.shape[0]+height_ext
+                width_new = img.shape[1]+width_ext
+                
+                img_new =np.ones((height_new,width_new,img.shape[2])).astype(float)*0
+                img_new[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ] =img[:,:,:]
 
-            pre1 = self.do_prediction(patches, img[:,0:img_w_half,:], model_region)
-            pre2 = self.do_prediction(patches, img[:,img_w_half:,:], model_region)
-            pre_full = self.do_prediction(patches, img[:,:,:], model_region)
-            pre_updown = self.do_prediction(patches, cv2.flip(img[:,:,:], -1), model_region)
-            pre_updown = cv2.flip(pre_updown, -1)
-            
-            prediction_table_full_erode = cv2.erode(pre_full[:,:,0], KERNEL, iterations=4)
-            prediction_table_full_erode = cv2.dilate(prediction_table_full_erode, KERNEL, iterations=4)
-            
-            prediction_table_full_updown_erode = cv2.erode(pre_updown[:,:,0], KERNEL, iterations=4)
-            prediction_table_full_updown_erode = cv2.dilate(prediction_table_full_updown_erode, KERNEL, iterations=4)
+                prediction_ext = self.do_prediction(patches, img_new, self.model_table)
+                pre_updown = self.do_prediction(patches, cv2.flip(img_new[:,:,:], -1), self.model_table)
+                pre_updown = cv2.flip(pre_updown, -1)
+                
+                prediction_table = prediction_ext[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
+                prediction_table_updown = pre_updown[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
+                
+                prediction_table[:,:,0][prediction_table_updown[:,:,0]==1]=1
+                prediction_table = prediction_table.astype(np.int16)
 
-            prediction_table[:,0:img_w_half,:] = pre1[:,:,:]
-            prediction_table[:,img_w_half:,:] = pre2[:,:,:]
+            elif num_col_classifier ==1:
+                height_ext = 0# int( img.shape[0]/4. )
+                h_start = int(height_ext/2.)
+                width_ext = int( img.shape[1]/4. )
+                w_start = int(width_ext/2.)
             
-            prediction_table[:,:,0][prediction_table_full_erode[:,:]==1]=1
-            prediction_table[:,:,0][prediction_table_full_updown_erode[:,:]==1]=1
-            prediction_table = prediction_table.astype(np.int16)
+                height_new = img.shape[0]+height_ext
+                width_new = img.shape[1]+width_ext
+                
+                img_new =np.ones((height_new,width_new,img.shape[2])).astype(float)*0
+                img_new[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ] =img[:,:,:]
+
+                prediction_ext = self.do_prediction(patches, img_new, self.model_table)
+                pre_updown = self.do_prediction(patches, cv2.flip(img_new[:,:,:], -1), self.model_table)
+                pre_updown = cv2.flip(pre_updown, -1)
+                
+                prediction_table = prediction_ext[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
+                prediction_table_updown = pre_updown[h_start:h_start+img.shape[0] ,w_start: w_start+img.shape[1], : ]
+                
+                prediction_table[:,:,0][prediction_table_updown[:,:,0]==1]=1
+                prediction_table = prediction_table.astype(np.int16)
+
+            else:
+                prediction_table = np.zeros(img.shape)
+                img_w_half = int(img.shape[1]/2.)
+
+                pre1 = self.do_prediction(patches, img[:,0:img_w_half,:], self.model_table)
+                pre2 = self.do_prediction(patches, img[:,img_w_half:,:], self.model_table)
+                pre_full = self.do_prediction(patches, img[:,:,:], self.model_table)
+                pre_updown = self.do_prediction(patches, cv2.flip(img[:,:,:], -1), self.model_table)
+                pre_updown = cv2.flip(pre_updown, -1)
+                
+                prediction_table_full_erode = cv2.erode(pre_full[:,:,0], KERNEL, iterations=4)
+                prediction_table_full_erode = cv2.dilate(prediction_table_full_erode, KERNEL, iterations=4)
+                
+                prediction_table_full_updown_erode = cv2.erode(pre_updown[:,:,0], KERNEL, iterations=4)
+                prediction_table_full_updown_erode = cv2.dilate(prediction_table_full_updown_erode, KERNEL, iterations=4)
+
+                prediction_table[:,0:img_w_half,:] = pre1[:,:,:]
+                prediction_table[:,img_w_half:,:] = pre2[:,:,:]
+                
+                prediction_table[:,:,0][prediction_table_full_erode[:,:]==1]=1
+                prediction_table[:,:,0][prediction_table_full_updown_erode[:,:]==1]=1
+                prediction_table = prediction_table.astype(np.int16)
+                
+            #prediction_table_erode = cv2.erode(prediction_table[:,:,0], self.kernel, iterations=6)
+            #prediction_table_erode = cv2.dilate(prediction_table_erode, self.kernel, iterations=6)
             
-        #prediction_table_erode = cv2.erode(prediction_table[:,:,0], self.kernel, iterations=6)
-        #prediction_table_erode = cv2.dilate(prediction_table_erode, self.kernel, iterations=6)
-        
-        prediction_table_erode = cv2.erode(prediction_table[:,:,0], KERNEL, iterations=20)
-        prediction_table_erode = cv2.dilate(prediction_table_erode, KERNEL, iterations=20)
-        return prediction_table_erode.astype(np.int16)
+            prediction_table_erode = cv2.erode(prediction_table[:,:,0], KERNEL, iterations=20)
+            prediction_table_erode = cv2.dilate(prediction_table_erode, KERNEL, iterations=20)
+            return prediction_table_erode.astype(np.int16)
 
     def run_graphics_and_columns_light(self, text_regions_p_1, textline_mask_tot_ea, num_col_classifier, num_column_is_classified, erosion_hurts, img_bin_light):
         #print(text_regions_p_1.shape, 'text_regions_p_1 shape run graphics')
@@ -3500,49 +3536,62 @@ class Eynollah:
             #print(time.time()-t_0_box,'time box in 3.1')
             
             if self.tables:
-                text_regions_p_tables = np.copy(text_regions_p)
-                text_regions_p_tables[:,:][(table_prediction[:,:] == 1)] = 10
-                pixel_line = 3
-                img_revised_tab2 = self.add_tables_heuristic_to_layout(text_regions_p_tables, boxes, 0, splitter_y_new, peaks_neg_tot_tables, text_regions_p_tables , num_col_classifier , 0.000005, pixel_line)
-                #print(time.time()-t_0_box,'time box in 3.2')
-                img_revised_tab2, contoures_tables = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2,table_prediction, 10, num_col_classifier)
-                #print(time.time()-t_0_box,'time box in 3.3')
+                if self.light_version:
+                    pass
+                else:
+                    text_regions_p_tables = np.copy(text_regions_p)
+                    text_regions_p_tables[:,:][(table_prediction[:,:] == 1)] = 10
+                    pixel_line = 3
+                    img_revised_tab2 = self.add_tables_heuristic_to_layout(text_regions_p_tables, boxes, 0, splitter_y_new, peaks_neg_tot_tables, text_regions_p_tables , num_col_classifier , 0.000005, pixel_line)
+                    #print(time.time()-t_0_box,'time box in 3.2')
+                    img_revised_tab2, contoures_tables = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2,table_prediction, 10, num_col_classifier)
+                    #print(time.time()-t_0_box,'time box in 3.3')
         else:
             boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables, self.right2left)
             boxes = None
             self.logger.debug("len(boxes): %s", len(boxes_d))
             
             if self.tables:
-                text_regions_p_tables = np.copy(text_regions_p_1_n)
-                text_regions_p_tables =np.round(text_regions_p_tables)
-                text_regions_p_tables[:,:][(text_regions_p_tables[:,:] != 3) & (table_prediction_n[:,:] == 1)] = 10
-                
-                pixel_line = 3
-                img_revised_tab2 = self.add_tables_heuristic_to_layout(text_regions_p_tables,boxes_d,0,splitter_y_new_d,peaks_neg_tot_tables_d,text_regions_p_tables, num_col_classifier, 0.000005, pixel_line)
-                img_revised_tab2_d,_ = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2,table_prediction_n, 10, num_col_classifier)
-                
-                img_revised_tab2_d_rotated = rotate_image(img_revised_tab2_d, -slope_deskew)
-                img_revised_tab2_d_rotated = np.round(img_revised_tab2_d_rotated)
-                img_revised_tab2_d_rotated = img_revised_tab2_d_rotated.astype(np.int8)
-                img_revised_tab2_d_rotated = resize_image(img_revised_tab2_d_rotated, text_regions_p.shape[0], text_regions_p.shape[1])
+                if self.light_version:
+                    pass
+                else:
+                    text_regions_p_tables = np.copy(text_regions_p_1_n)
+                    text_regions_p_tables =np.round(text_regions_p_tables)
+                    text_regions_p_tables[:,:][(text_regions_p_tables[:,:] != 3) & (table_prediction_n[:,:] == 1)] = 10
+                    
+                    pixel_line = 3
+                    img_revised_tab2 = self.add_tables_heuristic_to_layout(text_regions_p_tables,boxes_d,0,splitter_y_new_d,peaks_neg_tot_tables_d,text_regions_p_tables, num_col_classifier, 0.000005, pixel_line)
+                    img_revised_tab2_d,_ = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2,table_prediction_n, 10, num_col_classifier)
+                    
+                    img_revised_tab2_d_rotated = rotate_image(img_revised_tab2_d, -slope_deskew)
+                    img_revised_tab2_d_rotated = np.round(img_revised_tab2_d_rotated)
+                    img_revised_tab2_d_rotated = img_revised_tab2_d_rotated.astype(np.int8)
+                    img_revised_tab2_d_rotated = resize_image(img_revised_tab2_d_rotated, text_regions_p.shape[0], text_regions_p.shape[1])
         #print(time.time()-t_0_box,'time box in 4')
         self.logger.info("detecting boxes took %.1fs", time.time() - t1)
         
         if self.tables:
-            if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                img_revised_tab = np.copy(img_revised_tab2[:,:,0])
-                img_revised_tab[:,:][(text_regions_p[:,:] == 1) & (img_revised_tab[:,:] != 10)] = 1
+            if self.light_version:
+                text_regions_p[:,:][table_prediction[:,:]==1] = 10
+                img_revised_tab=text_regions_p[:,:]
             else:
-                img_revised_tab = np.copy(text_regions_p[:,:])
-                img_revised_tab[:,:][img_revised_tab[:,:] == 10] = 0
-                img_revised_tab[:,:][img_revised_tab2_d_rotated[:,:,0] == 10] = 10
-                
-            text_regions_p[:,:][text_regions_p[:,:]==10] = 0
-            text_regions_p[:,:][img_revised_tab[:,:]==10] = 10
+                if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                    img_revised_tab = np.copy(img_revised_tab2[:,:,0])
+                    img_revised_tab[:,:][(text_regions_p[:,:] == 1) & (img_revised_tab[:,:] != 10)] = 1
+                else:
+                    img_revised_tab = np.copy(text_regions_p[:,:])
+                    img_revised_tab[:,:][img_revised_tab[:,:] == 10] = 0
+                    img_revised_tab[:,:][img_revised_tab2_d_rotated[:,:,0] == 10] = 10
+                    
+                text_regions_p[:,:][text_regions_p[:,:]==10] = 0
+                text_regions_p[:,:][img_revised_tab[:,:]==10] = 10
         else:
             img_revised_tab=text_regions_p[:,:]
         #img_revised_tab = text_regions_p[:, :]
-        polygons_of_images = return_contours_of_interested_region(img_revised_tab, 2)
+        if self.light_version:
+            polygons_of_images = return_contours_of_interested_region(text_regions_p, 2)
+        else:
+            polygons_of_images = return_contours_of_interested_region(img_revised_tab, 2)
 
         pixel_img = 4
         min_area_mar = 0.00001
@@ -3565,82 +3614,102 @@ class Eynollah:
         self.logger.debug('enter run_boxes_full_layout')
         t_full0 = time.time()
         if self.tables:
-            if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                image_page_rotated_n,textline_mask_tot_d,text_regions_p_1_n , table_prediction_n = rotation_not_90_func(image_page, textline_mask_tot, text_regions_p, table_prediction, slope_deskew)
-                
-                text_regions_p_1_n = resize_image(text_regions_p_1_n,text_regions_p.shape[0],text_regions_p.shape[1])
-                textline_mask_tot_d = resize_image(textline_mask_tot_d,text_regions_p.shape[0],text_regions_p.shape[1])
-                table_prediction_n = resize_image(table_prediction_n,text_regions_p.shape[0],text_regions_p.shape[1])
-                
-                regions_without_separators_d=(text_regions_p_1_n[:,:] == 1)*1
-                regions_without_separators_d[table_prediction_n[:,:] == 1] = 1
-            else:
-                text_regions_p_1_n = None
-                textline_mask_tot_d = None
-                regions_without_separators_d = None
-                
-            regions_without_separators = (text_regions_p[:,:] == 1)*1#( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_seperators_new(text_regions_p[:,:,0],img_only_regions)
-            regions_without_separators[table_prediction == 1] = 1
-            
-            pixel_lines=3
-            if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                num_col, peaks_neg_fin, matrix_of_lines_ch, splitter_y_new, seperators_closeup_n = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines)
-            
-            if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, splitter_y_new_d, seperators_closeup_n_d = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2),num_col_classifier, self.tables, pixel_lines)
+            if self.light_version:
+                text_regions_p[:,:][table_prediction[:,:]==1] = 10
+                img_revised_tab=text_regions_p[:,:]
+                if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+                    image_page_rotated_n,textline_mask_tot_d,text_regions_p_1_n , table_prediction_n = rotation_not_90_func(image_page, textline_mask_tot, text_regions_p, table_prediction, slope_deskew)
+                    
+                    text_regions_p_1_n = resize_image(text_regions_p_1_n,text_regions_p.shape[0],text_regions_p.shape[1])
+                    textline_mask_tot_d = resize_image(textline_mask_tot_d,text_regions_p.shape[0],text_regions_p.shape[1])
+                    table_prediction_n = resize_image(table_prediction_n,text_regions_p.shape[0],text_regions_p.shape[1])
+                    
+                    regions_without_separators_d=(text_regions_p_1_n[:,:] == 1)*1
+                    regions_without_separators_d[table_prediction_n[:,:] == 1] = 1
+                else:
+                    text_regions_p_1_n = None
+                    textline_mask_tot_d = None
+                    regions_without_separators_d = None
+                regions_without_separators = (text_regions_p[:,:] == 1)*1#( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_seperators_new(text_regions_p[:,:,0],img_only_regions)
+                regions_without_separators[table_prediction == 1] = 1
 
-            if num_col_classifier>=3:
+            else:
+                if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+                    image_page_rotated_n,textline_mask_tot_d,text_regions_p_1_n , table_prediction_n = rotation_not_90_func(image_page, textline_mask_tot, text_regions_p, table_prediction, slope_deskew)
+                    
+                    text_regions_p_1_n = resize_image(text_regions_p_1_n,text_regions_p.shape[0],text_regions_p.shape[1])
+                    textline_mask_tot_d = resize_image(textline_mask_tot_d,text_regions_p.shape[0],text_regions_p.shape[1])
+                    table_prediction_n = resize_image(table_prediction_n,text_regions_p.shape[0],text_regions_p.shape[1])
+                    
+                    regions_without_separators_d=(text_regions_p_1_n[:,:] == 1)*1
+                    regions_without_separators_d[table_prediction_n[:,:] == 1] = 1
+                else:
+                    text_regions_p_1_n = None
+                    textline_mask_tot_d = None
+                    regions_without_separators_d = None
+                    
+                regions_without_separators = (text_regions_p[:,:] == 1)*1#( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1 #self.return_regions_without_seperators_new(text_regions_p[:,:,0],img_only_regions)
+                regions_without_separators[table_prediction == 1] = 1
+                
+                pixel_lines=3
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    regions_without_separators = regions_without_separators.astype(np.uint8)
-                    regions_without_separators = cv2.erode(regions_without_separators[:,:], KERNEL, iterations=6)
+                    num_col, peaks_neg_fin, matrix_of_lines_ch, splitter_y_new, seperators_closeup_n = find_number_of_columns_in_document(np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2), num_col_classifier, self.tables, pixel_lines)
                 
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                    regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
-                    regions_without_separators_d = cv2.erode(regions_without_separators_d[:,:], KERNEL, iterations=6)
-            else:
-                pass
-            
-            if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables, self.right2left)
-                text_regions_p_tables = np.copy(text_regions_p)
-                text_regions_p_tables[:,:][(table_prediction[:,:]==1)] = 10
-                pixel_line = 3
-                img_revised_tab2 = self.add_tables_heuristic_to_layout(text_regions_p_tables, boxes, 0, splitter_y_new, peaks_neg_tot_tables, text_regions_p_tables , num_col_classifier , 0.000005, pixel_line)
-                
-                img_revised_tab2,contoures_tables = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2, table_prediction, 10, num_col_classifier)
-                
-            else:
-                boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables, self.right2left)
-                text_regions_p_tables = np.copy(text_regions_p_1_n)
-                text_regions_p_tables = np.round(text_regions_p_tables)
-                text_regions_p_tables[:,:][(text_regions_p_tables[:,:]!=3) & (table_prediction_n[:,:]==1)] = 10
-                
-                pixel_line = 3
-                img_revised_tab2 = self.add_tables_heuristic_to_layout(text_regions_p_tables,boxes_d,0,splitter_y_new_d,peaks_neg_tot_tables_d,text_regions_p_tables, num_col_classifier, 0.000005, pixel_line)
-                
-                img_revised_tab2_d,_ = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2, table_prediction_n, 10, num_col_classifier)
-                img_revised_tab2_d_rotated = rotate_image(img_revised_tab2_d, -slope_deskew)
-                
+                    num_col_d, peaks_neg_fin_d, matrix_of_lines_ch_d, splitter_y_new_d, seperators_closeup_n_d = find_number_of_columns_in_document(np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2),num_col_classifier, self.tables, pixel_lines)
 
-                img_revised_tab2_d_rotated = np.round(img_revised_tab2_d_rotated)
-                img_revised_tab2_d_rotated = img_revised_tab2_d_rotated.astype(np.int8)
-
-                img_revised_tab2_d_rotated = resize_image(img_revised_tab2_d_rotated, text_regions_p.shape[0], text_regions_p.shape[1])
-
-
-            if np.abs(slope_deskew) < 0.13:
-                img_revised_tab = np.copy(img_revised_tab2[:,:,0])
-            else:
-                img_revised_tab = np.copy(text_regions_p[:,:])
-                img_revised_tab[:,:][img_revised_tab[:,:] == 10] = 0
-                img_revised_tab[:,:][img_revised_tab2_d_rotated[:,:,0] == 10] = 10
+                if num_col_classifier>=3:
+                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                        regions_without_separators = regions_without_separators.astype(np.uint8)
+                        regions_without_separators = cv2.erode(regions_without_separators[:,:], KERNEL, iterations=6)
                     
+                    if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+                        regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
+                        regions_without_separators_d = cv2.erode(regions_without_separators_d[:,:], KERNEL, iterations=6)
+                else:
+                    pass
+                
+                if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                    boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(splitter_y_new, regions_without_separators, matrix_of_lines_ch, num_col_classifier, erosion_hurts, self.tables, self.right2left)
+                    text_regions_p_tables = np.copy(text_regions_p)
+                    text_regions_p_tables[:,:][(table_prediction[:,:]==1)] = 10
+                    pixel_line = 3
+                    img_revised_tab2 = self.add_tables_heuristic_to_layout(text_regions_p_tables, boxes, 0, splitter_y_new, peaks_neg_tot_tables, text_regions_p_tables , num_col_classifier , 0.000005, pixel_line)
                     
-            ##img_revised_tab=img_revised_tab2[:,:,0]
-            #img_revised_tab=text_regions_p[:,:]
-            text_regions_p[:,:][text_regions_p[:,:]==10] = 0
-            text_regions_p[:,:][img_revised_tab[:,:]==10] = 10
-            #img_revised_tab[img_revised_tab2[:,:,0]==10] =10
+                    img_revised_tab2,contoures_tables = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2, table_prediction, 10, num_col_classifier)
+                    
+                else:
+                    boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d, num_col_classifier, erosion_hurts, self.tables, self.right2left)
+                    text_regions_p_tables = np.copy(text_regions_p_1_n)
+                    text_regions_p_tables = np.round(text_regions_p_tables)
+                    text_regions_p_tables[:,:][(text_regions_p_tables[:,:]!=3) & (table_prediction_n[:,:]==1)] = 10
+                    
+                    pixel_line = 3
+                    img_revised_tab2 = self.add_tables_heuristic_to_layout(text_regions_p_tables,boxes_d,0,splitter_y_new_d,peaks_neg_tot_tables_d,text_regions_p_tables, num_col_classifier, 0.000005, pixel_line)
+                    
+                    img_revised_tab2_d,_ = self.check_iou_of_bounding_box_and_contour_for_tables(img_revised_tab2, table_prediction_n, 10, num_col_classifier)
+                    img_revised_tab2_d_rotated = rotate_image(img_revised_tab2_d, -slope_deskew)
+                    
+
+                    img_revised_tab2_d_rotated = np.round(img_revised_tab2_d_rotated)
+                    img_revised_tab2_d_rotated = img_revised_tab2_d_rotated.astype(np.int8)
+
+                    img_revised_tab2_d_rotated = resize_image(img_revised_tab2_d_rotated, text_regions_p.shape[0], text_regions_p.shape[1])
+
+
+                if np.abs(slope_deskew) < 0.13:
+                    img_revised_tab = np.copy(img_revised_tab2[:,:,0])
+                else:
+                    img_revised_tab = np.copy(text_regions_p[:,:])
+                    img_revised_tab[:,:][img_revised_tab[:,:] == 10] = 0
+                    img_revised_tab[:,:][img_revised_tab2_d_rotated[:,:,0] == 10] = 10
+                        
+                        
+                ##img_revised_tab=img_revised_tab2[:,:,0]
+                #img_revised_tab=text_regions_p[:,:]
+                text_regions_p[:,:][text_regions_p[:,:]==10] = 0
+                text_regions_p[:,:][img_revised_tab[:,:]==10] = 10
+                #img_revised_tab[img_revised_tab2[:,:,0]==10] =10
             
         pixel_img = 4
         min_area_mar = 0.00001
