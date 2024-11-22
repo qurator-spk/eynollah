@@ -45,7 +45,7 @@ install-dev:
 	pip install -e .
 
 smoke-test:
-	eynollah -i tests/resources/kant_aufklaerung_1784_0020.tif -o . -m $(PWD)/models_eynollah
+	eynollah layout -i tests/resources/kant_aufklaerung_1784_0020.tif -o . -m $(PWD)/models_eynollah
 
 # Run unit tests
 test:
