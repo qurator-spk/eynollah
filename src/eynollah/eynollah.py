@@ -4772,8 +4772,45 @@ class Eynollah:
         
             
                     
-                    
+    def filter_contours_without_textline_inside(self,contours,text_con_org,  contours_textline):
         
+        ###contours_txtline_of_all_textregions = []
+        
+        ###for jj in range(len(contours_textline)):
+            ###contours_txtline_of_all_textregions = contours_txtline_of_all_textregions + contours_textline[jj]
+            
+        ###M_main_textline = [cv2.moments(contours_txtline_of_all_textregions[j]) for j in range(len(contours_txtline_of_all_textregions))]
+        ###cx_main_textline = [(M_main_textline[j]["m10"] / (M_main_textline[j]["m00"] + 1e-32)) for j in range(len(M_main_textline))]
+        ###cy_main_textline = [(M_main_textline[j]["m01"] / (M_main_textline[j]["m00"] + 1e-32)) for j in range(len(M_main_textline))]
+        
+        
+        ###M_main = [cv2.moments(contours[j]) for j in range(len(contours))]
+        ###cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+        ###cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+        
+        ###contours_with_textline = []
+        ###for ind_tr, con_tr in enumerate(contours):
+            ###results = [cv2.pointPolygonTest(con_tr, (cx_main_textline[index_textline_con], cy_main_textline[index_textline_con]), False) for index_textline_con in range(len(contours_txtline_of_all_textregions)) ]
+            
+            ###results = np.array(results)
+            ###if np.any(results==1):
+                ###contours_with_textline.append(con_tr)
+                
+        textregion_index_to_del = []
+        for index_textregion, textlines_textregion in enumerate(contours_textline):
+            if len(textlines_textregion)==0:
+                textregion_index_to_del.append(index_textregion)
+
+        uniqe_args_trs = np.unique(textregion_index_to_del)
+        uniqe_args_trs_sorted = np.sort(uniqe_args_trs)[::-1]
+        
+        
+        for ind_u_a_trs in uniqe_args_trs_sorted:
+            contours.pop(ind_u_a_trs)
+            contours_textline.pop(ind_u_a_trs)
+            text_con_org.pop(ind_u_a_trs)
+            
+        return contours, text_con_org, contours_textline
     
     def dilate_textlines(self,all_found_textline_polygons):
         for j in range(len(all_found_textline_polygons)):
@@ -5239,6 +5276,8 @@ class Eynollah:
                                 all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(all_found_textline_polygons, textline_mask_tot_ea_org, type_contour="textline")
                                 all_found_textline_polygons_marginals = self.dilate_textregions_contours_textline_version(all_found_textline_polygons_marginals)
                                 
+                                contours_only_text_parent, txt_con_org, all_found_textline_polygons = self.filter_contours_without_textline_inside(contours_only_text_parent,txt_con_org, all_found_textline_polygons)
+                                
                             else:
                                 textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
                                 slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
@@ -5395,17 +5434,17 @@ class Eynollah:
                                     
                                     if self.textline_light:
                                         mask_poly = cv2.dilate(mask_poly, KERNEL, iterations=1)
-                                    
                                     img_poly_on_img[:,:,0][mask_poly[:,:,0] ==0] = 255
                                     img_poly_on_img[:,:,1][mask_poly[:,:,0] ==0] = 255
                                     img_poly_on_img[:,:,2][mask_poly[:,:,0] ==0] = 255
                                     
                                     img_croped = img_poly_on_img[y:y+h, x:x+w, :]
+                                    #cv2.imwrite('./extracted_lines/'+str(ind_tot)+'.jpg', img_croped)
                                     text_ocr = self.return_ocr_of_textline_without_common_section(img_croped, model_ocr, processor, device, w, h2w_ratio, ind_tot)
                                     
                                     ocr_textline_in_textregion.append(text_ocr)
                                 
-                                    ##cv2.imwrite(str(ind_tot)+'.png', img_croped)
+                                    
                                     ind_tot = ind_tot +1
                                 ocr_all_textlines.append(ocr_textline_in_textregion)
                                 
