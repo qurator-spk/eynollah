@@ -567,7 +567,8 @@ class Eynollah:
         _, page_coord = self.early_page_for_num_of_column_classification(img)
         
         if not self.dir_in:
-            model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
+            self.model_classifier, _ = self.start_new_session_and_model(self.model_dir_of_col_classifier)
+
         if self.input_binary:
             img_in = np.copy(img)
             img_in = img_in / 255.0
@@ -590,10 +591,7 @@ class Eynollah:
             img_in[0, :, :, 1] = img_1ch[:, :]
             img_in[0, :, :, 2] = img_1ch[:, :]
 
-        if not self.dir_in:
-            label_p_pred = model_num_classifier.predict(img_in, verbose=0)
-        else:
-            label_p_pred = self.model_classifier.predict(img_in, verbose=0)
+        label_p_pred = self.model_classifier.predict(img_in, verbose=0)
 
         num_col = np.argmax(label_p_pred[0]) + 1
 
@@ -613,12 +611,10 @@ class Eynollah:
         self.logger.info("Detected %s DPI", dpi)
         if self.input_binary:
             img = self.imread()
-            if self.dir_in:
-                prediction_bin = self.do_prediction(True, img, self.model_bin, n_batch_inference=5)
-            else:
-                
-                model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                prediction_bin = self.do_prediction(True, img, model_bin, n_batch_inference=5)
+            if not self.dir_in:
+                self.model_bin, _ = self.start_new_session_and_model(self.model_dir_of_binarization)
+
+            prediction_bin = self.do_prediction(True, img, self.model_bin, n_batch_inference=5)
             
             prediction_bin=prediction_bin[:,:,0]
             prediction_bin = (prediction_bin[:,:]==0)*1
@@ -641,7 +637,7 @@ class Eynollah:
         self.page_coord = page_coord
         
         if not self.dir_in:
-            model_num_classifier, session_col_classifier = self.start_new_session_and_model(self.model_dir_of_col_classifier)
+            self.model_classifier, _ = self.start_new_session_and_model(self.model_dir_of_col_classifier)
         
         if self.num_col_upper and not self.num_col_lower:
             num_col = self.num_col_upper
@@ -669,10 +665,7 @@ class Eynollah:
                 img_in[0, :, :, 2] = img_1ch[:, :]
 
 
-            if self.dir_in:
-                label_p_pred = self.model_classifier.predict(img_in, verbose=0)
-            else:
-                label_p_pred = model_num_classifier.predict(img_in, verbose=0)
+            label_p_pred = self.model_classifier.predict(img_in, verbose=0)
             num_col = np.argmax(label_p_pred[0]) + 1
         elif (self.num_col_upper and self.num_col_lower) and (self.num_col_upper!=self.num_col_lower):
             if self.input_binary:
@@ -693,10 +686,7 @@ class Eynollah:
                 img_in[0, :, :, 2] = img_1ch[:, :]
 
 
-            if self.dir_in:
-                label_p_pred = self.model_classifier.predict(img_in, verbose=0)
-            else:
-                label_p_pred = model_num_classifier.predict(img_in, verbose=0)
+            label_p_pred = self.model_classifier.predict(img_in, verbose=0)
             num_col = np.argmax(label_p_pred[0]) + 1
             
             if num_col > self.num_col_upper:
@@ -1381,12 +1371,9 @@ class Eynollah:
             img = cv2.GaussianBlur(self.image, (5, 5), 0)
             
             if not self.dir_in:
-                model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
+                self.model_page, _ = self.start_new_session_and_model(self.model_page_dir)
                 
-            if not self.dir_in:
-                img_page_prediction = self.do_prediction(False, img, model_page)
-            else:
-                img_page_prediction = self.do_prediction(False, img, self.model_page)
+            img_page_prediction = self.do_prediction(False, img, self.model_page)
             imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
             _, thresh = cv2.threshold(imgray, 0, 255, 0)
             thresh = cv2.dilate(thresh, KERNEL, iterations=3)
@@ -1429,13 +1416,10 @@ class Eynollah:
             else:
                 img = self.imread()
             if not self.dir_in:
-                model_page, session_page = self.start_new_session_and_model(self.model_page_dir)
+                self.model_page, _ = self.start_new_session_and_model(self.model_page_dir)
             img = cv2.GaussianBlur(img, (5, 5), 0)
             
-            if self.dir_in:
-                img_page_prediction = self.do_prediction(False, img, self.model_page)
-            else:
-                img_page_prediction = self.do_prediction(False, img, model_page)
+            img_page_prediction = self.do_prediction(False, img, self.model_page)
 
             imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
             _, thresh = cv2.threshold(imgray, 0, 255, 0)
@@ -1462,9 +1446,12 @@ class Eynollah:
         img_height_h = img.shape[0]
         img_width_h = img.shape[1]
         if not self.dir_in:
-            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_fully if patches else self.model_region_dir_fully_np)
-        else:
-            model_region = self.model_region_fl if patches else self.model_region_fl_np
+            if patches:
+                self.model_region_fl, _ = self.start_new_session_and_model(self.model_region_dir_fully)
+            else:
+                self.model_region_fl_np, _ = self.start_new_session_and_model(self.model_region_dir_fully_np)
+
+        model_region = self.model_region_fl if patches else self.model_region_fl_np
 
         if not patches:
             if self.light_version:
@@ -1546,9 +1533,12 @@ class Eynollah:
         img_height_h = img.shape[0]
         img_width_h = img.shape[1]
         if not self.dir_in:
-            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_fully if patches else self.model_region_dir_fully_np)
-        else:
-            model_region = self.model_region_fl if patches else self.model_region_fl_np
+            if patches:
+                self.model_region_fl, _ = self.start_new_session_and_model(self.model_region_dir_fully)
+            else:
+                self.model_region_fl_np, _ = self.start_new_session_and_model(self.model_region_dir_fully_np)
+
+        model_region = self.model_region_fl if patches else self.model_region_fl_np
 
         if not patches:
             img = otsu_copy_binary(img)
@@ -2049,26 +2039,18 @@ class Eynollah:
         else:
             thresholding_for_artificial_class_in_light_version = False
         if not self.dir_in:
-            model_textline, session_textline = self.start_new_session_and_model(self.model_textline_dir)
+            self.model_textline, _ = self.start_new_session_and_model(self.model_textline_dir)
         #img = img.astype(np.uint8)
         img_org = np.copy(img)
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
         
-        if not self.dir_in:
-            prediction_textline = self.do_prediction(patches, img, model_textline, marginal_of_patch_percent=0.15, n_batch_inference=3, thresholding_for_artificial_class_in_light_version=thresholding_for_artificial_class_in_light_version)
-            
-            #if not thresholding_for_artificial_class_in_light_version:
-                #if num_col_classifier==1:
-                    #prediction_textline_nopatch = self.do_prediction(False, img, model_textline)
-                    #prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
-        else:
-            prediction_textline = self.do_prediction(patches, img, self.model_textline, marginal_of_patch_percent=0.15, n_batch_inference=3,thresholding_for_artificial_class_in_light_version=thresholding_for_artificial_class_in_light_version)
-            #if not thresholding_for_artificial_class_in_light_version:
-                #if num_col_classifier==1:
-                    #prediction_textline_nopatch = self.do_prediction(False, img, model_textline)
-                    #prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
+        prediction_textline = self.do_prediction(patches, img, self.model_textline, marginal_of_patch_percent=0.15, n_batch_inference=3,thresholding_for_artificial_class_in_light_version=thresholding_for_artificial_class_in_light_version)
+        #if not thresholding_for_artificial_class_in_light_version:
+            #if num_col_classifier==1:
+                #prediction_textline_nopatch = self.do_prediction(False, img, self.model_textline)
+                #prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
         
         textline_mask_tot_ea_art = (prediction_textline[:,:]==2)*1
@@ -2092,10 +2074,7 @@ class Eynollah:
         if not thresholding_for_artificial_class_in_light_version:
             prediction_textline[:,:][old_art[:,:]==1]=2
         
-        if not self.dir_in:
-            prediction_textline_longshot = self.do_prediction(False, img, model_textline)
-        else:
-            prediction_textline_longshot = self.do_prediction(False, img, self.model_textline)
+        prediction_textline_longshot = self.do_prediction(False, img, self.model_textline)
         prediction_textline_longshot_true_size = resize_image(prediction_textline_longshot, img_h, img_w)
         
         return ((prediction_textline[:, :, 0]==1)*1).astype('uint8'), ((prediction_textline_longshot_true_size[:, :, 0]==1)*1).astype('uint8')
@@ -2161,10 +2140,8 @@ class Eynollah:
 
 
         if not self.dir_in:
-            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light_only_images_extraction)
-            prediction_regions_org = self.do_prediction_new_concept(True, img_resized, model_region)
-        else:
-            prediction_regions_org = self.do_prediction_new_concept(True, img_resized, self.model_region)
+            self.model_region, _ = self.start_new_session_and_model(self.model_region_dir_p_ens_light_only_images_extraction)
+        prediction_regions_org = self.do_prediction_new_concept(True, img_resized, self.model_region)
 
         prediction_regions_org = resize_image(prediction_regions_org,img_height_h, img_width_h )
 
@@ -2256,7 +2233,7 @@ class Eynollah:
         img_height_h = img_org.shape[0]
         img_width_h = img_org.shape[1]
 
-        #model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+        #model_region, _ = self.start_new_session_and_model(self.model_region_dir_p_ens)
 
         #print(num_col_classifier,'num_col_classifier')
         
@@ -2290,10 +2267,8 @@ class Eynollah:
             #img_bin = np.copy(img_resized)
         ###if (not self.input_binary and self.full_layout) or (not self.input_binary and num_col_classifier >= 30):
             ###if not self.dir_in:
-                ###model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                ###prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
-            ###else:
-                ###prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
+                ###self.model_bin, _ = self.start_new_session_and_model(self.model_dir_of_binarization)
+            ###prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
                 
             ####print("inside bin ", time.time()-t_bin)
             ###prediction_bin=prediction_bin[:,:,0]
@@ -2309,10 +2284,8 @@ class Eynollah:
             ###img_bin = np.copy(img_resized)
         if self.ocr and not self.input_binary:
             if not self.dir_in:
-                model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                prediction_bin = self.do_prediction(True, img_resized, model_bin, n_batch_inference=5)
-            else:
-                prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
+                self.model_bin, _ = self.start_new_session_and_model(self.model_dir_of_binarization)
+            prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
             prediction_bin=prediction_bin[:,:,0]
             prediction_bin = (prediction_bin[:,:]==0)*1
             prediction_bin = prediction_bin*255
@@ -2341,30 +2314,27 @@ class Eynollah:
         if not skip_layout_and_reading_order:
             #print("inside 2 ", time.time()-t_in)
             if not self.dir_in:
-                if num_col_classifier == 1 or num_col_classifier == 2:
-                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
-                    if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
-                        prediction_regions_org = self.do_prediction_new_concept(True, img_resized, model_region, n_batch_inference=1, thresholding_for_some_classes_in_light_version = True)
-                    else:
-                        prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
-                        prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
-                        prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
+                self.model_region_1_2, _ = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
+                ##self.model_region, _ = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
+
+            if num_col_classifier == 1 or num_col_classifier == 2:
+                if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
+                    prediction_regions_org = self.do_prediction_new_concept(
+                        True, img_resized, self.model_region_1_2, n_batch_inference=1,
+                        thresholding_for_some_classes_in_light_version=True)
                 else:
-                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
-                    prediction_regions_org = self.do_prediction_new_concept(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), model_region, n_batch_inference=2, thresholding_for_some_classes_in_light_version=True)
-                ##model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
-                ##prediction_regions_org = self.do_prediction(True, img_bin, model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
+                    prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
+                    prediction_regions_page = self.do_prediction_new_concept(
+                        False, self.image_page_org_size, self.model_region_1_2, n_batch_inference=1,
+                        thresholding_for_artificial_class_in_light_version=True)
+                    prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
             else:
-                if num_col_classifier == 1 or num_col_classifier == 2:
-                    if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
-                        prediction_regions_org = self.do_prediction_new_concept(True, img_resized, self.model_region_1_2, n_batch_inference=1, thresholding_for_some_classes_in_light_version=True)
-                    else:
-                        prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
-                        prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, self.model_region_1_2, n_batch_inference=1, thresholding_for_artificial_class_in_light_version=True)
-                        prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
-                else:
-                    prediction_regions_org = self.do_prediction_new_concept(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), self.model_region_1_2, n_batch_inference=2, thresholding_for_some_classes_in_light_version=True)
-                ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
+                new_h = (900+ (num_col_classifier-3)*100)
+                img_resized = resize_image(img_bin, int(new_h * img_bin.shape[0] /img_bin.shape[1]), new_h)
+                prediction_regions_org = self.do_prediction_new_concept(
+                    True, img_resized, self.model_region_1_2, n_batch_inference=2,
+                    thresholding_for_some_classes_in_light_version=True)
+            ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
             
             #print("inside 3 ", time.time()-t_in)
             
@@ -2466,16 +2436,13 @@ class Eynollah:
         img_width_h = img_org.shape[1]
         
         if not self.dir_in:
-            model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+            self.model_region, _ = self.start_new_session_and_model(self.model_region_dir_p_ens)
 
         ratio_y=1.3
         ratio_x=1
 
         img = resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-        if not self.dir_in:
-            prediction_regions_org_y = self.do_prediction(True, img, model_region)
-        else:
-            prediction_regions_org_y = self.do_prediction(True, img, self.model_region)
+        prediction_regions_org_y = self.do_prediction(True, img, self.model_region)
         prediction_regions_org_y = resize_image(prediction_regions_org_y, img_height_h, img_width_h )
 
         #plt.imshow(prediction_regions_org_y[:,:,0])
@@ -2494,10 +2461,7 @@ class Eynollah:
             
             img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]*(1.2 if is_image_enhanced else 1)))
             
-            if self.dir_in:
-                prediction_regions_org = self.do_prediction(True, img, self.model_region)
-            else:
-                prediction_regions_org = self.do_prediction(True, img, model_region)
+            prediction_regions_org = self.do_prediction(True, img, self.model_region)
             prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
 
             prediction_regions_org=prediction_regions_org[:,:,0]
@@ -2505,14 +2469,11 @@ class Eynollah:
             
             
             if not self.dir_in:
-                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p2)
+                self.model_region_p2, _ = self.start_new_session_and_model(self.model_region_dir_p2)
 
             img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]))
             
-            if self.dir_in:
-                prediction_regions_org2 = self.do_prediction(True, img, self.model_region_p2, marginal_of_patch_percent=0.2)
-            else:
-                prediction_regions_org2 = self.do_prediction(True, img, model_region, marginal_of_patch_percent=0.2)
+            prediction_regions_org2 = self.do_prediction(True, img, self.model_region_p2, marginal_of_patch_percent=0.2)
             prediction_regions_org2=resize_image(prediction_regions_org2, img_height_h, img_width_h )
 
 
@@ -2544,10 +2505,8 @@ class Eynollah:
                     prediction_bin = np.copy(img_org)
                 else:
                     if not self.dir_in:
-                        model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                        prediction_bin = self.do_prediction(True, img_org, model_bin, n_batch_inference=5)
-                    else:
-                        prediction_bin = self.do_prediction(True, img_org, self.model_bin, n_batch_inference=5)
+                        self.model_bin, _ = self.start_new_session_and_model(self.model_dir_of_binarization)
+                    prediction_bin = self.do_prediction(True, img_org, self.model_bin, n_batch_inference=5)
                     prediction_bin = resize_image(prediction_bin, img_height_h, img_width_h )
                     
                     prediction_bin=prediction_bin[:,:,0]
@@ -2557,17 +2516,14 @@ class Eynollah:
                     prediction_bin =np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
                 
                 if not self.dir_in:
-                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+                    self.model_region, _ = self.start_new_session_and_model(self.model_region_dir_p_ens)
                 ratio_y=1
                 ratio_x=1
 
 
                 img = resize_image(prediction_bin, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
                 
-                if not self.dir_in:
-                    prediction_regions_org = self.do_prediction(True, img, model_region)
-                else:
-                    prediction_regions_org = self.do_prediction(True, img, self.model_region)
+                prediction_regions_org = self.do_prediction(True, img, self.model_region)
                 prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
                 prediction_regions_org=prediction_regions_org[:,:,0]
                 
@@ -2597,10 +2553,8 @@ class Eynollah:
                 prediction_bin = np.copy(img_org)
                 
                 if not self.dir_in:
-                    model_bin, session_bin = self.start_new_session_and_model(self.model_dir_of_binarization)
-                    prediction_bin = self.do_prediction(True, img_org, model_bin, n_batch_inference=5)
-                else:
-                    prediction_bin = self.do_prediction(True, img_org, self.model_bin, n_batch_inference=5)
+                    self.model_bin, _ = self.start_new_session_and_model(self.model_dir_of_binarization)
+                prediction_bin = self.do_prediction(True, img_org, self.model_bin, n_batch_inference=5)
                 prediction_bin = resize_image(prediction_bin, img_height_h, img_width_h )
                 prediction_bin=prediction_bin[:,:,0]
                 
@@ -2612,7 +2566,7 @@ class Eynollah:
             
             
                 if not self.dir_in:
-                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens)
+                    self.model_region, _ = self.start_new_session_and_model(self.model_region_dir_p_ens)
                     
             else:
                 prediction_bin = np.copy(img_org)
@@ -2621,17 +2575,14 @@ class Eynollah:
 
 
             img = resize_image(prediction_bin, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-            if not self.dir_in:
-                prediction_regions_org = self.do_prediction(True, img, model_region)
-            else:
-                prediction_regions_org = self.do_prediction(True, img, self.model_region)
+            prediction_regions_org = self.do_prediction(True, img, self.model_region)
             prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
             prediction_regions_org=prediction_regions_org[:,:,0]
             
             #mask_lines_only=(prediction_regions_org[:,:]==3)*1
             #img = resize_image(img_org, int(img_org.shape[0]*1), int(img_org.shape[1]*1))
             
-            #prediction_regions_org = self.do_prediction(True, img, model_region)
+            #prediction_regions_org = self.do_prediction(True, img, self.model_region)
             
             #prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
             
@@ -3173,9 +3124,7 @@ class Eynollah:
         
         
         
-        if self.dir_in:
-            pass
-        else:
+        if not self.dir_in:
             self.model_table, _ = self.start_new_session_and_model(self.model_table_dir)
         
         patches = False
@@ -3937,9 +3886,7 @@ class Eynollah:
         img_poly[text_regions_p[:,:]==3] = 4
         img_poly[text_regions_p[:,:]==6] = 5
             
-        if self.dir_in:
-            pass
-        else:
+        if not self.dir_in:
             self.model_reading_order, _ = self.start_new_session_and_model(self.model_reading_order_dir)
 
         height1 =672#448
