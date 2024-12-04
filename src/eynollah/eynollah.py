@@ -4013,7 +4013,10 @@ class Eynollah:
         inference_bs = 3
         input_1= np.zeros( (inference_bs, height1, width1,3))
         starting_list_of_regions = []
-        starting_list_of_regions.append( list(range(labels_con.shape[2])) )
+        if len(co_text_all)<=1:
+            starting_list_of_regions.append( list(range(1)) )
+        else:
+            starting_list_of_regions.append( list(range(labels_con.shape[2])) )
         index_update = 0
         index_selected = starting_list_of_regions[0]
         #print(labels_con.shape[2],"number of regions for reading order")
