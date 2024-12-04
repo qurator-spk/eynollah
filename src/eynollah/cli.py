@@ -1,6 +1,6 @@
 import sys
 import click
-from ocrd_utils import initLogging, setOverrideLogLevel
+from ocrd_utils import initLogging, getLevelName, getLogger
 from eynollah.eynollah import Eynollah
 from eynollah.sbb_binarize import SbbBinarizer
 
@@ -254,9 +254,9 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
 )
 
 def layout(image, out, dir_in, model, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, num_col_upper, num_col_lower, skip_layout_and_reading_order, ignore_page_extraction, log_level):
-    if log_level:
-        setOverrideLogLevel(log_level)
     initLogging()
+    if log_level:
+        getLogger('eynollah').setLevel(getLevelName(log_level))
     if not enable_plotting and (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
         print("Error: You used one of -sl, -sd, -sa, -sp, -si or -ae but did not enable plotting with -ep")
         sys.exit(1)
