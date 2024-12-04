@@ -255,7 +255,7 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_region_dir_p_ens_light_only_images_extraction = dir_models + "/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18"
-        self.model_reading_order_machine_dir = dir_models + "/model_ens_reading_order_machine_based"
+        self.model_reading_order_dir = dir_models + "/model_ens_reading_order_machine_based"
         self.model_region_dir_p_1_2_sp_np = dir_models + "/modelens_e_l_all_sp_0_1_2_3_4_171024"#"/modelens_12sp_elay_0_3_4__3_6_n"#"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"#"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"#"/modelens_1_2_4_5_early_lay_1_2_spaltige"#"/model_3_eraly_layout_no_patches_1_2_spaltige"
         ##self.model_region_dir_fully_new = dir_models + "/model_2_full_layout_new_trans"
         self.model_region_dir_fully = dir_models + "/modelens_full_lay_1__4_3_091124"#"/modelens_full_lay_1_3_031124"#"/modelens_full_lay_13__3_19_241024"#"/model_full_lay_13_241024"#"/modelens_full_lay_13_17_231024"#"/modelens_full_lay_1_2_221024"#"/modelens_full_layout_24_till_28"#"/model_2_full_layout_new_trans"
@@ -289,7 +289,7 @@ class Eynollah:
             ###self.model_region_fl_new = self.our_load_model(self.model_region_dir_fully_new)
             self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
             self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
-            self.model_reading_order_machine = self.our_load_model(self.model_reading_order_machine_dir)
+            self.model_reading_order = self.our_load_model(self.model_reading_order_dir)
             if self.ocr:
                 self.model_ocr = VisionEncoderDecoderModel.from_pretrained(self.model_ocr_dir)
                 self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -331,7 +331,7 @@ class Eynollah:
             self.model_region_fl_np = self.our_load_model(self.model_region_dir_fully_np)
             self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
             self.model_enhancement = self.our_load_model(self.model_dir_of_enhancement)
-            self.model_reading_order_machine = self.our_load_model(self.model_reading_order_machine_dir)
+            self.model_reading_order = self.our_load_model(self.model_reading_order_dir)
             if self.tables:
                 self.model_table = self.our_load_model(self.model_table_dir)
                 
@@ -3804,7 +3804,7 @@ class Eynollah:
             model = load_model(model_file , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
 
         return model
-    def do_order_of_regions_with_machine(self,contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
+    def do_order_of_regions_with_model(self,contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
         y_len = text_regions_p.shape[0]
         x_len = text_regions_p.shape[1]
         
@@ -3818,7 +3818,8 @@ class Eynollah:
         img_poly[text_regions_p[:,:]==3] = 4
         img_poly[text_regions_p[:,:]==6] = 5
 
-        model_ro_machine, _ = self.start_new_session_and_model(self.model_reading_order_machine_dir)
+        if not self.dir_in:
+            self.model_reading_order, _ = self.start_new_session_and_model(self.model_reading_order_dir)
 
         height1 =672#448
         width1 = 448#224
@@ -3896,7 +3897,7 @@ class Eynollah:
                     batch_counter = batch_counter+1
                     
                     if batch_counter==inference_bs or ( (tot_counter//inference_bs)==full_bs_ite and tot_counter%inference_bs==last_bs):
-                        y_pr=model_ro_machine.predict(input_1 , verbose=0)
+                        y_pr = self.model_reading_order.predict(input_1 , verbose=0)
 
                         if batch_counter==inference_bs:
                             iteration_batches = inference_bs
@@ -3952,7 +3953,7 @@ class Eynollah:
         else:
             early_list_bigger_than_one = -20
         return list_inp, early_list_bigger_than_one
-    def do_order_of_regions_with_machine_optimized_algorithm(self,contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
+    def do_order_of_regions_with_model_optimized_algorithm(self,contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
         y_len = text_regions_p.shape[0]
         x_len = text_regions_p.shape[1]
         
@@ -3969,7 +3970,7 @@ class Eynollah:
         if self.dir_in:
             pass
         else:
-            self.model_reading_order_machine, _ = self.start_new_session_and_model(self.model_reading_order_machine_dir)
+            self.model_reading_order, _ = self.start_new_session_and_model(self.model_reading_order_dir)
 
         height1 =672#448
         width1 = 448#224
@@ -4055,7 +4056,7 @@ class Eynollah:
                 batch_counter = batch_counter+1
                 
                 if batch_counter==inference_bs or ( (tot_counter//inference_bs)==full_bs_ite and tot_counter%inference_bs==last_bs):
-                    y_pr=self.model_reading_order_machine.predict(input_1 , verbose=0)
+                    y_pr = self.model_reading_order.predict(input_1 , verbose=0)
                     
                     if batch_counter==inference_bs:
                         iteration_batches = inference_bs
@@ -5362,7 +5363,7 @@ class Eynollah:
                     if self.full_layout:
                         
                         if self.reading_order_machine_based:
-                            order_text_new, id_of_texts_tot = self.do_order_of_regions_with_machine_optimized_algorithm(contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
+                            order_text_new, id_of_texts_tot = self.do_order_of_regions_with_model_optimized_algorithm(contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
                         else:
                             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                                 order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
@@ -5384,7 +5385,7 @@ class Eynollah:
                     else:
                         contours_only_text_parent_h = None
                         if self.reading_order_machine_based:
-                            order_text_new, id_of_texts_tot = self.do_order_of_regions_with_machine_optimized_algorithm(contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
+                            order_text_new, id_of_texts_tot = self.do_order_of_regions_with_model_optimized_algorithm(contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
                         else:
                             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                                 order_text_new, id_of_texts_tot = self.do_order_of_regions(contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
