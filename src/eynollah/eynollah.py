@@ -832,8 +832,7 @@ class Eynollah:
             img = img / float(255.0)
             img = resize_image(img, img_height_model, img_width_model)
 
-            label_p_pred = model.predict(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]),
-                                         verbose=0)
+            label_p_pred = model.predict(img[np.newaxis], verbose=0)
 
             seg = np.argmax(label_p_pred, axis=3)[0]
             
@@ -1082,6 +1081,7 @@ class Eynollah:
         #del model
         #gc.collect()
         return prediction_true
+
     def do_padding_with_scale(self,img, scale):
         h_n = int(img.shape[0]*scale)
         w_n = int(img.shape[1]*scale)
@@ -2032,22 +2032,20 @@ class Eynollah:
             all_box_coord_per_process.append(crop_coor)
         queue_of_all_params.put([slopes_per_each_subprocess, textlines_rectangles_per_each_subprocess, bounding_box_of_textregion_per_each_subprocess, contours_textregion_per_each_subprocess, contours_textregion_par_per_each_subprocess, all_box_coord_per_process, index_by_text_region_contours])
 
-    def textline_contours(self, img, patches, scaler_h, scaler_w, num_col_classifier=None):
+    def textline_contours(self, img, use_patches, scaler_h, scaler_w, num_col_classifier=None):
         self.logger.debug('enter textline_contours')
-        if self.textline_light:
-            thresholding_for_artificial_class_in_light_version = True#False
-        else:
-            thresholding_for_artificial_class_in_light_version = False
         if not self.dir_in:
             self.model_textline, _ = self.start_new_session_and_model(self.model_textline_dir)
+
         #img = img.astype(np.uint8)
         img_org = np.copy(img)
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
         
-        prediction_textline = self.do_prediction(patches, img, self.model_textline, marginal_of_patch_percent=0.15, n_batch_inference=3,thresholding_for_artificial_class_in_light_version=thresholding_for_artificial_class_in_light_version)
-        #if not thresholding_for_artificial_class_in_light_version:
+        prediction_textline = self.do_prediction(use_patches, img, self.model_textline, marginal_of_patch_percent=0.15, n_batch_inference=3,
+                                                 thresholding_for_artificial_class_in_light_version=self.textline_light)
+        #if not self.textline_light:
             #if num_col_classifier==1:
                 #prediction_textline_nopatch = self.do_prediction(False, img, self.model_textline)
                 #prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
@@ -2057,7 +2055,7 @@ class Eynollah:
         
         old_art = np.copy(textline_mask_tot_ea_art)
         
-        if not thresholding_for_artificial_class_in_light_version:
+        if not self.textline_light:
             textline_mask_tot_ea_art = textline_mask_tot_ea_art.astype('uint8')
             #textline_mask_tot_ea_art = cv2.dilate(textline_mask_tot_ea_art, KERNEL, iterations=1)
             
@@ -2066,12 +2064,12 @@ class Eynollah:
         textline_mask_tot_ea_lines = (prediction_textline[:,:]==1)*1
         textline_mask_tot_ea_lines = textline_mask_tot_ea_lines.astype('uint8')
         
-        if not thresholding_for_artificial_class_in_light_version:
+        if not self.textline_light:
             textline_mask_tot_ea_lines = cv2.dilate(textline_mask_tot_ea_lines, KERNEL, iterations=1)
         
         prediction_textline[:,:][textline_mask_tot_ea_lines[:,:]==1]=1
         
-        if not thresholding_for_artificial_class_in_light_version:
+        if not self.textline_light:
             prediction_textline[:,:][old_art[:,:]==1]=2
         
         prediction_textline_longshot = self.do_prediction(False, img, self.model_textline)
@@ -3366,8 +3364,7 @@ class Eynollah:
         scaler_h_textline = 1#1.3  # 1.2#1.2
         scaler_w_textline = 1#1.3  # 0.9#1
         #print(image_page.shape)
-        patches = True
-        textline_mask_tot_ea, _ = self.textline_contours(image_page, patches, scaler_h_textline, scaler_w_textline, num_col_classifier)
+        textline_mask_tot_ea, _ = self.textline_contours(image_page, True, scaler_h_textline, scaler_w_textline, num_col_classifier)
         if self.textline_light:
             textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
 
