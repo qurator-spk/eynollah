@@ -4906,7 +4906,7 @@ class Eynollah:
             self.ls_imgs = [1]
         
         for img_name in self.ls_imgs:
-            print(img_name)
+            self.logger.info(img_name)
             t0 = time.time()
             if self.dir_in:
                 self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
@@ -5436,8 +5436,8 @@ class Eynollah:
 
             if self.dir_in:
                 self.writer.write_pagexml(pcgts)
-            #self.logger.info("Job done in %.1fs", time.time() - t0)
-            print("Job done in %.1fs" % (time.time() - t0))
+            self.logger.info("Job done in %.1fs", time.time() - t0)
+            #print("Job done in %.1fs" % (time.time() - t0))
             
         if self.dir_in:
             self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
