@@ -999,7 +999,7 @@ class Eynollah:
 
         prediction_true = prediction_true.astype(np.uint8)
         #del model
-        #gc.collect()
+        gc.collect()
         return prediction_true
 
     def do_padding_with_scale(self,img, scale):
@@ -1209,6 +1209,7 @@ class Eynollah:
                     img_patch = np.zeros((n_batch_inference, img_height_model, img_width_model, 3))
 
         prediction_true = prediction_true.astype(np.uint8)
+        gc.collect()
         return prediction_true
 
     def extract_page(self):
