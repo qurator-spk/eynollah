@@ -1573,13 +1573,14 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, plotter=None):
 def do_image_rotation(queue_of_all_params,angels_per_process, img_resized, sigma_des):
     angels_per_each_subprocess = []
     for mv in range(len(angels_per_process)):
+        print(f"rotating image by {angels_per_process[mv]}")
         img_rot=rotate_image(img_resized,angels_per_process[mv])
         img_rot[img_rot!=0]=1
         try:
             var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
         except:
             var_spectrum=0
-            angels_per_each_subprocess.append(var_spectrum)
+        angels_per_each_subprocess.append(var_spectrum)
             
     queue_of_all_params.put([angels_per_each_subprocess])
 
