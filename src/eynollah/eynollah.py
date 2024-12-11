@@ -823,8 +823,8 @@ class Eynollah:
     def do_prediction(self, patches, img, model, n_batch_inference=1, marginal_of_patch_percent=0.1, thresholding_for_some_classes_in_light_version=False, thresholding_for_artificial_class_in_light_version=False):
         self.logger.debug("enter do_prediction")
 
-        img_height_model = model.layers[len(model.layers) - 1].output_shape[1]
-        img_width_model = model.layers[len(model.layers) - 1].output_shape[2]
+        img_height_model = model.layers[-1].output_shape[1]
+        img_width_model = model.layers[-1].output_shape[2]
 
         if not patches:
             img_h_page = img.shape[0]
@@ -1034,8 +1034,8 @@ class Eynollah:
     def do_prediction_new_concept(self, patches, img, model, n_batch_inference=1, marginal_of_patch_percent=0.1, thresholding_for_some_classes_in_light_version=False, thresholding_for_artificial_class_in_light_version=False):
         self.logger.debug("enter do_prediction_new_concept")
 
-        img_height_model = model.layers[len(model.layers) - 1].output_shape[1]
-        img_width_model = model.layers[len(model.layers) - 1].output_shape[2]
+        img_height_model = model.layers[-1].output_shape[1]
+        img_width_model = model.layers[-1].output_shape[2]
 
         if not patches:
             img_h_page = img.shape[0]
@@ -1043,7 +1043,7 @@ class Eynollah:
             img = img / 255.0
             img = resize_image(img, img_height_model, img_width_model)
 
-            label_p_pred = model.predict(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]), verbose=0)
+            label_p_pred = model.predict(img[np.newaxis], verbose=0)
             seg = np.argmax(label_p_pred, axis=3)[0]
             
             if thresholding_for_artificial_class_in_light_version:
@@ -4928,31 +4928,31 @@ class Eynollah:
 
             #print("text region early 2 in %.1fs", time.time() - t0)
             ###min_con_area = 0.000005
-            if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                contours_only_text, hir_on_text = return_contours_of_image(text_only)
-                contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
+            contours_only_text, hir_on_text = return_contours_of_image(text_only)
+            contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
 
-                if len(contours_only_text_parent) > 0:
-                    areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
-                    areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
-                    #self.logger.info('areas_cnt_text %s', areas_cnt_text)
-                    contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
-                    contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent) if areas_cnt_text[jz] > MIN_AREA_REGION]
-                    areas_cnt_text_parent = [area for area in areas_cnt_text if area > MIN_AREA_REGION]
-                    index_con_parents = np.argsort(areas_cnt_text_parent)
+            if len(contours_only_text_parent) > 0:
+                areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
+                areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
+                #self.logger.info('areas_cnt_text %s', areas_cnt_text)
+                contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
+                contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent) if areas_cnt_text[jz] > MIN_AREA_REGION]
+                areas_cnt_text_parent = [area for area in areas_cnt_text if area > MIN_AREA_REGION]
+                index_con_parents = np.argsort(areas_cnt_text_parent)
 
-                    contours_only_text_parent = self.return_list_of_contours_with_desired_order(contours_only_text_parent, index_con_parents)
+                contours_only_text_parent = self.return_list_of_contours_with_desired_order(contours_only_text_parent, index_con_parents)
 
-                    ##try:
-                        ##contours_only_text_parent = list(np.array(contours_only_text_parent,dtype=object)[index_con_parents])
-                    ##except:
-                        ##contours_only_text_parent = list(np.array(contours_only_text_parent,dtype=np.int32)[index_con_parents])
-                    ##areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
-                    areas_cnt_text_parent = self.return_list_of_contours_with_desired_order(areas_cnt_text_parent, index_con_parents)
+                ##try:
+                    ##contours_only_text_parent = list(np.array(contours_only_text_parent,dtype=object)[index_con_parents])
+                ##except:
+                    ##contours_only_text_parent = list(np.array(contours_only_text_parent,dtype=np.int32)[index_con_parents])
+                ##areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
+                areas_cnt_text_parent = self.return_list_of_contours_with_desired_order(areas_cnt_text_parent, index_con_parents)
 
-                    cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
-                    cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
+                cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
+                cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
 
+                if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                     contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
                     contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
 
@@ -5018,35 +5018,6 @@ class Eynollah:
                     contours_only_text_parent_d_ordered = []
                     contours_only_text_parent_d = []
                     contours_only_text_parent = []
-            else:
-                contours_only_text, hir_on_text = return_contours_of_image(text_only)
-                contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
-
-                if len(contours_only_text_parent) > 0:
-                    areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
-                    areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
-
-                    contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
-                    contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent) if areas_cnt_text[jz] > MIN_AREA_REGION]
-                    areas_cnt_text_parent = [area for area in areas_cnt_text if area > MIN_AREA_REGION]
-
-                    index_con_parents = np.argsort(areas_cnt_text_parent)
-
-                    contours_only_text_parent = self.return_list_of_contours_with_desired_order(contours_only_text_parent, index_con_parents)
-                    #try:
-                        #contours_only_text_parent = list(np.array(contours_only_text_parent,dtype=object)[index_con_parents])
-                    #except:
-                        #contours_only_text_parent = list(np.array(contours_only_text_parent,dtype=np.int32)[index_con_parents])
-                    #areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
-                    areas_cnt_text_parent = self.return_list_of_contours_with_desired_order(areas_cnt_text_parent, index_con_parents)
-
-                    cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
-                    cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
-                    #self.logger.debug('areas_cnt_text_parent %s', areas_cnt_text_parent)
-                    # self.logger.debug('areas_cnt_text_parent_d %s', areas_cnt_text_parent_d)
-                    # self.logger.debug('len(contours_only_text_parent) %s', len(contours_only_text_parent_d))
-                else:
-                    pass
 
             #print("text region early 3 in %.1fs", time.time() - t0)
             if self.light_version:
