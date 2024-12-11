@@ -1,5 +1,4 @@
 from functools import partial
-from multiprocessing import cpu_count, Pool
 import cv2
 import numpy as np
 from shapely import geometry
@@ -162,17 +161,14 @@ def do_work_of_contours_in_image(contour, index_r_con, img, slope_first):
 
     return cont_int[0], index_r_con
 
-def get_textregion_contours_in_org_image_multi(cnts, img, slope_first):
+def get_textregion_contours_in_org_image_multi(cnts, img, slope_first, map=map):
     if not len(cnts):
         return [], []
-    num_cores = cpu_count()
-    with Pool(processes=num_cores) as pool:
-        results = pool.starmap(
-            partial(do_work_of_contours_in_image,
-                    img=img,
-                    slope_first=slope_first,
-                    ),
-            zip(cnts, range(len(cnts))))
+    results = map(partial(do_work_of_contours_in_image,
+                          img=img,
+                          slope_first=slope_first,
+                          ),
+                  cnts, range(len(cnts)))
     return tuple(zip(*results))
 
 def get_textregion_contours_in_org_image(cnts, img, slope_first):
@@ -252,21 +248,18 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
     # print(np.shape(cont_int[0]))
     return cont_int[0], index_r_con
 
-def get_textregion_contours_in_org_image_light(cnts, img, slope_first):
+def get_textregion_contours_in_org_image_light(cnts, img, slope_first, map=map):
     if not len(cnts):
         return []
     img = cv2.resize(img, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
     ##cnts = list( (np.array(cnts)/2).astype(np.int16) )
     #cnts = cnts/2
     cnts = [(i/6).astype(np.int) for i in cnts]
-    num_cores = cpu_count()
-    with Pool(processes=num_cores) as pool:
-        results = pool.starmap(
-            partial(do_back_rotation_and_get_cnt_back,
-                    img=img,
-                    slope_first=slope_first,
-                    ),
-            zip(cnts, range(len(cnts))))
+    results = map(partial(do_back_rotation_and_get_cnt_back,
+                          img=img,
+                          slope_first=slope_first,
+                          ),
+                  cnts, range(len(cnts)))
     contours, indexes = tuple(zip(*results))
     return [i*6 for i in contours]
 

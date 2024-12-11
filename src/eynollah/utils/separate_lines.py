@@ -1,6 +1,6 @@
 import os
+from logging import getLogger
 from functools import partial
-from multiprocessing import Pool, cpu_count
 import numpy as np
 import cv2
 from scipy.signal import find_peaks
@@ -1464,7 +1464,9 @@ def textline_contours_postprocessing(textline_mask, slope, contour_text_interest
 
     return contours_rotated_clean
 
-def separate_lines_new2(img_path, thetha, num_col, slope_region, plotter=None):
+def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, plotter=None):
+    if logger is None:
+        logger = getLogger(__package__)
 
     if num_col == 1:
         num_patches = int(img_path.shape[1] / 200.0)
@@ -1572,18 +1574,20 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, plotter=None):
     # plt.show()
     return img_patch_ineterst_revised
 
-def do_image_rotation(angle, img, sigma_des):
-    print(f"rotating image by {angle}")
+def do_image_rotation(angle, img, sigma_des, logger=None):
+    if logger is None:
+        logger = getLogger(__package__)
     img_rot = rotate_image(img, angle)
     img_rot[img_rot!=0] = 1
     try:
         var = find_num_col_deskew(img_rot, sigma_des, 20.3)
     except:
+        logger.exception("cannot determine variance for angle %.2f°", angle)
         var = 0
     return var
 
-def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=False, plotter=None):
-    num_cores = cpu_count()
+def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
+                       main_page=False, logger=None, plotter=None, map=map):
     if main_page and plotter:
         plotter.save_plot_of_textline_density(img_patch_org)
 
@@ -1615,16 +1619,16 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
         #plt.imshow(img_resized)
         #plt.show()
         angles = np.array([-45, 0, 45, 90,])
-        angle = get_smallest_skew(img_resized, sigma_des, angles, num_cores=num_cores, plotter=plotter)
+        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
-        angle = get_smallest_skew(img_resized, sigma_des, angles, num_cores=num_cores, plotter=plotter)
+        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
         
     elif main_page:
         #plt.imshow(img_resized)
         #plt.show()
         angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
-        angle = get_smallest_skew(img_resized, sigma_des, angles, num_cores=num_cores, plotter=plotter)
+        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         early_slope_edge=11
         if abs(angle) > early_slope_edge:
@@ -1632,11 +1636,11 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
                 angles = np.linspace(-90, -12, n_tot_angles)
             else:
                 angles = np.linspace(90, 12, n_tot_angles)
-            angle = get_smallest_skew(img_resized, sigma_des, angles, num_cores=num_cores, plotter=plotter)
+            angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
     else:
         angles = np.linspace(-25, 25, int(0.5 * n_tot_angles) + 10)
-        angle = get_smallest_skew(img_resized, sigma_des, angles, num_cores=num_cores, plotter=plotter)
+        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         early_slope_edge=22
         if abs(angle) > early_slope_edge:
@@ -1644,30 +1648,35 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100, main_page=Fals
                 angles = np.linspace(-90, -25, int(0.5 * n_tot_angles) + 10)
             else:
                 angles = np.linspace(90, 25, int(0.5 * n_tot_angles) + 10)
-            angle = get_smallest_skew(img_resized, sigma_des, angles, num_cores=num_cores, plotter=plotter)
+            angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
     return angle
 
-def get_smallest_skew(img, sigma_des, angles, num_cores=1, plotter=None):
-    with Pool(processes=num_cores) as pool:
-        results = pool.map(partial(do_image_rotation, img=img, sigma_des=sigma_des), angles)
+def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map):
+    if logger is None:
+        logger = getLogger(__package__)
+    results = list(map(partial(do_image_rotation, img=img, sigma_des=sigma_des, logger=logger), angles))
     if plotter:
         plotter.save_plot_of_rotation_angle(angles, results)
     try:
         var_res = np.array(results)
+        assert var_res.any()
         angle = angles[np.argmax(var_res)]
     except:
+        logger.exception("cannot determine best angle among %s", str(angles))
         angle = 0
     return angle
 
 def do_work_of_slopes_new(
         box_text, contour, contour_par, index_r_con,
         textline_mask_tot_ea, image_page_rotated, slope_deskew,
-        logger, MAX_SLOPE=999, KERNEL=None, plotter=None
+        logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
-    logger.debug('enter do_work_of_slopes_new')
     if KERNEL is None:
         KERNEL = np.ones((5, 5), np.uint8)
+    if logger is None:
+        logger = getLogger(__package__)
+    logger.debug('enter do_work_of_slopes_new')
 
     x, y, w, h = box_text
     _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
@@ -1693,11 +1702,11 @@ def do_work_of_slopes_new(
             else:
                 sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
                 img_int_p[img_int_p > 0] = 1
-                slope_for_all = return_deskew_slop(img_int_p, sigma_des, plotter=plotter)
+                slope_for_all = return_deskew_slop(img_int_p, sigma_des, logger=logger, plotter=plotter)
                 if abs(slope_for_all) <= 0.5:
                     slope_for_all = slope_deskew
-        except Exception as why:
-            logger.error(why)
+        except:
+            logger.exception("cannot determine angle of contours")
             slope_for_all = MAX_SLOPE
 
         if slope_for_all == MAX_SLOPE:
@@ -1728,11 +1737,13 @@ def do_work_of_slopes_new(
 def do_work_of_slopes_new_curved(
         box_text, contour, contour_par, index_r_con,
         textline_mask_tot_ea, image_page_rotated, mask_texts_only, num_col, scale_par, slope_deskew,
-        logger, MAX_SLOPE=999, KERNEL=None, plotter=None
+        logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
-    logger.debug("enter do_work_of_slopes_new_curved")
     if KERNEL is None:
         KERNEL = np.ones((5, 5), np.uint8)
+    if logger is None:
+        logger = getLogger(__package__)
+    logger.debug("enter do_work_of_slopes_new_curved")
 
     x, y, w, h = box_text
     all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w].astype(np.uint8)
@@ -1755,11 +1766,11 @@ def do_work_of_slopes_new_curved(
             else:
                 sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
                 img_int_p[img_int_p > 0] = 1
-                slope_for_all = return_deskew_slop(img_int_p, sigma_des, plotter=plotter)
+                slope_for_all = return_deskew_slop(img_int_p, sigma_des, logger=logger, plotter=plotter)
                 if abs(slope_for_all) < 0.5:
                     slope_for_all = slope_deskew
-        except Exception as why:
-            logger.error(why)
+        except:
+            logger.exception("cannot determine angle of contours")
             slope_for_all = MAX_SLOPE
 
         if slope_for_all == MAX_SLOPE:
@@ -1778,7 +1789,7 @@ def do_work_of_slopes_new_curved(
 
         # print(slope_for_all,'slope_for_all')
         textline_rotated_separated = separate_lines_new2(textline_biggest_region[y: y+h, x: x+w], 0, num_col, slope_for_all,
-                                                         plotter=plotter)
+                                                         logger=logger, plotter=plotter)
 
         # new line added
         ##print(np.shape(textline_rotated_separated),np.shape(mask_biggest))
@@ -1818,8 +1829,10 @@ def do_work_of_slopes_new_curved(
 def do_work_of_slopes_new_light(
         box_text, contour, contour_par, index_r_con,
         textline_mask_tot_ea, image_page_rotated, slope_deskew,
-        logger
+        logger=None
 ):
+    if logger is None:
+        logger = getLogger(__package__)
     logger.debug('enter do_work_of_slopes_new_light')
 
     x, y, w, h = box_text

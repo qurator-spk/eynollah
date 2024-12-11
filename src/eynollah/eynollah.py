@@ -13,7 +13,8 @@ import time
 import warnings
 from functools import partial
 from pathlib import Path
-from multiprocessing import Pool, cpu_count
+from multiprocessing import cpu_count
+from concurrent.futures import ProcessPoolExecutor
 import gc
 from ocrd_utils import getLogger
 import cv2
@@ -251,6 +252,8 @@ class Eynollah:
                 textline_light = self.textline_light,
                 pcgts=pcgts)
         self.logger = logger if logger else getLogger('eynollah')
+        # for parallelization of CPU-intensive tasks:
+        self.executor = ProcessPoolExecutor(max_workers=cpu_count())
         self.dir_models = dir_models
         self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
         self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425"
@@ -1518,21 +1521,15 @@ class Eynollah:
         if not len(contours):
             return [], [], [], [], [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_light")
-        if len(contours)>15:
-            num_cores = cpu_count()
-        else:
-            num_cores = 1
-        with Pool(processes=num_cores) as pool:
-            results = pool.starmap(
-                partial(do_work_of_slopes_new_light,
-                        textline_mask_tot_ea=textline_mask_tot,
-                        image_page_rotated=image_page_rotated,
-                        slope_deskew=slope_deskew,
-                        logger=self.logger,
-                        MAX_SLOPE=MAX_SLOPE,
-                        KERNEL=KERNEL,
-                        plotter=self.plotter,),
-                zip(boxes, contours, contours_par, range(len(contours_par))))
+        results = self.executor.map(partial(do_work_of_slopes_new_light,
+                                            textline_mask_tot_ea=textline_mask_tot,
+                                            image_page_rotated=image_page_rotated,
+                                            slope_deskew=slope_deskew,
+                                            MAX_SLOPE=MAX_SLOPE,
+                                            KERNEL=KERNEL,
+                                            logger=self.logger,
+                                            plotter=self.plotter,),
+                                    boxes, contours, contours_par, range(len(contours_par)))
         #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new_light")
         return tuple(zip(*results))
@@ -1541,18 +1538,15 @@ class Eynollah:
         if not len(contours):
             return [], [], [], [], [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new")
-        num_cores = cpu_count()
-        with Pool(processes=num_cores) as pool:
-            results = pool.starmap(
-                partial(do_work_of_slopes_new,
-                        textline_mask_tot_ea=textline_mask_tot,
-                        image_page_rotated=image_page_rotated,
-                        slope_deskew=slope_deskew,
-                        logger=self.logger,
-                        MAX_SLOPE=MAX_SLOPE,
-                        KERNEL=KERNEL,
-                        plotter=self.plotter,),
-                zip(boxes, contours, contours_par, range(len(contours_par))))
+        results = self.executor.map(partial(do_work_of_slopes_new,
+                                            textline_mask_tot_ea=textline_mask_tot,
+                                            image_page_rotated=image_page_rotated,
+                                            slope_deskew=slope_deskew,
+                                            MAX_SLOPE=MAX_SLOPE,
+                                            KERNEL=KERNEL,
+                                            logger=self.logger,
+                                            plotter=self.plotter,),
+                                    boxes, contours, contours_par, range(len(contours_par)))
         #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new")
         return tuple(zip(*results))
@@ -1561,21 +1555,18 @@ class Eynollah:
         if not len(contours):
             return [], [], [], [], [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_curved")
-        num_cores = cpu_count()
-        with Pool(processes=num_cores) as pool:
-            results = pool.starmap(
-                partial(do_work_of_slopes_new_curved,
-                        textline_mask_tot_ea=textline_mask_tot,
-                        image_page_rotated=image_page_rotated,
-                        mask_texts_only=mask_texts_only,
-                        num_col=num_col,
-                        scale_par=scale_par,
-                        slope_deskew=slope_deskew,
-                        logger=self.logger,
-                        MAX_SLOPE=MAX_SLOPE,
-                        KERNEL=KERNEL,
-                        plotter=self.plotter,),
-                zip(boxes, contours, contours_par, range(len(contours_par))))
+        results = self.executor.map(partial(do_work_of_slopes_new_curved,
+                                            textline_mask_tot_ea=textline_mask_tot,
+                                            image_page_rotated=image_page_rotated,
+                                            mask_texts_only=mask_texts_only,
+                                            num_col=num_col,
+                                            scale_par=scale_par,
+                                            slope_deskew=slope_deskew,
+                                            MAX_SLOPE=MAX_SLOPE,
+                                            KERNEL=KERNEL,
+                                            logger=self.logger,
+                                            plotter=self.plotter,),
+                                    boxes, contours, contours_par, range(len(contours_par)))
         #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new_curved")
         return tuple(zip(*results))
@@ -1643,7 +1634,8 @@ class Eynollah:
                 y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
                 sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
                 crop_img[crop_img > 0] = 1
-                slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des, plotter=self.plotter)
+                slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des,
+                                                                    map=self.executor.map, logger=self.logger, plotter=self.plotter)
             except Exception as why:
                 self.logger.error(why)
                 slope_corresponding_textregion = MAX_SLOPE
@@ -2932,10 +2924,8 @@ class Eynollah:
 
     def run_deskew(self, textline_mask_tot_ea):
         #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
-        sigma = 2
-        main_page_deskew = True
-        n_total_angles = 30
-        slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), sigma, n_total_angles, main_page_deskew, plotter=self.plotter)
+        slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), 2, 30, True,
+                                          map=self.executor.map, logger=self.logger, plotter=self.plotter)
         slope_first = 0
 
         if self.plotter:
@@ -4748,7 +4738,7 @@ class Eynollah:
                 contours_only_text_parent = self.dilate_textregions_contours(contours_only_text_parent)
                 contours_only_text_parent = self.filter_contours_inside_a_bigger_one(contours_only_text_parent, text_only, marginal_cnts=polygons_of_marginals)
                 #print("text region early 3.5 in %.1fs", time.time() - t0)
-                txt_con_org = get_textregion_contours_in_org_image_light(contours_only_text_parent, self.image, slope_first)
+                txt_con_org = get_textregion_contours_in_org_image_light(contours_only_text_parent, self.image, slope_first, map=self.executor.map)
                 #txt_con_org = self.dilate_textregions_contours(txt_con_org)
                 #contours_only_text_parent = self.dilate_textregions_contours(contours_only_text_parent)
             else:
