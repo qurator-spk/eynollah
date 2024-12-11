@@ -5019,6 +5019,20 @@ class Eynollah:
                     contours_only_text_parent_d = []
                     contours_only_text_parent = []
 
+            if not len(contours_only_text_parent):
+                # stop early
+                empty_marginals = [[]] * len(polygons_of_marginals)
+                if self.full_layout:
+                    pcgts = self.writer.build_pagexml_full_layout([], [], page_coord, [], [], [], [], [], [], polygons_of_images, contours_tables, [], polygons_of_marginals, empty_marginals, empty_marginals, [], [], [], cont_page, polygons_lines_xml, [])
+                else:
+                    pcgts = self.writer.build_pagexml_no_full_layout([], page_coord, [], [], [], [], polygons_of_images, polygons_of_marginals, empty_marginals, empty_marginals, [], [], cont_page, polygons_lines_xml, contours_tables, [])
+                self.logger.info("Job done in %.1fs", time.time() - t0)
+                if self.dir_in:
+                    self.writer.write_pagexml(pcgts)
+                    continue
+                else:
+                    return pcgts
+
             #print("text region early 3 in %.1fs", time.time() - t0)
             if self.light_version:
                 contours_only_text_parent = self.dilate_textregions_contours(contours_only_text_parent)
@@ -5164,9 +5178,11 @@ class Eynollah:
                                                               all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals,
                                                               cont_page, polygons_lines_xml, ocr_all_textlines)
                 self.logger.info("Job done in %.1fs", time.time() - t0)
-                if not self.dir_in:
+                if self.dir_in:
+                    self.writer.write_pagexml(pcgts)
+                    continue
+                else:
                     return pcgts
-
 
             else:
                 contours_only_text_parent_h = None
