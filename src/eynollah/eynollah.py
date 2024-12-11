@@ -11,8 +11,9 @@ import os
 import sys
 import time
 import warnings
+from functools import partial
 from pathlib import Path
-from multiprocessing import Process, Queue, cpu_count
+from multiprocessing import Pool, cpu_count
 import gc
 from ocrd_utils import getLogger
 import cv2
@@ -60,14 +61,20 @@ from .utils.contour import (
 from .utils.rotate import (
     rotate_image,
     rotation_not_90_func,
-    rotation_not_90_func_full_layout)
+    rotation_not_90_func_full_layout
+)
 from .utils.separate_lines import (
     textline_contours_postprocessing,
     separate_lines_new2,
-    return_deskew_slop)
+    return_deskew_slop,
+    do_work_of_slopes_new,
+    do_work_of_slopes_new_curved,
+    do_work_of_slopes_new_light,
+)
 from .utils.drop_capitals import (
     adhere_drop_capital_region_into_corresponding_textline,
-    filter_small_drop_capitals_from_no_patch_layout)
+    filter_small_drop_capitals_from_no_patch_layout
+)
 from .utils.marginals import get_marginals
 from .utils.resize import resize_image
 from .utils import (
@@ -82,7 +89,8 @@ from .utils import (
     small_textlines_to_parent_adherence2,
     order_of_regions,
     find_number_of_columns_in_document,
-    return_boxes_of_images_by_order_of_reading_new)
+    return_boxes_of_images_by_order_of_reading_new
+)
 from .utils.pil_cv2 import check_dpi, pil2cv
 from .utils.xml import order_and_id_of_texts
 from .plot import EynollahPlotter
@@ -1504,381 +1512,73 @@ class Eynollah:
             
             all_box_coord.append(crop_coor)
             
-        return slopes, all_found_textline_polygons, boxes, contours, contours_par, all_box_coord, np.array(range(len(contours_par)))
+        return all_found_textline_polygons, boxes, contours, contours_par, all_box_coord, np.array(range(len(contours_par))), slopes
         
     def get_slopes_and_deskew_new_light(self, contours, contours_par, textline_mask_tot, image_page_rotated, boxes, slope_deskew):
-        self.logger.debug("enter get_slopes_and_deskew_new")
+        if not len(contours):
+            return [], [], [], [], [], [], []
+        self.logger.debug("enter get_slopes_and_deskew_new_light")
         if len(contours)>15:
             num_cores = cpu_count()
         else:
             num_cores = 1
-        queue_of_all_params = Queue()
-
-        processes = []
-        nh = np.linspace(0, len(boxes), num_cores + 1)
-        indexes_by_text_con = np.array(range(len(contours_par)))
-        for i in range(num_cores):
-            boxes_per_process = boxes[int(nh[i]) : int(nh[i + 1])]
-            contours_per_process = contours[int(nh[i]) : int(nh[i + 1])]
-            contours_par_per_process = contours_par[int(nh[i]) : int(nh[i + 1])]
-            indexes_text_con_per_process = indexes_by_text_con[int(nh[i]) : int(nh[i + 1])]
-
-            processes.append(Process(target=self.do_work_of_slopes_new_light, args=(queue_of_all_params, boxes_per_process, textline_mask_tot, contours_per_process, contours_par_per_process, indexes_text_con_per_process, image_page_rotated, slope_deskew)))
-        for i in range(num_cores):
-            processes[i].start()
-
-        slopes = []
-        all_found_textline_polygons = []
-        all_found_text_regions = []
-        all_found_text_regions_par = []
-        boxes = []
-        all_box_coord = []
-        all_index_text_con = []
-        for i in range(num_cores):
-            list_all_par = queue_of_all_params.get(True)
-            slopes_for_sub_process = list_all_par[0]
-            polys_for_sub_process = list_all_par[1]
-            boxes_for_sub_process = list_all_par[2]
-            contours_for_subprocess = list_all_par[3]
-            contours_par_for_subprocess = list_all_par[4]
-            boxes_coord_for_subprocess = list_all_par[5]
-            indexes_for_subprocess = list_all_par[6]
-            for j in range(len(slopes_for_sub_process)):
-                slopes.append(slopes_for_sub_process[j])
-                all_found_textline_polygons.append(polys_for_sub_process[j])
-                boxes.append(boxes_for_sub_process[j])
-                all_found_text_regions.append(contours_for_subprocess[j])
-                all_found_text_regions_par.append(contours_par_for_subprocess[j])
-                all_box_coord.append(boxes_coord_for_subprocess[j])
-                all_index_text_con.append(indexes_for_subprocess[j])
-        for i in range(num_cores):
-            processes[i].join()
-        self.logger.debug('slopes %s', slopes)
-        self.logger.debug("exit get_slopes_and_deskew_new")
-        return slopes, all_found_textline_polygons, boxes, all_found_text_regions, all_found_text_regions_par, all_box_coord, all_index_text_con
+        with Pool(processes=num_cores) as pool:
+            results = pool.starmap(
+                partial(do_work_of_slopes_new_light,
+                        textline_mask_tot_ea=textline_mask_tot,
+                        image_page_rotated=image_page_rotated,
+                        slope_deskew=slope_deskew,
+                        logger=self.logger,
+                        MAX_SLOPE=MAX_SLOPE,
+                        KERNEL=KERNEL,
+                        plotter=self.plotter,),
+                zip(boxes, contours, contours_par, range(len(contours_par))))
+        #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
+        self.logger.debug("exit get_slopes_and_deskew_new_light")
+        return tuple(zip(*results))
 
     def get_slopes_and_deskew_new(self, contours, contours_par, textline_mask_tot, image_page_rotated, boxes, slope_deskew):
+        if not len(contours):
+            return [], [], [], [], [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new")
         num_cores = cpu_count()
-        queue_of_all_params = Queue()
-
-        processes = []
-        nh = np.linspace(0, len(boxes), num_cores + 1)
-        indexes_by_text_con = np.array(range(len(contours_par)))
-        for i in range(num_cores):
-            boxes_per_process = boxes[int(nh[i]) : int(nh[i + 1])]
-            contours_per_process = contours[int(nh[i]) : int(nh[i + 1])]
-            contours_par_per_process = contours_par[int(nh[i]) : int(nh[i + 1])]
-            indexes_text_con_per_process = indexes_by_text_con[int(nh[i]) : int(nh[i + 1])]
-
-            processes.append(Process(target=self.do_work_of_slopes_new, args=(queue_of_all_params, boxes_per_process, textline_mask_tot, contours_per_process, contours_par_per_process, indexes_text_con_per_process, image_page_rotated, slope_deskew)))
-        for i in range(num_cores):
-            processes[i].start()
-
-        slopes = []
-        all_found_textline_polygons = []
-        all_found_text_regions = []
-        all_found_text_regions_par = []
-        boxes = []
-        all_box_coord = []
-        all_index_text_con = []
-        for i in range(num_cores):
-            list_all_par = queue_of_all_params.get(True)
-            slopes_for_sub_process = list_all_par[0]
-            polys_for_sub_process = list_all_par[1]
-            boxes_for_sub_process = list_all_par[2]
-            contours_for_subprocess = list_all_par[3]
-            contours_par_for_subprocess = list_all_par[4]
-            boxes_coord_for_subprocess = list_all_par[5]
-            indexes_for_subprocess = list_all_par[6]
-            for j in range(len(slopes_for_sub_process)):
-                slopes.append(slopes_for_sub_process[j])
-                all_found_textline_polygons.append(polys_for_sub_process[j])
-                boxes.append(boxes_for_sub_process[j])
-                all_found_text_regions.append(contours_for_subprocess[j])
-                all_found_text_regions_par.append(contours_par_for_subprocess[j])
-                all_box_coord.append(boxes_coord_for_subprocess[j])
-                all_index_text_con.append(indexes_for_subprocess[j])
-        for i in range(num_cores):
-            processes[i].join()
-        self.logger.debug('slopes %s', slopes)
+        with Pool(processes=num_cores) as pool:
+            results = pool.starmap(
+                partial(do_work_of_slopes_new,
+                        textline_mask_tot_ea=textline_mask_tot,
+                        image_page_rotated=image_page_rotated,
+                        slope_deskew=slope_deskew,
+                        logger=self.logger,
+                        MAX_SLOPE=MAX_SLOPE,
+                        KERNEL=KERNEL,
+                        plotter=self.plotter,),
+                zip(boxes, contours, contours_par, range(len(contours_par))))
+        #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new")
-        return slopes, all_found_textline_polygons, boxes, all_found_text_regions, all_found_text_regions_par, all_box_coord, all_index_text_con
+        return tuple(zip(*results))
 
     def get_slopes_and_deskew_new_curved(self, contours, contours_par, textline_mask_tot, image_page_rotated, boxes, mask_texts_only, num_col, scale_par, slope_deskew):
+        if not len(contours):
+            return [], [], [], [], [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_curved")
         num_cores = cpu_count()
-        queue_of_all_params = Queue()
-
-        processes = []
-        nh = np.linspace(0, len(boxes), num_cores + 1)
-        indexes_by_text_con = np.array(range(len(contours_par)))
-
-        for i in range(num_cores):
-            boxes_per_process = boxes[int(nh[i]) : int(nh[i + 1])]
-            contours_per_process = contours[int(nh[i]) : int(nh[i + 1])]
-            contours_par_per_process = contours_par[int(nh[i]) : int(nh[i + 1])]
-            indexes_text_con_per_process = indexes_by_text_con[int(nh[i]) : int(nh[i + 1])]
-
-            processes.append(Process(target=self.do_work_of_slopes_new_curved, args=(queue_of_all_params, boxes_per_process, textline_mask_tot, contours_per_process, contours_par_per_process, image_page_rotated, mask_texts_only, num_col, scale_par, indexes_text_con_per_process, slope_deskew)))
-
-        for i in range(num_cores):
-            processes[i].start()
-
-        slopes = []
-        all_found_textline_polygons = []
-        all_found_text_regions = []
-        all_found_text_regions_par = []
-        boxes = []
-        all_box_coord = []
-        all_index_text_con = []
-
-        for i in range(num_cores):
-            list_all_par = queue_of_all_params.get(True)
-            polys_for_sub_process = list_all_par[0]
-            boxes_for_sub_process = list_all_par[1]
-            contours_for_subprocess = list_all_par[2]
-            contours_par_for_subprocess = list_all_par[3]
-            boxes_coord_for_subprocess = list_all_par[4]
-            indexes_for_subprocess = list_all_par[5]
-            slopes_for_sub_process = list_all_par[6]
-            for j in range(len(polys_for_sub_process)):
-                slopes.append(slopes_for_sub_process[j])
-                all_found_textline_polygons.append(polys_for_sub_process[j][::-1])
-                boxes.append(boxes_for_sub_process[j])
-                all_found_text_regions.append(contours_for_subprocess[j])
-                all_found_text_regions_par.append(contours_par_for_subprocess[j])
-                all_box_coord.append(boxes_coord_for_subprocess[j])
-                all_index_text_con.append(indexes_for_subprocess[j])
-
-        for i in range(num_cores):
-            processes[i].join()
-        # print(slopes,'slopes')
-        return all_found_textline_polygons, boxes, all_found_text_regions, all_found_text_regions_par, all_box_coord, all_index_text_con, slopes
-
-    def do_work_of_slopes_new_curved(self, queue_of_all_params, boxes_text, textline_mask_tot_ea, contours_per_process, contours_par_per_process, image_page_rotated, mask_texts_only, num_col, scale_par, indexes_r_con_per_pro, slope_deskew):
-        self.logger.debug("enter do_work_of_slopes_new_curved")
-        slopes_per_each_subprocess = []
-        bounding_box_of_textregion_per_each_subprocess = []
-        textlines_rectangles_per_each_subprocess = []
-        contours_textregion_per_each_subprocess = []
-        contours_textregion_par_per_each_subprocess = []
-        all_box_coord_per_process = []
-        index_by_text_region_contours = []
-
-        textline_cnt_separated = np.zeros(textline_mask_tot_ea.shape)
-
-        for mv in range(len(boxes_text)):
-
-            all_text_region_raw = textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
-            all_text_region_raw = all_text_region_raw.astype(np.uint8)
-            img_int_p = all_text_region_raw[:, :]
-
-            # img_int_p=cv2.erode(img_int_p,KERNEL,iterations = 2)
-            # plt.imshow(img_int_p)
-            # plt.show()
-
-            if img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
-                slopes_per_each_subprocess.append(0)
-                slope_for_all = [slope_deskew][0]
-            else:
-                try:
-                    textline_con, hierarchy = return_contours_of_image(img_int_p)
-                    textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierarchy, max_area=1, min_area=0.0008)
-                    y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
-                    if self.isNaN(y_diff_mean):
-                        slope_for_all = MAX_SLOPE
-                    else:
-                        sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
-                        img_int_p[img_int_p > 0] = 1
-                        slope_for_all = return_deskew_slop(img_int_p, sigma_des, plotter=self.plotter)
-
-                        if abs(slope_for_all) < 0.5:
-                            slope_for_all = [slope_deskew][0]
-
-                except Exception as why:
-                    self.logger.error(why)
-                    slope_for_all = MAX_SLOPE
-
-                if slope_for_all == MAX_SLOPE:
-                    slope_for_all = [slope_deskew][0]
-                slopes_per_each_subprocess.append(slope_for_all)
-
-            index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
-            _, crop_coor = crop_image_inside_box(boxes_text[mv], image_page_rotated)
-
-            if abs(slope_for_all) < 45:
-                # all_box_coord.append(crop_coor)
-                textline_region_in_image = np.zeros(textline_mask_tot_ea.shape)
-                cnt_o_t_max = contours_par_per_process[mv]
-                x, y, w, h = cv2.boundingRect(cnt_o_t_max)
-                mask_biggest = np.zeros(mask_texts_only.shape)
-                mask_biggest = cv2.fillPoly(mask_biggest, pts=[cnt_o_t_max], color=(1, 1, 1))
-                mask_region_in_patch_region = mask_biggest[y : y + h, x : x + w]
-                textline_biggest_region = mask_biggest * textline_mask_tot_ea
-
-                # print(slope_for_all,'slope_for_all')
-                textline_rotated_separated = separate_lines_new2(textline_biggest_region[y : y + h, x : x + w], 0, num_col, slope_for_all, plotter=self.plotter)
-
-                # new line added
-                ##print(np.shape(textline_rotated_separated),np.shape(mask_biggest))
-                textline_rotated_separated[mask_region_in_patch_region[:, :] != 1] = 0
-                # till here
-
-                textline_cnt_separated[y : y + h, x : x + w] = textline_rotated_separated
-                textline_region_in_image[y : y + h, x : x + w] = textline_rotated_separated
-
-                # plt.imshow(textline_region_in_image)
-                # plt.show()
-                # plt.imshow(textline_cnt_separated)
-                # plt.show()
-
-                pixel_img = 1
-                cnt_textlines_in_image = return_contours_of_interested_textline(textline_region_in_image, pixel_img)
-
-                textlines_cnt_per_region = []
-                for jjjj in range(len(cnt_textlines_in_image)):
-                    mask_biggest2 = np.zeros(mask_texts_only.shape)
-                    mask_biggest2 = cv2.fillPoly(mask_biggest2, pts=[cnt_textlines_in_image[jjjj]], color=(1, 1, 1))
-                    if num_col + 1 == 1:
-                        mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=5)
-                    else:
-                        mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=4)
-
-                    pixel_img = 1
-                    mask_biggest2 = resize_image(mask_biggest2, int(mask_biggest2.shape[0] * scale_par), int(mask_biggest2.shape[1] * scale_par))
-                    cnt_textlines_in_image_ind = return_contours_of_interested_textline(mask_biggest2, pixel_img)
-                    try:
-                        textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0])
-                    except Exception as why:
-                        self.logger.error(why)
-            else:
-                add_boxes_coor_into_textlines = True
-                textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contours_par_per_process[mv], boxes_text[mv], add_boxes_coor_into_textlines)
-                add_boxes_coor_into_textlines = False
-                # print(np.shape(textlines_cnt_per_region),'textlines_cnt_per_region')
-
-            textlines_rectangles_per_each_subprocess.append(textlines_cnt_per_region)
-            bounding_box_of_textregion_per_each_subprocess.append(boxes_text[mv])
-            contours_textregion_per_each_subprocess.append(contours_per_process[mv])
-            contours_textregion_par_per_each_subprocess.append(contours_par_per_process[mv])
-            all_box_coord_per_process.append(crop_coor)
-
-        queue_of_all_params.put([textlines_rectangles_per_each_subprocess, bounding_box_of_textregion_per_each_subprocess, contours_textregion_per_each_subprocess, contours_textregion_par_per_each_subprocess, all_box_coord_per_process, index_by_text_region_contours, slopes_per_each_subprocess])
-    def do_work_of_slopes_new_light(self, queue_of_all_params, boxes_text, textline_mask_tot_ea, contours_per_process, contours_par_per_process, indexes_r_con_per_pro, image_page_rotated, slope_deskew):
-        self.logger.debug('enter do_work_of_slopes_new_light')
-        slopes_per_each_subprocess = []
-        bounding_box_of_textregion_per_each_subprocess = []
-        textlines_rectangles_per_each_subprocess = []
-        contours_textregion_per_each_subprocess = []
-        contours_textregion_par_per_each_subprocess = []
-        all_box_coord_per_process = []
-        index_by_text_region_contours = []
-        for mv in range(len(boxes_text)):
-            _, crop_coor = crop_image_inside_box(boxes_text[mv],image_page_rotated)
-            mask_textline = np.zeros((textline_mask_tot_ea.shape))
-            mask_textline = cv2.fillPoly(mask_textline,pts=[contours_per_process[mv]],color=(1,1,1))
-            all_text_region_raw = (textline_mask_tot_ea*mask_textline[:,:])[boxes_text[mv][1]:boxes_text[mv][1]+boxes_text[mv][3] , boxes_text[mv][0]:boxes_text[mv][0]+boxes_text[mv][2] ]
-            all_text_region_raw=all_text_region_raw.astype(np.uint8)
-
-            slopes_per_each_subprocess.append([slope_deskew][0])
-            mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
-            mask_only_con_region = cv2.fillPoly(mask_only_con_region, pts=[contours_par_per_process[mv]], color=(1, 1, 1))
-
-            
-            if self.textline_light:
-                all_text_region_raw = np.copy(textline_mask_tot_ea)
-                all_text_region_raw[mask_only_con_region == 0] = 0
-                cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(all_text_region_raw)
-                cnt_clean_rot = filter_contours_area_of_image(all_text_region_raw, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
-            else:
-                all_text_region_raw = np.copy(textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]])
-                mask_only_con_region = mask_only_con_region[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
-                all_text_region_raw[mask_only_con_region == 0] = 0
-                cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, [slope_deskew][0], contours_par_per_process[mv], boxes_text[mv])
-
-            textlines_rectangles_per_each_subprocess.append(cnt_clean_rot)
-            index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
-            bounding_box_of_textregion_per_each_subprocess.append(boxes_text[mv])
-
-            contours_textregion_per_each_subprocess.append(contours_per_process[mv])
-            contours_textregion_par_per_each_subprocess.append(contours_par_per_process[mv])
-            all_box_coord_per_process.append(crop_coor)
-        queue_of_all_params.put([slopes_per_each_subprocess, textlines_rectangles_per_each_subprocess, bounding_box_of_textregion_per_each_subprocess, contours_textregion_per_each_subprocess, contours_textregion_par_per_each_subprocess, all_box_coord_per_process, index_by_text_region_contours])
-        
-    def do_work_of_slopes_new(self, queue_of_all_params, boxes_text, textline_mask_tot_ea, contours_per_process, contours_par_per_process, indexes_r_con_per_pro, image_page_rotated, slope_deskew):
-        self.logger.debug('enter do_work_of_slopes_new')
-        slopes_per_each_subprocess = []
-        bounding_box_of_textregion_per_each_subprocess = []
-        textlines_rectangles_per_each_subprocess = []
-        contours_textregion_per_each_subprocess = []
-        contours_textregion_par_per_each_subprocess = []
-        all_box_coord_per_process = []
-        index_by_text_region_contours = []
-        for mv in range(len(boxes_text)):
-            _, crop_coor = crop_image_inside_box(boxes_text[mv],image_page_rotated)
-            mask_textline = np.zeros((textline_mask_tot_ea.shape))
-            mask_textline = cv2.fillPoly(mask_textline,pts=[contours_per_process[mv]],color=(1,1,1))
-            all_text_region_raw = (textline_mask_tot_ea*mask_textline[:,:])[boxes_text[mv][1]:boxes_text[mv][1]+boxes_text[mv][3] , boxes_text[mv][0]:boxes_text[mv][0]+boxes_text[mv][2] ]
-            all_text_region_raw=all_text_region_raw.astype(np.uint8)
-            img_int_p=all_text_region_raw[:,:]#self.all_text_region_raw[mv]
-            img_int_p=cv2.erode(img_int_p,KERNEL,iterations = 2)
-
-            if img_int_p.shape[0]/img_int_p.shape[1]<0.1:
-                slopes_per_each_subprocess.append(0)
-                slope_for_all = [slope_deskew][0]
-                all_text_region_raw = textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
-                cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contours_par_per_process[mv], boxes_text[mv], 0)
-                textlines_rectangles_per_each_subprocess.append(cnt_clean_rot)
-                index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
-                bounding_box_of_textregion_per_each_subprocess.append(boxes_text[mv])
-            else:
-                try:
-                    textline_con, hierarchy = return_contours_of_image(img_int_p)
-                    textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierarchy, max_area=1, min_area=0.00008)
-                    y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
-                    if self.isNaN(y_diff_mean):
-                        slope_for_all = MAX_SLOPE
-                    else:
-                        sigma_des = int(y_diff_mean * (4.0 / 40.0))
-                        if sigma_des < 1:
-                            sigma_des = 1
-                        img_int_p[img_int_p > 0] = 1
-                        slope_for_all = return_deskew_slop(img_int_p, sigma_des, plotter=self.plotter)
-                        if abs(slope_for_all) <= 0.5:
-                            slope_for_all = [slope_deskew][0]
-                except Exception as why:
-                    self.logger.error(why)
-                    slope_for_all = MAX_SLOPE
-                if slope_for_all == MAX_SLOPE:
-                    slope_for_all = [slope_deskew][0]
-                slopes_per_each_subprocess.append(slope_for_all)
-                mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
-                mask_only_con_region = cv2.fillPoly(mask_only_con_region, pts=[contours_par_per_process[mv]], color=(1, 1, 1))
-
-                # plt.imshow(mask_only_con_region)
-                # plt.show()
-                all_text_region_raw = np.copy(textline_mask_tot_ea[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]])
-                mask_only_con_region = mask_only_con_region[boxes_text[mv][1] : boxes_text[mv][1] + boxes_text[mv][3], boxes_text[mv][0] : boxes_text[mv][0] + boxes_text[mv][2]]
-
-                ##plt.imshow(textline_mask_tot_ea)
-                ##plt.show()
-                ##plt.imshow(all_text_region_raw)
-                ##plt.show()
-                ##plt.imshow(mask_only_con_region)
-                ##plt.show()
-
-                all_text_region_raw[mask_only_con_region == 0] = 0
-                cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contours_par_per_process[mv], boxes_text[mv])
-
-                textlines_rectangles_per_each_subprocess.append(cnt_clean_rot)
-                index_by_text_region_contours.append(indexes_r_con_per_pro[mv])
-                bounding_box_of_textregion_per_each_subprocess.append(boxes_text[mv])
-
-            contours_textregion_per_each_subprocess.append(contours_per_process[mv])
-            contours_textregion_par_per_each_subprocess.append(contours_par_per_process[mv])
-            all_box_coord_per_process.append(crop_coor)
-        queue_of_all_params.put([slopes_per_each_subprocess, textlines_rectangles_per_each_subprocess, bounding_box_of_textregion_per_each_subprocess, contours_textregion_per_each_subprocess, contours_textregion_par_per_each_subprocess, all_box_coord_per_process, index_by_text_region_contours])
+        with Pool(processes=num_cores) as pool:
+            results = pool.starmap(
+                partial(do_work_of_slopes_new_curved,
+                        textline_mask_tot_ea=textline_mask_tot,
+                        image_page_rotated=image_page_rotated,
+                        mask_texts_only=mask_texts_only,
+                        num_col=num_col,
+                        scale_par=scale_par,
+                        slope_deskew=slope_deskew,
+                        logger=self.logger,
+                        MAX_SLOPE=MAX_SLOPE,
+                        KERNEL=KERNEL,
+                        plotter=self.plotter,),
+                zip(boxes, contours, contours_par, range(len(contours_par))))
+        #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
+        self.logger.debug("exit get_slopes_and_deskew_new_curved")
+        return tuple(zip(*results))
 
     def textline_contours(self, img, use_patches, scaler_h, scaler_w, num_col_classifier=None):
         self.logger.debug('enter textline_contours')
@@ -1923,6 +1623,7 @@ class Eynollah:
         prediction_textline_longshot = self.do_prediction(False, img, self.model_textline)
         prediction_textline_longshot_true_size = resize_image(prediction_textline_longshot, img_h, img_w)
         
+        self.logger.debug('exit textline_contours')
         return ((prediction_textline[:, :, 0]==1)*1).astype('uint8'), ((prediction_textline_longshot_true_size[:, :, 0]==1)*1).astype('uint8')
 
 
@@ -1959,6 +1660,7 @@ class Eynollah:
         q.put(slopes_sub)
         poly.put(poly_sub)
         box_sub.put(boxes_sub_new)
+        self.logger.debug('exit do_work_of_slopes')
 
     def get_regions_light_v_extract_only_images(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_extract_images_only")
@@ -2069,6 +1771,7 @@ class Eynollah:
 
                 polygons_of_images_fin.append(np.array([[page_coord_img[2], page_coord_img[0]], [page_coord_img[3], page_coord_img[0]], [page_coord_img[3], page_coord_img[1]], [page_coord_img[2], page_coord_img[1]]]) )
 
+        self.logger.debug("exit get_regions_extract_images_only")
         return text_regions_p_true, erosion_hurts, polygons_lines_xml, polygons_of_images_fin, image_page, page_coord, cont_page
 
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier, skip_layout_and_reading_order=False):
@@ -2146,6 +1849,7 @@ class Eynollah:
         #print("inside 1 ", time.time()-t_in)
         
         ###textline_mask_tot_ea = self.run_textline(img_bin)
+        self.logger.debug("detecting textlines on %s with %d colors", str(img_resized.shape), len(np.unique(img_resized)))
         textline_mask_tot_ea = self.run_textline(img_resized, num_col_classifier)
         
         
@@ -2269,9 +1973,11 @@ class Eynollah:
             #plt.imshow(textline_mask_tot_ea)
             #plt.show()
             #print("inside 4 ", time.time()-t_in)
+            self.logger.debug("exit get_regions_light_v")
             return text_regions_p_true, erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin
         else:
             img_bin = resize_image(img_bin,img_height_h, img_width_h )
+            self.logger.debug("exit get_regions_light_v")
             return None, erosion_hurts, None, textline_mask_tot_ea, img_bin
 
     def get_regions_from_xy_2models(self,img,is_image_enhanced, num_col_classifier):
@@ -2392,6 +2098,7 @@ class Eynollah:
 
             text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
 
+            self.logger.debug("exit get_regions_from_xy_2models")
             return text_regions_p_true, erosion_hurts, polygons_lines_xml
         except:
             
@@ -2461,6 +2168,7 @@ class Eynollah:
             text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
             
             erosion_hurts = True
+            self.logger.debug("exit get_regions_from_xy_2models")
             return text_regions_p_true, erosion_hurts, polygons_lines_xml
 
     def do_order_of_regions_full_layout(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
@@ -2633,6 +2341,7 @@ class Eynollah:
             for iii in range(len(order_of_texts_tot)):
                 order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
         
+        self.logger.debug("exit do_order_of_regions_full_layout")
         return order_text_new, id_of_texts_tot
 
     def do_order_of_regions_no_full_layout(self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
@@ -2743,6 +2452,7 @@ class Eynollah:
             for iii in range(len(order_of_texts_tot)):
                 order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
         
+        self.logger.debug("exit do_order_of_regions_no_full_layout")
         return order_text_new, id_of_texts_tot
     def check_iou_of_bounding_box_and_contour_for_tables(self, layout, table_prediction_early, pixel_tabel, num_col_classifier):
         layout_org  = np.copy(layout)
@@ -5051,12 +4761,12 @@ class Eynollah:
             if not self.curved_line:
                 if self.light_version:
                     if self.textline_light:
-                        #slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = \
+                        #all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = \
                         #    self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea_org, image_page_rotated, boxes_text, slope_deskew)
 
-                        slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = \
+                        all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = \
                             self.get_slopes_and_deskew_new_light2(txt_con_org, contours_only_text_parent, textline_mask_tot_ea_org, image_page_rotated, boxes_text, slope_deskew)
-                        slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = \
+                        all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, slopes_marginals = \
                             self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea_org, image_page_rotated, boxes_marginals, slope_deskew)
 
                         #slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, index_by_text_par_con = \
@@ -5074,17 +4784,17 @@ class Eynollah:
 
                     else:
                         textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
-                        slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = \
+                        all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = \
                             self.get_slopes_and_deskew_new_light(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
-                        slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = \
+                        all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, slopes_marginals = \
                             self.get_slopes_and_deskew_new_light(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
 
                         #all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(all_found_textline_polygons, textline_mask_tot_ea_org, type_contour="textline")
                 else:
                     textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
-                    slopes, all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con = \
+                    all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, index_by_text_par_con, slopes = \
                         self.get_slopes_and_deskew_new(txt_con_org, contours_only_text_parent, textline_mask_tot_ea, image_page_rotated, boxes_text, slope_deskew)
-                    slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _ = \
+                    all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, all_box_coord_marginals, _, slopes_marginals = \
                         self.get_slopes_and_deskew_new(polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea, image_page_rotated, boxes_marginals, slope_deskew)
             else:
                 scale_param = 1

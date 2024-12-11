@@ -1,22 +1,23 @@
+import os
 from functools import partial
+from multiprocessing import Pool, cpu_count
 import numpy as np
 import cv2
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-import os
-from multiprocessing import Process, Queue, cpu_count
-from multiprocessing import Pool
 from .rotate import rotate_image
+from .resize import resize_image
 from .contour import (
     return_parent_contours,
     filter_contours_area_of_image_tables,
     return_contours_of_image,
-    filter_contours_area_of_image
+    filter_contours_area_of_image,
+    return_contours_of_interested_textline,
+    find_contours_mean_y_diff,
 )
-from .is_nan import isNaN
 from . import (
     find_num_col_deskew,
-    isNaN,
+    crop_image_inside_box,
 )
 
 def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
@@ -1249,13 +1250,13 @@ def separate_lines_new_inside_tiles(img_path, thetha):
                 forest.append(peaks_neg[i + 1])
             if diff_peaks[i] > cut_off:
                 # print(forest[np.argmin(z[forest]) ] )
-                if not isNaN(forest[np.argmin(z[forest])]):
+                if not np.isnan(forest[np.argmin(z[forest])]):
                     peaks_neg_true.append(forest[np.argmin(z[forest])])
                 forest = []
                 forest.append(peaks_neg[i + 1])
         if i == (len(peaks_neg) - 1):
             # print(print(forest[np.argmin(z[forest]) ] ))
-            if not isNaN(forest[np.argmin(z[forest])]):
+            if not np.isnan(forest[np.argmin(z[forest])]):
                 peaks_neg_true.append(forest[np.argmin(z[forest])])
 
     diff_peaks_pos = np.abs(np.diff(peaks))
@@ -1272,13 +1273,13 @@ def separate_lines_new_inside_tiles(img_path, thetha):
                 forest.append(peaks[i + 1])
             if diff_peaks_pos[i] > cut_off:
                 # print(forest[np.argmin(z[forest]) ] )
-                if not isNaN(forest[np.argmax(z[forest])]):
+                if not np.isnan(forest[np.argmax(z[forest])]):
                     peaks_pos_true.append(forest[np.argmax(z[forest])])
                 forest = []
                 forest.append(peaks[i + 1])
         if i == (len(peaks) - 1):
             # print(print(forest[np.argmin(z[forest]) ] ))
-            if not isNaN(forest[np.argmax(z[forest])]):
+            if not np.isnan(forest[np.argmax(z[forest])]):
                 peaks_pos_true.append(forest[np.argmax(z[forest])])
 
     # print(len(peaks_neg_true) ,len(peaks_pos_true) ,'lensss')
@@ -1658,3 +1659,189 @@ def get_smallest_skew(img, sigma_des, angles, num_cores=1, plotter=None):
     except:
         angle = 0
     return angle
+
+def do_work_of_slopes_new(
+        box_text, contour, contour_par, index_r_con,
+        textline_mask_tot_ea, image_page_rotated, slope_deskew,
+        logger, MAX_SLOPE=999, KERNEL=None, plotter=None
+):
+    logger.debug('enter do_work_of_slopes_new')
+    if KERNEL is None:
+        KERNEL = np.ones((5, 5), np.uint8)
+
+    x, y, w, h = box_text
+    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    mask_textline = np.zeros(textline_mask_tot_ea.shape)
+    mask_textline = cv2.fillPoly(mask_textline, pts=[contour], color=(1,1,1))
+    all_text_region_raw = textline_mask_tot_ea * mask_textline
+    all_text_region_raw = all_text_region_raw[y: y + h, x: x + w].astype(np.uint8)
+    img_int_p = all_text_region_raw[:,:]
+    img_int_p = cv2.erode(img_int_p, KERNEL, iterations=2)
+
+    if img_int_p.shape[0] /img_int_p.shape[1] < 0.1:
+        slope = 0
+        slope_for_all = slope_deskew
+        all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w]
+        cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contour_par, box_text, 0)
+    else:
+        try:
+            textline_con, hierarchy = return_contours_of_image(img_int_p)
+            textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierarchy, max_area=1, min_area=0.00008)
+            y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
+            if np.isnan(y_diff_mean):
+                slope_for_all = MAX_SLOPE
+            else:
+                sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
+                img_int_p[img_int_p > 0] = 1
+                slope_for_all = return_deskew_slop(img_int_p, sigma_des, plotter=plotter)
+                if abs(slope_for_all) <= 0.5:
+                    slope_for_all = slope_deskew
+        except Exception as why:
+            logger.error(why)
+            slope_for_all = MAX_SLOPE
+
+        if slope_for_all == MAX_SLOPE:
+            slope_for_all = slope_deskew
+        slope = slope_for_all
+
+        mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
+        mask_only_con_region = cv2.fillPoly(mask_only_con_region, pts=[contour_par], color=(1, 1, 1))
+
+        # plt.imshow(mask_only_con_region)
+        # plt.show()
+        all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w].copy()
+        mask_only_con_region = mask_only_con_region[y: y + h, x: x + w]
+
+        ##plt.imshow(textline_mask_tot_ea)
+        ##plt.show()
+        ##plt.imshow(all_text_region_raw)
+        ##plt.show()
+        ##plt.imshow(mask_only_con_region)
+        ##plt.show()
+
+        all_text_region_raw[mask_only_con_region == 0] = 0
+        cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contour_par, box_text)
+
+    return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope
+
+
+def do_work_of_slopes_new_curved(
+        box_text, contour, contour_par, index_r_con,
+        textline_mask_tot_ea, image_page_rotated, mask_texts_only, num_col, scale_par, slope_deskew,
+        logger, MAX_SLOPE=999, KERNEL=None, plotter=None
+):
+    logger.debug("enter do_work_of_slopes_new_curved")
+    if KERNEL is None:
+        KERNEL = np.ones((5, 5), np.uint8)
+
+    x, y, w, h = box_text
+    all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w].astype(np.uint8)
+    img_int_p = all_text_region_raw[:, :]
+
+    # img_int_p=cv2.erode(img_int_p,KERNEL,iterations = 2)
+    # plt.imshow(img_int_p)
+    # plt.show()
+
+    if img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
+        slope = 0
+        slope_for_all = slope_deskew
+    else:
+        try:
+            textline_con, hierarchy = return_contours_of_image(img_int_p)
+            textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con, hierarchy, max_area=1, min_area=0.0008)
+            y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
+            if np.isnan(y_diff_mean):
+                slope_for_all = MAX_SLOPE
+            else:
+                sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
+                img_int_p[img_int_p > 0] = 1
+                slope_for_all = return_deskew_slop(img_int_p, sigma_des, plotter=plotter)
+                if abs(slope_for_all) < 0.5:
+                    slope_for_all = slope_deskew
+        except Exception as why:
+            logger.error(why)
+            slope_for_all = MAX_SLOPE
+
+        if slope_for_all == MAX_SLOPE:
+            slope_for_all = slope_deskew
+        slope = slope_for_all
+
+    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+
+    if abs(slope_for_all) < 45:
+        textline_region_in_image = np.zeros(textline_mask_tot_ea.shape)
+        x, y, w, h = cv2.boundingRect(contour_par)
+        mask_biggest = np.zeros(mask_texts_only.shape)
+        mask_biggest = cv2.fillPoly(mask_biggest, pts=[contour_par], color=(1, 1, 1))
+        mask_region_in_patch_region = mask_biggest[y : y + h, x : x + w]
+        textline_biggest_region = mask_biggest * textline_mask_tot_ea
+
+        # print(slope_for_all,'slope_for_all')
+        textline_rotated_separated = separate_lines_new2(textline_biggest_region[y: y+h, x: x+w], 0, num_col, slope_for_all,
+                                                         plotter=plotter)
+
+        # new line added
+        ##print(np.shape(textline_rotated_separated),np.shape(mask_biggest))
+        textline_rotated_separated[mask_region_in_patch_region[:, :] != 1] = 0
+        # till here
+
+        textline_region_in_image[y : y + h, x : x + w] = textline_rotated_separated
+
+        # plt.imshow(textline_region_in_image)
+        # plt.show()
+
+        pixel_img = 1
+        cnt_textlines_in_image = return_contours_of_interested_textline(textline_region_in_image, pixel_img)
+
+        textlines_cnt_per_region = []
+        for jjjj in range(len(cnt_textlines_in_image)):
+            mask_biggest2 = np.zeros(mask_texts_only.shape)
+            mask_biggest2 = cv2.fillPoly(mask_biggest2, pts=[cnt_textlines_in_image[jjjj]], color=(1, 1, 1))
+            if num_col + 1 == 1:
+                mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=5)
+            else:
+                mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=4)
+
+            pixel_img = 1
+            mask_biggest2 = resize_image(mask_biggest2, int(mask_biggest2.shape[0] * scale_par), int(mask_biggest2.shape[1] * scale_par))
+            cnt_textlines_in_image_ind = return_contours_of_interested_textline(mask_biggest2, pixel_img)
+            try:
+                textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0])
+            except Exception as why:
+                logger.error(why)
+    else:
+        textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contour_par, box_text, True)
+        # print(np.shape(textlines_cnt_per_region),'textlines_cnt_per_region')
+
+    return textlines_cnt_per_region[::-1], box_text, contour, contour_par, crop_coor, index_r_con, slope
+
+def do_work_of_slopes_new_light(
+        box_text, contour, contour_par, index_r_con,
+        textline_mask_tot_ea, image_page_rotated, slope_deskew,
+        logger
+):
+    logger.debug('enter do_work_of_slopes_new_light')
+
+    x, y, w, h = box_text
+    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    mask_textline = np.zeros(textline_mask_tot_ea.shape)
+    mask_textline = cv2.fillPoly(mask_textline, pts=[contour], color=(1,1,1))
+    all_text_region_raw = textline_mask_tot_ea * mask_textline
+    all_text_region_raw = all_text_region_raw[y: y + h, x: x + w].astype(np.uint8)
+
+    mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
+    mask_only_con_region = cv2.fillPoly(mask_only_con_region, pts=[contour_par], color=(1, 1, 1))
+
+    if self.textline_light:
+        all_text_region_raw = np.copy(textline_mask_tot_ea)
+        all_text_region_raw[mask_only_con_region == 0] = 0
+        cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(all_text_region_raw)
+        cnt_clean_rot = filter_contours_area_of_image(all_text_region_raw, cnt_clean_rot_raw, hir_on_cnt_clean_rot,
+                                                      max_area=1, min_area=0.00001)
+    else:
+        all_text_region_raw = np.copy(textline_mask_tot_ea[y: y + h, x: x + w])
+        mask_only_con_region = mask_only_con_region[y: y + h, x: x + w]
+        all_text_region_raw[mask_only_con_region == 0] = 0
+        cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_deskew, contour_par, box_text)
+
+    return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope
