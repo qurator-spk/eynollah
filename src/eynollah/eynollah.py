@@ -165,6 +165,7 @@ class Eynollah:
         image_filename=None,
         image_pil=None,
         image_filename_stem=None,
+        overwrite=False,
         dir_out=None,
         dir_in=None,
         dir_of_cropped_images=None,
@@ -203,6 +204,7 @@ class Eynollah:
             if override_dpi:
                 self.dpi = override_dpi
             self.image_filename = image_filename
+        self.overwrite = overwrite
         self.dir_out = dir_out
         self.dir_in = dir_in
         self.dir_of_all = dir_of_all
@@ -360,6 +362,7 @@ class Eynollah:
             curved_line=self.curved_line,
             textline_light = self.textline_light,
             pcgts=self.pcgts)
+
     def imread(self, grayscale=False, uint8=True):
         key = 'img'
         if grayscale:
@@ -4460,8 +4463,14 @@ class Eynollah:
             if self.dir_in:
                 self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
                 #print("text region early -11 in %.1fs", time.time() - t0)
-                
-                
+
+            if os.path.exists(self.writer.output_filename):
+                if self.overwrite:
+                    self.logger.warning("will overwrite existing output file '%s'", self.writer.output_filename)
+                else:
+                    self.logger.warning("will skip input for existing output file '%s'", self.writer.output_filename)
+                    continue
+
             if self.extract_only_images:
                 img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
                 self.logger.info("Enhancing took %.1fs ", time.time() - t0)

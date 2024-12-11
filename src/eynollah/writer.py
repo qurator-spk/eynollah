@@ -28,6 +28,7 @@ class EynollahXmlWriter():
         self.counter = EynollahIdCounter()
         self.dir_out = dir_out
         self.image_filename = image_filename
+        self.output_filename = os.path.join(self.dir_out, self.image_filename_stem) + ".xml"
         self.curved_line = curved_line
         self.textline_light = textline_light
         self.pcgts = pcgts
@@ -163,9 +164,8 @@ class EynollahXmlWriter():
             coords.set_points(points_co[:-1])
 
     def write_pagexml(self, pcgts):
-        out_fname = os.path.join(self.dir_out, self.image_filename_stem) + ".xml"
-        self.logger.info("output filename: '%s'", out_fname)
-        with open(out_fname, 'w') as f:
+        self.logger.info("output filename: '%s'", self.output_filename)
+        with open(self.output_filename, 'w') as f:
             f.write(to_xml(pcgts))
 
     def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, found_polygons_tables, ocr_all_textlines):
