@@ -1515,9 +1515,9 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
         # img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
         img_xline = img_patch_ineterst[:, index_x_d:index_x_u]
 
-        sigma = 2
         try:
-            slope_xline = return_deskew_slop(img_xline, sigma, plotter=plotter)
+            assert img_xline.any()
+            slope_xline = return_deskew_slop(img_xline, 2, logger=logger, plotter=plotter)
         except:
             slope_xline = 0
 
