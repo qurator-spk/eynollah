@@ -39,7 +39,6 @@ def get_text_region_boxes_by_given_contours(contours):
         boxes.append([x, y, w, h])
         contours_new.append(contours[jj])
 
-    del contours
     return boxes, contours_new
 
 def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area):
