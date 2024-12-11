@@ -1861,6 +1861,8 @@ class Eynollah:
 
             if num_col_classifier == 1 or num_col_classifier == 2:
                 if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
+                    self.logger.debug("resized to %dx%d for %d cols",
+                                      img_resized.shape[1], img_resized.shape[0], num_col_classifier)
                     prediction_regions_org = self.do_prediction_new_concept(
                         True, img_resized, self.model_region_1_2, n_batch_inference=1,
                         thresholding_for_some_classes_in_light_version=True)
@@ -1873,6 +1875,8 @@ class Eynollah:
             else:
                 new_h = (900+ (num_col_classifier-3)*100)
                 img_resized = resize_image(img_bin, int(new_h * img_bin.shape[0] /img_bin.shape[1]), new_h)
+                self.logger.debug("resized to %dx%d (new_h=%d) for %d cols",
+                                  img_resized.shape[1], img_resized.shape[0], new_h, num_col_classifier)
                 prediction_regions_org = self.do_prediction_new_concept(
                     True, img_resized, self.model_region_1_2, n_batch_inference=2,
                     thresholding_for_some_classes_in_light_version=True)
