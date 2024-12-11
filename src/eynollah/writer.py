@@ -60,6 +60,7 @@ class EynollahXmlWriter():
             coords = CoordsType()
             textline = TextLineType(id=counter.next_line_id, Coords=coords)
             marginal_region.add_TextLine(textline)
+            marginal_region.set_orientation(slopes_marginals[marginal_idx])
             points_co = ''
             for l in range(len(all_found_textline_polygons_marginals[marginal_idx][j])):
                 if not (self.curved_line or self.textline_light):
@@ -102,6 +103,7 @@ class EynollahXmlWriter():
             if ocr_all_textlines_textregion:
                 textline.set_TextEquiv( [ TextEquivType(Unicode=ocr_all_textlines_textregion[j]) ] )
             text_region.add_TextLine(textline)
+            text_region.set_orientation(slopes[region_idx])
             region_bboxes = all_box_coord[region_idx]
             points_co = ''
             for idx_contour_textline, contour_textline in enumerate(all_found_textline_polygons[region_idx][j]):
