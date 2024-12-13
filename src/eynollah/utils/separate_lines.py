@@ -1828,7 +1828,7 @@ def do_work_of_slopes_new_curved(
 
 def do_work_of_slopes_new_light(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, image_page_rotated, slope_deskew,
+        textline_mask_tot_ea, image_page_rotated, slope_deskew, textline_light,
         logger=None
 ):
     if logger is None:
@@ -1845,7 +1845,7 @@ def do_work_of_slopes_new_light(
     mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
     mask_only_con_region = cv2.fillPoly(mask_only_con_region, pts=[contour_par], color=(1, 1, 1))
 
-    if self.textline_light:
+    if textline_light:
         all_text_region_raw = np.copy(textline_mask_tot_ea)
         all_text_region_raw[mask_only_con_region == 0] = 0
         cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(all_text_region_raw)
@@ -1857,4 +1857,4 @@ def do_work_of_slopes_new_light(
         all_text_region_raw[mask_only_con_region == 0] = 0
         cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_deskew, contour_par, box_text)
 
-    return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope
+    return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope_deskew
