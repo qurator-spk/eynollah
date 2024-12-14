@@ -10,11 +10,12 @@ import math
 import os
 import sys
 import time
+import atexit
 import warnings
 from functools import partial
 from pathlib import Path
 from multiprocessing import cpu_count
-from concurrent.futures import ProcessPoolExecutor
+from loky import ProcessPoolExecutor
 import gc
 from ocrd_utils import getLogger
 import cv2
@@ -257,7 +258,8 @@ class Eynollah:
                 pcgts=pcgts)
         self.logger = logger if logger else getLogger('eynollah')
         # for parallelization of CPU-intensive tasks:
-        self.executor = ProcessPoolExecutor(max_workers=cpu_count())
+        self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
+        atexit.register(self.executor.shutdown)
         self.dir_models = dir_models
         self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
         self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425"
