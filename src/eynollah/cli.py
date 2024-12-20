@@ -1,7 +1,7 @@
 import sys
 import click
 from ocrd_utils import initLogging, setOverrideLogLevel
-from eynollah.eynollah import Eynollah
+from eynollah.eynollah import Eynollah, Eynollah_ocr
 from eynollah.sbb_binarize import SbbBinarizer
 
 @click.group()
@@ -305,6 +305,60 @@ def layout(image, out, dir_in, model, save_images, save_layout, save_deskewed, s
     else:
         pcgts = eynollah.run()
         eynollah.writer.write_pagexml(pcgts)
+        
+        
+@main.command()
+@click.option(
+    "--dir_in",
+    "-di",
+    help="directory of images",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
+    "--out",
+    "-o",
+    help="directory to write output xml data",
+    type=click.Path(exists=True, file_okay=False),
+    required=True,
+)
+@click.option(
+    "--dir_xmls",
+    "-dx",
+    help="directory of xmls",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
+    "--model",
+    "-m",
+    help="directory of models",
+    type=click.Path(exists=True, file_okay=False),
+    required=True,
+)
+@click.option(
+    "--tr_ocr",
+    "-trocr/-notrocr",
+    is_flag=True,
+    help="if this parameter set to true, transformer ocr will be applied, otherwise cnn_rnn model.",
+)
+@click.option(
+    "--log_level",
+    "-l",
+    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
+    help="Override log level globally to this",
+)
+
+def ocr(dir_in, out, dir_xmls, model, tr_ocr, log_level):
+    if log_level:
+        setOverrideLogLevel(log_level)
+    initLogging()
+    eynollah_ocr = Eynollah_ocr(
+        dir_xmls=dir_xmls,
+        dir_in=dir_in,
+        dir_out=out,
+        dir_models=model,
+        tr_ocr=tr_ocr,
+    )
+    eynollah_ocr.run()
 
 if __name__ == "__main__":
     main()
