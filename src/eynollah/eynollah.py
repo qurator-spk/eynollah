@@ -2191,18 +2191,18 @@ class Eynollah:
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
         
         if not self.dir_in:
-            ###prediction_textline = self.do_prediction(patches, img, model_textline, marginal_of_patch_percent=0.15, n_batch_inference=3, thresholding_for_artificial_class_in_light_version=thresholding_for_artificial_class_in_light_version)
+            prediction_textline = self.do_prediction(patches, img, model_textline, marginal_of_patch_percent=0.15, n_batch_inference=3, thresholding_for_artificial_class_in_light_version=thresholding_for_artificial_class_in_light_version)
             
-            prediction_textline = self.do_prediction_new_concept_scatter_nd(patches, img, model_textline, n_batch_inference=3)
+            ###prediction_textline = self.do_prediction_new_concept_scatter_nd(patches, img, model_textline, n_batch_inference=3)
             
             #if not thresholding_for_artificial_class_in_light_version:
                 #if num_col_classifier==1:
                     #prediction_textline_nopatch = self.do_prediction(False, img, model_textline)
                     #prediction_textline[:,:][prediction_textline_nopatch[:,:]==0] = 0
         else:
-            ##prediction_textline = self.do_prediction(patches, img, self.model_textline, marginal_of_patch_percent=0.15, n_batch_inference=3,thresholding_for_artificial_class_in_light_version=thresholding_for_artificial_class_in_light_version)
+            prediction_textline = self.do_prediction(patches, img, self.model_textline, marginal_of_patch_percent=0.15, n_batch_inference=3,thresholding_for_artificial_class_in_light_version=thresholding_for_artificial_class_in_light_version)
             
-            prediction_textline = self.do_prediction_new_concept_scatter_nd(patches, img, self.model_textline, n_batch_inference=3)
+            ##prediction_textline = self.do_prediction_new_concept_scatter_nd(patches, img, self.model_textline, n_batch_inference=3)
             #if not thresholding_for_artificial_class_in_light_version:
                 #if num_col_classifier==1:
                     #prediction_textline_nopatch = self.do_prediction(False, img, model_textline)
@@ -2482,17 +2482,17 @@ class Eynollah:
                 if num_col_classifier == 1 or num_col_classifier == 2:
                     model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
                     if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
-                        prediction_regions_org = self.do_prediction_new_concept_scatter_nd(True, img_resized, model_region, n_batch_inference=1, thresholding_for_some_classes_in_light_version = True)
-                        ###prediction_regions_org = self.do_prediction_new_concept(True, img_resized, model_region, n_batch_inference=1, thresholding_for_some_classes_in_light_version = True)
+                        ##prediction_regions_org = self.do_prediction_new_concept_scatter_nd(True, img_resized, model_region, n_batch_inference=1, thresholding_for_some_classes_in_light_version = True)
+                        prediction_regions_org = self.do_prediction_new_concept(True, img_resized, model_region, n_batch_inference=1, thresholding_for_some_classes_in_light_version = True)
                     else:
                         prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
-                        prediction_regions_page = self.do_prediction_new_concept_scatter_nd(False, self.image_page_org_size, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
-                        ##prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
+                        ###prediction_regions_page = self.do_prediction_new_concept_scatter_nd(False, self.image_page_org_size, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
+                        prediction_regions_page = self.do_prediction_new_concept(False, self.image_page_org_size, model_region, n_batch_inference=1, thresholding_for_artificial_class_in_light_version = True)
                         prediction_regions_org[self.page_coord[0] : self.page_coord[1], self.page_coord[2] : self.page_coord[3],:] = prediction_regions_page
                 else:
                     model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
-                    ###prediction_regions_org = self.do_prediction_new_concept(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), model_region, n_batch_inference=2, thresholding_for_some_classes_in_light_version=True)
-                    prediction_regions_org = self.do_prediction_new_concept_scatter_nd(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), model_region, n_batch_inference=2, thresholding_for_some_classes_in_light_version=True)
+                    prediction_regions_org = self.do_prediction_new_concept(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), model_region, n_batch_inference=2, thresholding_for_some_classes_in_light_version=True)
+                    ###prediction_regions_org = self.do_prediction_new_concept_scatter_nd(True, resize_image(img_bin, int( (900+ (num_col_classifier-3)*100) *(img_bin.shape[0]/img_bin.shape[1]) ), 900+ (num_col_classifier-3)*100), model_region, n_batch_inference=2, thresholding_for_some_classes_in_light_version=True)
                 ##model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
                 ##prediction_regions_org = self.do_prediction(True, img_bin, model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
             else:
@@ -5638,7 +5638,7 @@ class Eynollah_ocr:
             self.model_ocr.to(self.device)
 
         else:
-            self.model_ocr_dir = dir_models + "/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+            self.model_ocr_dir = dir_models + "/model_1_ocrcnn"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
             model_ocr = load_model(self.model_ocr_dir , compile=False)
             
             self.prediction_model = tf.keras.models.Model(
