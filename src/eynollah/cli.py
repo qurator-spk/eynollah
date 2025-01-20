@@ -1,6 +1,6 @@
 import sys
 import click
-from ocrd_utils import initLogging, setOverrideLogLevel
+from ocrd_utils import initLogging, setOverrideLogLevel, getLogger
 from eynollah.eynollah import Eynollah
 
 
@@ -186,10 +186,11 @@ def main(
         print('Error: You used -eoi which can not be enabled alongside light_version -light or allow_scaling -as or allow_enhancement -ae or curved_line -cl or textline_light -tll or full_layout -fl or tables -tab or right2left -r2l or headers_off -ho')
         sys.exit(1)
     eynollah = Eynollah(
+        model,
+        getLogger('Eynollah'),
         image_filename=image,
         dir_out=out,
         dir_in=dir_in,
-        dir_models=model,
         dir_of_cropped_images=save_images,
         extract_only_images=extract_only_images,
         dir_of_layout=save_layout,

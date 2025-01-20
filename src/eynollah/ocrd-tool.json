@@ -6,8 +6,8 @@
       "executable": "ocrd-eynollah-segment",
       "categories": ["Layout analysis"],
       "description": "Segment page into regions and lines and do reading order detection with eynollah",
-      "input_file_grp": ["OCR-D-IMG", "OCR-D-SEG-PAGE", "OCR-D-GT-SEG-PAGE"],
-      "output_file_grp": ["OCR-D-SEG-LINE"],
+      "input_file_grp_cardinality": 1,
+      "output_file_grp_cardinality": 1,
       "steps": ["layout/segmentation/region", "layout/segmentation/line"],
       "parameters": {
         "models": {
@@ -29,20 +29,45 @@
           "default": true,
           "description": "Try to detect all element subtypes, including drop-caps and headings"
         },
-	"tables": {
-	  "type": "boolean",
-	  "default": false,
-	  "description": "Try to detect table regions"
-	},
+        "tables": {
+          "type": "boolean",
+          "default": false,
+          "description": "Try to detect table regions"
+        },
         "curved_line": {
           "type": "boolean",
           "default": false,
           "description": "try to return contour of textlines instead of just rectangle bounding box. Needs more processing time"
         },
+        "ignore_page_extraction": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool would ignore page extraction"
+        },
         "allow_scaling": {
           "type": "boolean",
           "default": false,
           "description": "check the resolution against the number of detected columns and if needed, scale the image up or down during layout detection (heuristic to improve quality and performance)"
+        },
+        "allow_enhancement": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool would check that input image need resizing and enhancement or not."
+        },
+        "light_mode": {
+          "type": "boolean",
+          "default": false,
+          "description": "lighter and faster but simpler method for main region detection and deskewing"
+        },
+        "textline_light": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool will try to return contoure of textlines instead of rectangle bounding box of textline with a faster method."
+        },
+        "right_to_left": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool will extract right-to-left reading order."
         },
         "headers_off": {
           "type": "boolean",
@@ -51,14 +76,14 @@
         }
       },
       "resources": [
-	{
-	  "description": "models for eynollah (TensorFlow SavedModel format)",
-	  "url": "https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz",
-	  "name": "default",
-	  "size": 1894627041,
-	  "type": "archive",
-	  "path_in_archive": "models_eynollah"
-	}
+        {
+          "description": "models for eynollah (TensorFlow SavedModel format)",
+          "url": "https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz",
+          "name": "default",
+          "size": 1894627041,
+          "type": "archive",
+          "path_in_archive": "models_eynollah"
+        }
       ]
     }
   }
