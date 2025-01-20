@@ -34,3 +34,5 @@ jobs:
         pip install -r requirements-test.txt
     - name: Test with pytest
       run: make test
+    - name: Test docker build
+      run: make docker

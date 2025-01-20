@@ -68,6 +68,12 @@ from eynollah.eynollah import Eynollah
     help="If set, will plot intermediary files and images",
 )
 @click.option(
+    "--extract_only_images/--disable-extracting_only_images",
+    "-eoi/-noeoi",
+    is_flag=True,
+    help="If a directory is given, only images in documents will be cropped and saved there and the other processing will not be done",
+)
+@click.option(
     "--allow-enhancement/--no-allow-enhancement",
     "-ae/-noae",
     is_flag=True,
@@ -148,6 +154,7 @@ def main(
     save_layout,
     save_deskewed,
     save_all,
+    extract_only_images,
     save_page,
     enable_plotting,
     allow_enhancement,
@@ -175,6 +182,9 @@ def main(
     if textline_light and not light_version:
         print('Error: You used -tll to enable light textline detection but -light is not enabled')
         sys.exit(1)
+    if extract_only_images and  (allow_enhancement or allow_scaling or light_version or curved_line or textline_light or full_layout or tables or right2left or headers_off) :
+        print('Error: You used -eoi which can not be enabled alongside light_version -light or allow_scaling -as or allow_enhancement -ae or curved_line -cl or textline_light -tll or full_layout -fl or tables -tab or right2left -r2l or headers_off -ho')
+        sys.exit(1)
     eynollah = Eynollah(
         model,
         getLogger('Eynollah'),
@@ -182,6 +192,7 @@ def main(
         dir_out=out,
         dir_in=dir_in,
         dir_of_cropped_images=save_images,
+        extract_only_images=extract_only_images,
         dir_of_layout=save_layout,
         dir_of_deskewed=save_deskewed,
         dir_of_all=save_all,
