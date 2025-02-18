@@ -4074,8 +4074,10 @@ class Eynollah:
                 
                 ind_textline_inside_tr = list(range(len(contours[jj])))
                 index_textline_inside_textregion = index_textline_inside_textregion + ind_textline_inside_tr
-                ind_ins = [0] * len(contours[jj]) + jj
-                indexes_of_textline_tot = indexes_of_textline_tot + ind_ins
+                #ind_ins = [0] * len(contours[jj]) + jj
+                ind_ins = np.zeros( len(contours[jj]) ) + jj
+                list_ind_ins = list(ind_ins)
+                indexes_of_textline_tot = indexes_of_textline_tot + list_ind_ins
                 
             M_main_tot = [cv2.moments(contours_txtline_of_all_textregions[j])
                           for j in range(len(contours_txtline_of_all_textregions))]
