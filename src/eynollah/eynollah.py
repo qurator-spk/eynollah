@@ -4120,7 +4120,7 @@ class Eynollah:
                     
     def filter_contours_without_textline_inside(
             self, contours,text_con_org,  contours_textline, contours_only_text_parent_d_ordered):
-
+        
         ###contours_txtline_of_all_textregions = []
         ###for jj in range(len(contours_textline)):
             ###contours_txtline_of_all_textregions = contours_txtline_of_all_textregions + contours_textline[jj]
@@ -4156,7 +4156,8 @@ class Eynollah:
             contours.pop(ind_u_a_trs)
             contours_textline.pop(ind_u_a_trs)
             text_con_org.pop(ind_u_a_trs)
-            contours_only_text_parent_d_ordered.pop(ind_u_a_trs)
+            if len(contours_only_text_parent_d_ordered) > 0:
+                contours_only_text_parent_d_ordered.pop(ind_u_a_trs)
             
         return contours, text_con_org, contours_textline, contours_only_text_parent_d_ordered, np.array(range(len(contours)))
     
@@ -4518,7 +4519,6 @@ class Eynollah:
             ###min_con_area = 0.000005
             contours_only_text, hir_on_text = return_contours_of_image(text_only)
             contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
-
             if len(contours_only_text_parent) > 0:
                 areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
                 areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
@@ -4619,8 +4619,7 @@ class Eynollah:
                 else:
                     contours_only_text_parent_d_ordered = []
                     contours_only_text_parent_d = []
-                    contours_only_text_parent = []
-
+                    #contours_only_text_parent = []
             if not len(contours_only_text_parent):
                 # stop early
                 empty_marginals = [[]] * len(polygons_of_marginals)
@@ -4690,8 +4689,7 @@ class Eynollah:
                             all_found_textline_polygons_marginals)
                         contours_only_text_parent, txt_con_org, all_found_textline_polygons, contours_only_text_parent_d_ordered, \
                             index_by_text_par_con = self.filter_contours_without_textline_inside(
-                                contours_only_text_parent, txt_con_org, all_found_textline_polygons,
-                                contours_only_text_parent_d_ordered)
+                                contours_only_text_parent, txt_con_org, all_found_textline_polygons, contours_only_text_parent_d_ordered)
                     else:
                         textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
                         all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, \
