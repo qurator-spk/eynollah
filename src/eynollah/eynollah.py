@@ -1899,7 +1899,7 @@ class Eynollah:
                 ##self.model_region, _ = self.start_new_session_and_model(self.model_region_dir_p_ens_light)
 
             if num_col_classifier == 1 or num_col_classifier == 2:
-                    model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
+                model_region, session_region = self.start_new_session_and_model(self.model_region_dir_p_1_2_sp_np)
                 if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
                     self.logger.debug("resized to %dx%d for %d cols",
                                       img_resized.shape[1], img_resized.shape[0], num_col_classifier)
