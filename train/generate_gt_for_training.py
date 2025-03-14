@@ -214,6 +214,73 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
                     
                     cv2.imwrite(os.path.join(dir_out_modal_image,final_f_name+'.png' ), input_multi_visual_modal)
                     indexer = indexer+1
+                    
+                    
+@main.command()
+@click.option(
+    "--dir_xml",
+    "-dx",
+    help="directory of GT page-xml files",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+@click.option(
+    "--dir_out",
+    "-do",
+    help="directory where plots will be written",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+
+def visualize_reading_order(dir_xml, dir_out):
+    xml_files_ind = os.listdir(dir_xml)
+
+
+    indexer_start= 0#55166
+    #min_area = 0.0001
+
+    for ind_xml in tqdm(xml_files_ind):
+        indexer = 0
+        #print(ind_xml)
+        #print('########################')
+        xml_file = os.path.join(dir_xml,ind_xml )
+        f_name = ind_xml.split('.')[0]
+        _, _, _, file_name, id_paragraph, id_header,co_text_paragraph,co_text_header,tot_region_ref,x_len, y_len,index_tot_regions,img_poly = read_xml(xml_file)
+        
+        id_all_text = id_paragraph + id_header
+        co_text_all = co_text_paragraph + co_text_header
+        
+        
+        cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(co_text_all)
+
+        texts_corr_order_index  = [int(index_tot_regions[tot_region_ref.index(i)]) for i in id_all_text ]
+        #texts_corr_order_index_int = [int(x) for x in texts_corr_order_index]
+        
+        
+        #cx_ordered = np.array(cx_main)[np.array(texts_corr_order_index)]
+        #cx_ordered = cx_ordered.astype(np.int32)
+        
+        cx_ordered = [int(val) for (_, val) in sorted(zip(texts_corr_order_index, cx_main), key=lambda x: \
+          x[0], reverse=False)]
+        #cx_ordered = cx_ordered.astype(np.int32)
+        
+        cy_ordered = [int(val) for (_, val) in sorted(zip(texts_corr_order_index, cy_main), key=lambda x: \
+          x[0], reverse=False)]
+        #cy_ordered = cy_ordered.astype(np.int32)
+        
+
+        color = (0, 0, 255)
+        thickness = 20
+        
+        img = np.zeros( (y_len,x_len,3) ) 
+        img = cv2.fillPoly(img, pts =co_text_all, color=(255,0,0))
+        for i in range(len(cx_ordered)-1):
+            start_point = (int(cx_ordered[i]), int(cy_ordered[i]))
+            end_point = (int(cx_ordered[i+1]), int(cy_ordered[i+1]))
+            img = cv2.arrowedLine(img, start_point, end_point, 
+                                        color, thickness, tipLength = 0.03)
+        
+        cv2.imwrite(os.path.join(dir_out, f_name+'.png'), img)
 
     
     
