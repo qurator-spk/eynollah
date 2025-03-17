@@ -1290,3 +1290,56 @@ def update_list_and_return_first_with_length_bigger_than_one(index_element_to_be
     else:
         early_list_bigger_than_one = -20
     return list_inp, early_list_bigger_than_one
+
+def overlay_layout_on_image(prediction, img, cx_ordered, cy_ordered, color, thickness):
+    
+    unique_classes = np.unique(prediction[:,:,0])
+    rgb_colors = {'0' : [255, 255, 255],
+                '1' : [255, 0, 0],
+                '2' : [0, 0, 255],
+                '3' : [255, 0, 125],
+                '4' : [125, 125, 125],
+                '5' : [125, 125, 0],
+                '6' : [0, 125, 255],
+                '7' : [0, 125, 0],
+                '8' : [125, 125, 125],
+                '9' : [0, 125, 255],
+                '10' : [125, 0, 125],
+                '11' : [0, 255, 0],
+                '12' : [255, 125, 0],
+                '13' : [0, 255, 255],
+                '14' : [255, 125, 125],
+                '15' : [255, 0, 255]}
+
+    layout_only = np.zeros(prediction.shape)
+
+    for unq_class in unique_classes:
+        rgb_class_unique = rgb_colors[str(int(unq_class))]
+        layout_only[:,:,0][prediction[:,:,0]==unq_class] = rgb_class_unique[0]
+        layout_only[:,:,1][prediction[:,:,0]==unq_class] = rgb_class_unique[1]
+        layout_only[:,:,2][prediction[:,:,0]==unq_class] = rgb_class_unique[2]
+
+
+
+    #img = self.resize_image(img, layout_only.shape[0], layout_only.shape[1])
+
+    layout_only = layout_only.astype(np.int32)
+    
+    for i in range(len(cx_ordered)-1):
+        start_point = (int(cx_ordered[i]), int(cy_ordered[i]))
+        end_point = (int(cx_ordered[i+1]), int(cy_ordered[i+1]))
+        layout_only = cv2.arrowedLine(layout_only, start_point, end_point, 
+                                    color, thickness, tipLength = 0.03)
+                
+    img = img.astype(np.int32)
+
+    
+    
+    added_image = cv2.addWeighted(img,0.5,layout_only,0.1,0)
+        
+    return added_image
+
+def find_format_of_given_filename_in_dir(dir_imgs, f_name):
+    ls_imgs = os.listdir(dir_imgs)
+    file_interested = [ind for ind in ls_imgs if ind.startswith(f_name+'.')]
+    return file_interested[0]

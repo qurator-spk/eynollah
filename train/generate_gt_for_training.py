@@ -231,8 +231,12 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
     type=click.Path(exists=True, file_okay=False),
 )
 
+@click.option(
+    "--dir_imgs",
+    "-dimg",
+    help="directory where the overlayed plots will be written", )
 
-def visualize_reading_order(dir_xml, dir_out):
+def visualize_reading_order(dir_xml, dir_out, dir_imgs):
     xml_files_ind = os.listdir(dir_xml)
 
 
@@ -271,16 +275,26 @@ def visualize_reading_order(dir_xml, dir_out):
 
         color = (0, 0, 255)
         thickness = 20
-        
-        img = np.zeros( (y_len,x_len,3) ) 
-        img = cv2.fillPoly(img, pts =co_text_all, color=(255,0,0))
-        for i in range(len(cx_ordered)-1):
-            start_point = (int(cx_ordered[i]), int(cy_ordered[i]))
-            end_point = (int(cx_ordered[i+1]), int(cy_ordered[i+1]))
-            img = cv2.arrowedLine(img, start_point, end_point, 
-                                        color, thickness, tipLength = 0.03)
-        
-        cv2.imwrite(os.path.join(dir_out, f_name+'.png'), img)
+        if dir_imgs:
+            layout = np.zeros( (y_len,x_len,3) ) 
+            layout = cv2.fillPoly(layout, pts =co_text_all, color=(1,1,1))
+                
+            img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
+            img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+            
+            overlayed = overlay_layout_on_image(layout, img, cx_ordered, cy_ordered, color, thickness)
+            cv2.imwrite(os.path.join(dir_out, f_name+'.png'), overlayed)
+            
+        else:
+            img = np.zeros( (y_len,x_len,3) ) 
+            img = cv2.fillPoly(img, pts =co_text_all, color=(255,0,0))
+            for i in range(len(cx_ordered)-1):
+                start_point = (int(cx_ordered[i]), int(cy_ordered[i]))
+                end_point = (int(cx_ordered[i+1]), int(cy_ordered[i+1]))
+                img = cv2.arrowedLine(img, start_point, end_point, 
+                                            color, thickness, tipLength = 0.03)
+            
+            cv2.imwrite(os.path.join(dir_out, f_name+'.png'), img)
 
     
     
