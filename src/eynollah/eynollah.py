@@ -4961,7 +4961,7 @@ class Eynollah_ocr:
             self.model_ocr.to(self.device)
 
         else:
-            self.model_ocr_dir = dir_models + "/model_1_ocrcnn"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+            self.model_ocr_dir = dir_models + "/model_1_new_ocrcnn"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
             model_ocr = load_model(self.model_ocr_dir , compile=False)
             
             self.prediction_model = tf.keras.models.Model(
@@ -5080,6 +5080,18 @@ class Eynollah_ocr:
             return [image1, image2]
         else:
             return None
+    def preprocess_and_resize_image_for_ocrcnn_model(self, img, image_height, image_width):
+        ratio = image_height /float(img.shape[0])
+        w_ratio = int(ratio * img.shape[1])
+        if w_ratio <= image_width:
+            width_new = w_ratio
+        else:
+            width_new = image_width
+        img = resize_image(img, image_height, width_new)
+        img_fin = np.ones((image_height, image_width, 3))*255
+        img_fin[:,:width_new,:] = img[:,:,:]
+        img_fin = img_fin / 255.
+        return img_fin
     
     def run(self):
         ls_imgs = os.listdir(self.dir_in)
@@ -5214,7 +5226,7 @@ class Eynollah_ocr:
         else:
             max_len = 512
             padding_token = 299
-            image_width = max_len * 4
+            image_width = 512#max_len * 4
             image_height = 32
             b_s = 8
 
@@ -5265,10 +5277,31 @@ class Eynollah_ocr:
                                     mask_poly = mask_poly[y:y+h, x:x+w, :]
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
                                     img_crop[mask_poly==0] = 255
-                                    img_crop = tf.reverse(img_crop,axis=[-1])
-                                    img_crop = self.distortion_free_resize(img_crop, img_size)
-                                    img_crop = tf.cast(img_crop, tf.float32) / 255.0
-                                    cropped_lines.append(img_crop)
+                                    
+                                    if h2w_ratio > 0.05:
+                                        img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
+                                        cropped_lines.append(img_fin)
+                                        cropped_lines_meging_indexing.append(0)
+                                    else:
+                                        splited_images = self.return_textlines_split_if_needed(img_crop)
+                                        #print(splited_images)
+                                        if splited_images:
+                                            img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
+                                            cropped_lines.append(img_fin)
+                                            cropped_lines_meging_indexing.append(1)
+                                            img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images[1], image_height, image_width)
+                                            
+                                            cropped_lines.append(img_fin)
+                                            cropped_lines_meging_indexing.append(-1)
+                                        else:
+                                            img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
+                                            cropped_lines.append(img_fin)
+                                            cropped_lines_meging_indexing.append(0)
+                                    #img_crop = tf.reverse(img_crop,axis=[-1])
+                                    #img_crop = self.distortion_free_resize(img_crop, img_size)
+                                    #img_crop = tf.cast(img_crop, tf.float32) / 255.0
+                                    
+                                    #cropped_lines.append(img_crop)
 
                     indexer_text_region = indexer_text_region +1
                     
@@ -5282,12 +5315,12 @@ class Eynollah_ocr:
                         n_start = i*b_s
                         imgs = cropped_lines[n_start:]
                         imgs = np.array(imgs)
-                        imgs = imgs.reshape(imgs.shape[0], image_width, image_height, 3)
+                        imgs = imgs.reshape(imgs.shape[0], image_height, image_width, 3)
                     else:
                         n_start = i*b_s
                         n_end = (i+1)*b_s
                         imgs = cropped_lines[n_start:n_end]
-                        imgs = np.array(imgs).reshape(b_s, image_width, image_height, 3)
+                        imgs = np.array(imgs).reshape(b_s, image_height, image_width, 3)
                         
 
                     preds = self.prediction_model.predict(imgs, verbose=0)
@@ -5296,14 +5329,31 @@ class Eynollah_ocr:
                     for ib in range(imgs.shape[0]):
                         pred_texts_ib = pred_texts[ib].strip("[UNK]")
                         extracted_texts.append(pred_texts_ib)
-                
+                        
+                        
+                extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
+
+                extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
+                #print(extracted_texts_merged, len(extracted_texts_merged))
+
                 unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
-                
+
+                #print(len(unique_cropped_lines_region_indexer), 'unique_cropped_lines_region_indexer')
                 text_by_textregion = []
                 for ind in unique_cropped_lines_region_indexer:
-                    extracted_texts_merged_un = np.array(extracted_texts)[np.array(cropped_lines_region_indexer)==ind]
+                    extracted_texts_merged_un = np.array(extracted_texts_merged)[np.array(cropped_lines_region_indexer)==ind]
                     
                     text_by_textregion.append(" ".join(extracted_texts_merged_un))
+                    
+                    
+                
+                ##unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
+                
+                ##text_by_textregion = []
+                ##for ind in unique_cropped_lines_region_indexer:
+                    ##extracted_texts_merged_un = np.array(extracted_texts)[np.array(cropped_lines_region_indexer)==ind]
+                    
+                    ##text_by_textregion.append(" ".join(extracted_texts_merged_un))
                     
                 indexer = 0
                 indexer_textregion = 0
@@ -5317,7 +5367,7 @@ class Eynollah_ocr:
                         if child_textregion.tag.endswith("TextLine"):
                             text_subelement = ET.SubElement(child_textregion, 'TextEquiv')
                             unicode_textline = ET.SubElement(text_subelement, 'Unicode')
-                            unicode_textline.text = extracted_texts[indexer]
+                            unicode_textline.text = extracted_texts_merged[indexer]
                             indexer = indexer + 1
                             has_textline = True
                     if has_textline:
