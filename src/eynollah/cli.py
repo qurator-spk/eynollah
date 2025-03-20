@@ -348,13 +348,25 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     help="if this parameter set to true, transformer ocr will be applied, otherwise cnn_rnn model.",
 )
 @click.option(
+    "--export_textline_images_and_text",
+    "-etit/-noetit",
+    is_flag=True,
+    help="if this parameter set to true, images and text in xml will be exported into output dir. This files can be used for training a OCR engine.",
+)
+@click.option(
+    "--do_not_mask_with_textline_contour",
+    "-nmtc/-mtc",
+    is_flag=True,
+    help="if this parameter set to true, cropped textline images will not be masked with textline contour.",
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
 
-def ocr(dir_in, out, dir_xmls, model, tr_ocr, log_level):
+def ocr(dir_in, out, dir_xmls, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, log_level):
     if log_level:
         setOverrideLogLevel(log_level)
     initLogging()
@@ -364,6 +376,8 @@ def ocr(dir_in, out, dir_xmls, model, tr_ocr, log_level):
         dir_out=out,
         dir_models=model,
         tr_ocr=tr_ocr,
+        export_textline_images_and_text=export_textline_images_and_text,
+        do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
     )
     eynollah_ocr.run()
 
