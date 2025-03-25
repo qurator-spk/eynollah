@@ -10,11 +10,13 @@ from unittest import TestCase as VanillaTestCase, skip, main as unittests_main
 import pytest
 from ocrd_utils import disableLogging, initLogging
 
+
 def main(fn=None):
     if fn:
         sys.exit(pytest.main([fn]))
     else:
         unittests_main()
+
 
 class TestCase(VanillaTestCase):
 
@@ -25,6 +27,7 @@ class TestCase(VanillaTestCase):
     def setUp(self):
         disableLogging()
         initLogging()
+
 
 class CapturingTestCase(TestCase):
     """

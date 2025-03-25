@@ -6,6 +6,7 @@ from .contour import find_new_features_of_contours, return_contours_of_intereste
 from .resize import resize_image
 from .rotate import rotate_image
 
+
 def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_version=False, kernel=None):
     mask_marginals=np.zeros((text_with_lines.shape[0],text_with_lines.shape[1]))
     mask_marginals=mask_marginals.astype(np.uint8)

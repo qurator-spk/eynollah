@@ -22,6 +22,7 @@ from .utils.pil_cv2 import pil2cv
 
 OCRD_TOOL = loads(resource_string(__name__, 'ocrd-tool.json').decode('utf8'))
 
+
 class EynollahProcessor(Processor):
 
     def __init__(self, *args, **kwargs):

@@ -25,14 +25,17 @@ from .sbb_binarize import SbbBinarizer
 OCRD_TOOL = loads(resource_string(__name__, 'ocrd-tool-binarization.json').decode('utf8'))
 TOOL = 'ocrd-sbb-binarize'
 
+
 def cv2pil(img):
     return Image.fromarray(img.astype('uint8'))
+
 
 def pil2cv(img):
     # from ocrd/workspace.py
     color_conversion = cv2.COLOR_GRAY2BGR if img.mode in ('1', 'L') else  cv2.COLOR_RGB2BGR
     pil_as_np_array = np.array(img).astype('uint8') if img.mode == '1' else np.array(img)
     return cv2.cvtColor(pil_as_np_array, color_conversion)
+
 
 class SbbBinarizeProcessor(Processor):
 
@@ -151,6 +154,7 @@ class SbbBinarizeProcessor(Processor):
                 mimetype=MIMETYPE_PAGE,
                 local_filename=join(self.output_file_grp, file_id + '.xml'),
                 content=to_xml(pcgts))
+
 
 @command()
 @ocrd_cli_options

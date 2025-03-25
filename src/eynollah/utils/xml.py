@@ -29,6 +29,7 @@ from ocrd_models.ocrd_page import (
 
     to_xml)
 
+
 def create_page_xml(imageFilename, height, width):
     now = datetime.now()
     pcgts = PcGtsType(
@@ -46,6 +47,7 @@ def create_page_xml(imageFilename, height, width):
         ))
     return pcgts
 
+
 def xml_reading_order(page, order_of_texts, id_of_marginalia):
     region_order = ReadingOrderType()
     og = OrderedGroupType(id="ro357564684568544579089")
@@ -58,6 +60,7 @@ def xml_reading_order(page, order_of_texts, id_of_marginalia):
     for id_marginal in id_of_marginalia:
         og.add_RegionRefIndexed(RegionRefIndexedType(index=str(region_counter.get('region')), regionRef=id_marginal))
         region_counter.inc('region')
+
 
 def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region_h, matrix_of_orders, indexes_sorted, index_of_types, kind_of_texts, ref_point):
     indexes_sorted = np.array(indexes_sorted)

@@ -1,6 +1,7 @@
 from tests.base import main
 from eynollah.utils.counter import EynollahIdCounter
 
+
 def test_counter_string():
     c = EynollahIdCounter()
     assert c.next_region_id == 'region_0001'
@@ -11,6 +12,7 @@ def test_counter_string():
     assert c.region_id(999) == 'region_0999'
     assert c.line_id(999, 888) == 'region_0999_line_0888'
 
+
 def test_counter_init():
     c = EynollahIdCounter(region_idx=2)
     assert c.get('region') == 2
@@ -18,6 +20,7 @@ def test_counter_init():
     assert c.get('region') == 3
     c.reset()
     assert c.get('region') == 2
+
 
 def test_counter_methods():
     c = EynollahIdCounter()
@@ -28,6 +31,7 @@ def test_counter_methods():
     assert c.get('region') == 10
     c.inc('region', -9)
     assert c.get('region') == 1
+
 
 if __name__ == '__main__':
     main(__file__)
