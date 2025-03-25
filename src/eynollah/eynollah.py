@@ -4982,7 +4982,7 @@ class Eynollah:
             print("all Job done in %.1fs", time.time() - t0_tot)
 
 
-class Eynollah_ocr:
+class EynollahOcr:
     def __init__(
             self,
             dir_models,

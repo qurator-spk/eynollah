@@ -1,7 +1,7 @@
 import sys
 import click
 from ocrd_utils import initLogging, setOverrideLogLevel
-from eynollah.eynollah import Eynollah, Eynollah_ocr
+from eynollah.eynollah import Eynollah, EynollahOcr
 from eynollah.sbb_binarize import SbbBinarizer
 
 
@@ -372,7 +372,7 @@ def ocr(dir_in, out, dir_xmls, model, tr_ocr, export_textline_images_and_text, d
     if log_level:
         setOverrideLogLevel(log_level)
     initLogging()
-    eynollah_ocr = Eynollah_ocr(
+    eynollahOcr = EynollahOcr(
         dir_xmls=dir_xmls,
         dir_in=dir_in,
         dir_out=out,
@@ -381,7 +381,7 @@ def ocr(dir_in, out, dir_xmls, model, tr_ocr, export_textline_images_and_text, d
         export_textline_images_and_text=export_textline_images_and_text,
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
     )
-    eynollah_ocr.run()
+    eynollahOcr.run()
 
 
 if __name__ == "__main__":
