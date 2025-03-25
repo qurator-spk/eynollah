@@ -71,10 +71,10 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
 )
 
 def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out):
-    if not dir_out and (dir_in):
+    if not dir_out and dir_in:
         print("Error: You used -di but did not set -do")
         sys.exit(1)
-    elif dir_out and not (dir_in):
+    elif dir_out and not dir_in:
         print("Error: You used -do to write out binarized images but have not set -di")
         sys.exit(1)
     SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, save=output_image, dir_in=dir_in, dir_out=dir_out)
