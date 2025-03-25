@@ -126,8 +126,7 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
 
             polygons_of_marginals = return_contours_of_interested_region(text_regions, pixel_img, min_area_text)
 
-            cx_text_only, cy_text_only, x_min_text_only, x_max_text_only, y_min_text_only, y_max_text_only, y_cor_x_min_main = find_new_features_of_contours(
-                polygons_of_marginals)
+            (cx_text_only, cy_text_only, x_min_text_only, x_max_text_only, y_min_text_only, y_max_text_only, y_cor_x_min_main) = (find_new_features_of_contours(polygons_of_marginals))
 
             text_regions[(text_regions[:, :] == 4)] = 1
 
@@ -155,8 +154,7 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
 
             polygons_of_marginals = return_contours_of_interested_region(text_regions, pixel_img, min_area_text)
 
-            cx_text_only, cy_text_only, x_min_text_only, x_max_text_only, y_min_text_only, y_max_text_only, y_cor_x_min_main = find_new_features_of_contours(
-                polygons_of_marginals)
+            (cx_text_only, cy_text_only, x_min_text_only, x_max_text_only, y_min_text_only, y_max_text_only, y_cor_x_min_main) = (find_new_features_of_contours(polygons_of_marginals))
 
             text_regions[(text_regions[:, :] == 4)] = 1
 

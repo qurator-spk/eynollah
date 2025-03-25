@@ -1,27 +1,22 @@
 """
-Tool to load model and binarize a given image.
+Load model and binarize a given image.
 """
-
+import os
 import sys
 from glob import glob
 from os import environ, devnull
 from os.path import join
 from warnings import catch_warnings, simplefilter
-import os
-
 import numpy as np
 from PIL import Image
 import cv2
-
 environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 stderr = sys.stderr
 sys.stderr = open(devnull, 'w')
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.python.keras import backend as tensorflow_backend
-
 sys.stderr = stderr
-
 import logging
 
 
