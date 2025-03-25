@@ -43,14 +43,14 @@ def get_text_region_boxes_by_given_contours(contours):
 
 def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area):
     found_polygons_early = []
-    for jv,c in enumerate(contours):
+    for jv, c in enumerate(contours):
         if len(c) < 3:  # A polygon cannot have less than 3 points
             continue
 
         polygon = geometry.Polygon([point[0] for point in c])
         area = polygon.area
         if (min_area * np.prod(image.shape[:2]) <= area <= max_area * np.prod(image.shape[:2]) and
-            hierarchy[0][jv][3] == -1):
+                hierarchy[0][jv][3] == -1):
             found_polygons_early.append(np.array([[point]
                                                   for point in polygon.exterior.coords], dtype=np.uint))
     return found_polygons_early
@@ -58,7 +58,7 @@ def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area
 
 def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, min_area):
     found_polygons_early = []
-    for jv,c in enumerate(contours):
+    for jv, c in enumerate(contours):
         if len(c) < 3:  # A polygon cannot have less than 3 points
             continue
 
@@ -69,8 +69,8 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
         # Check that polygon has area greater than minimal area
         # print(hierarchy[0][jv][3],hierarchy )
         if (min_area * np.prod(image.shape[:2]) <= area <= max_area * np.prod(image.shape[:2]) and
-            # hierarchy[0][jv][3]==-1
-            True):
+                # hierarchy[0][jv][3]==-1
+                True):
             # print(c[0][0][1])
             found_polygons_early.append(np.array([[point]
                                                   for point in polygon.exterior.coords], dtype=np.int32))
@@ -122,15 +122,15 @@ def find_new_features_of_contours(contours_main):
 
 
 def find_features_of_contours(contours_main):
-    areas_main=np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
-    M_main=[cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-    cx_main=[(M_main[j]['m10']/(M_main[j]['m00']+1e-32)) for j in range(len(M_main))]
-    cy_main=[(M_main[j]['m01']/(M_main[j]['m00']+1e-32)) for j in range(len(M_main))]
-    x_min_main=np.array([np.min(contours_main[j][:,0,0]) for j in range(len(contours_main))])
-    x_max_main=np.array([np.max(contours_main[j][:,0,0]) for j in range(len(contours_main))])
+    areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
+    M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
+    cx_main = [(M_main[j]['m10'] / (M_main[j]['m00'] + 1e-32)) for j in range(len(M_main))]
+    cy_main = [(M_main[j]['m01'] / (M_main[j]['m00'] + 1e-32)) for j in range(len(M_main))]
+    x_min_main = np.array([np.min(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
+    x_max_main = np.array([np.max(contours_main[j][:, 0, 0]) for j in range(len(contours_main))])
 
-    y_min_main=np.array([np.min(contours_main[j][:,0,1]) for j in range(len(contours_main))])
-    y_max_main=np.array([np.max(contours_main[j][:,0,1]) for j in range(len(contours_main))])
+    y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
+    y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
 
     return y_min_main, y_max_main
 
@@ -257,17 +257,17 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
 def get_textregion_contours_in_org_image_light(cnts, img, slope_first, map=map):
     if not len(cnts):
         return []
-    img = cv2.resize(img, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
+    img = cv2.resize(img, (int(img.shape[1] / 6), int(img.shape[0] / 6)), interpolation=cv2.INTER_NEAREST)
     ##cnts = list( (np.array(cnts)/2).astype(np.int16) )
     #cnts = cnts/2
-    cnts = [(i/6).astype(np.int) for i in cnts]
+    cnts = [(i / 6).astype(np.int) for i in cnts]
     results = map(partial(do_back_rotation_and_get_cnt_back,
                           img=img,
                           slope_first=slope_first,
                           ),
                   cnts, range(len(cnts)))
     contours, indexes = tuple(zip(*results))
-    return [i*6 for i in contours]
+    return [i * 6 for i in contours]
 
 
 def return_contours_of_interested_textline(region_pre_p, pixel):
@@ -339,4 +339,3 @@ def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, 
     img_ret = cv2.fillPoly(img_ret, pts=contours_imgs, color=(1, 1, 1))
 
     return img_ret[:, :, 0]
-

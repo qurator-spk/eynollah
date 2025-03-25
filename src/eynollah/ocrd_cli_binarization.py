@@ -32,7 +32,7 @@ def cv2pil(img):
 
 def pil2cv(img):
     # from ocrd/workspace.py
-    color_conversion = cv2.COLOR_GRAY2BGR if img.mode in ('1', 'L') else  cv2.COLOR_RGB2BGR
+    color_conversion = cv2.COLOR_GRAY2BGR if img.mode in ('1', 'L') else cv2.COLOR_RGB2BGR
     pil_as_np_array = np.array(img).astype('uint8') if img.mode == '1' else np.array(img)
     return cv2.cvtColor(pil_as_np_array, color_conversion)
 
@@ -112,40 +112,45 @@ class SbbBinarizeProcessor(Processor):
                 bin_image = cv2pil(self.binarizer.run(image=pil2cv(page_image), use_patches=True))
                 # update METS (add the image file):
                 bin_image_path = self.workspace.save_image_file(bin_image,
-                        file_id + '.IMG-BIN',
-                        page_id=input_file.pageId,
-                        file_grp=self.output_file_grp)
-                page.add_AlternativeImage(AlternativeImageType(filename=bin_image_path, comments='%s,binarized' % page_xywh['features']))
+                                                                file_id + '.IMG-BIN',
+                                                                page_id=input_file.pageId,
+                                                                file_grp=self.output_file_grp)
+                page.add_AlternativeImage(
+                    AlternativeImageType(filename=bin_image_path, comments='%s,binarized' % page_xywh['features']))
 
             elif oplevel == 'region':
                 regions = page.get_AllRegions(['Text', 'Table'], depth=1)
                 if not regions:
                     LOG.warning("Page '%s' contains no text/table regions", page_id)
                 for region in regions:
-                    region_image, region_xywh = self.workspace.image_from_segment(region, page_image, page_xywh, feature_filter='binarized')
+                    region_image, region_xywh = self.workspace.image_from_segment(region, page_image, page_xywh,
+                                                                                  feature_filter='binarized')
                     region_image_bin = cv2pil(binarizer.run(image=pil2cv(region_image), use_patches=True))
                     region_image_bin_path = self.workspace.save_image_file(
-                            region_image_bin,
-                            "%s_%s.IMG-BIN" % (file_id, region.id),
-                            page_id=input_file.pageId,
-                            file_grp=self.output_file_grp)
+                        region_image_bin,
+                        "%s_%s.IMG-BIN" % (file_id, region.id),
+                        page_id=input_file.pageId,
+                        file_grp=self.output_file_grp)
                     region.add_AlternativeImage(
-                        AlternativeImageType(filename=region_image_bin_path, comments='%s,binarized' % region_xywh['features']))
+                        AlternativeImageType(filename=region_image_bin_path,
+                                             comments='%s,binarized' % region_xywh['features']))
 
             elif oplevel == 'line':
                 region_line_tuples = [(r.id, r.get_TextLine()) for r in page.get_AllRegions(['Text'], depth=0)]
                 if not region_line_tuples:
                     LOG.warning("Page '%s' contains no text lines", page_id)
                 for region_id, line in region_line_tuples:
-                    line_image, line_xywh = self.workspace.image_from_segment(line, page_image, page_xywh, feature_filter='binarized')
+                    line_image, line_xywh = self.workspace.image_from_segment(line, page_image, page_xywh,
+                                                                              feature_filter='binarized')
                     line_image_bin = cv2pil(binarizer.run(image=pil2cv(line_image), use_patches=True))
                     line_image_bin_path = self.workspace.save_image_file(
-                            line_image_bin,
-                            "%s_%s_%s.IMG-BIN" % (file_id, region_id, line.id),
-                            page_id=input_file.pageId,
-                            file_grp=self.output_file_grp)
+                        line_image_bin,
+                        "%s_%s_%s.IMG-BIN" % (file_id, region_id, line.id),
+                        page_id=input_file.pageId,
+                        file_grp=self.output_file_grp)
                     line.add_AlternativeImage(
-                        AlternativeImageType(filename=line_image_bin_path, comments='%s,binarized' % line_xywh['features']))
+                        AlternativeImageType(filename=line_image_bin_path,
+                                             comments='%s,binarized' % line_xywh['features']))
 
             self.workspace.add_file(
                 ID=file_id,

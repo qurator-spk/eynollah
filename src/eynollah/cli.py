@@ -17,21 +17,18 @@ def main():
     help="directory of GT page-xml files",
     type=click.Path(exists=True, file_okay=False),
 )
-
 @click.option(
     "--dir_out_modal_image",
     "-domi",
     help="directory where ground truth images would be written",
     type=click.Path(exists=True, file_okay=False),
 )
-
 @click.option(
     "--dir_out_classes",
     "-docl",
     help="directory where ground truth classes would be written",
     type=click.Path(exists=True, file_okay=False),
 )
-
 @click.option(
     "--input_height",
     "-ih",
@@ -47,18 +44,17 @@ def main():
     "-min",
     help="min area size of regions considered for reading order training.",
 )
-
-def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size):
+def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width,
+                                min_area_size):
     xml_files_ind = os.listdir(dir_xml)
-    
+
 
 @main.command()
-@click.option('--patches/--no-patches', default=True, help='by enabling this parameter you let the model to see the image in patches.')
-
-@click.option('--model_dir', '-m', type=click.Path(exists=True, file_okay=False), required=True, help='directory containing models for prediction')
-
+@click.option('--patches/--no-patches', default=True,
+              help='by enabling this parameter you let the model to see the image in patches.')
+@click.option('--model_dir', '-m', type=click.Path(exists=True, file_okay=False), required=True,
+              help='directory containing models for prediction')
 @click.argument('input_image')
-
 @click.argument('output_image')
 @click.option(
     "--dir_in",
@@ -72,7 +68,6 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
     help="directory where the binarized images will be written",
     type=click.Path(exists=True, file_okay=False),
 )
-
 def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out):
     if not dir_out and dir_in:
         print("Error: You used -di but did not set -do")
@@ -80,9 +75,8 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
     elif dir_out and not dir_in:
         print("Error: You used -do to write out binarized images but have not set -di")
         sys.exit(1)
-    SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, save=output_image, dir_in=dir_in, dir_out=dir_out)
-
-
+    SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, save=output_image, dir_in=dir_in,
+                                dir_out=dir_out)
 
 
 @main.command()
@@ -92,7 +86,6 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
     help="image filename",
     type=click.Path(exists=True, dir_okay=False),
 )
-
 @click.option(
     "--out",
     "-o",
@@ -261,15 +254,19 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
-
-def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, num_col_upper, num_col_lower, skip_layout_and_reading_order, ignore_page_extraction, log_level):
+def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_deskewed, save_all, extract_only_images,
+           save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left,
+           input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, num_col_upper,
+           num_col_lower, skip_layout_and_reading_order, ignore_page_extraction, log_level):
     initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
-    if not enable_plotting and (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
+    if not enable_plotting and (
+            save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
         print("Error: You used one of -sl, -sd, -sa, -sp, -si or -ae but did not enable plotting with -ep")
         sys.exit(1)
-    elif enable_plotting and not (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
+    elif enable_plotting and not (
+            save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
         print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa, -sp, -si or -ae")
         sys.exit(1)
     if textline_light and not light_version:
@@ -277,8 +274,10 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
         sys.exit(1)
     if light_version and not textline_light:
         print('Error: You used -light without -tll. Light version need light textline to be enabled.')
-    if extract_only_images and  (allow_enhancement or allow_scaling or light_version or curved_line or textline_light or full_layout or tables or right2left or headers_off) :
-        print('Error: You used -eoi which can not be enabled alongside light_version -light or allow_scaling -as or allow_enhancement -ae or curved_line -cl or textline_light -tll or full_layout -fl or tables -tab or right2left -r2l or headers_off -ho')
+    if extract_only_images and (
+            allow_enhancement or allow_scaling or light_version or curved_line or textline_light or full_layout or tables or right2left or headers_off):
+        print(
+            'Error: You used -eoi which can not be enabled alongside light_version -light or allow_scaling -as or allow_enhancement -ae or curved_line -cl or textline_light -tll or full_layout -fl or tables -tab or right2left -r2l or headers_off -ho')
         sys.exit(1)
     eynollah = Eynollah(
         image_filename=image,
@@ -315,8 +314,8 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     else:
         pcgts = eynollah.run()
         eynollah.writer.write_pagexml(pcgts)
-        
-        
+
+
 @main.command()
 @click.option(
     "--dir_in",
@@ -368,8 +367,8 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
-
-def ocr(dir_in, out, dir_xmls, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, log_level):
+def ocr(dir_in, out, dir_xmls, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour,
+        log_level):
     if log_level:
         setOverrideLogLevel(log_level)
     initLogging()

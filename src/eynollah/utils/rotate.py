@@ -49,7 +49,7 @@ def rotate_image(img_patch, slope):
     return cv2.warpAffine(img_patch, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
 
-def rotate_image_different( img, slope):
+def rotate_image_different(img, slope):
     # img = cv2.imread('images/input.jpg')
     num_rows, num_cols = img.shape[:2]
 
@@ -65,7 +65,8 @@ def rotate_max_area(image, rotated, rotated_textline, rotated_layout, rotated_ta
     y2 = y1 + int(hr)
     x1 = w // 2 - int(wr / 2)
     x2 = x1 + int(wr)
-    return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2], rotated_table_prediction[y1:y2, x1:x2]
+    return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2,
+                                                                  x1:x2], rotated_table_prediction[y1:y2, x1:x2]
 
 
 def rotation_not_90_func(img, textline, text_regions_p_1, table_prediction, thetha):
@@ -91,5 +92,5 @@ def rotate_max_area_full_layout(image, rotated, rotated_textline, rotated_layout
     y2 = y1 + int(hr)
     x1 = w // 2 - int(wr / 2)
     x2 = x1 + int(wr)
-    return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2], rotated_layout_full[y1:y2, x1:x2]
-
+    return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2], rotated_layout_full[
+                                                                                                y1:y2, x1:x2]
