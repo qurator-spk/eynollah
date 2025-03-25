@@ -24,11 +24,11 @@ def resize_image(img_in, input_height, input_width):
     return cv2.resize(img_in, (input_width, input_height), interpolation=cv2.INTER_NEAREST)
 
 
-class SbbBinarizer:
+class Binarizer:
 
     def __init__(self, model_dir, logger=None):
         self.model_dir = model_dir
-        self.log = logger if logger else logging.getLogger('SbbBinarizer')
+        self.log = logger if logger else logging.getLogger('Binarizer')
 
         self.start_new_session()
 

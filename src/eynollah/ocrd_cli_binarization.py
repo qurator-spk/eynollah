@@ -20,10 +20,10 @@ from ocrd_modelfactory import page_from_file
 from ocrd_models.ocrd_page import AlternativeImageType, to_xml
 from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 
-from .sbb_binarize import SbbBinarizer
+from .binarize import Binarizer
 
 OCRD_TOOL = loads(resource_string(__name__, 'ocrd-tool-binarization.json').decode('utf8'))
-TOOL = 'ocrd-sbb-binarize'
+TOOL = 'ocrd-eynollah-binarize'
 
 
 def cv2pil(img):
@@ -68,7 +68,7 @@ class SbbBinarizeProcessor(Processor):
                     raise FileNotFoundError("Does not exist or is not a directory: %s" % model_path)
         # resolve relative path via OCR-D ResourceManager
         model_path = self.resolve_resource(str(model_path))
-        self.binarizer = SbbBinarizer(model_dir=model_path, logger=LOG)
+        self.binarizer = Binarizer(model_dir=model_path, logger=LOG)
 
     def process(self):
         """
@@ -125,7 +125,7 @@ class SbbBinarizeProcessor(Processor):
                 for region in regions:
                     region_image, region_xywh = self.workspace.image_from_segment(region, page_image, page_xywh,
                                                                                   feature_filter='binarized')
-                    region_image_bin = cv2pil(binarizer.run(image=pil2cv(region_image), use_patches=True))
+                    region_image_bin = cv2pil(Binarizer.run(image=pil2cv(region_image), use_patches=True))
                     region_image_bin_path = self.workspace.save_image_file(
                         region_image_bin,
                         "%s_%s.IMG-BIN" % (file_id, region.id),
@@ -142,7 +142,7 @@ class SbbBinarizeProcessor(Processor):
                 for region_id, line in region_line_tuples:
                     line_image, line_xywh = self.workspace.image_from_segment(line, page_image, page_xywh,
                                                                               feature_filter='binarized')
-                    line_image_bin = cv2pil(binarizer.run(image=pil2cv(line_image), use_patches=True))
+                    line_image_bin = cv2pil(Binarizer.run(image=pil2cv(line_image), use_patches=True))
                     line_image_bin_path = self.workspace.save_image_file(
                         line_image_bin,
                         "%s_%s_%s.IMG-BIN" % (file_id, region_id, line.id),

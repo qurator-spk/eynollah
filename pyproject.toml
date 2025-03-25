@@ -11,7 +11,7 @@ description = "Document Layout Analysis"
 readme = "README.md"
 license.file = "LICENSE"
 requires-python = ">=3.8"
-keywords = ["document layout analysis", "image segmentation"]
+keywords = ["document layout analysis", "image segmentation", "image binarization"]
 
 dynamic = ["dependencies", "version"]
 
@@ -32,7 +32,7 @@ plotting = ["matplotlib"]
 [project.scripts]
 eynollah = "eynollah.cli:main"
 ocrd-eynollah-segment = "eynollah.ocrd_cli:main"
-ocrd-sbb-binarize = "eynollah.ocrd_cli_binarization:cli"
+ocrd-eynollah-binarize = "eynollah.ocrd_cli_binarization:cli"
 
 [project.urls]
 Homepage = "https://github.com/qurator-spk/eynollah"

@@ -2,8 +2,8 @@
   "version": "0.1.0",
   "git_url": "https://github.com/qurator-spk/sbb_binarization",
   "tools": {
-    "ocrd-sbb-binarize": {
-      "executable": "ocrd-sbb-binarize",
+    "ocrd-eynollah-binarize": {
+      "executable": "ocrd-eynollah-binarize",
       "description": "Pixelwise binarization with selectional auto-encoders in Keras",
       "categories": ["Image preprocessing"],
       "steps": ["preprocessing/optimization/binarization"],

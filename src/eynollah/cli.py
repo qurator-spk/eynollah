@@ -2,7 +2,7 @@ import sys
 import click
 from ocrd_utils import initLogging, setOverrideLogLevel
 from eynollah.eynollah import Eynollah, EynollahOcr
-from eynollah.sbb_binarize import SbbBinarizer
+from eynollah.binarize import Binarizer
 
 
 @click.group()
@@ -75,7 +75,7 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
     elif dir_out and not dir_in:
         print("Error: You used -do to write out binarized images but have not set -di")
         sys.exit(1)
-    SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, save=output_image, dir_in=dir_in,
+    Binarizer(model_dir).run(image_path=input_image, use_patches=patches, save=output_image, dir_in=dir_in,
                                 dir_out=dir_out)
 
 
