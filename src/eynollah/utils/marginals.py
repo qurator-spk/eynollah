@@ -12,7 +12,7 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
     mask_marginals = mask_marginals.astype(np.uint8)
 
     text_with_lines = text_with_lines.astype(np.uint8)
-    ##text_with_lines=cv2.erode(text_with_lines,self.kernel,iterations=3)
+    # text_with_lines=cv2.erode(text_with_lines,self.kernel,iterations=3)
 
     text_with_lines_eroded = cv2.erode(text_with_lines, kernel, iterations=5)
 
@@ -34,7 +34,7 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
 
     thickness_along_y_percent = text_with_lines_y_eroded.max() / (float(text_with_lines.shape[0])) * 100
 
-    #print(thickness_along_y_percent,'thickness_along_y_percent')
+    # print(thickness_along_y_percent,'thickness_along_y_percent')
 
     if thickness_along_y_percent < 30:
         min_textline_thickness = 8
@@ -191,25 +191,25 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
 
             text_regions = cv2.fillPoly(text_regions, pts=marginlas_should_be_main_text, color=(4, 4))
 
-            #text_regions[:,:int(x_min_marginals_left[0])][text_regions[:,:int(x_min_marginals_left[0])]==1]=0
-            #text_regions[:,int(x_min_marginals_right[0]):][text_regions[:,int(x_min_marginals_right[0]):]==1]=0
+            # text_regions[:,:int(x_min_marginals_left[0])][text_regions[:,:int(x_min_marginals_left[0])]==1]=0
+            # text_regions[:,int(x_min_marginals_right[0]):][text_regions[:,int(x_min_marginals_right[0]):]==1]=0
 
             text_regions[:, :int(min_point_of_left_marginal)][
                 text_regions[:, :int(min_point_of_left_marginal)] == 1] = 0
             text_regions[:, int(max_point_of_right_marginal):][
                 text_regions[:, int(max_point_of_right_marginal):] == 1] = 0
 
-        ###text_regions[:,0:point_left][text_regions[:,0:point_left]==1]=4
+        # text_regions[:,0:point_left][text_regions[:,0:point_left]==1]=4
 
-        ###text_regions[:,point_right:][ text_regions[:,point_right:]==1]=4
-        #plt.plot(region_sum_0)
-        #plt.plot(peaks,region_sum_0[peaks],'*')
-        #plt.show()
+        # text_regions[:,point_right:][ text_regions[:,point_right:]==1]=4
+        # plt.plot(region_sum_0)
+        # plt.plot(peaks,region_sum_0[peaks],'*')
+        # plt.show()
 
-        #plt.imshow(text_regions)
-        #plt.show()
+        # plt.imshow(text_regions)
+        # plt.show()
 
-        #sys.exit()
+        # sys.exit()
     else:
         pass
     return text_regions

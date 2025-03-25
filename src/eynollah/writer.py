@@ -174,7 +174,7 @@ class EynollahXmlWriter:
             if ocr_all_textlines_textregion:
                 textline.set_TextEquiv([TextEquivType(Unicode=ocr_all_textlines_textregion[j])])
             text_region.add_TextLine(textline)
-            #region_bboxes = all_box_coord[region_idx]
+            # region_bboxes = all_box_coord[region_idx]
             points_co = ''
             for idx_contour_textline, contour_textline in enumerate(all_found_textline_polygons[j]):
                 if len(contour_textline) == 2:
@@ -342,9 +342,9 @@ class EynollahXmlWriter:
                                              points=self.calculate_polygon_coords(found_polygons_drop_capitals[mm],
                                                                                   page_coord)))
             page.add_TextRegion(dropcapital)
-            ###all_box_coord_drop = None
-            ###slopes_drop = None
-            ###self.serialize_lines_in_dropcapital(dropcapital, [found_polygons_drop_capitals[mm]], mm, page_coord, all_box_coord_drop, slopes_drop, counter, ocr_all_textlines_textregion=None)
+            # all_box_coord_drop = None
+            # slopes_drop = None
+            # self.serialize_lines_in_dropcapital(dropcapital, [found_polygons_drop_capitals[mm]], mm, page_coord, all_box_coord_drop, slopes_drop, counter, ocr_all_textlines_textregion=None)
 
         for mm in range(len(found_polygons_text_region_img)):
             page.add_ImageRegion(ImageRegionType(id=counter.next_region_id, Coords=CoordsType(

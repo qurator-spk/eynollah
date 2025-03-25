@@ -45,7 +45,7 @@ class CapturingTestCase(TestCase):
         """
         self.capture_out_err()  # XXX snapshot just before executing the CLI
         code = 0
-        sys.argv[1:] = args # XXX necessary because sys.argv reflects pytest args not cli args
+        sys.argv[1:] = args  # XXX necessary because sys.argv reflects pytest args not cli args
         try:
             cli.main(args=args)
         except SystemExit as e:

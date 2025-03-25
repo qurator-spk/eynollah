@@ -65,7 +65,7 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
         polygon = geometry.Polygon([point[0] for point in c])
         # area = cv2.contourArea(c)
         area = polygon.area
-        ##print(np.prod(thresh.shape[:2]))
+        # print(np.prod(thresh.shape[:2]))
         # Check that polygon has area greater than minimal area
         # print(hierarchy[0][jv][3],hierarchy )
         if (min_area * np.prod(image.shape[:2]) <= area <= max_area * np.prod(image.shape[:2]) and
@@ -200,7 +200,7 @@ def get_textregion_contours_in_org_image(cnts, img, slope_first):
 
         # print(img.shape,'img')
         img_copy = rotation_image_new(img_copy, -slope_first)
-        ##print(img_copy.shape,'img_copy')
+        # print(img_copy.shape,'img_copy')
         # plt.imshow(img_copy)
         # plt.show()
 
@@ -258,8 +258,8 @@ def get_textregion_contours_in_org_image_light(cnts, img, slope_first, map=map):
     if not len(cnts):
         return []
     img = cv2.resize(img, (int(img.shape[1] / 6), int(img.shape[0] / 6)), interpolation=cv2.INTER_NEAREST)
-    ##cnts = list( (np.array(cnts)/2).astype(np.int16) )
-    #cnts = cnts/2
+    # cnts = list( (np.array(cnts)/2).astype(np.int16) )
+    # cnts = cnts/2
     cnts = [(i / 6).astype(np.int) for i in cnts]
     results = map(partial(do_back_rotation_and_get_cnt_back,
                           img=img,

@@ -180,7 +180,7 @@ class SbbBinarizer:
 
                         seg = np.argmax(label_p_pred, axis=3)
 
-                        #print(seg.shape, len(seg), len(list_i_s))
+                        # print(seg.shape, len(seg), len(list_i_s))
 
                         indexer_inside_batch = 0
                         for i_batch, j_batch in zip(list_i_s, list_j_s):
@@ -253,7 +253,7 @@ class SbbBinarizer:
 
                         seg = np.argmax(label_p_pred, axis=3)
 
-                        #print(seg.shape, len(seg), len(list_i_s))
+                        # print(seg.shape, len(seg), len(list_i_s))
 
                         indexer_inside_batch = 0
                         for i_batch, j_batch in zip(list_i_s, list_j_s):
