@@ -72,7 +72,7 @@ def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region
 
     index_of_types_2 = index_of_types[kind_of_texts == 2]
     indexes_sorted_2 = indexes_sorted[kind_of_texts == 2]
-
+    
     counter = EynollahIdCounter(region_idx=ref_point)
     for idx_textregion, _ in enumerate(found_polygons_text_region):
         id_of_texts.append(counter.next_region_id)

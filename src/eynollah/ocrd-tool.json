@@ -29,6 +29,16 @@
           "default": true,
           "description": "Try to detect all element subtypes, including drop-caps and headings"
         },
+         "light_version": {
+          "type": "boolean",
+          "default": true,
+          "description": "Try to detect all element subtypes in light version"
+        },
+         "textline_light": {
+          "type": "boolean",
+          "default": true,
+          "description": "Light version need textline light"
+        },
 	"tables": {
 	  "type": "boolean",
 	  "default": false,
