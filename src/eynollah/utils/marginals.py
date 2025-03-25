@@ -18,7 +18,7 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
 
     if text_with_lines.shape[0]<=1500:
         pass
-    elif text_with_lines.shape[0]>1500 and text_with_lines.shape[0]<=1800:
+    elif 1500 < text_with_lines.shape[0] <= 1800:
         text_with_lines=resize_image(text_with_lines,int(text_with_lines.shape[0]*1.5),text_with_lines.shape[1])
         text_with_lines=cv2.erode(text_with_lines,kernel,iterations=5)
         text_with_lines=resize_image(text_with_lines,text_with_lines_eroded.shape[0],text_with_lines_eroded.shape[1])
@@ -37,7 +37,7 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
 
     if thickness_along_y_percent<30:
         min_textline_thickness=8
-    elif thickness_along_y_percent>=30 and thickness_along_y_percent<50:
+    elif 30 <= thickness_along_y_percent < 50:
         min_textline_thickness=20
     else:
         min_textline_thickness=40

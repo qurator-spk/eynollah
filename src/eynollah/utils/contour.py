@@ -45,8 +45,7 @@ def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area
 
         polygon = geometry.Polygon([point[0] for point in c])
         area = polygon.area
-        if (area >= min_area * np.prod(image.shape[:2]) and
-            area <= max_area * np.prod(image.shape[:2]) and
+        if (min_area * np.prod(image.shape[:2]) <= area <= max_area * np.prod(image.shape[:2]) and
             hierarchy[0][jv][3] == -1):
             found_polygons_early.append(np.array([[point]
                                                   for point in polygon.exterior.coords], dtype=np.uint))
@@ -64,8 +63,7 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
         ##print(np.prod(thresh.shape[:2]))
         # Check that polygon has area greater than minimal area
         # print(hierarchy[0][jv][3],hierarchy )
-        if (area >= min_area * np.prod(image.shape[:2]) and
-            area <= max_area * np.prod(image.shape[:2]) and
+        if (min_area * np.prod(image.shape[:2]) <= area <= max_area * np.prod(image.shape[:2]) and
             # hierarchy[0][jv][3]==-1
             True):
             # print(c[0][0][1])

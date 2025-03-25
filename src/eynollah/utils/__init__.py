@@ -519,12 +519,10 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
              peaks_neg_true[1] > p_m)):
             num_col = 1
             peaks_neg_true = []
-        elif (peaks_neg_true[0] < p_g_u and
-              peaks_neg_true[0] > p_g_l and
+        elif (p_g_u > peaks_neg_true[0] > p_g_l and
               peaks_neg_true[1] > p_u_quarter):
             peaks_neg_true = [peaks_neg_true[0]]
-        elif (peaks_neg_true[1] < p_g_u and
-              peaks_neg_true[1] > p_g_l and
+        elif (p_g_u > peaks_neg_true[1] > p_g_l and
               peaks_neg_true[0] < p_quarter):
             peaks_neg_true = [peaks_neg_true[1]]
 
@@ -686,12 +684,10 @@ def find_num_col_only_image(regions_without_separators, multiplier=3.8):
              peaks_neg_true[1] > p_m)):
             num_col = 1
             peaks_neg_true = []
-        elif (peaks_neg_true[0] < p_g_u and
-              peaks_neg_true[0] > p_g_l and
+        elif (p_g_u > peaks_neg_true[0] > p_g_l and
               peaks_neg_true[1] > p_u_quarter):
             peaks_neg_true = [peaks_neg_true[0]]
-        elif (peaks_neg_true[1] < p_g_u and
-              peaks_neg_true[1] > p_g_l and
+        elif (p_g_u > peaks_neg_true[1] > p_g_l and
               peaks_neg_true[0] < p_quarter):
             peaks_neg_true = [peaks_neg_true[1]]
         else:
@@ -2046,8 +2042,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                             for yic in range(len(y_copy)):
                                 #print('burda')
                                 if (y_copy[yic]>y_itself and
-                                    column>=x_start_copy[yic] and
-                                    column<=x_end_copy[yic]):
+                                        x_start_copy[yic] <= column <= x_end_copy[yic]):
                                     y_in_cols.append(y_copy[yic])
                             #print('burda2')
                             #print(y_in_cols,'y_in_cols')
@@ -2138,8 +2133,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                         for yic in range(len(y_copy)):
                             #print('burda')
                             if (y_copy[yic]>y_itself and
-                                column>=x_start_copy[yic] and
-                                column<=x_end_copy[yic]):
+                                    x_start_copy[yic] <= column <= x_end_copy[yic]):
                                 y_in_cols.append(y_copy[yic])
                         #print('burda2')
                         #print(y_in_cols,'y_in_cols')

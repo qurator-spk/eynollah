@@ -1144,7 +1144,7 @@ def separate_lines_new_inside_tiles(img_path, thetha):
     x = np.array(range(len(y)))
 
     peaks_real, _ = find_peaks(gaussian_filter1d(y, 3), height=0)
-    if len(peaks_real) <= 2 and len(peaks_real) > 1:
+    if 2 >= len(peaks_real) > 1:
         sigma_gaus = 10
     else:
         sigma_gaus = 5
@@ -1445,7 +1445,7 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
         except:
             slope_xline = 0
 
-        if abs(slope_region) < 25 and abs(slope_xline) > 25:
+        if abs(slope_region) < 25 < abs(slope_xline):
             slope_xline = [slope_region][0]
         # if abs(slope_region)>70 and abs(slope_xline)<25:
         # slope_xline=[slope_region][0]

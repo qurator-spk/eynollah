@@ -513,31 +513,31 @@ class Eynollah:
             img_w_new = 2000
         elif num_col == 1 and width_early >= 2500:
             img_w_new = 2000
-        elif num_col == 1 and width_early >= 1100 and width_early < 2500:
+        elif num_col == 1 and 1100 <= width_early < 2500:
             img_w_new = width_early
         elif num_col == 2 and width_early < 2000:
             img_w_new = 2400
         elif num_col == 2 and width_early >= 3500:
             img_w_new = 2400
-        elif num_col == 2 and width_early >= 2000 and width_early < 3500:
+        elif num_col == 2 and 2000 <= width_early < 3500:
             img_w_new = width_early
         elif num_col == 3 and width_early < 2000:
             img_w_new = 3000
         elif num_col == 3 and width_early >= 4000:
             img_w_new = 3000
-        elif num_col == 3 and width_early >= 2000 and width_early < 4000:
+        elif num_col == 3 and 2000 <= width_early < 4000:
             img_w_new = width_early
         elif num_col == 4 and width_early < 2500:
             img_w_new = 4000
         elif num_col == 4 and width_early >= 5000:
             img_w_new = 4000
-        elif num_col == 4 and width_early >= 2500 and width_early < 5000:
+        elif num_col == 4 and 2500 <= width_early < 5000:
             img_w_new = width_early
         elif num_col == 5 and width_early < 3700:
             img_w_new = 5000
         elif num_col == 5 and width_early >= 7000:
             img_w_new = 5000
-        elif num_col == 5 and width_early >= 3700 and width_early < 7000:
+        elif num_col == 5 and 3700 <= width_early < 7000:
             img_w_new = width_early
         elif num_col == 6 and width_early < 4500:
             img_w_new = 6500  # 5400
@@ -2166,10 +2166,8 @@ class Eynollah:
             for ii in range(len(cx_text_only)):
                 check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
-                    if (x_min_text_only[ii] + 80 >= boxes[jj][0] and
-                        x_min_text_only[ii] + 80 < boxes[jj][1] and
-                        y_cor_x_min_main[ii] >= boxes[jj][2] and
-                        y_cor_x_min_main[ii] < boxes[jj][3]):
+                    if (boxes[jj][0] <= x_min_text_only[ii] + 80 < boxes[jj][1] and
+                            boxes[jj][2] <= y_cor_x_min_main[ii] < boxes[jj][3]):
                         arg_text_con.append(jj)
                         check_if_textregion_located_in_a_box = True
                         break
@@ -2184,10 +2182,8 @@ class Eynollah:
             for ii in range(len(cx_text_only_h)):
                 check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
-                    if (x_min_text_only_h[ii] + 80 >= boxes[jj][0] and
-                        x_min_text_only_h[ii] + 80 < boxes[jj][1] and
-                        y_cor_x_min_main_h[ii] >= boxes[jj][2] and
-                        y_cor_x_min_main_h[ii] < boxes[jj][3]):
+                    if (boxes[jj][0] <= x_min_text_only_h[ii] + 80 < boxes[jj][1] and
+                            boxes[jj][2] <= y_cor_x_min_main_h[ii] < boxes[jj][3]):
                         arg_text_con_h.append(jj)
                         check_if_textregion_located_in_a_box = True
                         break
@@ -2263,10 +2259,8 @@ class Eynollah:
             for ii in range(len(cx_text_only)):
                 check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
-                    if (cx_text_only[ii] >= boxes[jj][0] and
-                        cx_text_only[ii] < boxes[jj][1] and
-                        cy_text_only[ii] >= boxes[jj][2] and
-                        cy_text_only[ii] < boxes[jj][3]):
+                    if (boxes[jj][0] <= cx_text_only[ii] < boxes[jj][1] and
+                            boxes[jj][2] <= cy_text_only[ii] < boxes[jj][3]):
                         # this is valid if the center of region identify in which box it is located
                         arg_text_con.append(jj)
                         check_if_textregion_located_in_a_box = True
@@ -2287,10 +2281,8 @@ class Eynollah:
             for ii in range(len(cx_text_only_h)):
                 check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
-                    if (cx_text_only_h[ii] >= boxes[jj][0] and
-                        cx_text_only_h[ii] < boxes[jj][1] and
-                        cy_text_only_h[ii] >= boxes[jj][2] and
-                        cy_text_only_h[ii] < boxes[jj][3]):
+                    if (boxes[jj][0] <= cx_text_only_h[ii] < boxes[jj][1] and
+                            boxes[jj][2] <= cy_text_only_h[ii] < boxes[jj][3]):
                         # this is valid if the center of region identify in which box it is located
                         arg_text_con_h.append(jj)
                         check_if_textregion_located_in_a_box = True
@@ -2375,10 +2367,8 @@ class Eynollah:
             for ii in range(len(cx_text_only)):
                 check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
-                    if (x_min_text_only[ii] + 80 >= boxes[jj][0] and
-                        x_min_text_only[ii] + 80 < boxes[jj][1] and
-                        y_cor_x_min_main[ii] >= boxes[jj][2] and
-                        y_cor_x_min_main[ii] < boxes[jj][3]):
+                    if (boxes[jj][0] <= x_min_text_only[ii] + 80 < boxes[jj][1] and
+                            boxes[jj][2] <= y_cor_x_min_main[ii] < boxes[jj][3]):
                         arg_text_con.append(jj)
                         check_if_textregion_located_in_a_box = True
                         break
@@ -2437,10 +2427,8 @@ class Eynollah:
             for ii in range(len(cx_text_only)):
                 check_if_textregion_located_in_a_box = False
                 for jj in range(len(boxes)):
-                    if (cx_text_only[ii] >= boxes[jj][0] and
-                        cx_text_only[ii] < boxes[jj][1] and
-                        cy_text_only[ii] >= boxes[jj][2] and
-                        cy_text_only[ii] < boxes[jj][3]):
+                    if (boxes[jj][0] <= cx_text_only[ii] < boxes[jj][1] and
+                            boxes[jj][2] <= cy_text_only[ii] < boxes[jj][3]):
                         # this is valid if the center of region identify in which box it is located
                         arg_text_con.append(jj)
                         check_if_textregion_located_in_a_box = True
@@ -2746,7 +2734,7 @@ class Eynollah:
             prediction_table = prediction_table.astype(np.int16)
             return prediction_table[:,:,0]
         else:
-            if num_col_classifier < 4 and num_col_classifier > 2:
+            if 4 > num_col_classifier > 2:
                 prediction_table = self.do_prediction(patches, img, self.model_table)
                 pre_updown = self.do_prediction(patches, cv2.flip(img[:,:,:], -1), self.model_table)
                 pre_updown = cv2.flip(pre_updown, -1)
