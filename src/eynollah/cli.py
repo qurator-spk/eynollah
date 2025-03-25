@@ -4,9 +4,11 @@ from ocrd_utils import initLogging, setOverrideLogLevel
 from eynollah.eynollah import Eynollah, Eynollah_ocr
 from eynollah.sbb_binarize import SbbBinarizer
 
+
 @click.group()
 def main():
     pass
+
 
 @main.command()
 @click.option(
@@ -49,6 +51,7 @@ def main():
 def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size):
     xml_files_ind = os.listdir(dir_xml)
     
+
 @main.command()
 @click.option('--patches/--no-patches', default=True, help='by enabling this parameter you let the model to see the image in patches.')
 
@@ -78,10 +81,10 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
         print("Error: You used -do to write out binarized images but have not set -di")
         sys.exit(1)
     SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, save=output_image, dir_in=dir_in, dir_out=dir_out)
-    
-    
-    
-    
+
+
+
+
 @main.command()
 @click.option(
     "--image",
@@ -380,6 +383,7 @@ def ocr(dir_in, out, dir_xmls, model, tr_ocr, export_textline_images_and_text, d
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
     )
     eynollah_ocr.run()
+
 
 if __name__ == "__main__":
     main()

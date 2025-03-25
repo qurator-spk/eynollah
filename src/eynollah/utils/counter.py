@@ -3,6 +3,7 @@ from collections import Counter
 REGION_ID_TEMPLATE = 'region_%04d'
 LINE_ID_TEMPLATE = 'region_%04d_line_%04d'
 
+
 class EynollahIdCounter:
 
     def __init__(self, region_idx=0, line_idx=0):

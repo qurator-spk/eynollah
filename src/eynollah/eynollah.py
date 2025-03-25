@@ -163,6 +163,7 @@ class PatchEncoder(layers.Layer):
         })
         return config
 
+
 class Eynollah:
     def __init__(
         self,

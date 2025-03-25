@@ -20,6 +20,7 @@ from . import (
     crop_image_inside_box,
 )
 
+
 def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
     (h, w) = img_patch.shape[:2]
     center = (w // 2, h // 2)
@@ -130,6 +131,7 @@ def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
             y_padded_smoothed,
             peaks, peaks_neg,
             rotation_matrix)
+
 
 def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
     (h, w) = img_patch.shape[:2]
@@ -604,6 +606,7 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
 
     return peaks, textline_boxes_rot
 
+
 def separate_lines_vertical(img_patch, contour_text_interest, thetha):
     thetha = thetha + 90
     contour_text_interest_copy = contour_text_interest.copy()
@@ -912,6 +915,7 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
                                             [int(x_max), int(point_down)],
                                             [int(x_min), int(point_down)]]))
     return peaks, textline_boxes_rot
+
 
 def separate_lines_new_inside_tiles2(img_patch, thetha):
     (h, w) = img_patch.shape[:2]
@@ -1255,6 +1259,7 @@ def separate_lines_new_inside_tiles(img_path, thetha):
     img_path = cv2.erode(img_path, kernel, iterations=2)
     return img_path
 
+
 def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_ind, add_boxes_coor_into_textlines):
     kernel = np.ones((5, 5), np.uint8)
     pixel = 255
@@ -1298,6 +1303,7 @@ def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
 
     ##print(cont_final,'nadizzzz')
     return None, cont_final
+
 
 def textline_contours_postprocessing(textline_mask, slope, contour_text_interest, box_ind, add_boxes_coor_into_textlines=False):
     textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2) * 255
@@ -1389,6 +1395,7 @@ def textline_contours_postprocessing(textline_mask, slope, contour_text_interest
         contours_rotated_clean = []
 
     return contours_rotated_clean
+
 
 def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, plotter=None):
     if logger is None:
@@ -1500,6 +1507,7 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
     # plt.show()
     return img_patch_ineterst_revised
 
+
 def do_image_rotation(angle, img, sigma_des, logger=None):
     if logger is None:
         logger = getLogger(__package__)
@@ -1511,6 +1519,7 @@ def do_image_rotation(angle, img, sigma_des, logger=None):
         logger.exception("cannot determine variance for angle %.2f°", angle)
         var = 0
     return var
+
 
 def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
                        main_page=False, logger=None, plotter=None, map=map):
@@ -1568,6 +1577,7 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
 
     return angle
 
+
 def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map):
     if logger is None:
         logger = getLogger(__package__)
@@ -1582,6 +1592,7 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map
         logger.exception("cannot determine best angle among %s", str(angles))
         angle = 0
     return angle
+
 
 def do_work_of_slopes_new(
         box_text, contour, contour_par, index_r_con,
@@ -1650,6 +1661,7 @@ def do_work_of_slopes_new(
         cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contour_par, box_text)
 
     return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope
+
 
 def do_work_of_slopes_new_curved(
         box_text, contour, contour_par, index_r_con,
@@ -1745,6 +1757,7 @@ def do_work_of_slopes_new_curved(
         # print(np.shape(textlines_cnt_per_region),'textlines_cnt_per_region')
 
     return textlines_cnt_per_region[::-1], box_text, contour, contour_par, crop_coor, index_r_con, slope
+
 
 def do_work_of_slopes_new_light(
         box_text, contour, contour_par, index_r_con,

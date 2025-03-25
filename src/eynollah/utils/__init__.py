@@ -14,6 +14,7 @@ from .contour import (contours_in_same_horizon,
                       return_contours_of_image,
                       return_parent_contours)
 
+
 def return_x_start_end_mothers_childs_and_type_of_reading_order(
         x_min_hor_some, x_max_hor_some, cy_hor_some, peak_points, cy_hor_diff):
 
@@ -560,6 +561,7 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
     ##print(len(peaks_neg_true))
     return len(peaks_neg_true), peaks_neg_true
 
+
 def find_num_col_only_image(regions_without_separators, multiplier=3.8):
     regions_without_separators_0 = regions_without_separators[:, :].sum(axis=0)
 
@@ -755,6 +757,7 @@ def find_num_col_only_image(regions_without_separators, multiplier=3.8):
 
     return len(peaks_fin_true), peaks_fin_true
 
+
 def find_num_col_by_vertical_lines(regions_without_separators, multiplier=3.8):
     regions_without_separators_0 = regions_without_separators[:, :, 0].sum(axis=0)
 
@@ -767,6 +770,7 @@ def find_num_col_by_vertical_lines(regions_without_separators, multiplier=3.8):
 
     # print(peaks,'peaksnew')
     return peaks
+
 
 def return_regions_without_separators(regions_pre):
     kernel = np.ones((5, 5), np.uint8)
@@ -781,6 +785,7 @@ def return_regions_without_separators(regions_pre):
     regions_without_separators = cv2.erode(regions_without_separators.astype(np.uint8), kernel, iterations=6)
 
     return regions_without_separators
+
 
 def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
     drop_only = (layout_no_patch[:, :, 0] == 4) * 1
@@ -814,6 +819,7 @@ def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
     layout_no_patch = cv2.fillPoly(layout_no_patch, pts=contours_drop_parent_final, color=(4, 4, 4))
 
     return layout_no_patch
+
 
 def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop_capital_label, text_regions_p):
     drop_only = (layout_in_patch[:, :, 0] == drop_capital_label) * 1
@@ -853,6 +859,7 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop
             #layout_in_patch[box0][layout_in_patch[box0] == drop_capital_label] = 1#drop_capital_label
 
     return layout_in_patch
+
 
 def check_any_text_region_in_model_one_is_main_or_header(
         regions_model_1, regions_model_full,
@@ -1012,6 +1019,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
             slopes_head,
             contours_only_text_parent_main_d,
             contours_only_text_parent_head_d)
+
 
 def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col):
     # print(textlines_con)
@@ -1280,6 +1288,7 @@ def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
 
     return final_indexers_sorted, matrix_of_orders, final_types, final_index_type
 
+
 def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
         img_p_in_ver, img_in_hor,num_col_classifier):
 
@@ -1379,12 +1388,14 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
         special_separators=[]
     return img_p_in[:,:,0], special_separators
 
+
 def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     peaks_neg_tot = [first_point]
     for ii in range(len(peaks_neg_fin)):
         peaks_neg_tot.append(peaks_neg_fin[ii])
     peaks_neg_tot.append(last_point)
     return peaks_neg_tot
+
 
 def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, pixel_lines, contours_h=None):
     t_ins_c0 = time.time()
@@ -1596,6 +1607,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
         
     return num_col_fin, peaks_neg_fin_fin,matrix_of_lines_ch,splitter_y_new,separators_closeup_n
         
+
 def return_boxes_of_images_by_order_of_reading_new(
         splitter_y_new, regions_without_separators,
         matrix_of_lines_ch,

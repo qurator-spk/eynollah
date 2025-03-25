@@ -8,6 +8,7 @@ testdir = Path(__file__).parent.resolve()
 
 EYNOLLAH_MODELS = environ.get('EYNOLLAH_MODELS', str(testdir.joinpath('..', 'models_eynollah').resolve()))
 
+
 class TestEynollahRun(TestCase):
 
     def test_full_run(self):
@@ -19,6 +20,7 @@ class TestEynollahRun(TestCase):
             ])
             print(code, out, err)
             assert not code
+
 
 if __name__ == '__main__':
     main(__file__)

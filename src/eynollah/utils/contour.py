@@ -5,6 +5,7 @@ from shapely import geometry
 
 from .rotate import rotate_image, rotation_image_new
 
+
 def contours_in_same_horizon(cy_main_hor):
     X1 = np.zeros((len(cy_main_hor), len(cy_main_hor)))
     X2 = np.zeros((len(cy_main_hor), len(cy_main_hor)))
@@ -22,10 +23,12 @@ def contours_in_same_horizon(cy_main_hor):
             all_args.append(list(set(list_h)))
     return np.unique(np.array(all_args, dtype=object))
 
+
 def find_contours_mean_y_diff(contours_main):
     M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
     cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
     return np.mean(np.diff(np.sort(np.array(cy_main))))
+
 
 def get_text_region_boxes_by_given_contours(contours):
     boxes = []
@@ -36,6 +39,7 @@ def get_text_region_boxes_by_given_contours(contours):
         contours_new.append(contours[jj])
 
     return boxes, contours_new
+
 
 def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area):
     found_polygons_early = []
@@ -50,6 +54,7 @@ def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area
             found_polygons_early.append(np.array([[point]
                                                   for point in polygon.exterior.coords], dtype=np.uint))
     return found_polygons_early
+
 
 def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, min_area):
     found_polygons_early = []
@@ -70,6 +75,7 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
             found_polygons_early.append(np.array([[point]
                                                   for point in polygon.exterior.coords], dtype=np.int32))
     return found_polygons_early
+
 
 def find_new_features_of_contours(contours_main):
     areas_main = np.array([cv2.contourArea(contours_main[j])
@@ -114,6 +120,7 @@ def find_new_features_of_contours(contours_main):
 
     return cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin
 
+
 def find_features_of_contours(contours_main):
     areas_main=np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
     M_main=[cv2.moments(contours_main[j]) for j in range(len(contours_main))]
@@ -127,11 +134,13 @@ def find_features_of_contours(contours_main):
 
     return y_min_main, y_max_main
 
+
 def return_parent_contours(contours, hierarchy):
     contours_parent = [contours[i]
                        for i in range(len(contours))
                        if hierarchy[0][i][3] == -1]
     return contours_parent
+
 
 def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
     # pixels of images are identified by 5
@@ -150,6 +159,7 @@ def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
                                                          max_area=1, min_area=min_area)
     return contours_imgs
 
+
 def do_work_of_contours_in_image(contour, index_r_con, img, slope_first):
     img_copy = np.zeros(img.shape)
     img_copy = cv2.fillPoly(img_copy, pts=[contour], color=(1, 1, 1))
@@ -166,6 +176,7 @@ def do_work_of_contours_in_image(contour, index_r_con, img, slope_first):
 
     return cont_int[0], index_r_con
 
+
 def get_textregion_contours_in_org_image_multi(cnts, img, slope_first, map=map):
     if not len(cnts):
         return [], []
@@ -175,6 +186,7 @@ def get_textregion_contours_in_org_image_multi(cnts, img, slope_first, map=map):
                           ),
                   cnts, range(len(cnts)))
     return tuple(zip(*results))
+
 
 def get_textregion_contours_in_org_image(cnts, img, slope_first):
     cnts_org = []
@@ -204,6 +216,7 @@ def get_textregion_contours_in_org_image(cnts, img, slope_first):
 
     return cnts_org
 
+
 def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
     zoom = 3
     img = cv2.resize(img, (img.shape[1] // zoom,
@@ -225,6 +238,7 @@ def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
 
     return cnts_org
 
+
 def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first):
     img_copy = np.zeros(img.shape)
     img_copy = cv2.fillPoly(img_copy, pts=[contour_par], color=(1, 1, 1))
@@ -238,6 +252,7 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
     cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
     # print(np.shape(cont_int[0]))
     return cont_int[0], index_r_con
+
 
 def get_textregion_contours_in_org_image_light(cnts, img, slope_first, map=map):
     if not len(cnts):
@@ -253,6 +268,7 @@ def get_textregion_contours_in_org_image_light(cnts, img, slope_first, map=map):
                   cnts, range(len(cnts)))
     contours, indexes = tuple(zip(*results))
     return [i*6 for i in contours]
+
 
 def return_contours_of_interested_textline(region_pre_p, pixel):
     # pixels of images are identified by 5
@@ -271,6 +287,7 @@ def return_contours_of_interested_textline(region_pre_p, pixel):
         thresh, contours_imgs, hierarchy, max_area=1, min_area=0.000000003)
     return contours_imgs
 
+
 def return_contours_of_image(image):
     if len(image.shape) == 2:
         image = np.repeat(image[:, :, np.newaxis], 3, axis=2)
@@ -281,6 +298,7 @@ def return_contours_of_image(image):
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     return contours, hierarchy
+
 
 def return_contours_of_interested_region_by_min_size(region_pre_p, pixel, min_size=0.00003):
     # pixels of images are identified by 5
@@ -299,6 +317,7 @@ def return_contours_of_interested_region_by_min_size(region_pre_p, pixel, min_si
         thresh, contours_imgs, hierarchy, max_area=1, min_area=min_size)
 
     return contours_imgs
+
 
 def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, max_area):
     # pixels of images are identified by 5

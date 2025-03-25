@@ -7,6 +7,7 @@ from .contour import (
     return_contours_of_interested_region,
 )
 
+
 def adhere_drop_capital_region_into_corresponding_textline(
     text_regions_p,
     polygons_of_drop_capitals,
@@ -498,6 +499,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
     #####except:
     #####pass
     return all_found_textline_polygons
+
 
 def filter_small_drop_capitals_from_no_patch_layout(layout_no_patch, layout1):
 
