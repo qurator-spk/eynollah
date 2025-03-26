@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import cv2
 
 def rotatedRectWithMaxArea(w, h, angle):
@@ -23,11 +24,44 @@ def rotatedRectWithMaxArea(w, h, angle):
 
     return wr, hr
 
+
 def rotate_image_opencv(image, angle):
-    (h, w) = image.shape[:2]
-    center = (w // 2, h // 2)
-    M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    return cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    # Calculate the original image dimensions (h, w) and the center point (cx, cy)
+    h, w = image.shape[:2]
+    cx, cy = (w // 2, h // 2)
+
+    # Compute the rotation matrix
+    M = cv2.getRotationMatrix2D((cx, cy), angle, 1.0)
+
+    # Calculate the new bounding box
+    corners = np.array([
+        [0, 0],
+        [w, 0],
+        [w, h],
+        [0, h]
+    ])
+
+    # Apply rotation matrix to the corner points
+    ones = np.ones(shape=(len(corners), 1))
+    corners_ones = np.hstack([corners, ones])
+    transformed_corners = M @ corners_ones.T
+    transformed_corners = transformed_corners.T
+
+    # Calculate the new bounding box dimensions
+    min_x, min_y = np.min(transformed_corners, axis=0)
+    max_x, max_y = np.max(transformed_corners, axis=0)
+
+    newW = int(np.ceil(max_x - min_x))
+    newH = int(np.ceil(max_y - min_y))
+
+    # Adjust the rotation matrix to account for translation
+    M[0, 2] += (newW / 2) - cx
+    M[1, 2] += (newH / 2) - cy
+
+    # Perform the affine transformation (rotation)
+    rotated_image = cv2.warpAffine(image, M, (newW, newH))
+
+    return rotated_image
 
 def rotate_max_area_new(image, rotated, angle):
     wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
