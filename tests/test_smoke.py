@@ -1,7 +1,7 @@
 def test_utils_import():
-    import eynollah.utils
-    import eynollah.utils.contour
-    import eynollah.utils.drop_capitals
-    import eynollah.utils.drop_capitals
-    import eynollah.utils.is_nan
-    import eynollah.utils.rotate
+    import src.eynollah.utils
+    import src.eynollah.utils.contour
+    import src.eynollah.utils.drop_capitals
+    import src.eynollah.utils.drop_capitals
+    import src.eynollah.utils.is_nan
+    import src.eynollah.utils.rotate

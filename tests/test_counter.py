@@ -1,5 +1,5 @@
 from tests.base import main
-from eynollah.utils.counter import EynollahIdCounter
+from src.eynollah.utils.counter import EynollahIdCounter
 
 
 def test_counter_string():

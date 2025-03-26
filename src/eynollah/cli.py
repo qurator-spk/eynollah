@@ -1,8 +1,9 @@
+import os
 import sys
 import click
-from ocrd_utils import initLogging, setOverrideLogLevel
-from eynollah.eynollah import Eynollah, EynollahOcr
-from eynollah.binarize import Binarizer
+from ocrd_utils import initLogging, setOverrideLogLevel, getLogger, getLevelName
+from .eynollah import Eynollah, EynollahOcr
+from .binarize import Binarizer
 
 
 @click.group()

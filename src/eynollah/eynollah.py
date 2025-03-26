@@ -2718,6 +2718,7 @@ class Eynollah:
 
                 image_revised_last[box_ys, box_xs] = image_box
         else:
+            image_revised_last = np.zeros((image_regions_eraly_p.shape[0], image_regions_eraly_p.shape[1], 3))
             for i in range(len(boxes)):
                 box_ys = slice(*boxes[i][2:4])
                 box_xs = slice(*boxes[i][0:2])
