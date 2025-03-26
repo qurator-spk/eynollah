@@ -1575,7 +1575,7 @@ class Eynollah:
             indexes_in = args_textlines[results==1]
             textlines_ins = [polygons_of_textlines[ind] for ind in indexes_in]
             
-            all_found_textline_polygons.append(textlines_ins)
+            all_found_textline_polygons.append(textlines_ins[::-1])
             slopes.append(slope_deskew)
             
             _, crop_coor = crop_image_inside_box(boxes[index],image_page_rotated)
@@ -4417,9 +4417,9 @@ class Eynollah:
 
                     textline_mask_tot_ea_deskew = resize_image(textline_mask_tot_ea,img_h_new, img_w_new )
 
-                    slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea_deskew)
+                    slope_deskew, slope_first = 0, 0 #self.run_deskew(textline_mask_tot_ea_deskew)
                 else:
-                    slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
+                    slope_deskew, slope_first = 0, 0 #self.run_deskew(textline_mask_tot_ea)
                 #print("text region early -2,5 in %.1fs", time.time() - t0)
                 #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
                 num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, \
@@ -4965,7 +4965,7 @@ class Eynollah_ocr:
             self.model_ocr.to(self.device)
 
         else:
-            self.model_ocr_dir = dir_models + "/model_3_new_ocrcnn"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+            self.model_ocr_dir = dir_models + "/model_step_100000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
             model_ocr = load_model(self.model_ocr_dir , compile=False)
             
             self.prediction_model = tf.keras.models.Model(
@@ -5309,9 +5309,7 @@ class Eynollah_ocr:
                                         for cheild_text in child_textlines:
                                             if cheild_text.tag.endswith("Unicode"):
                                                 textline_text = cheild_text.text
-                                                if not textline_text:
-                                                    pass
-                                                else:
+                                                if textline_text:
                                                     with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.txt'), 'w') as text_file:
                                                         text_file.write(textline_text)
 
