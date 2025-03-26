@@ -4965,7 +4965,7 @@ class Eynollah_ocr:
             self.model_ocr.to(self.device)
 
         else:
-            self.model_ocr_dir = dir_models + "/model_step_100000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+            self.model_ocr_dir = dir_models + "/model_step_150000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
             model_ocr = load_model(self.model_ocr_dir , compile=False)
             
             self.prediction_model = tf.keras.models.Model(
@@ -5358,20 +5358,49 @@ class Eynollah_ocr:
                     indexer = 0
                     indexer_textregion = 0
                     for nn in root1.iter(region_tags):
-                        text_subelement_textregion = ET.SubElement(nn, 'TextEquiv')
-                        unicode_textregion = ET.SubElement(text_subelement_textregion, 'Unicode')
+                        
+                        is_textregion_text = False
+                        for childtest in nn:
+                            if childtest.tag.endswith("TextEquiv"):
+                                is_textregion_text = True
+                        
+                        if not is_textregion_text:
+                            text_subelement_textregion = ET.SubElement(nn, 'TextEquiv')
+                            unicode_textregion = ET.SubElement(text_subelement_textregion, 'Unicode')
 
                         
                         has_textline = False
                         for child_textregion in nn:
                             if child_textregion.tag.endswith("TextLine"):
-                                text_subelement = ET.SubElement(child_textregion, 'TextEquiv')
-                                unicode_textline = ET.SubElement(text_subelement, 'Unicode')
-                                unicode_textline.text = extracted_texts_merged[indexer]
+                                
+                                is_textline_text = False
+                                for childtest2 in child_textregion:
+                                    if childtest2.tag.endswith("TextEquiv"):
+                                        is_textline_text = True
+                                
+                                
+                                if not is_textline_text:
+                                    text_subelement = ET.SubElement(child_textregion, 'TextEquiv')
+                                    unicode_textline = ET.SubElement(text_subelement, 'Unicode')
+                                    unicode_textline.text = extracted_texts_merged[indexer]
+                                else:
+                                    for childtest3 in child_textregion:
+                                        if childtest3.tag.endswith("TextEquiv"):
+                                            for child_uc in childtest3:
+                                                if child_uc.tag.endswith("Unicode"):
+                                                    child_uc.text = extracted_texts_merged[indexer]
+                                        
                                 indexer = indexer + 1
                                 has_textline = True
                         if has_textline:
-                            unicode_textregion.text = text_by_textregion[indexer_textregion]
+                            if is_textregion_text:
+                                for child4 in nn:
+                                    if child4.tag.endswith("TextEquiv"):
+                                        for childtr_uc in child4:
+                                            if childtr_uc.tag.endswith("Unicode"):
+                                                childtr_uc.text = text_by_textregion[indexer_textregion]
+                            else:
+                                unicode_textregion.text = text_by_textregion[indexer_textregion]
                             indexer_textregion = indexer_textregion + 1
 
                     ET.register_namespace("",name_space)
