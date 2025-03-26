@@ -22,7 +22,7 @@ from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 
 from .binarize import Binarizer
 
-OCRD_TOOL = loads(resource_string(__name__, 'ocrd-tool-binarization.json').decode('utf8'))
+OCRD_TOOL = loads(resource_string(__name__, 'ocrd-tool.json').decode('utf8'))
 TOOL = 'ocrd-eynollah-binarize'
 
 
