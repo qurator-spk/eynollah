@@ -25,9 +25,14 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Image Processing",
 ]
 
+[project.optional-dependencies]
+OCR = ["torch <= 2.0.1", "transformers <= 4.30.2"]
+plotting = ["matplotlib"]
+
 [project.scripts]
 eynollah = "eynollah.cli:main"
 ocrd-eynollah-segment = "eynollah.ocrd_cli:main"
+ocrd-sbb-binarize = "eynollah.ocrd_cli_binarization:cli"
 
 [project.urls]
 Homepage = "https://github.com/qurator-spk/eynollah"
