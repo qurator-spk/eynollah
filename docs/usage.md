@@ -9,6 +9,7 @@ eynollah \
      [OPTIONS]
 ```
 
+## Processing options
 The following options can be used to further configure the processing:
 
 | option            | description                                                                    |
@@ -29,9 +30,7 @@ The following options can be used to further configure the processing:
 | `-sp <directory>` | save cropped page image to this directory                                      |
 | `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory               |
 
-If no option is set, the tool performs layout detection of main regions (background, text, images, separators and marginals).
-
-The best output quality is produced when RGB images are used as input rather than greyscale or binarized images.
+If no option is set, the tool performs detection of main regions (background, text, images, separators and marginals).
 
 ### `--full-layout` vs `--no-full-layout`
 
@@ -49,7 +48,8 @@ Here are the difference in elements detected depending on the `--full-layout`/`-
 | image region             | x               | x                  |
 
 ## Use as OCR-D processor
-Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) processor that is described in [`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json). 
+Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) processor that is described in 
+[`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json). 
 
 The source image file group with (preferably) RGB images should be used as input for Eynollah like this:
 
@@ -69,29 +69,24 @@ uses the original (RGB) image despite any binarization that may have occured in 
 TODO
 
 ## Hints
+* The best output quality is produced when RGB images are used as input rather than greyscale or binarized images.
 * If none of the parameters is set to `true`, the tool will perform a layout detection of main regions (background, 
 text, images, separators and marginals). An advantage of this tool is that it tries to extract main text regions 
 separately as much as possible.
-
 * If you set `-ae` (**a**llow image **e**nhancement) parameter to `true`, the tool will first check the ppi 
 (pixel-per-inch) of the image and when it is less than 300, the tool will resize it and only then image enhancement will 
 occur. Image enhancement can also take place without this option, but by setting this option to `true`, the layout xml 
 data (e.g. coordinates) will be based on the resized and enhanced image instead of the original image.
-
 * For some documents, while the quality is good, their scale is very large, and the performance of tool decreases. In 
 such cases you can set `-as` (**a**llow **s**caling) to `true`. With this option enabled, the tool will try to rescale 
 the image and only then the layout detection process will begin.
-
 * If you care about drop capitals (initials) and headings, you can set `-fl` (**f**ull **l**ayout) to `true`. With this 
 setting, the tool can currently distinguish 7 document layout classes/elements.
-
 * In cases where the document includes curved headers or curved lines, rectangular bounding boxes for textlines will not 
 be a great option. In such cases it is strongly recommended setting the flag `-cl` (**c**urved **l**ines) to `true` to 
 find contours of curved lines instead of rectangular bounding boxes. Be advised that enabling this option increases the 
 processing time of the tool.
-
 * To crop and save image regions inside the document, set the parameter `-si` (**s**ave **i**mages) to true and provide 
 a directory path to store the extracted images.
-
 * To extract only images from a document, set the parameter `-eoi` (**e**xtract **o**nly **i**mages). Choosing this 
 option disables any other processing. To save the cropped images add `-ep` and `-si`.
