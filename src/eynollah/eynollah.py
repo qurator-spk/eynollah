@@ -5091,6 +5091,7 @@ class Eynollah_ocr:
             width_new = w_ratio
         else:
             width_new = image_width
+        
         img = resize_image(img, image_height, width_new)
         img_fin = np.ones((image_height, image_width, 3))*255
         img_fin[:,:width_new,:] = img[:,:,:]
@@ -5285,7 +5286,7 @@ class Eynollah_ocr:
                                         img_crop[mask_poly==0] = 255
                                     
                                     if not self.export_textline_images_and_text:
-                                        if h2w_ratio > 0.05:
+                                        if h2w_ratio > 0.1:
                                             img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
                                             cropped_lines_meging_indexing.append(0)
@@ -5345,7 +5346,7 @@ class Eynollah_ocr:
                             pred_texts_ib = pred_texts[ib].strip("[UNK]")
                             extracted_texts.append(pred_texts_ib)
                             
-                    extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
+                    extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+" "+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
 
                     extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
                     unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
