@@ -43,10 +43,10 @@ Alternatively, you can run `make install` or `make install-dev` for editable ins
 ## Models
 Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
 
+For documentation on methods and models, have a look at [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
+
 ## Train
-🚧 **Work in progress**  
-  
-In case you want to train your own model, have a look at [`sbb_pixelwise_segmentation`](https://github.com/qurator-spk/sbb_pixelwise_segmentation). 
+In case you want to train your own model with Eynollah, have a look at [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md).
 
 ## Usage
 The command-line interface can be called like this:
@@ -83,11 +83,9 @@ If no option is set, the tool performs layout detection of main regions (backgro
 The best output quality is produced when RGB images are used as input rather than greyscale or binarized images.
 
 #### Use as OCR-D processor
-🚧 **Work in progress** 
+Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) processor that is described in [`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json). 
 
-Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) processor. 
-
-In this case, the source image file group with (preferably) RGB images should be used as input like this:
+The source image file group with (preferably) RGB images should be used as input for Eynollah like this:
 
 ```
 ocrd-eynollah-segment -I OCR-D-IMG -O SEG-LINE -P models
@@ -99,10 +97,7 @@ Any image referenced by `@imageFilename` in PAGE-XML is passed on directly to Ey
 ocrd-eynollah-segment -I OCR-D-IMG-BIN -O SEG-LINE -P models
 ```
     
-uses the original (RGB) image despite any binarization that may have occured in previous OCR-D processing steps
-
-#### Additional documentation
-Please check the [wiki](https://github.com/qurator-spk/eynollah/wiki).
+uses the original (RGB) image despite any binarization that may have occured in previous OCR-D processing steps.
 
 ## How to cite
 If you find this tool useful in your work, please consider citing our paper:
