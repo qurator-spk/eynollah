@@ -16,7 +16,9 @@ Two Arabic/Persian terms form the name of the model suite: عين الله, whic
 "eynollah"; it translates into English as "God's Eye" -- it sees (nearly) everything on the document image. 
 
 See the flowchart below for the different stages and how they interact:
+
 ![](https://user-images.githubusercontent.com/952378/100619946-1936f680-331e-11eb-9297-6e8b4cab3c16.png)
+
 
 ## Models
 
