@@ -52,7 +52,8 @@ class SbbBinarizeProcessor(Processor):
         Set up the model prior to processing.
         """
         LOG = getLogger('processor.SbbBinarize.__init__')
-        if not 'model' in self.parameter:
+        assert isinstance(self.parameter, dict)
+        if 'model' not in self.parameter:
             raise ValueError("'model' parameter is required")
         # resolve relative path via environment variable
         model_path = Path(self.parameter['model'])
