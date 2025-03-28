@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from shapely import geometry
 import cv2
+import imutils
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 import time
