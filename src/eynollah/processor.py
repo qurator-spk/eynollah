@@ -31,12 +31,12 @@ class EynollahProcessor(Processor):
             feature_filter='cropped,deskewed,binarized')
         eynollah = Eynollah(
             self.resolve_resource(self.parameter['models']),
-            self.logger,
+            logger=self.logger,
             allow_enhancement=self.parameter['allow_enhancement'],
             curved_line=self.parameter['curved_line'],
-            light_version=self.parameter['light_mode'],
             right2left=self.parameter['right_to_left'],
             ignore_page_extraction=self.parameter['ignore_page_extraction'],
+            light_version=self.parameter['light_version'],
             textline_light=self.parameter['textline_light'],
             full_layout=self.parameter['full_layout'],
             allow_scaling=self.parameter['allow_scaling'],

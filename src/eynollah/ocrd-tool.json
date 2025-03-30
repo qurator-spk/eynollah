@@ -30,11 +30,21 @@
           "default": true,
           "description": "Try to detect all element subtypes, including drop-caps and headings"
         },
-        "tables": {
+         "light_version": {
           "type": "boolean",
-          "default": false,
-          "description": "Try to detect table regions"
+          "default": true,
+          "description": "Try to detect all element subtypes in light version (faster+simpler method for main region detection and deskewing)"
         },
+         "textline_light": {
+          "type": "boolean",
+          "default": true,
+          "description": "Light version need textline light"
+        },
+	"tables": {
+	  "type": "boolean",
+	  "default": false,
+	  "description": "Try to detect table regions"
+	},
         "curved_line": {
           "type": "boolean",
           "default": false,
@@ -54,11 +64,6 @@
           "type": "boolean",
           "default": false,
           "description": "if this parameter set to true, this tool would check that input image need resizing and enhancement or not."
-        },
-        "light_mode": {
-          "type": "boolean",
-          "default": false,
-          "description": "lighter and faster but simpler method for main region detection and deskewing"
         },
         "textline_light": {
           "type": "boolean",
