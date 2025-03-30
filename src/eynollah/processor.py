@@ -9,11 +9,16 @@ class EynollahProcessor(Processor):
     # already employs GPU (without singleton process atm)
     max_workers = 1
 
+    @property
+    def executable(self):
+        return 'ocrd-eynollah-segment'
+
     def setup(self) -> None:
         # for caching models
         self.models = None
-        if self.parameter['textline_light'] and not self.parameter['light_mode']:
-            raise ValueError("Error: You set parameter 'textline_light' to enable light textline detection but parameter 'light_mode' is not enabled")
+        if self.parameter['textline_light'] and not self.parameter['light_version']:
+            raise ValueError("Error: You set parameter 'textline_light' to enable light textline detection, "
+                             "but parameter 'light_version' is not enabled")
 
     def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
         """
