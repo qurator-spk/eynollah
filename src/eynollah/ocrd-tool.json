@@ -1,6 +1,7 @@
 {
   "version": "0.3.1",
   "git_url": "https://github.com/qurator-spk/eynollah",
+  "dockerhub": "ocrd/eynollah",
   "tools": {
     "ocrd-eynollah-segment": {
       "executable": "ocrd-eynollah-segment",
