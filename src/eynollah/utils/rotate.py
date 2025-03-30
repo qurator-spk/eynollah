@@ -40,7 +40,7 @@ def rotate_image(img_patch, slope):
     (h, w) = img_patch.shape[:2]
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, slope, 1.0)
-    return cv2.warpAffine(img_patch, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    return cv2.warpAffine(img_patch, M, (w, h) )
 
 def rotate_image_different( img, slope):
     # img = cv2.imread('images/input.jpg')

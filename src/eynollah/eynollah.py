@@ -4030,7 +4030,7 @@ class Eynollah:
                 all_found_textline_polygons[j][ij][:,0,0] = con_scaled[:,0, 0]
         return all_found_textline_polygons
     
-    def filter_contours_inside_a_bigger_one(self,contours, image, marginal_cnts=None, type_contour="textregion"):
+    def filter_contours_inside_a_bigger_one(self,contours, contours_d_ordered, image, marginal_cnts=None, type_contour="textregion"):
         if type_contour=="textregion":
             areas = [cv2.contourArea(contours[j]) for j in range(len(contours))]
             area_tot = image.shape[0]*image.shape[1]
@@ -4067,8 +4067,10 @@ class Eynollah:
                 indexes_to_be_removed = np.sort(indexes_to_be_removed)[::-1]
                 for ind in indexes_to_be_removed:
                     contours.pop(ind)
+                    if len(contours_d_ordered)>0:
+                        contours_d_ordered.pop(ind)
 
-            return contours
+            return contours, contours_d_ordered
 
         else:
             contours_txtline_of_all_textregions = []
@@ -4375,7 +4377,7 @@ class Eynollah:
                 all_found_textline_polygons = self.dilate_textregions_contours_textline_version(
                     all_found_textline_polygons)
                 all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(
-                    all_found_textline_polygons, textline_mask_tot_ea, type_contour="textline")
+                    all_found_textline_polygons, None, textline_mask_tot_ea, type_contour="textline")
 
 
                 order_text_new = [0]
@@ -4417,9 +4419,9 @@ class Eynollah:
 
                     textline_mask_tot_ea_deskew = resize_image(textline_mask_tot_ea,img_h_new, img_w_new )
 
-                    slope_deskew, slope_first = 0, 0 #self.run_deskew(textline_mask_tot_ea_deskew)
+                    slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea_deskew)
                 else:
-                    slope_deskew, slope_first = 0, 0 #self.run_deskew(textline_mask_tot_ea)
+                    slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
                 #print("text region early -2,5 in %.1fs", time.time() - t0)
                 #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
                 num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, \
@@ -4550,7 +4552,8 @@ class Eynollah:
 
                 cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
                 cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
-
+                
+                
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                     contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
                     contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
@@ -4647,13 +4650,19 @@ class Eynollah:
                     continue
                 else:
                     return pcgts
+                
+                
+            ## check the ro order 
+            
+
+                
 
             #print("text region early 3 in %.1fs", time.time() - t0)
             if self.light_version:
                 contours_only_text_parent = self.dilate_textregions_contours(
                     contours_only_text_parent)
-                contours_only_text_parent = self.filter_contours_inside_a_bigger_one(
-                    contours_only_text_parent, text_only, marginal_cnts=polygons_of_marginals)
+                contours_only_text_parent , contours_only_text_parent_d_ordered = self.filter_contours_inside_a_bigger_one(
+                    contours_only_text_parent, contours_only_text_parent_d_ordered, text_only, marginal_cnts=polygons_of_marginals)
                 #print("text region early 3.5 in %.1fs", time.time() - t0)
                 txt_con_org = get_textregion_contours_in_org_image_light(
                     contours_only_text_parent, self.image, slope_first, map=self.executor.map)
@@ -4690,7 +4699,7 @@ class Eynollah:
                         all_found_textline_polygons = self.dilate_textregions_contours_textline_version(
                             all_found_textline_polygons)
                         all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(
-                            all_found_textline_polygons, textline_mask_tot_ea_org, type_contour="textline")
+                            all_found_textline_polygons, None, textline_mask_tot_ea_org, type_contour="textline")
                         all_found_textline_polygons_marginals = self.dilate_textregions_contours_textline_version(
                             all_found_textline_polygons_marginals)
                         contours_only_text_parent, txt_con_org, all_found_textline_polygons, contours_only_text_parent_d_ordered, \
