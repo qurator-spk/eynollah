@@ -16,6 +16,27 @@ class EynollahProcessor(Processor):
             raise ValueError("Error: You set parameter 'textline_light' to enable light textline detection but parameter 'light_mode' is not enabled")
 
     def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
+        """
+        Performs cropping, region and line segmentation with Eynollah.
+
+        For each page, open and deserialize PAGE input file (from existing
+        PAGE file in the input fileGrp, or generated from image file).
+        Retrieve its respective page-level image (ignoring annotation that
+        already added `binarized`, `cropped` or `deskewed` features).
+
+        Set up Eynollah to detect regions and lines, and add each one to the
+        page, respectively.
+
+        \b
+        - If ``tables``, try to detect table blocks and add them as TableRegion.
+        - If ``full_layout``, then in addition to paragraphs and marginals, also
+          try to detect drop capitals and headings.
+        - If ``ignore_page_extraction``, then attempt no cropping of the page.
+        - If ``curved_line``, then compute contour polygons for text lines
+          instead of simple bounding boxes.
+
+        Produce a new output file by serialising the resulting hierarchy.
+        """
         assert input_pcgts
         assert input_pcgts[0]
         assert self.parameter
