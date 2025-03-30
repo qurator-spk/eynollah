@@ -24,11 +24,12 @@ from ocrd import OcrdPage
 from ocrd_utils import getLogger
 import cv2
 import numpy as np
-from transformers import TrOCRProcessor
-from PIL import Image
 import torch
 from difflib import SequenceMatcher as sq
-from transformers import VisionEncoderDecoderModel
+try:
+    from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+except ImportError:
+    TrOCRProcessor = VisionEncoderDecoderModel = None
 from numba import cuda
 import copy
 from scipy.signal import find_peaks
