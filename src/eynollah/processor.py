@@ -5,6 +5,9 @@ from ocrd import Processor, OcrdPageResult
 from .eynollah import Eynollah
 
 class EynollahProcessor(Processor):
+    # already employs background CPU multiprocessing per page
+    # already employs GPU (without singleton process atm)
+    max_workers = 1
 
     def setup(self) -> None:
         # for caching models
