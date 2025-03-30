@@ -28,7 +28,7 @@ class EynollahXmlWriter():
         self.counter = EynollahIdCounter()
         self.dir_out = dir_out
         self.image_filename = image_filename
-        self.output_filename = os.path.join(self.dir_out, self.image_filename_stem) + ".xml"
+        self.output_filename = os.path.join(self.dir_out or "", self.image_filename_stem) + ".xml"
         self.curved_line = curved_line
         self.textline_light = textline_light
         self.pcgts = pcgts
