@@ -4331,14 +4331,13 @@ class Eynollah:
             if self.dir_in:
                 self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
                 #print("text region early -11 in %.1fs", time.time() - t0)
+                if os.path.exists(self.writer.output_filename):
+                    if self.overwrite:
+                        self.logger.warning("will overwrite existing output file '%s'", self.writer.output_filename)
+                    else:
+                        self.logger.warning("will skip input for existing output file '%s'", self.writer.output_filename)
+                        continue
 
-            if os.path.exists(self.writer.output_filename):
-                if self.overwrite:
-                    self.logger.warning("will overwrite existing output file '%s'", self.writer.output_filename)
-                else:
-                    self.logger.warning("will skip input for existing output file '%s'", self.writer.output_filename)
-                    continue
-                
             img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
             self.logger.info("Enhancing took %.1fs ", time.time() - t0)
             if self.extract_only_images:
