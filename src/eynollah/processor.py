@@ -41,18 +41,20 @@ class EynollahProcessor(Processor):
         assert input_pcgts[0]
         assert self.parameter
         pcgts = input_pcgts[0]
+        result = OcrdPageResult(pcgts)
         page = pcgts.get_Page()
-        # if not('://' in page.imageFilename):
-        #     image_filename = next(self.workspace.mets.find_files(local_filename=page.imageFilename)).local_filename
-        # else:
-        #     # could be a URL with file:// or truly remote
-        #     image_filename = self.workspace.download_file(next(self.workspace.mets.find_files(url=page.imageFilename))).local_filename
         page_image, _, _ = self.workspace.image_from_page(
             page, page_id,
             # avoid any features that would change the coordinate system: cropped,deskewed
             # (the PAGE builder merely adds regions, so afterwards we would not know which to transform)
             # also avoid binarization as models usually fare better on grayscale/RGB
             feature_filter='cropped,deskewed,binarized')
+        if hasattr(page_image, 'filename'):
+            image_filename = page_image.filename
+        else:
+            image_filename = "dummy" # will be replaced by ocrd.Processor.process_page_file
+            result.images.append(OcrdPageResultImage(page_image, '.IMG', page)) # mark as new original
+        # FIXME: mask out already existing regions (incremental segmentation)
         eynollah = Eynollah(
             self.resolve_resource(self.parameter['models']),
             logger=self.logger,
@@ -68,7 +70,7 @@ class EynollahProcessor(Processor):
             tables=self.parameter['tables'],
             override_dpi=self.parameter['dpi'],
             pcgts=pcgts,
-            image_filename=page.imageFilename,
+            image_filename=image_filename,
             image_pil=page_image
         )
         if self.models is not None:
@@ -76,4 +78,4 @@ class EynollahProcessor(Processor):
             eynollah.models = self.models
         eynollah.run()
         self.models = eynollah.models
-        return OcrdPageResult(pcgts)
+        return result
