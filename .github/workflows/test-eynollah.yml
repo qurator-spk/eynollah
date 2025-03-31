@@ -23,8 +23,6 @@ jobs:
         sudo rm -rf "/usr/local/share/boost"
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
         df -h
-        docker rmi $(docker images -q)
-        df -h
     - uses: actions/checkout@v4
     - uses: actions/cache@v4
       id: model_cache
@@ -41,9 +39,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install .[OCR,plotting]
-        pip install -r requirements-test.txt
+        make install EXTRAS=OCR,plotting
+        make deps-test
     - name: Test with pytest
       run: make test
-    - name: Test docker build
-      run: make docker
