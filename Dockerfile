@@ -38,6 +38,8 @@ COPY ocrd-tool.json .
 RUN ocrd ocrd-tool ocrd-tool.json dump-tools > $(dirname $(ocrd bashlib filename))/ocrd-all-tool.json
 # install everything and reduce image size
 RUN make install EXTRAS=OCR && rm -rf /build/eynollah
+# smoke test
+RUN eynollah --help
 
 WORKDIR /data
 VOLUME /data
