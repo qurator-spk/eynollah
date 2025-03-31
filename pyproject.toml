@@ -40,6 +40,7 @@ Repository = "https://github.com/qurator-spk/eynollah.git"
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+optional-dependencies.test = {file = ["requirements-test.txt"]}
 
 [tool.setuptools.packages.find]
 where = ["src"]
