@@ -271,7 +271,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
         sys.exit(1)
     eynollah = Eynollah(
         model,
-        getLogger('Eynollah'),
+        logger=getLogger('Eynollah'),
         image_filename=image,
         overwrite=overwrite,
         dir_out=out,
