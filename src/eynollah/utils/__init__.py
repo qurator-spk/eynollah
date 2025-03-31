@@ -237,10 +237,8 @@ def return_x_start_end_mothers_childs_and_type_of_reading_order(
     if len(remained_sep_indexes)>1:
         #print(np.array(remained_sep_indexes),'np.array(remained_sep_indexes)')
         #print(np.array(mother),'mother')
-        ##remained_sep_indexes_without_mother = remained_sep_indexes[mother==0]
-        ##remained_sep_indexes_with_child_without_mother = remained_sep_indexes[mother==0 & child==1]
-        remained_sep_indexes_without_mother=np.array(list(remained_sep_indexes))[np.array(mother)==0]
-        remained_sep_indexes_with_child_without_mother=np.array(list(remained_sep_indexes))[(np.array(mother)==0) & (np.array(child)==1)]
+        remained_sep_indexes_without_mother = remained_sep_indexes[mother==0]
+        remained_sep_indexes_with_child_without_mother = remained_sep_indexes[(mother==0) & (child==1)]
         #print(remained_sep_indexes_without_mother,'remained_sep_indexes_without_mother')
         #print(remained_sep_indexes_without_mother,'remained_sep_indexes_without_mother')
         
