@@ -27,6 +27,7 @@ help:
 	@echo "    deps-test    Install test dependencies with pip"
 	@echo "    models       Download and extract models to $(CURDIR)/models_eynollah"
 	@echo "    smoke-test   Run simple CLI check"
+	@echo "    ocrd-test    Run OCR-D CLI check"
 	@echo "    test         Run unit tests"
 	@echo ""
 	@echo "  Variables"
@@ -60,11 +61,26 @@ install:
 install-dev:
 	$(PIP) install -e .$(and $(EXTRAS),[$(EXTRAS)])
 
-deps-test:
+deps-test: models_eynollah
 	$(PIP) install -r requirements-test.txt
 
-smoke-test: deps-test
-	eynollah layout -i tests/resources/kant_aufklaerung_1784_0020.tif -o . -m $(CURDIR)/models_eynollah
+smoke-test: TMPDIR != mktemp -d
+smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif deps-test
+	eynollah layout -i $< -o $(TMPDIR) -m $(CURDIR)/models_eynollah
+	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$(basename $(<F)).xml
+	fgrep -c -e TextRegion -e ImageRegion -e SeparatorRegion $(TMPDIR)/$(basename $(<F)).xml
+	$(RM) -r $(TMPDIR)
+
+ocrd-test: TMPDIR != mktemp -d
+ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif deps-test
+	cp $< $(TMPDIR)
+	ocrd workspace -d $(TMPDIR) init
+	ocrd workspace -d $(TMPDIR) add -G OCR-D-IMG -g PHYS_0020 -i OCR-D-IMG_0020 $(<F)
+	ocrd-eynollah-segment -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-SEG -P models $(CURDIR)/models_eynollah
+	result=$$(ocrd workspace -d $(TMPDIR) find -G OCR-D-SEG); \
+	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$$result && \
+	fgrep -c -e TextRegion -e ImageRegion -e SeparatorRegion $(TMPDIR)/$$result
+	$(RM) -r $(TMPDIR)
 
 # Run unit tests
 test: deps-test
@@ -78,4 +94,4 @@ docker:
 	--build-arg BUILD_DATE=$$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
 	-t $(DOCKER_TAG) .
 
-.PHONY: models build install install-dev test smoke-test docker help
+.PHONY: models build install install-dev test smoke-test ocrd-test docker help
