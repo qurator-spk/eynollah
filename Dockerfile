@@ -37,7 +37,7 @@ COPY ocrd-tool.json .
 # prepackage ocrd-tool.json as ocrd-all-tool.json
 RUN ocrd ocrd-tool ocrd-tool.json dump-tools > $(dirname $(ocrd bashlib filename))/ocrd-all-tool.json
 # install everything and reduce image size
-RUN apt-get install -y --no-install-recommends g++ && make install && rm -rf /build/eynollah && apt-get remove -y --auto-remove g++
+RUN make install EXTRAS=OCR && rm -rf /build/eynollah
 
 WORKDIR /data
 VOLUME /data
