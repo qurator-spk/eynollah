@@ -7,6 +7,7 @@ document layout analysis (segmentation) with output in PAGE-XML
 """
 
 from logging import Logger
+from difflib import SequenceMatcher as sq
 import math
 import os
 import sys
@@ -17,23 +18,34 @@ import warnings
 from functools import partial
 from pathlib import Path
 from multiprocessing import cpu_count
-from loky import ProcessPoolExecutor
 import gc
+import copy
+import json
+
+from loky import ProcessPoolExecutor
 from PIL.Image import Image
-from ocrd import OcrdPage
-from ocrd_utils import getLogger
+import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
-import torch
-from difflib import SequenceMatcher as sq
+from scipy.signal import find_peaks
+from scipy.ndimage import gaussian_filter1d
+from numba import cuda
+
+from ocrd import OcrdPage
+from ocrd_utils import getLogger
+
+try:
+    import torch
+except ImportError:
+    torch = None
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
 try:
     from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 except ImportError:
     TrOCRProcessor = VisionEncoderDecoderModel = None
-from numba import cuda
-import copy
-from scipy.signal import find_peaks
-from scipy.ndimage import gaussian_filter1d
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 #os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -45,12 +57,9 @@ from tensorflow.keras.models import load_model
 sys.stderr = stderr
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
-import matplotlib.pyplot as plt
 # use tf1 compatibility for keras backend
 from tensorflow.compat.v1.keras.backend import set_session
 from tensorflow.keras import layers
-import json
-import xml.etree.ElementTree as ET
 from tensorflow.keras.layers import StringLookup
 
 from .utils.contour import (
