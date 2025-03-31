@@ -4952,15 +4952,18 @@ class Eynollah_ocr:
         dir_models,
         dir_xmls=None,
         dir_in=None,
+        dir_in_bin=None,
         dir_out=None,
         dir_out_image_text=None,
         tr_ocr=False,
         export_textline_images_and_text=False,
         do_not_mask_with_textline_contour=False,
         draw_texts_on_image=False,
+        prediction_with_both_of_rgb_and_bin=False,
         logger=None,
     ):
         self.dir_in = dir_in
+        self.dir_in_bin = dir_in_bin
         self.dir_out = dir_out
         self.dir_xmls = dir_xmls
         self.dir_models = dir_models
@@ -4969,6 +4972,7 @@ class Eynollah_ocr:
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
         self.draw_texts_on_image = draw_texts_on_image
         self.dir_out_image_text = dir_out_image_text
+        self.prediction_with_both_of_rgb_and_bin = prediction_with_both_of_rgb_and_bin
         if tr_ocr:
             self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -4977,7 +4981,7 @@ class Eynollah_ocr:
             self.model_ocr.to(self.device)
 
         else:
-            self.model_ocr_dir = dir_models + "/model_step_150000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+            self.model_ocr_dir = dir_models + "/model_step_50000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
             model_ocr = load_model(self.model_ocr_dir , compile=False)
             
             self.prediction_model = tf.keras.models.Model(
@@ -5104,15 +5108,20 @@ class Eynollah_ocr:
 
         return ImageFont.truetype(font_path, 10)  # Smallest font fallback
     
-    def return_textlines_split_if_needed(self, textline_image):
+    def return_textlines_split_if_needed(self, textline_image, textline_image_bin):
 
         split_point = self.return_start_and_end_of_common_text_of_textline_ocr_without_common_section(textline_image)
         if split_point:
             image1 = textline_image[:, :split_point,:]# image.crop((0, 0, width2, height))
             image2 = textline_image[:, split_point:,:]#image.crop((width1, 0, width, height))
-            return [image1, image2]
+            if self.prediction_with_both_of_rgb_and_bin:
+                image1_bin = textline_image_bin[:, :split_point,:]# image.crop((0, 0, width2, height))
+                image2_bin = textline_image_bin[:, split_point:,:]#image.crop((width1, 0, width, height))
+                return [image1, image2], [image1_bin, image2_bin]
+            else:
+                return [image1, image2], None
         else:
-            return None
+            return None, None
     def preprocess_and_resize_image_for_ocrcnn_model(self, img, image_height, image_width):
         ratio = image_height /float(img.shape[0])
         w_ratio = int(ratio * img.shape[1])
@@ -5123,7 +5132,7 @@ class Eynollah_ocr:
         
         img = resize_image(img, image_height, width_new)
         img_fin = np.ones((image_height, image_width, 3))*255
-        img_fin[:,:width_new,:] = img[:,:,:]
+        img_fin[:,:+width_new,:] = img[:,:,:]
         img_fin = img_fin / 255.
         return img_fin
     
@@ -5183,7 +5192,7 @@ class Eynollah_ocr:
                                         cropped_lines.append(img_crop)
                                         cropped_lines_meging_indexing.append(0)
                                     else:
-                                        splited_images = self.return_textlines_split_if_needed(img_crop)
+                                        splited_images, _ = self.return_textlines_split_if_needed(img_crop, None)
                                         #print(splited_images)
                                         if splited_images:
                                             cropped_lines.append(splited_images[0])
@@ -5274,6 +5283,10 @@ class Eynollah_ocr:
                 dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
                 out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
                 img = cv2.imread(dir_img)
+                if self.prediction_with_both_of_rgb_and_bin:
+                    cropped_lines_bin = []
+                    dir_img_bin = os.path.join(self.dir_in_bin, file_name+'.png')
+                    img_bin = cv2.imread(dir_img_bin)
                 
                 if self.draw_texts_on_image:
                     out_image_with_text = os.path.join(self.dir_out_image_text, file_name+'.png')
@@ -5315,6 +5328,10 @@ class Eynollah_ocr:
                                     h2w_ratio = h/float(w)
                                     
                                     img_poly_on_img = np.copy(img)
+                                    if self.prediction_with_both_of_rgb_and_bin:
+                                        img_poly_on_img_bin = np.copy(img_bin)
+                                        img_crop_bin = img_poly_on_img_bin[y:y+h, x:x+w, :]
+                                    
                                     mask_poly = np.zeros(img.shape)
                                     mask_poly = cv2.fillPoly(mask_poly, pts=[textline_coords], color=(1, 1, 1))
                                     
@@ -5322,14 +5339,22 @@ class Eynollah_ocr:
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
                                     if not self.do_not_mask_with_textline_contour:
                                         img_crop[mask_poly==0] = 255
+                                        if self.prediction_with_both_of_rgb_and_bin:
+                                            img_crop_bin[mask_poly==0] = 255
                                     
                                     if not self.export_textline_images_and_text:
                                         if h2w_ratio > 0.1:
                                             img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
                                             cropped_lines_meging_indexing.append(0)
+                                            if self.prediction_with_both_of_rgb_and_bin:
+                                                img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
+                                                cropped_lines_bin.append(img_fin)
                                         else:
-                                            splited_images = self.return_textlines_split_if_needed(img_crop)
+                                            if self.prediction_with_both_of_rgb_and_bin:
+                                                splited_images, splited_images_bin = self.return_textlines_split_if_needed(img_crop, img_crop_bin)
+                                            else:
+                                                splited_images, splited_images_bin = self.return_textlines_split_if_needed(img_crop, None)
                                             if splited_images:
                                                 img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
                                                 cropped_lines.append(img_fin)
@@ -5338,10 +5363,21 @@ class Eynollah_ocr:
                                                 
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(-1)
+                                                
+                                                if self.prediction_with_both_of_rgb_and_bin:
+                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[0], image_height, image_width)
+                                                    cropped_lines_bin.append(img_fin)
+                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[1], image_height, image_width)
+                                                    cropped_lines_bin.append(img_fin)
+                                                    
                                             else:
                                                 img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(0)
+                                                
+                                                if self.prediction_with_both_of_rgb_and_bin:
+                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
+                                                    cropped_lines_bin.append(img_fin)
                                         
                                 if self.export_textline_images_and_text:
                                     if child_textlines.tag.endswith("TextEquiv"):
@@ -5370,14 +5406,26 @@ class Eynollah_ocr:
                             imgs = cropped_lines[n_start:]
                             imgs = np.array(imgs)
                             imgs = imgs.reshape(imgs.shape[0], image_height, image_width, 3)
+                            if self.prediction_with_both_of_rgb_and_bin:
+                                imgs_bin = cropped_lines_bin[n_start:]
+                                imgs_bin = np.array(imgs_bin)
+                                imgs_bin = imgs_bin.reshape(imgs_bin.shape[0], image_height, image_width, 3)
                         else:
                             n_start = i*b_s
                             n_end = (i+1)*b_s
                             imgs = cropped_lines[n_start:n_end]
                             imgs = np.array(imgs).reshape(b_s, image_height, image_width, 3)
                             
+                            if self.prediction_with_both_of_rgb_and_bin:
+                                imgs_bin = cropped_lines_bin[n_start:n_end]
+                                imgs_bin = np.array(imgs_bin).reshape(b_s, image_height, image_width, 3)
+                            
 
                         preds = self.prediction_model.predict(imgs, verbose=0)
+                        if self.prediction_with_both_of_rgb_and_bin:
+                            preds_bin = self.prediction_model.predict(imgs_bin, verbose=0)
+                            preds = (preds + preds_bin) / 2.
+                            
                         pred_texts = self.decode_batch_predictions(preds)
 
                         for ib in range(imgs.shape[0]):

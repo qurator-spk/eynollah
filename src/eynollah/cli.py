@@ -322,6 +322,12 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
+    "--dir_in_bin",
+    "-dib",
+    help="directory of binarized images. This should be given if you want to do prediction based on both rgb and bin images. And all bin images are png files",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
     "--out",
     "-o",
     help="directory to write output xml data",
@@ -372,13 +378,19 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     help="if this parameter set to true, the predicted texts will be displayed on an image.",
 )
 @click.option(
+    "--prediction_with_both_of_rgb_and_bin",
+    "-brb/-nbrb",
+    is_flag=True,
+    help="If this parameter is set to True, the prediction will be performed using both RGB and binary images. However, this does not necessarily improve results; it may be beneficial for certain document images.",
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
 
-def ocr(dir_in, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, log_level):
+def ocr(dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, log_level):
     if log_level:
         setOverrideLogLevel(log_level)
     initLogging()
@@ -386,12 +398,14 @@ def ocr(dir_in, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textlin
         dir_xmls=dir_xmls,
         dir_out_image_text=dir_out_image_text,
         dir_in=dir_in,
+        dir_in_bin=dir_in_bin,
         dir_out=out,
         dir_models=model,
         tr_ocr=tr_ocr,
         export_textline_images_and_text=export_textline_images_and_text,
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
         draw_texts_on_image=draw_texts_on_image,
+        prediction_with_both_of_rgb_and_bin=prediction_with_both_of_rgb_and_bin,
     )
     eynollah_ocr.run()
 
