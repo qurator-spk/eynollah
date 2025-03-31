@@ -1,5 +1,6 @@
 PYTHON ?= python3
 PIP ?= pip3
+EXTRAS ?=
 
 # DOCKER_BASE_IMAGE = artefakt.dev.sbb.berlin:5000/sbb/ocrd_core:v2.68.0
 DOCKER_BASE_IMAGE = docker.io/ocrd/core-cuda-tf2:v3.3.0
@@ -29,6 +30,7 @@ help:
 	@echo "    test         Run unit tests"
 	@echo ""
 	@echo "  Variables"
+	@echo "    EXTRAS       comma-separated list of features (like 'OCR,plotting') for 'install' [$(EXTRAS)]"
 	@echo "    DOCKER_TAG   Docker image tag for 'docker' [$(DOCKER_TAG)]"
 	@echo "    PYTEST_ARGS  pytest args for 'test' (Set to '-s' to see log output during test execution, '-vv' to see individual tests. [$(PYTEST_ARGS)]"
 	@echo "    MODEL        URL of 'models' archive to download for 'test' [$(MODEL)]"
@@ -52,11 +54,11 @@ build:
 
 # Install with pip
 install:
-	$(PIP) install .
+	$(PIP) install .$(and $(EXTRAS),[$(EXTRAS)])
 
 # Install editable with pip
 install-dev:
-	$(PIP) install -e .
+	$(PIP) install -e .$(and $(EXTRAS),[$(EXTRAS)])
 
 deps-test:
 	$(PIP) install -r requirements-test.txt
