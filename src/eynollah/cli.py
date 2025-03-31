@@ -335,6 +335,12 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
+    "--dir_out_image_text",
+    "-doit",
+    help="directory of images with predicted text",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
     "--model",
     "-m",
     help="directory of models",
@@ -360,24 +366,32 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     help="if this parameter set to true, cropped textline images will not be masked with textline contour.",
 )
 @click.option(
+    "--draw_texts_on_image",
+    "-dtoi/-ndtoi",
+    is_flag=True,
+    help="if this parameter set to true, the predicted texts will be displayed on an image.",
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
 
-def ocr(dir_in, out, dir_xmls, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, log_level):
+def ocr(dir_in, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, log_level):
     if log_level:
         setOverrideLogLevel(log_level)
     initLogging()
     eynollah_ocr = Eynollah_ocr(
         dir_xmls=dir_xmls,
+        dir_out_image_text=dir_out_image_text,
         dir_in=dir_in,
         dir_out=out,
         dir_models=model,
         tr_ocr=tr_ocr,
         export_textline_images_and_text=export_textline_images_and_text,
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
+        draw_texts_on_image=draw_texts_on_image,
     )
     eynollah_ocr.run()
 

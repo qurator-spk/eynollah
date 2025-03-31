@@ -22,7 +22,7 @@ from ocrd_utils import getLogger
 import cv2
 import numpy as np
 from transformers import TrOCRProcessor
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import torch
 from difflib import SequenceMatcher as sq
 from transformers import VisionEncoderDecoderModel
@@ -4409,7 +4409,6 @@ class Eynollah:
                 text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin_light = \
                     self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
                 #print("text region early -2 in %.1fs", time.time() - t0)
-
                 if num_col_classifier == 1 or num_col_classifier ==2:
                     if num_col_classifier == 1:
                         img_w_new = 1000
@@ -4954,9 +4953,11 @@ class Eynollah_ocr:
         dir_xmls=None,
         dir_in=None,
         dir_out=None,
+        dir_out_image_text=None,
         tr_ocr=False,
         export_textline_images_and_text=False,
         do_not_mask_with_textline_contour=False,
+        draw_texts_on_image=False,
         logger=None,
     ):
         self.dir_in = dir_in
@@ -4966,6 +4967,8 @@ class Eynollah_ocr:
         self.tr_ocr = tr_ocr
         self.export_textline_images_and_text = export_textline_images_and_text
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
+        self.draw_texts_on_image = draw_texts_on_image
+        self.dir_out_image_text = dir_out_image_text
         if tr_ocr:
             self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -5083,6 +5086,23 @@ class Eynollah_ocr:
             return peaks_final
         else:
             return None
+        
+    # Function to fit text inside the given area
+    def fit_text_single_line(self, draw, text, font_path, max_width, max_height):
+        initial_font_size = 50
+        font_size = initial_font_size
+        while font_size > 10:  # Minimum font size
+            font = ImageFont.truetype(font_path, font_size)
+            text_bbox = draw.textbbox((0, 0), text, font=font)  # Get text bounding box
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+
+            if text_width <= max_width and text_height <= max_height:
+                return font  # Return the best-fitting font
+
+            font_size -= 2  # Reduce font size and retry
+
+        return ImageFont.truetype(font_path, 10)  # Smallest font fallback
     
     def return_textlines_split_if_needed(self, textline_image):
 
@@ -5254,6 +5274,12 @@ class Eynollah_ocr:
                 dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
                 out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
                 img = cv2.imread(dir_img)
+                
+                if self.draw_texts_on_image:
+                    out_image_with_text = os.path.join(self.dir_out_image_text, file_name+'.png')
+                    image_text = Image.new("RGB", (img.shape[1], img.shape[0]), "white")
+                    draw = ImageDraw.Draw(image_text)
+                    total_bb_coordinates = []
 
                 tree1 = ET.parse(dir_xml, parser = ET.XMLParser(encoding="utf-8"))
                 root1=tree1.getroot()
@@ -5283,6 +5309,9 @@ class Eynollah_ocr:
                                     
                                     x,y,w,h = cv2.boundingRect(textline_coords)
                                     
+                                    if self.draw_texts_on_image:
+                                        total_bb_coordinates.append([x,y,w,h])
+                                        
                                     h2w_ratio = h/float(w)
                                     
                                     img_poly_on_img = np.copy(img)
@@ -5359,6 +5388,35 @@ class Eynollah_ocr:
 
                     extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
                     unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
+                    
+                    
+                    if self.draw_texts_on_image:
+                        
+                        font_path = "NotoSans-Regular.ttf"  # Make sure this file exists!
+                        font = ImageFont.truetype(font_path, 40)
+                        
+                        for indexer_text, bb_ind in enumerate(total_bb_coordinates):
+                            
+                            
+                            x_bb = bb_ind[0]
+                            y_bb = bb_ind[1]
+                            w_bb = bb_ind[2]
+                            h_bb = bb_ind[3]
+                            
+                            font = self.fit_text_single_line(draw, extracted_texts_merged[indexer_text], font_path, w_bb, int(h_bb*0.4) )
+                            
+                            ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
+                            
+                            text_bbox = draw.textbbox((0, 0), extracted_texts_merged[indexer_text], font=font)
+                            text_width = text_bbox[2] - text_bbox[0]
+                            text_height = text_bbox[3] - text_bbox[1]
+
+                            text_x = x_bb + (w_bb - text_width) // 2  # Center horizontally
+                            text_y = y_bb + (h_bb - text_height) // 2  # Center vertically
+
+                            # Draw the text
+                            draw.text((text_x, text_y), extracted_texts_merged[indexer_text], fill="black", font=font)
+                        image_text.save(out_image_with_text)
 
                     text_by_textregion = []
                     for ind in unique_cropped_lines_region_indexer:
