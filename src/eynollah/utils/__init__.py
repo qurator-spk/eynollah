@@ -1,13 +1,17 @@
+import time
 import math
 
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
 import numpy as np
 from shapely import geometry
 import cv2
 import imutils
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-import time
+
 from .is_nan import isNaN
 from .contour import (contours_in_same_horizon,
                       find_new_features_of_contours,
