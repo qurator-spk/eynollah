@@ -4981,7 +4981,7 @@ class Eynollah_ocr:
             self.model_ocr.to(self.device)
 
         else:
-            self.model_ocr_dir = dir_models + "/model_step_50000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+            self.model_ocr_dir = dir_models + "/model_step_150000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
             model_ocr = load_model(self.model_ocr_dir , compile=False)
             
             self.prediction_model = tf.keras.models.Model(
@@ -5125,10 +5125,14 @@ class Eynollah_ocr:
     def preprocess_and_resize_image_for_ocrcnn_model(self, img, image_height, image_width):
         ratio = image_height /float(img.shape[0])
         w_ratio = int(ratio * img.shape[1])
+        
         if w_ratio <= image_width:
             width_new = w_ratio
         else:
             width_new = image_width
+            
+        if width_new == 0:
+            width_new = img.shape[1]
         
         img = resize_image(img, image_height, width_new)
         img_fin = np.ones((image_height, image_width, 3))*255
