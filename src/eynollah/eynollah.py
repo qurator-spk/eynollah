@@ -257,7 +257,6 @@ class Eynollah:
             self.num_col_lower = int(num_col_lower)
         else:
             self.num_col_lower = num_col_lower
-        self.pcgts = pcgts
         if not dir_in:
             self.plotter = None if not enable_plotting else EynollahPlotter(
                 dir_out=self.dir_out,
@@ -407,8 +406,7 @@ class Eynollah:
             dir_out=self.dir_out,
             image_filename=self.image_filename,
             curved_line=self.curved_line,
-            textline_light = self.textline_light,
-            pcgts=self.pcgts)
+            textline_light = self.textline_light)
 
     def imread(self, grayscale=False, uint8=True):
         key = 'img'
