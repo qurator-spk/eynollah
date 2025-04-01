@@ -32,7 +32,7 @@ from scipy.ndimage import gaussian_filter1d
 from numba import cuda
 
 from ocrd import OcrdPage
-from ocrd_utils import getLogger
+from ocrd_utils import getLogger, tf_disable_interactive_logs
 
 try:
     import torch
@@ -47,14 +47,11 @@ try:
 except ImportError:
     TrOCRProcessor = VisionEncoderDecoderModel = None
 
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 #os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-stderr = sys.stderr
-sys.stderr = open(os.devnull, "w")
+tf_disable_interactive_logs()
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
 from tensorflow.keras.models import load_model
-sys.stderr = stderr
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
 # use tf1 compatibility for keras backend
@@ -3614,7 +3611,7 @@ class Eynollah:
             for ij in range(len(all_found_textline_polygons[j])):
                 con_ind = all_found_textline_polygons[j][ij]
                 area = cv2.contourArea(con_ind)
-                con_ind = con_ind.astype(np.float)
+                con_ind = con_ind.astype(float)
                 
                 x_differential = np.diff( con_ind[:,0,0])
                 y_differential = np.diff( con_ind[:,0,1])
@@ -3718,7 +3715,7 @@ class Eynollah:
             con_ind = all_found_textline_polygons[j]
             #print(len(con_ind[:,0,0]),'con_ind[:,0,0]')
             area = cv2.contourArea(con_ind)
-            con_ind = con_ind.astype(np.float)
+            con_ind = con_ind.astype(float)
             
             x_differential = np.diff( con_ind[:,0,0])
             y_differential = np.diff( con_ind[:,0,1])
@@ -3821,7 +3818,7 @@ class Eynollah:
                 con_ind = all_found_textline_polygons[j][ij]
                 area = cv2.contourArea(con_ind)
                 
-                con_ind = con_ind.astype(np.float)
+                con_ind = con_ind.astype(float)
                 
                 x_differential = np.diff( con_ind[:,0,0])
                 y_differential = np.diff( con_ind[:,0,1])
@@ -4053,7 +4050,7 @@ class Eynollah:
         for j in range(len(all_found_textline_polygons)):
             for i in range(len(all_found_textline_polygons[j])):
                 con_ind = all_found_textline_polygons[j][i]
-                con_ind = con_ind.astype(np.float)
+                con_ind = con_ind.astype(float)
                 
                 x_differential = np.diff( con_ind[:,0,0])
                 y_differential = np.diff( con_ind[:,0,1])
