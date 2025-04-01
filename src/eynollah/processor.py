@@ -2,7 +2,7 @@ from typing import Optional
 from ocrd_models import OcrdPage
 from ocrd import Processor, OcrdPageResult
 
-from .eynollah import Eynollah
+from .eynollah import Eynollah, EynollahXmlWriter
 
 class EynollahProcessor(Processor):
     # already employs background CPU multiprocessing per page
@@ -14,11 +14,32 @@ class EynollahProcessor(Processor):
         return 'ocrd-eynollah-segment'
 
     def setup(self) -> None:
-        # for caching models
-        self.models = None
         if self.parameter['textline_light'] and not self.parameter['light_version']:
             raise ValueError("Error: You set parameter 'textline_light' to enable light textline detection, "
                              "but parameter 'light_version' is not enabled")
+        self.eynollah = Eynollah(
+            self.resolve_resource(self.parameter['models']),
+            logger=self.logger,
+            allow_enhancement=self.parameter['allow_enhancement'],
+            curved_line=self.parameter['curved_line'],
+            right2left=self.parameter['right_to_left'],
+            ignore_page_extraction=self.parameter['ignore_page_extraction'],
+            light_version=self.parameter['light_version'],
+            textline_light=self.parameter['textline_light'],
+            full_layout=self.parameter['full_layout'],
+            allow_scaling=self.parameter['allow_scaling'],
+            headers_off=self.parameter['headers_off'],
+            tables=self.parameter['tables'],
+            override_dpi=self.parameter['dpi'],
+            # trick Eynollah to do init independent of an image
+            dir_in="."
+        )
+        self.eynollah.dir_in = None
+        self.eynollah.plotter = None
+
+    def shutdown(self):
+        if hasattr(self, 'eynollah'):
+            del self.eynollah
 
     def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
         """
@@ -60,27 +81,15 @@ class EynollahProcessor(Processor):
             image_filename = "dummy" # will be replaced by ocrd.Processor.process_page_file
             result.images.append(OcrdPageResultImage(page_image, '.IMG', page)) # mark as new original
         # FIXME: mask out already existing regions (incremental segmentation)
-        eynollah = Eynollah(
-            self.resolve_resource(self.parameter['models']),
-            logger=self.logger,
-            allow_enhancement=self.parameter['allow_enhancement'],
-            curved_line=self.parameter['curved_line'],
-            right2left=self.parameter['right_to_left'],
-            ignore_page_extraction=self.parameter['ignore_page_extraction'],
-            light_version=self.parameter['light_version'],
-            textline_light=self.parameter['textline_light'],
-            full_layout=self.parameter['full_layout'],
-            allow_scaling=self.parameter['allow_scaling'],
-            headers_off=self.parameter['headers_off'],
-            tables=self.parameter['tables'],
-            override_dpi=self.parameter['dpi'],
-            pcgts=pcgts,
-            image_filename=image_filename,
+        self.eynollah.image_filename = image_filename
+        self.eynollah._imgs = self.eynollah._cache_images(
             image_pil=page_image
         )
-        if self.models is not None:
-            # reuse loaded models from previous page
-            eynollah.models = self.models
-        eynollah.run()
-        self.models = eynollah.models
+        self.eynollah.writer = EynollahXmlWriter(
+            dir_out=None,
+            image_filename=image_filename,
+            curved_line=self.eynollah.curved_line,
+            textline_light=self.eynollah.textline_light,
+            pcgts=pcgts)
+        self.eynollah.run()
         return result
