@@ -272,10 +272,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     eynollah = Eynollah(
         model,
         logger=getLogger('Eynollah'),
-        image_filename=image,
-        overwrite=overwrite,
         dir_out=out,
-        dir_in=dir_in,
         dir_of_cropped_images=save_images,
         extract_only_images=extract_only_images,
         dir_of_layout=save_layout,
@@ -301,9 +298,9 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
         skip_layout_and_reading_order=skip_layout_and_reading_order,
     )
     if dir_in:
-        eynollah.run()
+        eynollah.run(dir_in=dir_in, overwrite=overwrite)
     else:
-        pcgts = eynollah.run()
+        pcgts = eynollah.run(image_filename=image)
         eynollah.writer.write_pagexml(pcgts)
 
 

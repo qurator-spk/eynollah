@@ -180,12 +180,7 @@ class Eynollah:
     def __init__(
         self,
         dir_models : str,
-        image_filename : Optional[str] = None,
-        image_pil : Optional[Image] = None,
-        image_filename_stem : Optional[str] = None,
-        overwrite : bool = False,
         dir_out : Optional[str] = None,
-        dir_in : Optional[str] = None,
         dir_of_cropped_images : Optional[str] = None,
         extract_only_images : bool =False,
         dir_of_layout : Optional[str] = None,
@@ -209,24 +204,12 @@ class Eynollah:
         num_col_upper : Optional[int] = None,
         num_col_lower : Optional[int] = None,
         skip_layout_and_reading_order : bool = False,
-        override_dpi : Optional[int] = None,
         logger : Logger = None,
-        pcgts : Optional[OcrdPage] = None,
     ):
         if skip_layout_and_reading_order:
             textline_light = True
         self.light_version = light_version
-        if not dir_in:
-            if image_pil:
-                self._imgs = self._cache_images(image_pil=image_pil)
-            else:
-                self._imgs = self._cache_images(image_filename=image_filename)
-            if override_dpi:
-                self.dpi = override_dpi
-            self.image_filename = image_filename
-        self.overwrite = overwrite
         self.dir_out = dir_out
-        self.dir_in = dir_in
         self.dir_of_all = dir_of_all
         self.dir_save_page = dir_save_page
         self.reading_order_machine_based = reading_order_machine_based
@@ -257,21 +240,6 @@ class Eynollah:
             self.num_col_lower = int(num_col_lower)
         else:
             self.num_col_lower = num_col_lower
-        if not dir_in:
-            self.plotter = None if not enable_plotting else EynollahPlotter(
-                dir_out=self.dir_out,
-                dir_of_all=dir_of_all,
-                dir_save_page=dir_save_page,
-                dir_of_deskewed=dir_of_deskewed,
-                dir_of_cropped_images=dir_of_cropped_images,
-                dir_of_layout=dir_of_layout,
-                image_filename_stem=Path(Path(image_filename).name).stem)
-            self.writer = EynollahXmlWriter(
-                dir_out=self.dir_out,
-                image_filename=self.image_filename,
-                curved_line=self.curved_line,
-                textline_light = self.textline_light,
-                pcgts=pcgts)
         self.logger = logger if logger else getLogger('eynollah')
         # for parallelization of CPU-intensive tasks:
         self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
@@ -370,7 +338,7 @@ class Eynollah:
             if self.tables:
                 self.model_table = self.our_load_model(self.model_table_dir)
 
-    def _cache_images(self, image_filename=None, image_pil=None):
+    def cache_images(self, image_filename=None, image_pil=None, dpi=None):
         ret = {}
         t_c0 = time.time()
         if image_filename:
@@ -388,13 +356,14 @@ class Eynollah:
         ret['img_grayscale'] = cv2.cvtColor(ret['img'], cv2.COLOR_BGR2GRAY)
         for prefix in ('',  '_grayscale'):
             ret[f'img{prefix}_uint8'] = ret[f'img{prefix}'].astype(np.uint8)
-        return ret
+        self._imgs = ret
+        if dpi is not None:
+            self.dpi = dpi
 
     def reset_file_name_dir(self, image_filename):
         t_c = time.time()
-        self._imgs = self._cache_images(image_filename=image_filename)
-        self.image_filename = image_filename
-        
+        self.cache_images(image_filename=image_filename)
+
         self.plotter = None if not self.enable_plotting else EynollahPlotter(
             dir_out=self.dir_out,
             dir_of_all=self.dir_of_all,
@@ -403,10 +372,10 @@ class Eynollah:
             dir_of_cropped_images=self.dir_of_cropped_images,
             dir_of_layout=self.dir_of_layout,
             image_filename_stem=Path(Path(image_filename).name).stem)
-        
+
         self.writer = EynollahXmlWriter(
             dir_out=self.dir_out,
-            image_filename=self.image_filename,
+            image_filename=image_filename,
             curved_line=self.curved_line,
             textline_light = self.textline_light)
 
@@ -4224,30 +4193,49 @@ class Eynollah:
         return (slopes_rem, all_found_textline_polygons_rem, boxes_text_rem, txt_con_org_rem,
                 contours_only_text_parent_rem, index_by_text_par_con_rem_sort)
 
-    def run(self):
+    def run(self, image_filename : Optional[str] = None, dir_in : Optional[str] = None, overwrite : bool = False):
         """
         Get image and scales, then extract the page of scanned image
         """
         self.logger.debug("enter run")
-
         t0_tot = time.time()
 
-        if not self.dir_in:
-            self.ls_imgs = [self.image_filename]
+        if dir_in:
+            self.ls_imgs  = os.listdir(dir_in)
+        elif image_filename:
+            self.ls_imgs = [image_filename]
+        else:
+            raise ValueError("run requires either a single image filename or a directory")
 
-        for img_name in self.ls_imgs:
-            self.logger.info(img_name)
+        for img_filename in self.ls_imgs:
+            self.logger.info(img_filename)
             t0 = time.time()
-            if self.dir_in:
-                self.reset_file_name_dir(os.path.join(self.dir_in,img_name))
-                #print("text region early -11 in %.1fs", time.time() - t0)
-                if os.path.exists(self.writer.output_filename):
-                    if self.overwrite:
-                        self.logger.warning("will overwrite existing output file '%s'", self.writer.output_filename)
-                    else:
-                        self.logger.warning("will skip input for existing output file '%s'", self.writer.output_filename)
-                        continue
 
+            self.reset_file_name_dir(os.path.join(dir_in or "", img_filename))
+            #print("text region early -11 in %.1fs", time.time() - t0)
+            if os.path.exists(self.writer.output_filename):
+                if overwrite:
+                    self.logger.warning("will overwrite existing output file '%s'", self.writer.output_filename)
+                else:
+                    self.logger.warning("will skip input for existing output file '%s'", self.writer.output_filename)
+                    continue
+
+            pcgts = self.run_single()
+            self.logger.info("Job done in %.1fs", time.time() - t0)
+            #print("Job done in %.1fs" % (time.time() - t0))
+            if dir_in:
+                self.writer.write_pagexml(pcgts)
+            else:
+                return pcgts
+
+        if dir_in:
+            self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
+            print("all Job done in %.1fs", time.time() - t0_tot)
+
+    def run_single(self):
+        # conditional merely for indentation (= smaller diff)
+        if True:
+            t0 = time.time()
             img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
             self.logger.info("Enhancing took %.1fs ", time.time() - t0)
             if self.extract_only_images:
@@ -4260,12 +4248,7 @@ class Eynollah:
                     cont_page, [], [], ocr_all_textlines)
                 if self.plotter:
                     self.plotter.write_images_into_directory(polygons_of_images, image_page)
-
-                if self.dir_in:
-                    self.writer.write_pagexml(pcgts)
-                    continue
-                else:
-                    return pcgts
+                return pcgts
 
             if self.skip_layout_and_reading_order:
                 _ ,_, _, textline_mask_tot_ea, img_bin_light = \
@@ -4307,11 +4290,7 @@ class Eynollah:
                     all_found_textline_polygons, page_coord, polygons_of_images, polygons_of_marginals,
                     all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
                     cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines)
-                if self.dir_in:
-                    self.writer.write_pagexml(pcgts)
-                    continue
-                else:
-                    return pcgts
+                return pcgts
 
             #print("text region early -1 in %.1fs", time.time() - t0)
             t1 = time.time()
@@ -4363,12 +4342,7 @@ class Eynollah:
                 pcgts = self.writer.build_pagexml_no_full_layout(
                     [], page_coord, [], [], [], [], [], [], [], [], [], [],
                     cont_page, [], [], ocr_all_textlines)
-                self.logger.info("Job done in %.1fs", time.time() - t1)
-                if self.dir_in:
-                    self.writer.write_pagexml(pcgts)
-                    continue
-                else:
-                    return pcgts
+                return pcgts
 
             #print("text region early in %.1fs", time.time() - t0)
             t1 = time.time()
@@ -4553,12 +4527,7 @@ class Eynollah:
                         polygons_of_images,
                         polygons_of_marginals, empty_marginals, empty_marginals, [], [],
                         cont_page, polygons_lines_xml, contours_tables, [])
-                self.logger.info("Job done in %.1fs", time.time() - t0)
-                if self.dir_in:
-                    self.writer.write_pagexml(pcgts)
-                    continue
-                else:
-                    return pcgts
+                return pcgts
 
             #print("text region early 3 in %.1fs", time.time() - t0)
             if self.light_version:
@@ -4748,13 +4717,7 @@ class Eynollah:
                     polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals,
                     all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals,
                     cont_page, polygons_lines_xml, ocr_all_textlines)
-                self.logger.info("Job done in %.1fs", time.time() - t0)
-                #print("Job done in %.1fs", time.time() - t0)
-                if self.dir_in:
-                    self.writer.write_pagexml(pcgts)
-                    continue
-                else:
-                    return pcgts
+                return pcgts
 
             else:
                 contours_only_text_parent_h = None
@@ -4834,22 +4797,9 @@ class Eynollah:
                     all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals,
                     all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
                     cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines)
-                #print("Job done in %.1fs" % (time.time() - t0))
-                self.logger.info("Job done in %.1fs", time.time() - t0)
-                if not self.dir_in:
-                    return pcgts
-            #print("text region early 7 in %.1fs", time.time() - t0)
+                return pcgts
 
-            if self.dir_in:
-                self.writer.write_pagexml(pcgts)
-            self.logger.info("Job done in %.1fs", time.time() - t0)
-            #print("Job done in %.1fs" % (time.time() - t0))
-            
-        if self.dir_in:
-            self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
-            print("all Job done in %.1fs", time.time() - t0_tot)
-            
-            
+
 class Eynollah_ocr:
     def __init__(
         self,

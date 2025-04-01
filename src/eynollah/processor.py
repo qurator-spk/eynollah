@@ -30,11 +30,7 @@ class EynollahProcessor(Processor):
             allow_scaling=self.parameter['allow_scaling'],
             headers_off=self.parameter['headers_off'],
             tables=self.parameter['tables'],
-            override_dpi=self.parameter['dpi'],
-            # trick Eynollah to do init independent of an image
-            dir_in="."
         )
-        self.eynollah.dir_in = None
         self.eynollah.plotter = None
 
     def shutdown(self):
@@ -81,9 +77,9 @@ class EynollahProcessor(Processor):
             image_filename = "dummy" # will be replaced by ocrd.Processor.process_page_file
             result.images.append(OcrdPageResultImage(page_image, '.IMG', page)) # mark as new original
         # FIXME: mask out already existing regions (incremental segmentation)
-        self.eynollah.image_filename = image_filename
-        self.eynollah._imgs = self.eynollah._cache_images(
-            image_pil=page_image
+        self.eynollah.cache_images(
+            image_pil=page_image,
+            dpi=self.parameter['dpi'],
         )
         self.eynollah.writer = EynollahXmlWriter(
             dir_out=None,
@@ -91,5 +87,5 @@ class EynollahProcessor(Processor):
             curved_line=self.eynollah.curved_line,
             textline_light=self.eynollah.textline_light,
             pcgts=pcgts)
-        self.eynollah.run()
+        self.eynollah.run_single()
         return result
