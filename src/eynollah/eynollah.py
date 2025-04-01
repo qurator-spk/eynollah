@@ -4223,10 +4223,7 @@ class Eynollah:
             pcgts = self.run_single()
             self.logger.info("Job done in %.1fs", time.time() - t0)
             #print("Job done in %.1fs" % (time.time() - t0))
-            if dir_in:
-                self.writer.write_pagexml(pcgts)
-            else:
-                return pcgts
+            self.writer.write_pagexml(pcgts)
 
         if dir_in:
             self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)

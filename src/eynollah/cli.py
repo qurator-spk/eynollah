@@ -314,8 +314,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     if dir_in:
         eynollah.run(dir_in=dir_in, overwrite=overwrite)
     else:
-        pcgts = eynollah.run(image_filename=image)
-        eynollah.writer.write_pagexml(pcgts)
+        eynollah.run(image_filename=image)
 
 
 @main.command()
