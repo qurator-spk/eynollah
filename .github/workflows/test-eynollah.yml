@@ -43,3 +43,7 @@ jobs:
         make deps-test
     - name: Test with pytest
       run: make test
+    - name: Test standalone CLI
+      run: make smoke-test
+    - name: Test OCR-D CLI
+      run: make ocrd-test
