@@ -314,7 +314,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     if dir_in:
         eynollah.run(dir_in=dir_in, overwrite=overwrite)
     else:
-        eynollah.run(image_filename=image)
+        eynollah.run(image_filename=image, overwrite=overwrite)
 
 
 @main.command()
