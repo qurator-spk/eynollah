@@ -865,7 +865,7 @@ def check_any_text_region_in_model_one_is_main_or_header(
         contours_only_text_parent,
         all_box_coord, all_found_textline_polygons,
         slopes,
-        contours_only_text_parent_d_ordered):
+        contours_only_text_parent_d_ordered, conf_contours):
 
     cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin = \
         find_new_features_of_contours(contours_only_text_parent)
@@ -926,14 +926,17 @@ def check_any_text_region_in_model_one_is_main_or_header(
             slopes_main,
             slopes_head,
             contours_only_text_parent_main_d,
-            contours_only_text_parent_head_d)
+            contours_only_text_parent_head_d,
+            None,
+            None)
 
 def check_any_text_region_in_model_one_is_main_or_header_light(
         regions_model_1, regions_model_full,
         contours_only_text_parent,
         all_box_coord, all_found_textline_polygons,
         slopes,
-        contours_only_text_parent_d_ordered):
+        contours_only_text_parent_d_ordered,
+        conf_contours):
 
     ### to make it faster
     h_o = regions_model_1.shape[0]
@@ -965,6 +968,9 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
 
     contours_only_text_parent_main=[]
     contours_only_text_parent_head=[]
+    
+    conf_contours_main=[]
+    conf_contours_head=[]
 
     contours_only_text_parent_main_d=[]
     contours_only_text_parent_head_d=[]
@@ -987,9 +993,11 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
             all_box_coord_head.append(all_box_coord[ii])
             slopes_head.append(slopes[ii])
             all_found_textline_polygons_head.append(all_found_textline_polygons[ii])
+            conf_contours_head.append(None)
         else:
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=1
             contours_only_text_parent_main.append(con)
+            conf_contours_main.append(conf_contours[ii])
             if contours_only_text_parent_d_ordered is not None:
                 contours_only_text_parent_main_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_main.append(all_box_coord[ii])
@@ -1017,7 +1025,9 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
             slopes_main,
             slopes_head,
             contours_only_text_parent_main_d,
-            contours_only_text_parent_head_d)
+            contours_only_text_parent_head_d,
+            conf_contours_main,
+            conf_contours_head)
 
 def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col):
     # print(textlines_con)

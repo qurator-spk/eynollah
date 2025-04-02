@@ -227,9 +227,12 @@ def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
 
     return cnts_org
 
-def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first):
+def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first, confidence_matrix):
     img_copy = np.zeros(img.shape)
     img_copy = cv2.fillPoly(img_copy, pts=[contour_par], color=(1, 1, 1))
+    
+    confidence_matrix_mapped_with_contour = confidence_matrix * img_copy[:,:,0]
+    confidence_contour = np.sum(confidence_matrix_mapped_with_contour) / float(np.sum(img_copy[:,:,0]))
 
     img_copy = rotation_image_new(img_copy, -slope_first).astype(np.uint8)
     imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
@@ -239,11 +242,13 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
     cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
     cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
     # print(np.shape(cont_int[0]))
-    return cont_int[0], index_r_con
+    return cont_int[0], index_r_con, confidence_contour
 
-def get_textregion_contours_in_org_image_light(cnts, img, slope_first, map=map):
+def get_textregion_contours_in_org_image_light(cnts, img, slope_first, confidence_matrix, map=map):
     if not len(cnts):
-        return []
+        return [], []
+    
+    confidence_matrix = cv2.resize(confidence_matrix, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
     img = cv2.resize(img, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
     ##cnts = list( (np.array(cnts)/2).astype(np.int16) )
     #cnts = cnts/2
@@ -251,10 +256,11 @@ def get_textregion_contours_in_org_image_light(cnts, img, slope_first, map=map):
     results = map(partial(do_back_rotation_and_get_cnt_back,
                           img=img,
                           slope_first=slope_first,
+                          confidence_matrix=confidence_matrix,
                           ),
                   cnts, range(len(cnts)))
-    contours, indexes = tuple(zip(*results))
-    return [i*6 for i in contours]
+    contours, indexes, conf_contours = tuple(zip(*results))
+    return [i*6 for i in contours], list(conf_contours)
 
 def return_contours_of_interested_textline(region_pre_p, pixel):
     # pixels of images are identified by 5
