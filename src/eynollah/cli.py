@@ -285,7 +285,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
         raise ValueError("Either a single image -i or a dir_in -di is required")
     eynollah = Eynollah(
         model,
-        logger=getLogger('Eynollah'),
+        logger=getLogger('eynollah'),
         dir_out=out,
         dir_of_cropped_images=save_images,
         extract_only_images=extract_only_images,
