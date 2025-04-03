@@ -4486,6 +4486,7 @@ class Eynollah:
                     self.get_regions_from_xy_2models(img_res, is_image_enhanced,
                                                      num_col_classifier)
                 self.logger.info("Textregion detection took %.1fs ", time.time() - t1)
+                confidence_matrix = np.zeros((text_regions_p_1.shape[:2]))
 
                 t1 = time.time()
                 num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, \
@@ -4719,8 +4720,8 @@ class Eynollah:
                 #contours_only_text_parent = self.dilate_textregions_contours(contours_only_text_parent)
                 
             else:
-                txt_con_org = get_textregion_contours_in_org_image(
-                    contours_only_text_parent, self.image, slope_first)
+                txt_con_org , conf_contours_textregions = get_textregion_contours_in_org_image_light(
+                    contours_only_text_parent, self.image, slope_first, confidence_matrix,  map=self.executor.map)
             #print("text region early 4 in %.1fs", time.time() - t0)
             boxes_text, _ = get_text_region_boxes_by_given_contours(contours_only_text_parent)
             boxes_marginals, _ = get_text_region_boxes_by_given_contours(polygons_of_marginals)
@@ -4812,7 +4813,6 @@ class Eynollah:
                 if self.light_version:
                     fun = check_any_text_region_in_model_one_is_main_or_header_light
                 else:
-                    conf_contours_textregions = None
                     fun = check_any_text_region_in_model_one_is_main_or_header
                 text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, \
                     all_found_textline_polygons, all_found_textline_polygons_h, slopes, slopes_h, \
