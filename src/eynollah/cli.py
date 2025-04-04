@@ -255,34 +255,25 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
-    if not enable_plotting and (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
-        raise ValueError("Plotting with -sl, -sd, -sa, -sp, -si or -ae also requires -ep")
-    elif enable_plotting and not (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
-        raise ValueError("Plotting with -ep also requires -sl, -sd, -sa, -sp, -si or -ae")
-    if textline_light and not light_version:
-        raise ValueError("Light textline detection with -tll also requires -light")
-    if light_version and not textline_light:
-        raise ValueError("Light version with -light also requires light textline detection -tll")
-    if extract_only_images and allow_enhancement:
-        raise ValueError("Image extraction with -eoi can not be enabled alongside allow_enhancement -ae")
-    if extract_only_images and allow_scaling:
-        raise ValueError("Image extraction with -eoi can not be enabled alongside allow_scaling -as")
-    if extract_only_images and light_version:
-        raise ValueError("Image extraction with -eoi can not be enabled alongside light_version -light")
-    if extract_only_images and curved_line:
-        raise ValueError("Image extraction with -eoi can not be enabled alongside curved_line -cl")
-    if extract_only_images and textline_light:
-        raise ValueError("Image extraction with -eoi can not be enabled alongside textline_light -tll")
-    if extract_only_images and full_layout:
-        raise ValueError("Image extraction with -eoi can not be enabled alongside full_layout -fl")
-    if extract_only_images and tables:
-        raise ValueError("Image extraction with -eoi can not be enabled alongside tables -tab")
-    if extract_only_images and right2left:
-        raise ValueError("Image extraction with -eoi can not be enabled alongside right2left -r2l")
-    if extract_only_images and headers_off:
-        raise ValueError("Image extraction with -eoi can not be enabled alongside headers_off -ho")
-    if image is None and dir_in is None:
-        raise ValueError("Either a single image -i or a dir_in -di is required")
+    assert enable_plotting or not save_layout, "Plotting with -sl also requires -ep"
+    assert enable_plotting or not save_deskewed, "Plotting with -sd also requires -ep"
+    assert enable_plotting or not save_all, "Plotting with -sa also requires -ep"
+    assert enable_plotting or not save_page, "Plotting with -sp also requires -ep"
+    assert enable_plotting or not save_images, "Plotting with -si also requires -ep"
+    assert enable_plotting or not allow_enhancement, "Plotting with -ae also requires -ep"
+    assert not enable_plotting or save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement, \
+        "Plotting with -ep also requires -sl, -sd, -sa, -sp, -si or -ae"
+    assert textline_light == light_version, "Both light textline detection -tll and light version -light must be set or unset equally"
+    assert not extract_only_images or not allow_enhancement, "Image extraction -eoi can not be set alongside allow_enhancement -ae"
+    assert not extract_only_images or not allow_scaling, "Image extraction -eoi can not be set alongside allow_scaling -as"
+    assert not extract_only_images or not light_version, "Image extraction -eoi can not be set alongside light_version -light"
+    assert not extract_only_images or not curved_line, "Image extraction -eoi can not be set alongside curved_line -cl"
+    assert not extract_only_images or not textline_light, "Image extraction -eoi can not be set alongside textline_light -tll"
+    assert not extract_only_images or not full_layout, "Image extraction -eoi can not be set alongside full_layout -fl"
+    assert not extract_only_images or not tables, "Image extraction -eoi can not be set alongside tables -tab"
+    assert not extract_only_images or not right2left, "Image extraction -eoi can not be set alongside right2left -r2l"
+    assert not extract_only_images or not headers_off, "Image extraction -eoi can not be set alongside headers_off -ho"
+    assert image or dir_in, "Either a single image -i or a dir_in -di is required"
     eynollah = Eynollah(
         model,
         logger=getLogger('eynollah'),
