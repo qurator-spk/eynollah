@@ -83,21 +83,30 @@ If no option is set, the tool performs layout detection of main regions (backgro
 The best output quality is produced when RGB images are used as input rather than greyscale or binarized images.
 
 #### Use as OCR-D processor
-Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) processor that is described in [`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json). 
 
-The source image file group with (preferably) RGB images should be used as input for Eynollah like this:
+Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) [processor](https://ocr-d.de/en/spec/cli) that is described in [`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json). 
 
-```
-ocrd-eynollah-segment -I OCR-D-IMG -O SEG-LINE -P models
-```
-    
-Any image referenced by `@imageFilename` in PAGE-XML is passed on directly to Eynollah as a processor, so that e.g.
+In this case, the source image file group with (preferably) RGB images should be used as input like this:
 
-```
-ocrd-eynollah-segment -I OCR-D-IMG-BIN -O SEG-LINE -P models
-```
-    
-uses the original (RGB) image despite any binarization that may have occured in previous OCR-D processing steps.
+    ocrd-eynollah-segment -I OCR-D-IMG -O OCR-D-SEG -P models 2022-04-05
+
+If the input file group is PAGE-XML (from a previous OCR-D workflow step), Eynollah behaves as follows:
+- existing regions are kept and ignored (i.e. in effect they might overlap segments from Eynollah results)
+- existing annotation (and respective `AlternativeImage`s) are partially _ignored_:
+  - previous page frame detection (`cropped` images)
+  - previous derotation (`deskewed` images)
+  - previous thresholding (`binarized` images)
+- if the page-level image nevertheless deviates from the original (`@imageFilename`)
+  (because some other preprocessing step was in effect like `denoised`), then
+  the output PAGE-XML will be based on that as new top-level (`@imageFilename`)
+
+
+    ocrd-eynollah-segment -I OCR-D-XYZ -O OCR-D-SEG -P models 2022-04-05
+
+Still, in general, it makes more sense to add other workflow steps **after** Eynollah.
+
+#### Additional documentation
+Please check the [wiki](https://github.com/qurator-spk/eynollah/wiki).
 
 ## How to cite
 If you find this tool useful in your work, please consider citing our paper:

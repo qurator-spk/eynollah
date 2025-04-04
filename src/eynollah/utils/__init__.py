@@ -1,12 +1,16 @@
+import time
 import math
 
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
 import numpy as np
 from shapely import geometry
 import cv2
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-import time
+
 from .is_nan import isNaN
 from .contour import (contours_in_same_horizon,
                       find_new_features_of_contours,
@@ -236,10 +240,8 @@ def return_x_start_end_mothers_childs_and_type_of_reading_order(
     if len(remained_sep_indexes)>1:
         #print(np.array(remained_sep_indexes),'np.array(remained_sep_indexes)')
         #print(np.array(mother),'mother')
-        ##remained_sep_indexes_without_mother = remained_sep_indexes[mother==0]
-        ##remained_sep_indexes_with_child_without_mother = remained_sep_indexes[mother==0 & child==1]
-        remained_sep_indexes_without_mother=np.array(list(remained_sep_indexes))[np.array(mother)==0]
-        remained_sep_indexes_with_child_without_mother=np.array(list(remained_sep_indexes))[(np.array(mother)==0) & (np.array(child)==1)]
+        remained_sep_indexes_without_mother = remained_sep_indexes[mother==0]
+        remained_sep_indexes_with_child_without_mother = remained_sep_indexes[(mother==0) & (child==1)]
         #print(remained_sep_indexes_without_mother,'remained_sep_indexes_without_mother')
         #print(remained_sep_indexes_without_mother,'remained_sep_indexes_without_mother')
         
