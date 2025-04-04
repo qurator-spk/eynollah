@@ -105,8 +105,10 @@ ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	$(RM) -r $(TMPDIR)
 
 # Run unit tests
+test: export EYNOLLAH_MODELS=$(CURDIR)/models_eynollah
+test: export SBBBIN_MODELS=$(CURDIR)/default-2021-03-09
 test:
-	EYNOLLAH_MODELS=$(CURDIR)/models_eynollah $(PYTHON) -m pytest tests  --durations=0 --continue-on-collection-errors $(PYTEST_ARGS)
+	$(PYTHON) -m pytest tests --durations=0 --continue-on-collection-errors $(PYTEST_ARGS)
 
 coverage:
 	coverage erase
