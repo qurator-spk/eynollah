@@ -168,7 +168,7 @@ class EynollahXmlWriter():
         with open(self.output_filename, 'w') as f:
             f.write(to_xml(pcgts))
 
-    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, found_polygons_tables, ocr_all_textlines):
+    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, found_polygons_tables, ocr_all_textlines, conf_contours_textregion):
         self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
@@ -184,8 +184,9 @@ class EynollahXmlWriter():
 
         for mm in range(len(found_polygons_text_region)):
             textregion = TextRegionType(id=counter.next_region_id, type_='paragraph',
-                    Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord)),
+                    Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord), conf=conf_contours_textregion[mm]),
                     )
+            #textregion.set_conf(conf_contours_textregion[mm])
             page.add_TextRegion(textregion)
             if ocr_all_textlines:
                 ocr_textlines = ocr_all_textlines[mm]
@@ -241,7 +242,7 @@ class EynollahXmlWriter():
 
         return pcgts
 
-    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, ocr_all_textlines):
+    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, ocr_all_textlines, conf_contours_textregion, conf_contours_textregion_h):
         self.logger.debug('enter build_pagexml_full_layout')
 
         # create the file structure
@@ -256,7 +257,7 @@ class EynollahXmlWriter():
 
         for mm in range(len(found_polygons_text_region)):
             textregion = TextRegionType(id=counter.next_region_id, type_='paragraph',
-                    Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord)))
+                    Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord),  conf=conf_contours_textregion[mm]))
             page.add_TextRegion(textregion)
             
             if ocr_all_textlines:

@@ -24,6 +24,7 @@ import json
 
 from loky import ProcessPoolExecutor
 from PIL.Image import Image
+from PIL import Image, ImageDraw, ImageFont
 import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
@@ -31,7 +32,6 @@ from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from numba import cuda
 
-from ocrd import OcrdPage
 from ocrd_utils import getLogger, tf_disable_interactive_logs
 
 try:
@@ -1145,7 +1145,7 @@ class Eynollah:
             
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
             prediction_true = resize_image(seg_color, img_h_page, img_w_page).astype(np.uint8)
-            return prediction_true
+            return prediction_true , resize_image(label_p_pred[0, :, :, 1] , img_h_page, img_w_page)
 
         if img.shape[0] < img_height_model:
             img = resize_image(img, img_height_model, img.shape[1])
@@ -1161,6 +1161,7 @@ class Eynollah:
         img_h = img.shape[0]
         img_w = img.shape[1]
         prediction_true = np.zeros((img_h, img_w, 3))
+        confidence_matrix = np.zeros((img_h, img_w))
         mask_true = np.zeros((img_h, img_w))
         nxf = img_w / float(width_mid)
         nyf = img_h / float(height_mid)
@@ -1249,54 +1250,99 @@ class Eynollah:
                                                 seg_in[0:-margin or None,
                                                        0:-margin or None,
                                                        np.newaxis]
+                            confidence_matrix[index_y_d_in + 0:index_y_u_in - margin,
+                                            index_x_d_in + 0:index_x_u_in - margin] = \
+                                                label_p_pred[0, 0:-margin or None,
+                                                       0:-margin or None,
+                                                       1]
                         elif i_batch == nxf - 1 and j_batch == nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - 0,
                                             index_x_d_in + margin:index_x_u_in - 0] = \
                                                 seg_in[margin:,
                                                        margin:,
                                                        np.newaxis]
+                            confidence_matrix[index_y_d_in + margin:index_y_u_in - 0,
+                                            index_x_d_in + margin:index_x_u_in - 0] = \
+                                                label_p_pred[0, margin:,
+                                                       margin:,
+                                                       1]
                         elif i_batch == 0 and j_batch == nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - 0,
                                             index_x_d_in + 0:index_x_u_in - margin] = \
                                                 seg_in[margin:,
                                                        0:-margin or None,
                                                        np.newaxis]
+                            confidence_matrix[index_y_d_in + margin:index_y_u_in - 0,
+                                            index_x_d_in + 0:index_x_u_in - margin] = \
+                                                label_p_pred[0, margin:,
+                                                       0:-margin or None,
+                                                       1]
                         elif i_batch == nxf - 1 and j_batch == 0:
                             prediction_true[index_y_d_in + 0:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - 0] = \
                                                 seg_in[0:-margin or None,
                                                        margin:,
                                                        np.newaxis]
+                            confidence_matrix[index_y_d_in + 0:index_y_u_in - margin,
+                                            index_x_d_in + margin:index_x_u_in - 0] = \
+                                                label_p_pred[0, 0:-margin or None,
+                                                       margin:,
+                                                       1]
                         elif i_batch == 0 and j_batch != 0 and j_batch != nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - margin,
                                             index_x_d_in + 0:index_x_u_in - margin] = \
                                                 seg_in[margin:-margin or None,
                                                        0:-margin or None,
                                                        np.newaxis]
+                            confidence_matrix[index_y_d_in + margin:index_y_u_in - margin,
+                                            index_x_d_in + 0:index_x_u_in - margin] = \
+                                                label_p_pred[0, margin:-margin or None,
+                                                       0:-margin or None,
+                                                       1]
                         elif i_batch == nxf - 1 and j_batch != 0 and j_batch != nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - 0] = \
                                                 seg_in[margin:-margin or None,
                                                        margin:,
                                                        np.newaxis]
+                            confidence_matrix[index_y_d_in + margin:index_y_u_in - margin,
+                                            index_x_d_in + margin:index_x_u_in - 0] = \
+                                                label_p_pred[0, margin:-margin or None,
+                                                       margin:,
+                                                       1]
                         elif i_batch != 0 and i_batch != nxf - 1 and j_batch == 0:
                             prediction_true[index_y_d_in + 0:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - margin] = \
                                                 seg_in[0:-margin or None,
                                                        margin:-margin or None,
                                                        np.newaxis]
+                            confidence_matrix[index_y_d_in + 0:index_y_u_in - margin,
+                                            index_x_d_in + margin:index_x_u_in - margin] = \
+                                                label_p_pred[0, 0:-margin or None,
+                                                       margin:-margin or None,
+                                                       1]
                         elif i_batch != 0 and i_batch != nxf - 1 and j_batch == nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - 0,
                                             index_x_d_in + margin:index_x_u_in - margin] = \
                                                 seg_in[margin:,
                                                        margin:-margin or None,
                                                        np.newaxis]
+                            confidence_matrix[index_y_d_in + margin:index_y_u_in - 0,
+                                            index_x_d_in + margin:index_x_u_in - margin] = \
+                                                label_p_pred[0, margin:,
+                                                       margin:-margin or None,
+                                                       1]
                         else:
                             prediction_true[index_y_d_in + margin:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - margin] = \
                                                 seg_in[margin:-margin or None,
                                                        margin:-margin or None,
                                                        np.newaxis]
+                            confidence_matrix[index_y_d_in + margin:index_y_u_in - margin,
+                                            index_x_d_in + margin:index_x_u_in - margin] = \
+                                                label_p_pred[0, margin:-margin or None,
+                                                       margin:-margin or None,
+                                                       1]
                         indexer_inside_batch += 1
 
                     list_i_s = []
@@ -1311,7 +1357,7 @@ class Eynollah:
 
         prediction_true = prediction_true.astype(np.uint8)
         gc.collect()
-        return prediction_true
+        return prediction_true, confidence_matrix
 
     def extract_page(self):
         self.logger.debug("enter extract_page")
@@ -1491,7 +1537,7 @@ class Eynollah:
             indexes_in = args_textlines[results==1]
             textlines_ins = [polygons_of_textlines[ind] for ind in indexes_in]
             
-            all_found_textline_polygons.append(textlines_ins)
+            all_found_textline_polygons.append(textlines_ins[::-1])
             slopes.append(slope_deskew)
             
             _, crop_coor = crop_image_inside_box(boxes[index],image_page_rotated)
@@ -1804,24 +1850,26 @@ class Eynollah:
                 if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
                     self.logger.debug("resized to %dx%d for %d cols",
                                       img_resized.shape[1], img_resized.shape[0], num_col_classifier)
-                    prediction_regions_org = self.do_prediction_new_concept(
+                    prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
                         True, img_resized, self.model_region_1_2, n_batch_inference=1,
                         thresholding_for_some_classes_in_light_version=True)
                 else:
                     prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
-                    prediction_regions_page = self.do_prediction_new_concept(
+                    confidence_matrix = np.zeros((self.image_org.shape[0], self.image_org.shape[1]))
+                    prediction_regions_page, confidence_matrix_page = self.do_prediction_new_concept(
                         False, self.image_page_org_size, self.model_region_1_2, n_batch_inference=1,
                         thresholding_for_artificial_class_in_light_version=True)
                     ys = slice(*self.page_coord[0:2])
                     xs = slice(*self.page_coord[2:4])
                     prediction_regions_org[ys, xs] = prediction_regions_page
+                    confidence_matrix[ys, xs] = confidence_matrix_page
 
             else:
                 new_h = (900+ (num_col_classifier-3)*100)
                 img_resized = resize_image(img_bin, int(new_h * img_bin.shape[0] /img_bin.shape[1]), new_h)
                 self.logger.debug("resized to %dx%d (new_h=%d) for %d cols",
                                   img_resized.shape[1], img_resized.shape[0], new_h, num_col_classifier)
-                prediction_regions_org = self.do_prediction_new_concept(
+                prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
                     True, img_resized, self.model_region_1_2, n_batch_inference=2,
                     thresholding_for_some_classes_in_light_version=True)
             ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
@@ -1829,8 +1877,9 @@ class Eynollah:
             #plt.imshow(prediction_regions_org[:,:,0])
             #plt.show()
             
-            prediction_regions_org = resize_image(prediction_regions_org,img_height_h, img_width_h )
-            img_bin = resize_image(img_bin,img_height_h, img_width_h )
+            prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
+            confidence_matrix = resize_image(confidence_matrix, img_height_h, img_width_h )
+            img_bin = resize_image(img_bin, img_height_h, img_width_h )
             prediction_regions_org=prediction_regions_org[:,:,0]
                 
             mask_lines_only = (prediction_regions_org[:,:] ==3)*1
@@ -1886,11 +1935,11 @@ class Eynollah:
             #plt.show()
             #print("inside 4 ", time.time()-t_in)
             self.logger.debug("exit get_regions_light_v")
-            return text_regions_p_true, erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin
+            return text_regions_p_true, erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin, confidence_matrix
         else:
             img_bin = resize_image(img_bin,img_height_h, img_width_h )
             self.logger.debug("exit get_regions_light_v")
-            return None, erosion_hurts, None, textline_mask_tot_ea, img_bin
+            return None, erosion_hurts, None, textline_mask_tot_ea, img_bin, None
 
     def get_regions_from_xy_2models(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_from_xy_2models")
@@ -2622,7 +2671,7 @@ class Eynollah:
         img_width_h = img_org.shape[1]
         patches = False
         if self.light_version:
-            prediction_table = self.do_prediction_new_concept(patches, img, self.model_table)
+            prediction_table, _ = self.do_prediction_new_concept(patches, img, self.model_table)
             prediction_table = prediction_table.astype(np.int16)
             return prediction_table[:,:,0]
         else:
@@ -3911,7 +3960,7 @@ class Eynollah:
                 all_found_textline_polygons[j][ij][:,0,0] = con_scaled[:,0, 0]
         return all_found_textline_polygons
     
-    def filter_contours_inside_a_bigger_one(self,contours, image, marginal_cnts=None, type_contour="textregion"):
+    def filter_contours_inside_a_bigger_one(self,contours, contours_d_ordered, image, marginal_cnts=None, type_contour="textregion"):
         if type_contour=="textregion":
             areas = [cv2.contourArea(contours[j]) for j in range(len(contours))]
             area_tot = image.shape[0]*image.shape[1]
@@ -3948,8 +3997,10 @@ class Eynollah:
                 indexes_to_be_removed = np.sort(indexes_to_be_removed)[::-1]
                 for ind in indexes_to_be_removed:
                     contours.pop(ind)
+                    if len(contours_d_ordered)>0:
+                        contours_d_ordered.pop(ind)
 
-            return contours
+            return contours, contours_d_ordered
 
         else:
             contours_txtline_of_all_textregions = []
@@ -4004,8 +4055,7 @@ class Eynollah:
             return contours
                     
     def filter_contours_without_textline_inside(
-            self, contours,text_con_org,  contours_textline, contours_only_text_parent_d_ordered):
-        
+            self, contours,text_con_org,  contours_textline, contours_only_text_parent_d_ordered, conf_contours_textregions):
         ###contours_txtline_of_all_textregions = []
         ###for jj in range(len(contours_textline)):
             ###contours_txtline_of_all_textregions = contours_txtline_of_all_textregions + contours_textline[jj]
@@ -4038,13 +4088,14 @@ class Eynollah:
         uniqe_args_trs_sorted = np.sort(uniqe_args_trs)[::-1]
         
         for ind_u_a_trs in uniqe_args_trs_sorted:
+            conf_contours_textregions.pop(ind_u_a_trs)
             contours.pop(ind_u_a_trs)
             contours_textline.pop(ind_u_a_trs)
             text_con_org.pop(ind_u_a_trs)
             if len(contours_only_text_parent_d_ordered) > 0:
                 contours_only_text_parent_d_ordered.pop(ind_u_a_trs)
             
-        return contours, text_con_org, contours_textline, contours_only_text_parent_d_ordered, np.array(range(len(contours)))
+        return contours, text_con_org, conf_contours_textregions, contours_textline, contours_only_text_parent_d_ordered, np.array(range(len(contours)))
     
     def dilate_textlines(self, all_found_textline_polygons):
         for j in range(len(all_found_textline_polygons)):
@@ -4797,19 +4848,27 @@ class Eynollah_ocr:
         dir_models,
         dir_xmls=None,
         dir_in=None,
+        dir_in_bin=None,
         dir_out=None,
+        dir_out_image_text=None,
         tr_ocr=False,
         export_textline_images_and_text=False,
         do_not_mask_with_textline_contour=False,
+        draw_texts_on_image=False,
+        prediction_with_both_of_rgb_and_bin=False,
         logger=None,
     ):
         self.dir_in = dir_in
+        self.dir_in_bin = dir_in_bin
         self.dir_out = dir_out
         self.dir_xmls = dir_xmls
         self.dir_models = dir_models
         self.tr_ocr = tr_ocr
         self.export_textline_images_and_text = export_textline_images_and_text
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
+        self.draw_texts_on_image = draw_texts_on_image
+        self.dir_out_image_text = dir_out_image_text
+        self.prediction_with_both_of_rgb_and_bin = prediction_with_both_of_rgb_and_bin
         if tr_ocr:
             self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -4818,7 +4877,7 @@ class Eynollah_ocr:
             self.model_ocr.to(self.device)
 
         else:
-            self.model_ocr_dir = dir_models + "/model_3_new_ocrcnn"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+            self.model_ocr_dir = dir_models + "/model_step_150000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
             model_ocr = load_model(self.model_ocr_dir , compile=False)
             
             self.prediction_model = tf.keras.models.Model(
@@ -4927,26 +4986,53 @@ class Eynollah_ocr:
             return peaks_final
         else:
             return None
+        
+    # Function to fit text inside the given area
+    def fit_text_single_line(self, draw, text, font_path, max_width, max_height):
+        initial_font_size = 50
+        font_size = initial_font_size
+        while font_size > 10:  # Minimum font size
+            font = ImageFont.truetype(font_path, font_size)
+            text_bbox = draw.textbbox((0, 0), text, font=font)  # Get text bounding box
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+
+            if text_width <= max_width and text_height <= max_height:
+                return font  # Return the best-fitting font
+
+            font_size -= 2  # Reduce font size and retry
+
+        return ImageFont.truetype(font_path, 10)  # Smallest font fallback
     
-    def return_textlines_split_if_needed(self, textline_image):
+    def return_textlines_split_if_needed(self, textline_image, textline_image_bin):
 
         split_point = self.return_start_and_end_of_common_text_of_textline_ocr_without_common_section(textline_image)
         if split_point:
             image1 = textline_image[:, :split_point,:]# image.crop((0, 0, width2, height))
             image2 = textline_image[:, split_point:,:]#image.crop((width1, 0, width, height))
-            return [image1, image2]
+            if self.prediction_with_both_of_rgb_and_bin:
+                image1_bin = textline_image_bin[:, :split_point,:]# image.crop((0, 0, width2, height))
+                image2_bin = textline_image_bin[:, split_point:,:]#image.crop((width1, 0, width, height))
+                return [image1, image2], [image1_bin, image2_bin]
+            else:
+                return [image1, image2], None
         else:
-            return None
+            return None, None
     def preprocess_and_resize_image_for_ocrcnn_model(self, img, image_height, image_width):
         ratio = image_height /float(img.shape[0])
         w_ratio = int(ratio * img.shape[1])
+        
         if w_ratio <= image_width:
             width_new = w_ratio
         else:
             width_new = image_width
+            
+        if width_new == 0:
+            width_new = img.shape[1]
+        
         img = resize_image(img, image_height, width_new)
         img_fin = np.ones((image_height, image_width, 3))*255
-        img_fin[:,:width_new,:] = img[:,:,:]
+        img_fin[:,:+width_new,:] = img[:,:,:]
         img_fin = img_fin / 255.
         return img_fin
     
@@ -5006,7 +5092,7 @@ class Eynollah_ocr:
                                         cropped_lines.append(img_crop)
                                         cropped_lines_meging_indexing.append(0)
                                     else:
-                                        splited_images = self.return_textlines_split_if_needed(img_crop)
+                                        splited_images, _ = self.return_textlines_split_if_needed(img_crop, None)
                                         #print(splited_images)
                                         if splited_images:
                                             cropped_lines.append(splited_images[0])
@@ -5097,6 +5183,16 @@ class Eynollah_ocr:
                 dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
                 out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
                 img = cv2.imread(dir_img)
+                if self.prediction_with_both_of_rgb_and_bin:
+                    cropped_lines_bin = []
+                    dir_img_bin = os.path.join(self.dir_in_bin, file_name+'.png')
+                    img_bin = cv2.imread(dir_img_bin)
+                
+                if self.draw_texts_on_image:
+                    out_image_with_text = os.path.join(self.dir_out_image_text, file_name+'.png')
+                    image_text = Image.new("RGB", (img.shape[1], img.shape[0]), "white")
+                    draw = ImageDraw.Draw(image_text)
+                    total_bb_coordinates = []
 
                 tree1 = ET.parse(dir_xml, parser = ET.XMLParser(encoding="utf-8"))
                 root1=tree1.getroot()
@@ -5126,9 +5222,16 @@ class Eynollah_ocr:
                                     
                                     x,y,w,h = cv2.boundingRect(textline_coords)
                                     
+                                    if self.draw_texts_on_image:
+                                        total_bb_coordinates.append([x,y,w,h])
+                                        
                                     h2w_ratio = h/float(w)
                                     
                                     img_poly_on_img = np.copy(img)
+                                    if self.prediction_with_both_of_rgb_and_bin:
+                                        img_poly_on_img_bin = np.copy(img_bin)
+                                        img_crop_bin = img_poly_on_img_bin[y:y+h, x:x+w, :]
+                                    
                                     mask_poly = np.zeros(img.shape)
                                     mask_poly = cv2.fillPoly(mask_poly, pts=[textline_coords], color=(1, 1, 1))
                                     
@@ -5136,14 +5239,22 @@ class Eynollah_ocr:
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
                                     if not self.do_not_mask_with_textline_contour:
                                         img_crop[mask_poly==0] = 255
+                                        if self.prediction_with_both_of_rgb_and_bin:
+                                            img_crop_bin[mask_poly==0] = 255
                                     
                                     if not self.export_textline_images_and_text:
-                                        if h2w_ratio > 0.05:
+                                        if h2w_ratio > 0.1:
                                             img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
                                             cropped_lines_meging_indexing.append(0)
+                                            if self.prediction_with_both_of_rgb_and_bin:
+                                                img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
+                                                cropped_lines_bin.append(img_fin)
                                         else:
-                                            splited_images = self.return_textlines_split_if_needed(img_crop)
+                                            if self.prediction_with_both_of_rgb_and_bin:
+                                                splited_images, splited_images_bin = self.return_textlines_split_if_needed(img_crop, img_crop_bin)
+                                            else:
+                                                splited_images, splited_images_bin = self.return_textlines_split_if_needed(img_crop, None)
                                             if splited_images:
                                                 img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
                                                 cropped_lines.append(img_fin)
@@ -5152,19 +5263,28 @@ class Eynollah_ocr:
                                                 
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(-1)
+                                                
+                                                if self.prediction_with_both_of_rgb_and_bin:
+                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[0], image_height, image_width)
+                                                    cropped_lines_bin.append(img_fin)
+                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[1], image_height, image_width)
+                                                    cropped_lines_bin.append(img_fin)
+                                                    
                                             else:
                                                 img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(0)
+                                                
+                                                if self.prediction_with_both_of_rgb_and_bin:
+                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
+                                                    cropped_lines_bin.append(img_fin)
                                         
                                 if self.export_textline_images_and_text:
                                     if child_textlines.tag.endswith("TextEquiv"):
                                         for cheild_text in child_textlines:
                                             if cheild_text.tag.endswith("Unicode"):
                                                 textline_text = cheild_text.text
-                                                if not textline_text:
-                                                    pass
-                                                else:
+                                                if textline_text:
                                                     with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.txt'), 'w') as text_file:
                                                         text_file.write(textline_text)
 
@@ -5186,24 +5306,65 @@ class Eynollah_ocr:
                             imgs = cropped_lines[n_start:]
                             imgs = np.array(imgs)
                             imgs = imgs.reshape(imgs.shape[0], image_height, image_width, 3)
+                            if self.prediction_with_both_of_rgb_and_bin:
+                                imgs_bin = cropped_lines_bin[n_start:]
+                                imgs_bin = np.array(imgs_bin)
+                                imgs_bin = imgs_bin.reshape(imgs_bin.shape[0], image_height, image_width, 3)
                         else:
                             n_start = i*b_s
                             n_end = (i+1)*b_s
                             imgs = cropped_lines[n_start:n_end]
                             imgs = np.array(imgs).reshape(b_s, image_height, image_width, 3)
                             
+                            if self.prediction_with_both_of_rgb_and_bin:
+                                imgs_bin = cropped_lines_bin[n_start:n_end]
+                                imgs_bin = np.array(imgs_bin).reshape(b_s, image_height, image_width, 3)
+                            
 
                         preds = self.prediction_model.predict(imgs, verbose=0)
+                        if self.prediction_with_both_of_rgb_and_bin:
+                            preds_bin = self.prediction_model.predict(imgs_bin, verbose=0)
+                            preds = (preds + preds_bin) / 2.
+                            
                         pred_texts = self.decode_batch_predictions(preds)
 
                         for ib in range(imgs.shape[0]):
                             pred_texts_ib = pred_texts[ib].strip("[UNK]")
                             extracted_texts.append(pred_texts_ib)
                             
-                    extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
+                    extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+" "+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
 
                     extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
                     unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
+                    
+                    
+                    if self.draw_texts_on_image:
+                        
+                        font_path = "NotoSans-Regular.ttf"  # Make sure this file exists!
+                        font = ImageFont.truetype(font_path, 40)
+                        
+                        for indexer_text, bb_ind in enumerate(total_bb_coordinates):
+                            
+                            
+                            x_bb = bb_ind[0]
+                            y_bb = bb_ind[1]
+                            w_bb = bb_ind[2]
+                            h_bb = bb_ind[3]
+                            
+                            font = self.fit_text_single_line(draw, extracted_texts_merged[indexer_text], font_path, w_bb, int(h_bb*0.4) )
+                            
+                            ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
+                            
+                            text_bbox = draw.textbbox((0, 0), extracted_texts_merged[indexer_text], font=font)
+                            text_width = text_bbox[2] - text_bbox[0]
+                            text_height = text_bbox[3] - text_bbox[1]
+
+                            text_x = x_bb + (w_bb - text_width) // 2  # Center horizontally
+                            text_y = y_bb + (h_bb - text_height) // 2  # Center vertically
+
+                            # Draw the text
+                            draw.text((text_x, text_y), extracted_texts_merged[indexer_text], fill="black", font=font)
+                        image_text.save(out_image_with_text)
 
                     text_by_textregion = []
                     for ind in unique_cropped_lines_region_indexer:
@@ -5213,20 +5374,49 @@ class Eynollah_ocr:
                     indexer = 0
                     indexer_textregion = 0
                     for nn in root1.iter(region_tags):
-                        text_subelement_textregion = ET.SubElement(nn, 'TextEquiv')
-                        unicode_textregion = ET.SubElement(text_subelement_textregion, 'Unicode')
+                        
+                        is_textregion_text = False
+                        for childtest in nn:
+                            if childtest.tag.endswith("TextEquiv"):
+                                is_textregion_text = True
+                        
+                        if not is_textregion_text:
+                            text_subelement_textregion = ET.SubElement(nn, 'TextEquiv')
+                            unicode_textregion = ET.SubElement(text_subelement_textregion, 'Unicode')
 
                         
                         has_textline = False
                         for child_textregion in nn:
                             if child_textregion.tag.endswith("TextLine"):
-                                text_subelement = ET.SubElement(child_textregion, 'TextEquiv')
-                                unicode_textline = ET.SubElement(text_subelement, 'Unicode')
-                                unicode_textline.text = extracted_texts_merged[indexer]
+                                
+                                is_textline_text = False
+                                for childtest2 in child_textregion:
+                                    if childtest2.tag.endswith("TextEquiv"):
+                                        is_textline_text = True
+                                
+                                
+                                if not is_textline_text:
+                                    text_subelement = ET.SubElement(child_textregion, 'TextEquiv')
+                                    unicode_textline = ET.SubElement(text_subelement, 'Unicode')
+                                    unicode_textline.text = extracted_texts_merged[indexer]
+                                else:
+                                    for childtest3 in child_textregion:
+                                        if childtest3.tag.endswith("TextEquiv"):
+                                            for child_uc in childtest3:
+                                                if child_uc.tag.endswith("Unicode"):
+                                                    child_uc.text = extracted_texts_merged[indexer]
+                                        
                                 indexer = indexer + 1
                                 has_textline = True
                         if has_textline:
-                            unicode_textregion.text = text_by_textregion[indexer_textregion]
+                            if is_textregion_text:
+                                for child4 in nn:
+                                    if child4.tag.endswith("TextEquiv"):
+                                        for childtr_uc in child4:
+                                            if childtr_uc.tag.endswith("Unicode"):
+                                                childtr_uc.text = text_by_textregion[indexer_textregion]
+                            else:
+                                unicode_textregion.text = text_by_textregion[indexer_textregion]
                             indexer_textregion = indexer_textregion + 1
 
                     ET.register_namespace("",name_space)

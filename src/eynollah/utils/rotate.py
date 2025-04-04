@@ -1,6 +1,4 @@
 import math
-
-import imutils
 import cv2
 
 def rotatedRectWithMaxArea(w, h, angle):
@@ -35,14 +33,14 @@ def rotate_max_area_new(image, rotated, angle):
     return rotated[y1:y2, x1:x2]
 
 def rotation_image_new(img, thetha):
-    rotated = imutils.rotate(img, thetha)
+    rotated = rotate_image(img, thetha)
     return rotate_max_area_new(img, rotated, thetha)
 
 def rotate_image(img_patch, slope):
     (h, w) = img_patch.shape[:2]
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, slope, 1.0)
-    return cv2.warpAffine(img_patch, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    return cv2.warpAffine(img_patch, M, (w, h) )
 
 def rotate_image_different( img, slope):
     # img = cv2.imread('images/input.jpg')
@@ -62,17 +60,17 @@ def rotate_max_area(image, rotated, rotated_textline, rotated_layout, rotated_ta
     return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2], rotated_table_prediction[y1:y2, x1:x2]
 
 def rotation_not_90_func(img, textline, text_regions_p_1, table_prediction, thetha):
-    rotated = imutils.rotate(img, thetha)
-    rotated_textline = imutils.rotate(textline, thetha)
-    rotated_layout = imutils.rotate(text_regions_p_1, thetha)
-    rotated_table_prediction = imutils.rotate(table_prediction, thetha)
+    rotated = rotate_image(img, thetha)
+    rotated_textline = rotate_image(textline, thetha)
+    rotated_layout = rotate_image(text_regions_p_1, thetha)
+    rotated_table_prediction = rotate_image(table_prediction, thetha)
     return rotate_max_area(img, rotated, rotated_textline, rotated_layout, rotated_table_prediction, thetha)
 
 def rotation_not_90_func_full_layout(img, textline, text_regions_p_1, text_regions_p_fully, thetha):
-    rotated = imutils.rotate(img, thetha)
-    rotated_textline = imutils.rotate(textline, thetha)
-    rotated_layout = imutils.rotate(text_regions_p_1, thetha)
-    rotated_layout_full = imutils.rotate(text_regions_p_fully, thetha)
+    rotated = rotate_image(img, thetha)
+    rotated_textline = rotate_image(textline, thetha)
+    rotated_layout = rotate_image(text_regions_p_1, thetha)
+    rotated_layout_full = rotate_image(text_regions_p_fully, thetha)
     return rotate_max_area_full_layout(img, rotated, rotated_textline, rotated_layout, rotated_layout_full, thetha)
 
 def rotate_max_area_full_layout(image, rotated, rotated_textline, rotated_layout, rotated_layout_full, angle):
