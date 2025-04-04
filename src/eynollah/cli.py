@@ -48,27 +48,24 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
 @main.command()
 @click.option('--patches/--no-patches', default=True, help='by enabling this parameter you let the model to see the image in patches.')
 @click.option('--model_dir', '-m', type=click.Path(exists=True, file_okay=False), required=True, help='directory containing models for prediction')
-@click.argument('input_image')
-@click.argument('output_image')
+@click.argument('input_image', required=False)
+@click.argument('output_image', required=False)
 @click.option(
     "--dir_in",
     "-di",
-    help="directory of images",
+    help="directory of input images",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
     "--dir_out",
     "-do",
-    help="directory where the binarized images will be written",
+    help="directory for output images",
     type=click.Path(exists=True, file_okay=False),
 )
 def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out):
-    if not dir_out and (dir_in):
-        print("Error: You used -di but did not set -do")
-        sys.exit(1)
-    elif dir_out and not (dir_in):
-        print("Error: You used -do to write out binarized images but have not set -di")
-        sys.exit(1)
+    assert (dir_out is None) == (dir_in is None), "Options -di and -do are mutually dependent"
+    assert (input_image is None) == (output_image is None), "INPUT_IMAGE and OUTPUT_IMAGE are mutually dependent"
+    assert (dir_in is None) != (input_image is None), "Specify either -di and -do options, or INPUT_IMAGE and OUTPUT_IMAGE"
     SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, save=output_image, dir_in=dir_in, dir_out=dir_out)
 
 
