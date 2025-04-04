@@ -47,3 +47,9 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", '*.yml', '*.xml', '*.xsd']
+
+[tool.coverage.run]
+branch = true
+source = [
+    "src/eynollah"
+]

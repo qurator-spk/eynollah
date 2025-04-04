@@ -14,7 +14,7 @@ SEG_MODEL := https://qurator-data.de/eynollah/2022-04-05/models_eynollah.tar.gz
 
 BIN_MODEL := https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2021_03_09.zip
 
-PYTEST_ARGS ?= 
+PYTEST_ARGS ?= -vv
 
 # BEGIN-EVAL makefile-parser --make-help Makefile
 
@@ -90,6 +90,7 @@ smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	@set -x; test "$$(identify -format '%w %h' $<)" = "$$(identify -format '%w %h' $(TMPDIR)/$(<F))"
 	$(RM) -r $(TMPDIR)
 
+ocrd-test: export OCRD_MISSING_OUTPUT := ABORT
 ocrd-test: TMPDIR != mktemp -d
 ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	cp $< $(TMPDIR)
@@ -107,6 +108,12 @@ ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif
 test:
 	EYNOLLAH_MODELS=$(CURDIR)/models_eynollah $(PYTHON) -m pytest tests  --durations=0 --continue-on-collection-errors $(PYTEST_ARGS)
 
+coverage:
+	coverage erase
+	$(MAKE) test PYTHON="coverage run"
+	coverage report
+	coverage html
+
 # Build docker image
 docker:
 	docker build \
@@ -115,4 +122,4 @@ docker:
 	--build-arg BUILD_DATE=$$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
 	-t $(DOCKER_TAG) .
 
-.PHONY: models build install install-dev test smoke-test ocrd-test docker help
+.PHONY: models build install install-dev test smoke-test ocrd-test coverage docker help
