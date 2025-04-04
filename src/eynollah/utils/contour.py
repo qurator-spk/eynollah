@@ -247,7 +247,7 @@ def get_textregion_contours_in_org_image_light(cnts, img, slope_first, map=map):
     img = cv2.resize(img, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
     ##cnts = list( (np.array(cnts)/2).astype(np.int16) )
     #cnts = cnts/2
-    cnts = [(i/6).astype(np.int) for i in cnts]
+    cnts = [(i/6).astype(int) for i in cnts]
     results = map(partial(do_back_rotation_and_get_cnt_back,
                           img=img,
                           slope_first=slope_first,

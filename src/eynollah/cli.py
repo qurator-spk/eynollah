@@ -256,26 +256,37 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
     if not enable_plotting and (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
-        print("Error: You used one of -sl, -sd, -sa, -sp, -si or -ae but did not enable plotting with -ep")
-        sys.exit(1)
+        raise ValueError("Plotting with -sl, -sd, -sa, -sp, -si or -ae also requires -ep")
     elif enable_plotting and not (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
-        print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa, -sp, -si or -ae")
-        sys.exit(1)
+        raise ValueError("Plotting with -ep also requires -sl, -sd, -sa, -sp, -si or -ae")
     if textline_light and not light_version:
-        print('Error: You used -tll to enable light textline detection but -light is not enabled')
-        sys.exit(1)
+        raise ValueError("Light textline detection with -tll also requires -light")
     if light_version and not textline_light:
-        print('Error: You used -light without -tll. Light version need light textline to be enabled.')
-    if extract_only_images and  (allow_enhancement or allow_scaling or light_version or curved_line or textline_light or full_layout or tables or right2left or headers_off) :
-        print('Error: You used -eoi which can not be enabled alongside light_version -light or allow_scaling -as or allow_enhancement -ae or curved_line -cl or textline_light -tll or full_layout -fl or tables -tab or right2left -r2l or headers_off -ho')
-        sys.exit(1)
+        raise ValueError("Light version with -light also requires light textline detection -tll")
+    if extract_only_images and allow_enhancement:
+        raise ValueError("Image extraction with -eoi can not be enabled alongside allow_enhancement -ae")
+    if extract_only_images and allow_scaling:
+        raise ValueError("Image extraction with -eoi can not be enabled alongside allow_scaling -as")
+    if extract_only_images and light_version:
+        raise ValueError("Image extraction with -eoi can not be enabled alongside light_version -light")
+    if extract_only_images and curved_line:
+        raise ValueError("Image extraction with -eoi can not be enabled alongside curved_line -cl")
+    if extract_only_images and textline_light:
+        raise ValueError("Image extraction with -eoi can not be enabled alongside textline_light -tll")
+    if extract_only_images and full_layout:
+        raise ValueError("Image extraction with -eoi can not be enabled alongside full_layout -fl")
+    if extract_only_images and tables:
+        raise ValueError("Image extraction with -eoi can not be enabled alongside tables -tab")
+    if extract_only_images and right2left:
+        raise ValueError("Image extraction with -eoi can not be enabled alongside right2left -r2l")
+    if extract_only_images and headers_off:
+        raise ValueError("Image extraction with -eoi can not be enabled alongside headers_off -ho")
+    if image is None and dir_in is None:
+        raise ValueError("Either a single image -i or a dir_in -di is required")
     eynollah = Eynollah(
         model,
-        logger=getLogger('Eynollah'),
-        image_filename=image,
-        overwrite=overwrite,
+        logger=getLogger('eynollah'),
         dir_out=out,
-        dir_in=dir_in,
         dir_of_cropped_images=save_images,
         extract_only_images=extract_only_images,
         dir_of_layout=save_layout,
@@ -301,10 +312,9 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
         skip_layout_and_reading_order=skip_layout_and_reading_order,
     )
     if dir_in:
-        eynollah.run()
+        eynollah.run(dir_in=dir_in, overwrite=overwrite)
     else:
-        pcgts = eynollah.run()
-        eynollah.writer.write_pagexml(pcgts)
+        eynollah.run(image_filename=image, overwrite=overwrite)
 
 
 @main.command()

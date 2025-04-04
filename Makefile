@@ -77,9 +77,14 @@ deps-test: models_eynollah
 
 smoke-test: TMPDIR != mktemp -d
 smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif
+	# layout analysis:
 	eynollah layout -i $< -o $(TMPDIR) -m $(CURDIR)/models_eynollah
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$(basename $(<F)).xml
 	fgrep -c -e TextRegion -e ImageRegion -e SeparatorRegion $(TMPDIR)/$(basename $(<F)).xml
+	# directory mode (skip one, add one):
+	eynollah layout -di $(<D) -o $(TMPDIR) -m $(CURDIR)/models_eynollah
+	test -s $(TMPDIR)/euler_rechenkunst01_1738_0025.xml
+	# binarize:
 	eynollah binarization -m $(CURDIR)/default-2021-03-09 $< $(TMPDIR)/$(<F)
 	test -s $(TMPDIR)/$(<F)
 	@set -x; test "$$(identify -format '%w %h' $<)" = "$$(identify -format '%w %h' $(TMPDIR)/$(<F))"

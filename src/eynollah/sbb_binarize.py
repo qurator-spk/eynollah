@@ -4,24 +4,18 @@ Tool to load model and binarize a given image.
 
 import sys
 from glob import glob
-from os import environ, devnull
-from os.path import join
-from warnings import catch_warnings, simplefilter
 import os
+import logging
 
 import numpy as np
 from PIL import Image
 import cv2
-environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-stderr = sys.stderr
-sys.stderr = open(devnull, 'w')
+from ocrd_utils import tf_disable_interactive_logs
+tf_disable_interactive_logs()
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.python.keras import backend as tensorflow_backend
-sys.stderr = stderr
 
-
-import logging
 
 def resize_image(img_in, input_height, input_width):
     return cv2.resize(img_in, (input_width, input_height), interpolation=cv2.INTER_NEAREST)
@@ -53,7 +47,7 @@ class SbbBinarizer:
         del self.session
 
     def load_model(self, model_name):
-        model = load_model(join(self.model_dir, model_name), compile=False)
+        model = load_model(os.path.join(self.model_dir, model_name), compile=False)
         model_height = model.layers[len(model.layers)-1].output_shape[1]
         model_width = model.layers[len(model.layers)-1].output_shape[2]
         n_classes = model.layers[len(model.layers)-1].output_shape[3]
