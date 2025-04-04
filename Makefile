@@ -113,8 +113,7 @@ test:
 coverage:
 	coverage erase
 	$(MAKE) test PYTHON="coverage run"
-	coverage report
-	coverage html
+	coverage report -m
 
 # Build docker image
 docker:

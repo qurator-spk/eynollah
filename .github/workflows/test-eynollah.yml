@@ -47,7 +47,25 @@ jobs:
         make install EXTRAS=OCR,plotting
         make deps-test
     - name: Test with pytest
-      run: make test
+      run: make coverage PYTEST_ARGS="--junitxml=pytest.xml"
+    - name: Get coverage results
+      run: |
+        coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
+        coverage html json xml
+    - name: Store coverage results
+      uses: actions/upload-artifact@v4
+      with:
+          name: coverage-report
+          path: |
+            htmlcov
+            pytest.xml
+            coverage.xml
+            coverage.json
+    - name: Upload coverage results
+      uses: codecov/codecov-action@v4
+      with:
+        files: coverage.xml
+        fail_ci_if_error: false
     - name: Test standalone CLI
       run: make smoke-test
     - name: Test OCR-D CLI

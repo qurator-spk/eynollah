@@ -1,4 +1,4 @@
 pytest
 pytest-subtests
-coverage
+coverage[toml]
 black
