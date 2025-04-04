@@ -43,10 +43,10 @@ Alternatively, you can run `make install` or `make install-dev` for editable ins
 ## Models
 Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
 
+For documentation on methods and models, have a look at [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
+
 ## Train
-🚧 **Work in progress**  
-  
-In case you want to train your own model, have a look at [`sbb_pixelwise_segmentation`](https://github.com/qurator-spk/sbb_pixelwise_segmentation). 
+In case you want to train your own model with Eynollah, have a look at [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md).
 
 ## Usage
 The command-line interface can be called like this:
@@ -84,7 +84,8 @@ The best output quality is produced when RGB images are used as input rather tha
 
 #### Use as OCR-D processor
 
-Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) [processor](https://ocr-d.de/en/spec/cli).
+Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) [processor](https://ocr-d.de/en/spec/cli),
+formally described in [`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json).
 
 In this case, the source image file group with (preferably) RGB images should be used as input like this:
 
