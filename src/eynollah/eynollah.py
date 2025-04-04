@@ -202,7 +202,7 @@ class Eynollah:
         num_col_upper : Optional[int] = None,
         num_col_lower : Optional[int] = None,
         skip_layout_and_reading_order : bool = False,
-        logger : Logger = None,
+        logger : Optional[Logger] = None,
     ):
         if skip_layout_and_reading_order:
             textline_light = True
