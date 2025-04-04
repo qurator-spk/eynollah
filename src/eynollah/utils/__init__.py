@@ -1,13 +1,17 @@
+import time
 import math
 
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
 import numpy as np
 from shapely import geometry
 import cv2
 import imutils
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-import time
+
 from .is_nan import isNaN
 from .contour import (contours_in_same_horizon,
                       find_new_features_of_contours,
@@ -237,10 +241,8 @@ def return_x_start_end_mothers_childs_and_type_of_reading_order(
     if len(remained_sep_indexes)>1:
         #print(np.array(remained_sep_indexes),'np.array(remained_sep_indexes)')
         #print(np.array(mother),'mother')
-        ##remained_sep_indexes_without_mother = remained_sep_indexes[mother==0]
-        ##remained_sep_indexes_with_child_without_mother = remained_sep_indexes[mother==0 & child==1]
-        remained_sep_indexes_without_mother=np.array(list(remained_sep_indexes))[np.array(mother)==0]
-        remained_sep_indexes_with_child_without_mother=np.array(list(remained_sep_indexes))[(np.array(mother)==0) & (np.array(child)==1)]
+        remained_sep_indexes_without_mother = remained_sep_indexes[mother==0]
+        remained_sep_indexes_with_child_without_mother = remained_sep_indexes[(mother==0) & (child==1)]
         #print(remained_sep_indexes_without_mother,'remained_sep_indexes_without_mother')
         #print(remained_sep_indexes_without_mother,'remained_sep_indexes_without_mother')
         
@@ -980,7 +982,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
                        (regions_model_full[:,:,0]==2)).sum()
         pixels_main = all_pixels - pixels_header
 
-        if (pixels_header>=pixels_main) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ):
+        if (pixels_header/float(pixels_main)>=0.3) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ):
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=2
             contours_only_text_parent_head.append(con)
             if contours_only_text_parent_d_ordered is not None:

@@ -1,5 +1,8 @@
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+try:
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+except ImportError:
+    plt = mpatches = None
 import numpy as np
 import os.path
 import cv2

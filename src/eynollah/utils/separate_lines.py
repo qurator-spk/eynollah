@@ -1616,7 +1616,7 @@ def do_work_of_slopes_new(
             textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con,
                                                              hierarchy,
                                                              max_area=1, min_area=0.00008)
-            y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
+            y_diff_mean = find_contours_mean_y_diff(textline_con_fil) if len(textline_con_fil) > 1 else np.NaN
             if np.isnan(y_diff_mean):
                 slope_for_all = MAX_SLOPE
             else:
@@ -1681,7 +1681,7 @@ def do_work_of_slopes_new_curved(
             textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con,
                                                              hierarchy,
                                                              max_area=1, min_area=0.0008)
-            y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
+            y_diff_mean = find_contours_mean_y_diff(textline_con_fil) if len(textline_con_fil) > 1 else np.NaN
             if np.isnan(y_diff_mean):
                 slope_for_all = MAX_SLOPE
             else:

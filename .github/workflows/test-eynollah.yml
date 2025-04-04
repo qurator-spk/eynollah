@@ -16,18 +16,26 @@ jobs:
     steps:
     - name: clean up
       run: |
+        df -h
         sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
         sudo rm -rf /opt/ghc
         sudo rm -rf "/usr/local/share/boost"
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        df -h
     - uses: actions/checkout@v4
     - uses: actions/cache@v4
-      id: model_cache
+      id: seg_model_cache
       with:
         path: models_eynollah
         key: ${{ runner.os }}-models
+    - uses: actions/cache@v4
+      id: bin_model_cache
+      with:
+        path: default-2021-03-09
+        key: ${{ runner.os }}-modelbin
     - name: Download models
-      if: steps.model_cache.outputs.cache-hit != 'true'
+      if: steps.seg_model_cache.outputs.cache-hit != 'true' || steps.bin_model_cache.outputs.cache-hit != 'true'
       run: make models
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -36,9 +44,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install .[OCR,plotting]
-        pip install -r requirements-test.txt
+        make install EXTRAS=OCR,plotting
+        make deps-test
     - name: Test with pytest
       run: make test
-    - name: Test docker build
-      run: make docker
+    - name: Test standalone CLI
+      run: make smoke-test
+    - name: Test OCR-D CLI
+      run: make ocrd-test

@@ -1,21 +1,22 @@
 {
   "version": "0.3.1",
   "git_url": "https://github.com/qurator-spk/eynollah",
+  "dockerhub": "ocrd/eynollah",
   "tools": {
     "ocrd-eynollah-segment": {
       "executable": "ocrd-eynollah-segment",
       "categories": ["Layout analysis"],
       "description": "Segment page into regions and lines and do reading order detection with eynollah",
-      "input_file_grp": ["OCR-D-IMG", "OCR-D-SEG-PAGE", "OCR-D-GT-SEG-PAGE"],
-      "output_file_grp": ["OCR-D-SEG-LINE"],
+      "input_file_grp_cardinality": 1,
+      "output_file_grp_cardinality": 1,
       "steps": ["layout/segmentation/region", "layout/segmentation/line"],
       "parameters": {
         "models": {
           "type": "string",
-          "format": "file",
+          "format": "uri",
           "content-type": "text/directory",
           "cacheable": true,
-          "description": "Path to directory containing models to be used (See https://qurator-data.de/eynollah)",
+          "description": "Directory containing models to be used (See https://qurator-data.de/eynollah)",
           "required": true
         },
         "dpi": {
@@ -32,7 +33,7 @@
          "light_version": {
           "type": "boolean",
           "default": true,
-          "description": "Try to detect all element subtypes in light version"
+          "description": "Try to detect all element subtypes in light version (faster+simpler method for main region detection and deskewing)"
         },
          "textline_light": {
           "type": "boolean",
@@ -49,10 +50,30 @@
           "default": false,
           "description": "try to return contour of textlines instead of just rectangle bounding box. Needs more processing time"
         },
+        "ignore_page_extraction": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool would ignore page extraction"
+        },
         "allow_scaling": {
           "type": "boolean",
           "default": false,
           "description": "check the resolution against the number of detected columns and if needed, scale the image up or down during layout detection (heuristic to improve quality and performance)"
+        },
+        "allow_enhancement": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool would check that input image need resizing and enhancement or not."
+        },
+        "textline_light": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool will try to return contoure of textlines instead of rectangle bounding box of textline with a faster method."
+        },
+        "right_to_left": {
+          "type": "boolean",
+          "default": false,
+          "description": "if this parameter set to true, this tool will extract right-to-left reading order."
         },
         "headers_off": {
           "type": "boolean",
@@ -61,14 +82,55 @@
         }
       },
       "resources": [
-	{
-	  "description": "models for eynollah (TensorFlow SavedModel format)",
-	  "url": "https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz",
-	  "name": "default",
-	  "size": 1894627041,
-	  "type": "archive",
-	  "path_in_archive": "models_eynollah"
-	}
+        {
+          "description": "models for eynollah (TensorFlow SavedModel format)",
+          "url": "https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz",
+          "name": "default",
+          "size": 1894627041,
+          "type": "archive",
+          "path_in_archive": "models_eynollah"
+        }
+      ]
+    },
+    "ocrd-sbb-binarize": {
+      "executable": "ocrd-sbb-binarize",
+      "description": "Pixelwise binarization with selectional auto-encoders in Keras",
+      "categories": ["Image preprocessing"],
+      "steps": ["preprocessing/optimization/binarization"],
+      "input_file_grp_cardinality": 1,
+      "output_file_grp_cardinality": 1,
+      "parameters": {
+        "operation_level": {
+          "type": "string",
+          "enum": ["page", "region"],
+          "default": "page",
+          "description": "PAGE XML hierarchy level to operate on"
+        },
+        "model": {
+          "description": "Directory containing HDF5 or SavedModel/ProtoBuf models. Can be an absolute path or a path relative to the OCR-D resource location, the current working directory or the $SBB_BINARIZE_DATA environment variable (if set)",
+          "type": "string",
+          "format": "uri",
+          "content-type": "text/directory",
+          "required": true
+        }
+      },
+      "resources": [
+        {
+          "url": "https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2020_01_16.zip",
+          "name": "default",
+          "type": "archive",
+          "path_in_archive": "saved_model_2020_01_16",
+          "size": 563147331,
+          "description": "default models provided by github.com/qurator-spk (SavedModel format)"
+        },
+        {
+          "url": "https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2021_03_09.zip",
+          "name": "default-2021-03-09",
+          "type": "archive",
+          "path_in_archive": ".",
+          "size": 133230419,
+          "description": "updated default models provided by github.com/qurator-spk (SavedModel format)"
+        }
       ]
     }
   }
