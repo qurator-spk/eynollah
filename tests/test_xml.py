@@ -1,4 +1,3 @@
-from pytest import main
 from eynollah.utils.xml import create_page_xml
 from ocrd_models.ocrd_page import to_xml
 
@@ -9,6 +8,3 @@ def test_create_xml():
     xmlstr = to_xml(pcgts)
     assert 'xmlns:pc="%s"' % PAGE_2019 in xmlstr
     assert 'Metadata' in xmlstr
-
-if __name__ == '__main__':
-    main([__file__])

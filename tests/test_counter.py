@@ -1,4 +1,3 @@
-from tests.base import main
 from eynollah.utils.counter import EynollahIdCounter
 
 def test_counter_string():
@@ -29,5 +28,3 @@ def test_counter_methods():
     c.inc('region', -9)
     assert c.get('region') == 1
 
-if __name__ == '__main__':
-    main(__file__)

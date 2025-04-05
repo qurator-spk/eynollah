@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from PIL import Image
 import numpy as np
 from ocrd_models import OcrdExif
@@ -17,12 +18,13 @@ def pil2cv(img):
 def check_dpi(img):
     try:
         if isinstance(img, Image.Image):
-            pil_image = img
+            pil_image = nullcontext(img)
         elif isinstance(img, str):
             pil_image = Image.open(img)
         else:
-            pil_image = cv2pil(img)
-        exif = OcrdExif(pil_image)
+            pil_image = nullcontext(cv2pil(img))
+        with pil_image:
+            exif = OcrdExif(pil_image)
         resolution = exif.resolution
         if resolution == 1:
             raise Exception()

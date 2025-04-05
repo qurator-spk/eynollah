@@ -1,0 +1,6 @@
+tests
+dist
+build
+env*
+*.egg-info
+models_eynollah*

@@ -28,7 +28,7 @@ class EynollahXmlWriter():
         self.counter = EynollahIdCounter()
         self.dir_out = dir_out
         self.image_filename = image_filename
-        self.output_filename = os.path.join(self.dir_out, self.image_filename_stem) + ".xml"
+        self.output_filename = os.path.join(self.dir_out or "", self.image_filename_stem) + ".xml"
         self.curved_line = curved_line
         self.textline_light = textline_light
         self.pcgts = pcgts
@@ -139,7 +139,7 @@ class EynollahXmlWriter():
                         points_co += str(int((contour_textline[0][1] + region_bboxes[0]+page_coord[0])/self.scale_y))
                 points_co += ' '
             coords.set_points(points_co[:-1])
-            
+
     def serialize_lines_in_dropcapital(self, text_region, all_found_textline_polygons, region_idx, page_coord, all_box_coord, slopes, counter, ocr_all_textlines_textregion):
         self.logger.debug('enter serialize_lines_in_region')
         for j in range(1):
@@ -216,9 +216,9 @@ class EynollahXmlWriter():
                     points_co += ','
                     points_co += str(int((found_polygons_text_region_img[mm][lmm][1] + page_coord[0])/ self.scale_y  ))
                     points_co += ' '
-                    
+
             img_region.get_Coords().set_points(points_co[:-1])
-            
+
         for mm in range(len(polygons_lines_to_be_written_in_xml)):
             sep_hor = SeparatorRegionType(id=counter.next_region_id, Coords=CoordsType())
             page.add_SeparatorRegion(sep_hor)
@@ -259,7 +259,7 @@ class EynollahXmlWriter():
             textregion = TextRegionType(id=counter.next_region_id, type_='paragraph',
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord),  conf=conf_contours_textregion[mm]))
             page.add_TextRegion(textregion)
-            
+
             if ocr_all_textlines:
                 ocr_textlines = ocr_all_textlines[mm]
             else:
@@ -294,10 +294,10 @@ class EynollahXmlWriter():
 
         for mm in range(len(found_polygons_text_region_img)):
             page.add_ImageRegion(ImageRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region_img[mm], page_coord))))
-            
+
         for mm in range(len(polygons_lines_to_be_written_in_xml)):
             page.add_SeparatorRegion(ImageRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(polygons_lines_to_be_written_in_xml[mm], [0 , 0, 0, 0]))))
-            
+
         for mm in range(len(found_polygons_tables)):
             page.add_TableRegion(TableRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_tables[mm], page_coord))))
 

@@ -1,6 +1,6 @@
 import sys
 import click
-from ocrd_utils import initLogging, setOverrideLogLevel
+from ocrd_utils import initLogging, getLevelName, getLogger
 from eynollah.eynollah import Eynollah, Eynollah_ocr
 from eynollah.sbb_binarize import SbbBinarizer
 
@@ -15,21 +15,18 @@ def main():
     help="directory of GT page-xml files",
     type=click.Path(exists=True, file_okay=False),
 )
-
 @click.option(
     "--dir_out_modal_image",
     "-domi",
     help="directory where ground truth images would be written",
     type=click.Path(exists=True, file_okay=False),
 )
-
 @click.option(
     "--dir_out_classes",
     "-docl",
     help="directory where ground truth classes would be written",
     type=click.Path(exists=True, file_okay=False),
 )
-
 @click.option(
     "--input_height",
     "-ih",
@@ -45,43 +42,35 @@ def main():
     "-min",
     help="min area size of regions considered for reading order training.",
 )
-
 def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size):
     xml_files_ind = os.listdir(dir_xml)
-    
+
 @main.command()
 @click.option('--patches/--no-patches', default=True, help='by enabling this parameter you let the model to see the image in patches.')
-
 @click.option('--model_dir', '-m', type=click.Path(exists=True, file_okay=False), required=True, help='directory containing models for prediction')
-
-@click.argument('input_image')
-
-@click.argument('output_image')
+@click.argument('input_image', required=False)
+@click.argument('output_image', required=False)
 @click.option(
     "--dir_in",
     "-di",
-    help="directory of images",
+    help="directory of input images",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
     "--dir_out",
     "-do",
-    help="directory where the binarized images will be written",
+    help="directory for output images",
     type=click.Path(exists=True, file_okay=False),
 )
-
 def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out):
-    if not dir_out and (dir_in):
-        print("Error: You used -di but did not set -do")
-        sys.exit(1)
-    elif dir_out and not (dir_in):
-        print("Error: You used -do to write out binarized images but have not set -di")
-        sys.exit(1)
+    assert (dir_out is None) == (dir_in is None), "Options -di and -do are mutually dependent"
+    assert (input_image is None) == (output_image is None), "INPUT_IMAGE and OUTPUT_IMAGE are mutually dependent"
+    assert (dir_in is None) != (input_image is None), "Specify either -di and -do options, or INPUT_IMAGE and OUTPUT_IMAGE"
     SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, save=output_image, dir_in=dir_in, dir_out=dir_out)
-    
-    
-    
-    
+
+
+
+
 @main.command()
 @click.option(
     "--image",
@@ -263,26 +252,29 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
-    if not enable_plotting and (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
-        print("Error: You used one of -sl, -sd, -sa, -sp, -si or -ae but did not enable plotting with -ep")
-        sys.exit(1)
-    elif enable_plotting and not (save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement):
-        print("Error: You used -ep to enable plotting but set none of -sl, -sd, -sa, -sp, -si or -ae")
-        sys.exit(1)
-    if textline_light and not light_version:
-        print('Error: You used -tll to enable light textline detection but -light is not enabled')
-        sys.exit(1)
-    if light_version and not textline_light:
-        print('Error: You used -light without -tll. Light version need light textline to be enabled.')
-    if extract_only_images and  (allow_enhancement or allow_scaling or light_version or curved_line or textline_light or full_layout or tables or right2left or headers_off) :
-        print('Error: You used -eoi which can not be enabled alongside light_version -light or allow_scaling -as or allow_enhancement -ae or curved_line -cl or textline_light -tll or full_layout -fl or tables -tab or right2left -r2l or headers_off -ho')
-        sys.exit(1)
+    assert enable_plotting or not save_layout, "Plotting with -sl also requires -ep"
+    assert enable_plotting or not save_deskewed, "Plotting with -sd also requires -ep"
+    assert enable_plotting or not save_all, "Plotting with -sa also requires -ep"
+    assert enable_plotting or not save_page, "Plotting with -sp also requires -ep"
+    assert enable_plotting or not save_images, "Plotting with -si also requires -ep"
+    assert enable_plotting or not allow_enhancement, "Plotting with -ae also requires -ep"
+    assert not enable_plotting or save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement, \
+        "Plotting with -ep also requires -sl, -sd, -sa, -sp, -si or -ae"
+    assert textline_light == light_version, "Both light textline detection -tll and light version -light must be set or unset equally"
+    assert not extract_only_images or not allow_enhancement, "Image extraction -eoi can not be set alongside allow_enhancement -ae"
+    assert not extract_only_images or not allow_scaling, "Image extraction -eoi can not be set alongside allow_scaling -as"
+    assert not extract_only_images or not light_version, "Image extraction -eoi can not be set alongside light_version -light"
+    assert not extract_only_images or not curved_line, "Image extraction -eoi can not be set alongside curved_line -cl"
+    assert not extract_only_images or not textline_light, "Image extraction -eoi can not be set alongside textline_light -tll"
+    assert not extract_only_images or not full_layout, "Image extraction -eoi can not be set alongside full_layout -fl"
+    assert not extract_only_images or not tables, "Image extraction -eoi can not be set alongside tables -tab"
+    assert not extract_only_images or not right2left, "Image extraction -eoi can not be set alongside right2left -r2l"
+    assert not extract_only_images or not headers_off, "Image extraction -eoi can not be set alongside headers_off -ho"
+    assert image or dir_in, "Either a single image -i or a dir_in -di is required"
     eynollah = Eynollah(
-        image_filename=image,
-        overwrite=overwrite,
+        model,
+        logger=getLogger('eynollah'),
         dir_out=out,
-        dir_in=dir_in,
-        dir_models=model,
         dir_of_cropped_images=save_images,
         extract_only_images=extract_only_images,
         dir_of_layout=save_layout,
@@ -308,12 +300,11 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
         skip_layout_and_reading_order=skip_layout_and_reading_order,
     )
     if dir_in:
-        eynollah.run()
+        eynollah.run(dir_in=dir_in, overwrite=overwrite)
     else:
-        pcgts = eynollah.run()
-        eynollah.writer.write_pagexml(pcgts)
-        
-        
+        eynollah.run(image_filename=image, overwrite=overwrite)
+
+
 @main.command()
 @click.option(
     "--dir_in",
@@ -391,9 +382,9 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
 )
 
 def ocr(dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, log_level):
-    if log_level:
-        setOverrideLogLevel(log_level)
     initLogging()
+    if log_level:
+        getLogger('eynollah').setLevel(getLevelName(log_level))
     eynollah_ocr = Eynollah_ocr(
         dir_xmls=dir_xmls,
         dir_out_image_text=dir_out_image_text,
