@@ -24,7 +24,6 @@ import copy
 import json
 
 from loky import ProcessPoolExecutor
-from PIL.Image import Image
 import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
@@ -4887,7 +4886,7 @@ class Eynollah_ocr:
             self.model_ocr.to(self.device)
 
         else:
-            self.model_ocr_dir = dir_models + "/model_step_150000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+            self.model_ocr_dir = dir_models + "/model_step_75000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
             model_ocr = load_model(self.model_ocr_dir , compile=False)
             
             self.prediction_model = tf.keras.models.Model(
