@@ -51,7 +51,9 @@ jobs:
     - name: Get coverage results
       run: |
         coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
-        coverage html json xml
+        coverage html
+        coverage json
+        coverage xml
     - name: Store coverage results
       uses: actions/upload-artifact@v4
       with:
