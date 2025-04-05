@@ -47,7 +47,7 @@ jobs:
         make install EXTRAS=OCR,plotting
         make deps-test
     - name: Test with pytest
-      run: make coverage PYTEST_ARGS="--junitxml=pytest.xml"
+      run: make coverage PYTEST_ARGS="-vv --junitxml=pytest.xml"
     - name: Get coverage results
       run: |
         coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
