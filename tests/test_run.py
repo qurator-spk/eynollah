@@ -43,7 +43,7 @@ def test_run_eynollah_layout_filename(tmp_path, subtests, pytestconfig, caplog):
         with subtests.test(#msg="test CLI",
                            options=options):
             with caplog.filtering(only_eynollah):
-                result = runner.invoke(layout_cli, args + options)
+                result = runner.invoke(layout_cli, args + options, catch_exceptions=False)
             print(result)
             assert result.exit_code == 0
             logmsgs = [logrec.message for logrec in caplog.records]
