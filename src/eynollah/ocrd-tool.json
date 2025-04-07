@@ -1,5 +1,5 @@
 {
-  "version": "0.3.1",
+  "version": "0.4.0",
   "git_url": "https://github.com/qurator-spk/eynollah",
   "dockerhub": "ocrd/eynollah",
   "tools": {
@@ -40,11 +40,11 @@
           "default": true,
           "description": "Light version need textline light"
         },
-	"tables": {
-	  "type": "boolean",
-	  "default": false,
-	  "description": "Try to detect table regions"
-	},
+        "tables": {
+          "type": "boolean",
+          "default": false,
+          "description": "Try to detect table regions"
+        },
         "curved_line": {
           "type": "boolean",
           "default": false,

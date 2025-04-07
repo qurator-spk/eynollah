@@ -5,6 +5,8 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.4.0] - 2025-04-07
+
 Fixed:
 
  * allow empty imports for optional dependencies
