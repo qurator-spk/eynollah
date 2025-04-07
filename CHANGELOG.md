@@ -5,6 +5,62 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Fixed:
+
+ * allow empty imports for optional dependencies
+ * avoid Numpy warnings (empty slices etc)
+ * remove deprecated Numpy types
+ * binarization CLI: make `dir_in` usable again
+
+Added:
+
+ * Continuous Deployment via Dockerhub and GHCR
+ * CI: also test CLIs and OCR-D
+ * CI: measure code coverage, annotate+upload reports
+ * smoke-test: also check results
+ * smoke-test: also test sbb-binarize
+ * ocrd-test: analog for OCR-D CLI (segment and binarize)
+ * pytest: add asserts, extend coverage, use subtests for various options
+ * pytest: also add binarization
+ * pytest: add `dir_in` mode (segment and binarize)
+ * make install: control optional dependencies via `EXTRAS` variable
+ * OCR-D: expose and describe recently added parameters:
+    - `ignore_page_extraction`
+    - `allow_enhancement`
+    - `textline_light`
+    - `right_to_left`
+ * OCR-D: :fire: integrate ocrd-sbb-binarize
+ * add detection confidence in `TextRegion/Coords/@conf`
+   (but only in light version and not for marginalia)
+
+Changed:
+
+ * Docker build: simplify, w/ `OCR`, conform to OCR-D spec
+ * OCR-D: :fire: migrate to core v3
+    - initialize+setup only once
+    - restrict number of parallel page workers to 1
+      (conflicts with existing multiprocessing; TF parts not mp-compatible)
+    - do query maximally annotated page image
+      (but filtering existing binarization/cropping/deskewing),
+      rebase (as new `@imageFilename`) if necessary
+    - add behavioural docstring
+
+ * :fire: refactor `Eynollah` API:
+    - no more data (kw)args at init,
+       but kwargs `dir_in` / `image_filename` for `run()`
+    - no more data attributes, but function kwargs
+      (`pcgts`, `image_filename`, `image_pil`, `dir_in`, `override_dpi`)
+    - remove redundant TF session/model loaders
+      (only load once during init)
+    - factor `run_single()` out of `run()` (loop body),
+      expose for independent calls (like OCR-D)
+    - expose `cache_images()`, add `dpi` kwarg, set `self._imgs`
+    - single-image mode writes PAGE file result
+      (just as directory mode does)
+
+ * CLI: assertions (instead of print+exit) for options checks
+ * light mode: fine-tune ratio to better detect a region as header
+
 ## [0.3.1] - 2024-08-27
 
 Fixed:
