@@ -230,7 +230,6 @@ def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
 def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first, confidence_matrix):
     img_copy = np.zeros(img.shape)
     img_copy = cv2.fillPoly(img_copy, pts=[contour_par], color=(1, 1, 1))
-    
     confidence_matrix_mapped_with_contour = confidence_matrix * img_copy[:,:,0]
     confidence_contour = np.sum(confidence_matrix_mapped_with_contour) / float(np.sum(img_copy[:,:,0]))
 
@@ -239,9 +238,13 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
     ret, thresh = cv2.threshold(imgray, 0, 255, 0)
 
     cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
-    cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
-    # print(np.shape(cont_int[0]))
+    if len(cont_int)==0:
+        cont_int = []
+        cont_int.append(contour_par)
+        confidence_contour = 0
+    else:
+        cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
+        cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
     return cont_int[0], index_r_con, confidence_contour
 
 def get_textregion_contours_in_org_image_light(cnts, img, slope_first, confidence_matrix, map=map):
