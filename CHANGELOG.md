@@ -5,6 +5,10 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Fixed:
+
+  * restoring the contour in the original image caused an error due to an empty tuple
+
 ## [0.4.0] - 2025-04-07
 
 Fixed:
