@@ -356,6 +356,18 @@ def rotate_max_area(image, rotated, rotated_label, angle):
     x2 = x1 + int(wr)
     return rotated[y1:y2, x1:x2], rotated_label[y1:y2, x1:x2]
 
+def rotate_max_area_single_image(image, rotated, angle):
+    """ image: cv2 image matrix object
+        angle: in degree
+    """
+    wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0],
+                                    math.radians(angle))
+    h, w, _ = rotated.shape
+    y1 = h // 2 - int(hr / 2)
+    y2 = y1 + int(hr)
+    x1 = w // 2 - int(wr / 2)
+    x2 = x1 + int(wr)
+    return rotated[y1:y2, x1:x2]
 
 def rotation_not_90_func(img, label, thetha):
     rotated = imutils.rotate(img, thetha)
@@ -365,7 +377,7 @@ def rotation_not_90_func(img, label, thetha):
 
 def rotation_not_90_func_single_image(img, thetha):
     rotated = imutils.rotate(img, thetha)
-    return rotate_max_area(img, rotated, thetha)
+    return rotate_max_area_single_image(img, rotated, thetha)
 
 
 def color_images(seg, n_classes):
