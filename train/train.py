@@ -380,7 +380,10 @@ def run(_config, n_classes, n_epochs, input_height,
         dir_flow_train_labels = os.path.join(dir_train, 'labels')
         
         classes = os.listdir(dir_flow_train_labels)
-        num_rows =len(classes)
+        if augmentation:
+            num_rows = len(classes)*(len(thetha) + 1)
+        else:
+            num_rows = len(classes)
         #ls_test = os.listdir(dir_flow_train_labels)
 
         #f1score_tot = [0]
@@ -390,7 +393,7 @@ def run(_config, n_classes, n_epochs, input_height,
         model.compile(loss="binary_crossentropy",
                             optimizer = opt_adam,metrics=['accuracy'])
         for i in range(n_epochs):
-            history = model.fit(generate_arrays_from_folder_reading_order(dir_flow_train_labels, dir_flow_train_imgs, n_batch, input_height, input_width, n_classes), steps_per_epoch=num_rows / n_batch, verbose=1)
+            history = model.fit(generate_arrays_from_folder_reading_order(dir_flow_train_labels, dir_flow_train_imgs, n_batch, input_height, input_width, n_classes, thetha, augmentation), steps_per_epoch=num_rows / n_batch, verbose=1)
             model.save( os.path.join(dir_output,'model_'+str(i+indexer_start) ))
             
             with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config.json"), "w") as fp:

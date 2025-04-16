@@ -363,6 +363,11 @@ def rotation_not_90_func(img, label, thetha):
     return rotate_max_area(img, rotated, rotated_label, thetha)
 
 
+def rotation_not_90_func_single_image(img, thetha):
+    rotated = imutils.rotate(img, thetha)
+    return rotate_max_area(img, rotated, thetha)
+
+
 def color_images(seg, n_classes):
     ann_u = range(n_classes)
     if len(np.shape(seg)) == 3:
@@ -410,7 +415,7 @@ def IoU(Yi, y_predi):
     #print("Mean IoU: {:4.3f}".format(mIoU))
     return mIoU
 
-def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batchsize, height, width, n_classes):
+def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batchsize, height, width, n_classes, thetha, augmentation=False):
     all_labels_files = os.listdir(classes_file_dir)
     ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
     ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
@@ -433,6 +438,22 @@ def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batch
                 ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
                 ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
                 batchcount = 0
+                
+            if augmentation:
+                for thetha_i in thetha:
+                    img_rot = rotation_not_90_func_single_image(img, thetha_i)
+                    
+                    ret_x[batchcount, :,:,0] = img_rot[:,:,0]/3.0
+                    ret_x[batchcount, :,:,2] = img_rot[:,:,2]/3.0
+                    ret_x[batchcount, :,:,1] = img_rot[:,:,1]/5.0
+
+                    ret_y[batchcount, :] =  label_class
+                    batchcount+=1
+                    if batchcount>=batchsize:
+                        yield (ret_x, ret_y)
+                        ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
+                        ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+                        batchcount = 0
 
 def data_gen(img_folder, mask_folder, batch_size, input_height, input_width, n_classes, task='segmentation'):
     c = 0
