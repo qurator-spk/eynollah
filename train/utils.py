@@ -455,6 +455,8 @@ def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batch
                 for thetha_i in thetha:
                     img_rot = rotation_not_90_func_single_image(img, thetha_i)
                     
+                    img_rot = resize_image(img_rot, height, width)
+                    
                     ret_x[batchcount, :,:,0] = img_rot[:,:,0]/3.0
                     ret_x[batchcount, :,:,2] = img_rot[:,:,2]/3.0
                     ret_x[batchcount, :,:,1] = img_rot[:,:,1]/5.0
