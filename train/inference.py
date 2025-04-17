@@ -567,6 +567,7 @@ class sbb_predict:
             img_seg_overlayed, only_layout  = self.visualize_model_output(res, self.img_org, self.task)
             if self.save:
                 cv2.imwrite(self.save,img_seg_overlayed)
+            if self.save_layout:
                 cv2.imwrite(self.save_layout, only_layout)
                 
         if self.ground_truth:
