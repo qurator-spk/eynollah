@@ -50,10 +50,16 @@ For documentation on methods and models, have a look at [`models.md`](https://gi
 In case you want to train your own model with Eynollah, have a look at [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md).
 
 ## Usage
-The command-line interface can be called like this:
+
+Eynollah has four key use cases: layout analysis, binarization, OCR, and machine-based reading order.
+
+### Layout
+The layout module is responsible for detecting layouts, identifying text lines, and determining reading order using both heuristic methods or a machine-based reading order detection model. It's important to note that this functionality should not be confused with the machine-based-reading-order use case. The latter, still under development, focuses specifically on determining the reading order for a given layout in an XML file. In contrast, layout detection takes an image as input, and after detecting the layout, it can also determine the reading order using a machine-based model.
+
+The command-line interface for layout can be called like this:
 
 ```sh
-eynollah \
+eynollah layout \
   -i <single image file> | -di <directory containing image files> \
   -o <output directory> \
   -m <directory containing model files> \
@@ -66,6 +72,7 @@ The following options can be used to further configure the processing:
 |-------------------|:-------------------------------------------------------------------------------|
 | `-fl`             | full layout analysis including all steps and segmentation classes              |
 | `-light`          | lighter and faster but simpler method for main region detection and deskewing  |
+| `-tll`            | this indicates the light textline and should be passed with light version      |
 | `-tab`            | apply table detection                                                          |
 | `-ae`             | apply enhancement (the resulting image is saved to the output directory)       |
 | `-as`             | apply scaling                                                                  |
@@ -82,6 +89,34 @@ The following options can be used to further configure the processing:
 
 If no option is set, the tool performs layout detection of main regions (background, text, images, separators and marginals).
 The best output quality is produced when RGB images are used as input rather than greyscale or binarized images.
+
+### Binarization
+Document Image Binarization
+
+The command-line interface for binarization of single image can be called like this:
+
+```sh
+eynollah binarization \
+  -m <path to directory containing model files> \
+  <input image> \
+  <output image>
+```
+
+and for flowing from a directory like this:
+
+```sh
+eynollah binarization \
+  -m <path to directory containing model files> \
+  -di <directory containing image files> \
+  -do <output directory>
+```
+
+### OCR
+Under development
+
+### Machine-based-reading-order
+Under development
+
 
 #### Use as OCR-D processor
 
