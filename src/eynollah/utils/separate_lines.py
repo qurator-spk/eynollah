@@ -214,9 +214,13 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
             textline_con_fil=filter_contours_area_of_image(img_patch,
                                                            textline_con, hierarchy,
                                                            max_area=1, min_area=0.0008)
-            y_diff_mean=np.mean(np.diff(peaks_new_tot))#self.find_contours_mean_y_diff(textline_con_fil)
-            sigma_gaus=int(  y_diff_mean * (7./40.0) )
-            #print(sigma_gaus,'sigma_gaus')
+
+            if len(np.diff(peaks_new_tot))>0:
+                y_diff_mean=np.mean(np.diff(peaks_new_tot))#self.find_contours_mean_y_diff(textline_con_fil)
+                sigma_gaus=int(  y_diff_mean * (7./40.0) )
+            else:
+                sigma_gaus=12
+                
         except:
             sigma_gaus=12
         if sigma_gaus<3:
@@ -1616,6 +1620,7 @@ def do_work_of_slopes_new(
             textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con,
                                                              hierarchy,
                                                              max_area=1, min_area=0.00008)
+
             y_diff_mean = find_contours_mean_y_diff(textline_con_fil) if len(textline_con_fil) > 1 else np.NaN
             if np.isnan(y_diff_mean):
                 slope_for_all = MAX_SLOPE
@@ -1640,13 +1645,6 @@ def do_work_of_slopes_new(
         # plt.show()
         all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w].copy()
         mask_only_con_region = mask_only_con_region[y: y + h, x: x + w]
-
-        ##plt.imshow(textline_mask_tot_ea)
-        ##plt.show()
-        ##plt.imshow(all_text_region_raw)
-        ##plt.show()
-        ##plt.imshow(mask_only_con_region)
-        ##plt.show()
 
         all_text_region_raw[mask_only_con_region == 0] = 0
         cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contour_par, box_text)
