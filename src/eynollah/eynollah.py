@@ -259,7 +259,7 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_region_dir_p_ens_light_only_images_extraction = dir_models + "/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18"
-        self.model_reading_order_dir = dir_models + "/model_ens_reading_order_machine_based"
+        self.model_reading_order_dir = dir_models + "/model_mb_ro_aug_3"#"/model_ens_reading_order_machine_based"
         #"/modelens_12sp_elay_0_3_4__3_6_n"
         #"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"
         #"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"
@@ -3320,12 +3320,22 @@ class Eynollah:
     def do_order_of_regions_with_model(self, contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
         y_len = text_regions_p.shape[0]
         x_len = text_regions_p.shape[1]
+        
 
         img_poly = np.zeros((y_len,x_len), dtype='uint8')
         img_poly[text_regions_p[:,:]==1] = 1
         img_poly[text_regions_p[:,:]==2] = 2
         img_poly[text_regions_p[:,:]==3] = 4
         img_poly[text_regions_p[:,:]==6] = 5
+        
+        
+        #temp
+        sep_mask = (img_poly==5)*1
+        sep_mask = sep_mask.astype('uint8')
+        sep_mask = cv2.erode(sep_mask, kernel=KERNEL, iterations=2)
+        img_poly[img_poly==5] = 0
+        img_poly[sep_mask==1] = 5
+        #
 
         img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
         if contours_only_text_parent_h:
@@ -3341,9 +3351,13 @@ class Eynollah:
         if not len(co_text_all):
             return [], []
 
-        labels_con = np.zeros((y_len, x_len, len(co_text_all)), dtype=bool)
+        labels_con = np.zeros((int(y_len /6.), int(x_len/6.), len(co_text_all)), dtype=bool)
+        co_text_all = [(i/6).astype(int) for i in co_text_all]
         for i in range(len(co_text_all)):
             img = labels_con[:,:,i].astype(np.uint8)
+            
+            #img = cv2.resize(img, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
+            
             cv2.fillPoly(img, pts=[co_text_all[i]], color=(1,))
             labels_con[:,:,i] = img
 
@@ -3359,6 +3373,7 @@ class Eynollah:
         labels_con = resize_image(labels_con.astype(np.uint8), height1, width1).astype(bool)
         img_header_and_sep = resize_image(img_header_and_sep, height1, width1)
         img_poly = resize_image(img_poly, height3, width3)
+        
 
         inference_bs = 3
         input_1 = np.zeros((inference_bs, height1, width1, 3))
@@ -4575,10 +4590,6 @@ class Eynollah:
             return pcgts
 
 
-        ## check the ro order 
-
-
-
 
         #print("text region early 3 in %.1fs", time.time() - t0)
         if self.light_version:
@@ -4886,7 +4897,7 @@ class Eynollah_ocr:
             self.model_ocr.to(self.device)
 
         else:
-            self.model_ocr_dir = dir_models + "/model_step_75000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+            self.model_ocr_dir = dir_models + "/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
             model_ocr = load_model(self.model_ocr_dir , compile=False)
             
             self.prediction_model = tf.keras.models.Model(
@@ -4974,7 +4985,7 @@ class Eynollah_ocr:
     def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(self, textline_image):
         width = np.shape(textline_image)[1]
         height = np.shape(textline_image)[0]
-        common_window = int(0.06*width)
+        common_window = int(0.22*width)
 
         width1 = int ( width/2. - common_window )
         width2 = int ( width/2. + common_window )
@@ -4984,13 +4995,17 @@ class Eynollah_ocr:
         
         peaks_real, _ = find_peaks(sum_smoothed, height=0)
         
-        if len(peaks_real)>70:
+        if len(peaks_real)>35:
 
-            peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
+            #peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
+            argsort = np.argsort(sum_smoothed[peaks_real])[::-1]
+            peaks_real_top_six = peaks_real[argsort[:6]]
+            midpoint = textline_image.shape[1] / 2.
+            arg_closest = np.argmin(np.abs(peaks_real_top_six - midpoint))
 
-            arg_max = np.argmax(sum_smoothed[peaks_real])
+            #arg_max = np.argmax(sum_smoothed[peaks_real])
 
-            peaks_final = peaks_real[arg_max]
+            peaks_final = peaks_real_top_six[arg_closest]#peaks_real[arg_max]
             
             return peaks_final
         else:
@@ -5038,10 +5053,19 @@ class Eynollah_ocr:
             
         if width_new == 0:
             width_new = img.shape[1]
+            
+        ##if width_new+32 >= image_width:
+            ##width_new = width_new - 32
+            
+        ###patch_zero = np.zeros((32, 32, 3))#+255
+        ###patch_zero[9:19,8:18,:] = 0
+            
         
         img = resize_image(img, image_height, width_new)
         img_fin = np.ones((image_height, image_width, 3))*255
-        img_fin[:,:+width_new,:] = img[:,:,:]
+        ###img_fin[:,:32,:] = patch_zero[:,:,:]
+        ###img_fin[:,32:32+width_new,:] = img[:,:,:]
+        img_fin[:,:width_new,:] = img[:,:,:]
         img_fin = img_fin / 255.
         return img_fin
     
@@ -5097,7 +5121,7 @@ class Eynollah_ocr:
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
                                     img_crop[mask_poly==0] = 255
                                     
-                                    if h2w_ratio > 0.05:
+                                    if h2w_ratio > 0.1:
                                         cropped_lines.append(img_crop)
                                         cropped_lines_meging_indexing.append(0)
                                     else:
@@ -5234,7 +5258,7 @@ class Eynollah_ocr:
                                     if self.draw_texts_on_image:
                                         total_bb_coordinates.append([x,y,w,h])
                                         
-                                    h2w_ratio = h/float(w)
+                                    w_scaled = w *  image_height/float(h)
                                     
                                     img_poly_on_img = np.copy(img)
                                     if self.prediction_with_both_of_rgb_and_bin:
@@ -5252,7 +5276,7 @@ class Eynollah_ocr:
                                             img_crop_bin[mask_poly==0] = 255
                                     
                                     if not self.export_textline_images_and_text:
-                                        if h2w_ratio > 0.1:
+                                        if w_scaled < 1.5*image_width:
                                             img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
                                             cropped_lines_meging_indexing.append(0)
@@ -5334,11 +5358,11 @@ class Eynollah_ocr:
                         if self.prediction_with_both_of_rgb_and_bin:
                             preds_bin = self.prediction_model.predict(imgs_bin, verbose=0)
                             preds = (preds + preds_bin) / 2.
-                            
+
                         pred_texts = self.decode_batch_predictions(preds)
 
                         for ib in range(imgs.shape[0]):
-                            pred_texts_ib = pred_texts[ib].strip("[UNK]")
+                            pred_texts_ib = pred_texts[ib].replace("[UNK]", "")
                             extracted_texts.append(pred_texts_ib)
                             
                     extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+" "+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
@@ -5378,7 +5402,7 @@ class Eynollah_ocr:
                     text_by_textregion = []
                     for ind in unique_cropped_lines_region_indexer:
                         extracted_texts_merged_un = np.array(extracted_texts_merged)[np.array(cropped_lines_region_indexer)==ind]
-                        text_by_textregion.append(" ".join(extracted_texts_merged_un))
+                        text_by_textregion.append("".join(extracted_texts_merged_un))
                         
                     indexer = 0
                     indexer_textregion = 0
