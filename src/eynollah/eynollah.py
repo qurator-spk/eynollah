@@ -5164,7 +5164,7 @@ class Eynollah_ocr:
                     
                     extracted_texts = extracted_texts + generated_text_merged
 
-                extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
+                extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+" "+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
 
                 extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
                 #print(extracted_texts_merged, len(extracted_texts_merged))
