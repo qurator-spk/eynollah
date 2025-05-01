@@ -3,8 +3,9 @@ PIP ?= pip3
 EXTRAS ?=
 
 # DOCKER_BASE_IMAGE = artefakt.dev.sbb.berlin:5000/sbb/ocrd_core:v2.68.0
-DOCKER_BASE_IMAGE = docker.io/ocrd/core-cuda-tf2:v3.3.0
-DOCKER_TAG = ocrd/eynollah
+DOCKER_BASE_IMAGE ?= docker.io/ocrd/core-cuda-tf2:latest
+DOCKER_TAG ?= ocrd/eynollah
+DOCKER ?= docker
 
 #SEG_MODEL := https://qurator-data.de/eynollah/2021-04-25/models_eynollah.tar.gz
 #SEG_MODEL := https://qurator-data.de/eynollah/2022-04-05/models_eynollah_renamed.tar.gz
@@ -117,7 +118,7 @@ coverage:
 
 # Build docker image
 docker:
-	docker build \
+	$(DOCKER) build \
 	--build-arg DOCKER_BASE_IMAGE=$(DOCKER_BASE_IMAGE) \
 	--build-arg VCS_REF=$$(git rev-parse --short HEAD) \
 	--build-arg BUILD_DATE=$$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
