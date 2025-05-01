@@ -259,7 +259,7 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_region_dir_p_ens_light_only_images_extraction = dir_models + "/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18"
-        self.model_reading_order_dir = dir_models + "/model_ens_reading_order_machine_based"
+        self.model_reading_order_dir = dir_models + "/model_mb_ro_aug_2"#"/model_ens_reading_order_machine_based"
         #"/modelens_12sp_elay_0_3_4__3_6_n"
         #"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"
         #"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"
@@ -1221,7 +1221,7 @@ class Eynollah:
                         seg_art[seg_art>0] =1
 
                         seg_line = label_p_pred[:,:,:,3]
-                        seg_line[seg_line>0.1] =1
+                        seg_line[seg_line>0.5] =1#seg_line[seg_line>0.1] =1
                         seg_line[seg_line<1] =0
 
                         seg[seg_art==1]=4
@@ -3329,13 +3329,13 @@ class Eynollah:
         img_poly[text_regions_p[:,:]==6] = 5
         
         
-        #temp
-        sep_mask = (img_poly==5)*1
-        sep_mask = sep_mask.astype('uint8')
-        sep_mask = cv2.erode(sep_mask, kernel=KERNEL, iterations=2)
-        img_poly[img_poly==5] = 0
-        img_poly[sep_mask==1] = 5
-        #
+        ###temp
+        ##sep_mask = (img_poly==5)*1
+        ##sep_mask = sep_mask.astype('uint8')
+        ##sep_mask = cv2.erode(sep_mask, kernel=KERNEL, iterations=2)
+        ##img_poly[img_poly==5] = 0
+        ##img_poly[sep_mask==1] = 5
+        ###
 
         img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
         if contours_only_text_parent_h:
@@ -5081,6 +5081,12 @@ class Eynollah_ocr:
                 dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
                 out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
                 img = cv2.imread(dir_img)
+                
+                if self.draw_texts_on_image:
+                    out_image_with_text = os.path.join(self.dir_out_image_text, file_name+'.png')
+                    image_text = Image.new("RGB", (img.shape[1], img.shape[0]), "white")
+                    draw = ImageDraw.Draw(image_text)
+                    total_bb_coordinates = []
 
                 ##file_name = Path(dir_xmls).stem
                 tree1 = ET.parse(dir_xml, parser = ET.XMLParser(encoding="utf-8"))
@@ -5110,6 +5116,9 @@ class Eynollah_ocr:
                                     p_h=child_textlines.attrib['points'].split(' ')
                                     textline_coords =  np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] )
                                     x,y,w,h = cv2.boundingRect(textline_coords)
+                                    
+                                    if self.draw_texts_on_image:
+                                        total_bb_coordinates.append([x,y,w,h])
                                     
                                     h2w_ratio = h/float(w)
                                     
@@ -5161,6 +5170,34 @@ class Eynollah_ocr:
                 #print(extracted_texts_merged, len(extracted_texts_merged))
 
                 unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
+                
+                if self.draw_texts_on_image:
+                    
+                    font_path = "NotoSans-Regular.ttf"  # Make sure this file exists!
+                    font = ImageFont.truetype(font_path, 40)
+                    
+                    for indexer_text, bb_ind in enumerate(total_bb_coordinates):
+                        
+                        
+                        x_bb = bb_ind[0]
+                        y_bb = bb_ind[1]
+                        w_bb = bb_ind[2]
+                        h_bb = bb_ind[3]
+                        
+                        font = self.fit_text_single_line(draw, extracted_texts_merged[indexer_text], font_path, w_bb, int(h_bb*0.4) )
+                        
+                        ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
+                        
+                        text_bbox = draw.textbbox((0, 0), extracted_texts_merged[indexer_text], font=font)
+                        text_width = text_bbox[2] - text_bbox[0]
+                        text_height = text_bbox[3] - text_bbox[1]
+
+                        text_x = x_bb + (w_bb - text_width) // 2  # Center horizontally
+                        text_y = y_bb + (h_bb - text_height) // 2  # Center vertically
+
+                        # Draw the text
+                        draw.text((text_x, text_y), extracted_texts_merged[indexer_text], fill="black", font=font)
+                    image_text.save(out_image_with_text)
 
                 #print(len(unique_cropped_lines_region_indexer), 'unique_cropped_lines_region_indexer')
                 text_by_textregion = []
