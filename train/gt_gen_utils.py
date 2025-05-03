@@ -51,9 +51,10 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
         jv += 1
     return found_polygons_early
 
-def filter_contours_area_of_image(image, contours, order_index, max_area, min_area):
+def filter_contours_area_of_image(image, contours, order_index, max_area, min_area, min_early):
     found_polygons_early = list()
     order_index_filtered = list()
+    regions_ar_less_than_early_min = list()
     #jv = 0
     for jv, c in enumerate(contours):
         if len(np.shape(c)) == 3:
@@ -68,8 +69,16 @@ def filter_contours_area_of_image(image, contours, order_index, max_area, min_ar
         if area >= min_area * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]):  # and hierarchy[0][jv][3]==-1 :
             found_polygons_early.append(np.array([[point] for point in polygon.exterior.coords], dtype=np.uint))
             order_index_filtered.append(order_index[jv])
+            if min_early:
+                if area < min_early * np.prod(image.shape[:2]) and area <= max_area * np.prod(image.shape[:2]):  # and hierarchy[0][jv][3]==-1 :
+                    regions_ar_less_than_early_min.append(1)
+                else:
+                    regions_ar_less_than_early_min.append(0)
+            else:
+                regions_ar_less_than_early_min = None
+                
         #jv += 1
-    return found_polygons_early, order_index_filtered
+    return found_polygons_early, order_index_filtered, regions_ar_less_than_early_min
 
 def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
 

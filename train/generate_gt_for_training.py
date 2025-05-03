@@ -147,11 +147,20 @@ def image_enhancement(dir_imgs, dir_out_images, dir_out_labels, scales):
     help="min area size of regions considered for reading order training.",
 )
 
-def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size):
+@click.option(
+    "--min_area_early",
+    "-min_early",
+    help="If you have already generated a training dataset using a specific minimum area value and now wish to create a dataset with a smaller minimum area value, you can avoid regenerating the previous dataset by providing the earlier minimum area value. This will ensure that only the missing data is generated.",
+)
+
+def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size, min_area_early):
     xml_files_ind = os.listdir(dir_xml)
     input_height = int(input_height)
     input_width = int(input_width)
     min_area = float(min_area_size)
+    if min_area_early:
+        min_area_early = float(min_area_early)
+    
 
     indexer_start= 0#55166
     max_area = 1
@@ -181,7 +190,8 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
         texts_corr_order_index_int = [int(x) for x in texts_corr_order_index]
         
 
-        co_text_all, texts_corr_order_index_int = filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int, max_area, min_area)
+        co_text_all, texts_corr_order_index_int, regions_ar_less_than_early_min = filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int, max_area, min_area, min_area_early)
+        
         
         arg_array = np.array(range(len(texts_corr_order_index_int)))
         
@@ -195,25 +205,49 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
             
             labels_con[:,:,i] = img_label[:,:,0]
         
+        labels_con = resize_image(labels_con, input_height, input_width)
+        img_poly = resize_image(img_poly, input_height, input_width)
+        
+        
         for i in range(len(texts_corr_order_index_int)):
             for j in range(len(texts_corr_order_index_int)):
                 if i!=j:
-                    input_multi_visual_modal = np.zeros((input_height,input_width,3)).astype(np.int8)
-                    final_f_name = f_name+'_'+str(indexer+indexer_start)
-                    order_class_condition = texts_corr_order_index_int[i]-texts_corr_order_index_int[j]
-                    if order_class_condition<0:
-                        class_type = 1
+                    if regions_ar_less_than_early_min:
+                        if regions_ar_less_than_early_min[i]==1:
+                            input_multi_visual_modal = np.zeros((input_height,input_width,3)).astype(np.int8)
+                            final_f_name = f_name+'_'+str(indexer+indexer_start)
+                            order_class_condition = texts_corr_order_index_int[i]-texts_corr_order_index_int[j]
+                            if order_class_condition<0:
+                                class_type = 1
+                            else:
+                                class_type = 0
+
+                            input_multi_visual_modal[:,:,0] = labels_con[:,:,i]
+                            input_multi_visual_modal[:,:,1] = img_poly[:,:,0]
+                            input_multi_visual_modal[:,:,2] = labels_con[:,:,j]
+
+                            np.save(os.path.join(dir_out_classes,final_f_name+'_missed.npy' ), class_type)
+                            
+                            cv2.imwrite(os.path.join(dir_out_modal_image,final_f_name+'_missed.png' ), input_multi_visual_modal)
+                            indexer = indexer+1
+                            
                     else:
-                        class_type = 0
+                        input_multi_visual_modal = np.zeros((input_height,input_width,3)).astype(np.int8)
+                        final_f_name = f_name+'_'+str(indexer+indexer_start)
+                        order_class_condition = texts_corr_order_index_int[i]-texts_corr_order_index_int[j]
+                        if order_class_condition<0:
+                            class_type = 1
+                        else:
+                            class_type = 0
 
-                    input_multi_visual_modal[:,:,0] = resize_image(labels_con[:,:,i], input_height, input_width)
-                    input_multi_visual_modal[:,:,1] = resize_image(img_poly[:,:,0], input_height, input_width)
-                    input_multi_visual_modal[:,:,2] = resize_image(labels_con[:,:,j], input_height, input_width)
+                        input_multi_visual_modal[:,:,0] = labels_con[:,:,i]
+                        input_multi_visual_modal[:,:,1] = img_poly[:,:,0]
+                        input_multi_visual_modal[:,:,2] = labels_con[:,:,j]
 
-                    np.save(os.path.join(dir_out_classes,final_f_name+'.npy' ), class_type)
-                    
-                    cv2.imwrite(os.path.join(dir_out_modal_image,final_f_name+'.png' ), input_multi_visual_modal)
-                    indexer = indexer+1
+                        np.save(os.path.join(dir_out_classes,final_f_name+'.npy' ), class_type)
+                        
+                        cv2.imwrite(os.path.join(dir_out_modal_image,final_f_name+'.png' ), input_multi_visual_modal)
+                        indexer = indexer+1
                     
                     
 @main.command()
