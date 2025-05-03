@@ -4877,6 +4877,7 @@ class Eynollah_ocr:
         do_not_mask_with_textline_contour=False,
         draw_texts_on_image=False,
         prediction_with_both_of_rgb_and_bin=False,
+        pref_of_dataset = None,
         logger=None,
     ):
         self.dir_in = dir_in
@@ -4890,43 +4891,45 @@ class Eynollah_ocr:
         self.draw_texts_on_image = draw_texts_on_image
         self.dir_out_image_text = dir_out_image_text
         self.prediction_with_both_of_rgb_and_bin = prediction_with_both_of_rgb_and_bin
-        if tr_ocr:
-            self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
-            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-            self.model_ocr_dir = dir_models + "/trocr_model_ens_of_3_checkpoints_201124"
-            self.model_ocr = VisionEncoderDecoderModel.from_pretrained(self.model_ocr_dir)
-            self.model_ocr.to(self.device)
-            if not batch_size:
-                self.b_s = 2
+        self.pref_of_dataset = pref_of_dataset
+        if not export_textline_images_and_text:
+            if tr_ocr:
+                self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
+                self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+                self.model_ocr_dir = dir_models + "/trocr_model_ens_of_3_checkpoints_201124"
+                self.model_ocr = VisionEncoderDecoderModel.from_pretrained(self.model_ocr_dir)
+                self.model_ocr.to(self.device)
+                if not batch_size:
+                    self.b_s = 2
+                else:
+                    self.b_s = int(batch_size)
+
             else:
-                self.b_s = int(batch_size)
-
-        else:
-            self.model_ocr_dir = dir_models + "/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
-            model_ocr = load_model(self.model_ocr_dir , compile=False)
-            
-            self.prediction_model = tf.keras.models.Model(
-                            model_ocr.get_layer(name = "image").input, 
-                            model_ocr.get_layer(name = "dense2").output)
-            if not batch_size:
-                self.b_s = 8
-            else:
-                self.b_s = int(batch_size)
-
+                self.model_ocr_dir = dir_models + "/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+                model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
-            with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
-                characters = json.load(config_file)
+                self.prediction_model = tf.keras.models.Model(
+                                model_ocr.get_layer(name = "image").input, 
+                                model_ocr.get_layer(name = "dense2").output)
+                if not batch_size:
+                    self.b_s = 8
+                else:
+                    self.b_s = int(batch_size)
 
-                
-            AUTOTUNE = tf.data.AUTOTUNE
+                    
+                with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
+                    characters = json.load(config_file)
 
-            # Mapping characters to integers.
-            char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
+                    
+                AUTOTUNE = tf.data.AUTOTUNE
 
-            # Mapping integers back to original characters.
-            self.num_to_char = StringLookup(
-                vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
-            )
+                # Mapping characters to integers.
+                char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
+
+                # Mapping integers back to original characters.
+                self.num_to_char = StringLookup(
+                    vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
+                )
 
         
     def decode_batch_predictions(self, pred, max_len = 128):
@@ -5365,10 +5368,28 @@ class Eynollah_ocr:
                                             if cheild_text.tag.endswith("Unicode"):
                                                 textline_text = cheild_text.text
                                                 if textline_text:
-                                                    with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.txt'), 'w') as text_file:
-                                                        text_file.write(textline_text)
+                                                    if self.do_not_mask_with_textline_contour:
+                                                        if self.pref_of_dataset:
+                                                            with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'.txt'), 'w') as text_file:
+                                                                text_file.write(textline_text)
 
-                                                    cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.png'), img_crop )
+                                                            cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'.png'), img_crop )
+                                                        else:
+                                                            with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.txt'), 'w') as text_file:
+                                                                text_file.write(textline_text)
+
+                                                            cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.png'), img_crop )
+                                                    else:
+                                                        if self.pref_of_dataset:
+                                                            with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'_masked.txt'), 'w') as text_file:
+                                                                text_file.write(textline_text)
+
+                                                            cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'_masked.png'), img_crop )
+                                                        else:
+                                                            with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_masked.txt'), 'w') as text_file:
+                                                                text_file.write(textline_text)
+
+                                                            cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_masked.png'), img_crop )
                                                         
                                                 indexer_textlines+=1
 

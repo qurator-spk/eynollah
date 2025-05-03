@@ -342,7 +342,6 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     "-m",
     help="directory of models",
     type=click.Path(exists=True, file_okay=False),
-    required=True,
 )
 @click.option(
     "--tr_ocr",
@@ -380,16 +379,29 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     help="number of inference batch size. Default b_s for trocr and cnn_rnn models are 2 and 8 respectively",
 )
 @click.option(
+    "--dataset_abbrevation",
+    "-ds_pref",
+    help="in the case of extracting textline and text from a xml GT file user can add an abbrevation of dataset name to generated dataset",
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
 
-def ocr(dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, batch_size, log_level):
+def ocr(dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, batch_size, dataset_abbrevation, log_level):
     initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
+    assert not export_textline_images_and_text or not tr_ocr, "Exporting textline and text  -etit can not be set alongside transformer ocr -tr_ocr"
+    assert not export_textline_images_and_text or not model, "Exporting textline and text  -etit can not be set alongside model -m"
+    assert not export_textline_images_and_text or not batch_size, "Exporting textline and text  -etit can not be set alongside batch size -bs"
+    assert not export_textline_images_and_text or not dir_in_bin, "Exporting textline and text  -etit can not be set alongside directory of bin images -dib"
+    assert not export_textline_images_and_text or not dir_out_image_text, "Exporting textline and text  -etit can not be set alongside directory of images with predicted text -doit"
+    assert not export_textline_images_and_text or not draw_texts_on_image, "Exporting textline and text  -etit can not be set alongside draw text on image -dtoi"
+    assert not export_textline_images_and_text or not prediction_with_both_of_rgb_and_bin, "Exporting textline and text  -etit can not be set alongside prediction with both rgb and bin -brb"
+    
     eynollah_ocr = Eynollah_ocr(
         dir_xmls=dir_xmls,
         dir_out_image_text=dir_out_image_text,
@@ -403,6 +415,7 @@ def ocr(dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, ex
         draw_texts_on_image=draw_texts_on_image,
         prediction_with_both_of_rgb_and_bin=prediction_with_both_of_rgb_and_bin,
         batch_size=batch_size,
+        pref_of_dataset=dataset_abbrevation,
     )
     eynollah_ocr.run()
 
