@@ -21,6 +21,7 @@ class SaveWeightsAfterSteps(Callback):
         self.save_interval = save_interval
         self.save_path = save_path
         self.step_count = 0
+        self._config = _config
 
     def on_train_batch_end(self, batch, logs=None):
         self.step_count += 1
@@ -31,8 +32,8 @@ class SaveWeightsAfterSteps(Callback):
 
             self.model.save(save_file)
             
-            with open(os.path.join(os.path.join(save_path, "model_step_{self.step_count}"),"config.json"), "w") as fp:
-                json.dump(_config, fp)  # encode dict into JSON
+            with open(os.path.join(os.path.join(self.save_path, f"model_step_{self.step_count}"),"config.json"), "w") as fp:
+                json.dump(self._config, fp)  # encode dict into JSON
             print(f"saved model as steps {self.step_count} to {save_file}")
             
             
