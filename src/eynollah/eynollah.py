@@ -4328,7 +4328,7 @@ class Eynollah:
             polygons_lines_xml = []
             contours_tables = []
             ocr_all_textlines = None
-            conf_contours_textregions =None
+            conf_contours_textregions = [0]
             pcgts = self.writer.build_pagexml_no_full_layout(
                 cont_page, page_coord, order_text_new, id_of_texts_tot,
                 all_found_textline_polygons, page_coord, polygons_of_images, polygons_of_marginals,
