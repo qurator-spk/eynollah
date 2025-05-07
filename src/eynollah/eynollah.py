@@ -4333,7 +4333,7 @@ class Eynollah:
                 cont_page, page_coord, order_text_new, id_of_texts_tot,
                 all_found_textline_polygons, page_coord, polygons_of_images, polygons_of_marginals,
                 all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
-                cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, conf_contours_textregions)
+                cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, conf_contours_textregions, self.skip_layout_and_reading_order)
             return pcgts
 
         #print("text region early -1 in %.1fs", time.time() - t0)

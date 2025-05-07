@@ -168,7 +168,7 @@ class EynollahXmlWriter():
         with open(self.output_filename, 'w') as f:
             f.write(to_xml(pcgts))
 
-    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, found_polygons_tables, ocr_all_textlines, conf_contours_textregion):
+    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, found_polygons_tables, ocr_all_textlines, conf_contours_textregion, skip_layout_reading_order=False):
         self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
@@ -184,7 +184,7 @@ class EynollahXmlWriter():
 
         for mm in range(len(found_polygons_text_region)):
             textregion = TextRegionType(id=counter.next_region_id, type_='paragraph',
-                    Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord), conf=conf_contours_textregion[mm]),
+                    Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region[mm], page_coord, skip_layout_reading_order), conf=conf_contours_textregion[mm]),
                     )
             #textregion.set_conf(conf_contours_textregion[mm])
             page.add_TextRegion(textregion)
@@ -303,18 +303,28 @@ class EynollahXmlWriter():
 
         return pcgts
 
-    def calculate_polygon_coords(self, contour, page_coord):
+    def calculate_polygon_coords(self, contour, page_coord, skip_layout_reading_order=False):
         self.logger.debug('enter calculate_polygon_coords')
         coords = ''
         for value_bbox in contour:
-            if len(value_bbox) == 2:
-                coords += str(int((value_bbox[0] + page_coord[2]) / self.scale_x))
-                coords += ','
-                coords += str(int((value_bbox[1] + page_coord[0]) / self.scale_y))
+            if skip_layout_reading_order:
+                if len(value_bbox) == 2:
+                    coords += str(int((value_bbox[0]) / self.scale_x))
+                    coords += ','
+                    coords += str(int((value_bbox[1]) / self.scale_y))
+                else:
+                    coords += str(int((value_bbox[0][0]) / self.scale_x))
+                    coords += ','
+                    coords += str(int((value_bbox[0][1]) / self.scale_y))
             else:
-                coords += str(int((value_bbox[0][0] + page_coord[2]) / self.scale_x))
-                coords += ','
-                coords += str(int((value_bbox[0][1] + page_coord[0]) / self.scale_y))
+                if len(value_bbox) == 2:
+                    coords += str(int((value_bbox[0] + page_coord[2]) / self.scale_x))
+                    coords += ','
+                    coords += str(int((value_bbox[1] + page_coord[0]) / self.scale_y))
+                else:
+                    coords += str(int((value_bbox[0][0] + page_coord[2]) / self.scale_x))
+                    coords += ','
+                    coords += str(int((value_bbox[0][1] + page_coord[0]) / self.scale_y))
             coords=coords + ' '
         return coords[:-1]
 
