@@ -667,7 +667,7 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
     
     indexer = 0
     for im, seg_i in tqdm(zip(imgs_list_train, segs_list_train)):
-        img_name = im.split('.')[0]
+        img_name = os.path.splitext(im)[0]
         if task == "segmentation" or task == "binarization":
             dir_of_label_file = os.path.join(dir_seg, img_name + '.png')
         elif task=="enhancement":
