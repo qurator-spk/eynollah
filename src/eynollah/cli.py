@@ -236,6 +236,16 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
     help="upper limit of columns in document image",
 )
 @click.option(
+    "--threshold_art_class_layout",
+    "-tharl",
+    help="threshold of artifical class in the case of layout detection",
+)
+@click.option(
+    "--threshold_art_class_textline",
+    "-thart",
+    help="threshold of artifical class in the case of textline detection",
+)
+@click.option(
     "--skip_layout_and_reading_order",
     "-slro/-noslro",
     is_flag=True,
@@ -248,7 +258,7 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
     help="Override log level globally to this",
 )
 
-def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, num_col_upper, num_col_lower, skip_layout_and_reading_order, ignore_page_extraction, log_level):
+def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, num_col_upper, num_col_lower, threshold_art_class_textline, threshold_art_class_layout, skip_layout_and_reading_order, ignore_page_extraction, log_level):
     initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
@@ -298,6 +308,8 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
         skip_layout_and_reading_order=skip_layout_and_reading_order,
+        threshold_art_class_textline=threshold_art_class_textline,
+        threshold_art_class_layout=threshold_art_class_layout,
     )
     if dir_in:
         eynollah.run(dir_in=dir_in, overwrite=overwrite)
