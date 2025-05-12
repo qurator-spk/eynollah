@@ -15,6 +15,63 @@ KERNEL = np.ones((5, 5), np.uint8)
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
+    
+    
+def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_image, co_marginal,  img):
+    alpha = 0.5
+    
+    blank_image = np.ones( (img.shape[:]), dtype=np.uint8) * 255
+    
+    col_header = (173, 216, 230)
+    col_drop = (0, 191, 255)
+    boundary_color = (143, 216, 200)#(0, 0, 255)  # Dark gray for the boundary
+    col_par = (0, 0, 139)   # Lighter gray for the filled area
+    col_image = (0, 100, 0)
+    col_sep = (255, 0, 0)
+    col_marginal =  (106, 90, 205)
+    
+    if len(co_image)>0:
+        cv2.drawContours(blank_image, co_image, -1, col_image, thickness=cv2.FILLED)  # Fill the contour
+        
+    if len(co_sep)>0:
+        cv2.drawContours(blank_image, co_sep, -1, col_sep, thickness=cv2.FILLED)  # Fill the contour
+        
+        
+    if len(co_header)>0:
+        cv2.drawContours(blank_image, co_header, -1, col_header, thickness=cv2.FILLED)  # Fill the contour
+        
+    if len(co_par)>0:
+        cv2.drawContours(blank_image, co_par, -1, col_par, thickness=cv2.FILLED)  # Fill the contour
+        
+        cv2.drawContours(blank_image, co_par, -1, boundary_color, thickness=1)       # Draw the boundary
+        
+    if len(co_drop)>0:
+        cv2.drawContours(blank_image, co_drop, -1, col_drop, thickness=cv2.FILLED)  # Fill the contour
+        
+    if len(co_marginal)>0:
+        cv2.drawContours(blank_image, co_marginal, -1, col_marginal, thickness=cv2.FILLED)  # Fill the contour
+    
+    img_final =cv2.cvtColor(blank_image, cv2.COLOR_BGR2RGB)
+    
+    added_image = cv2.addWeighted(img,alpha,img_final,1- alpha,0)
+    return added_image
+
+
+def visualize_image_from_contours(contours, img):
+    alpha = 0.5
+    
+    blank_image = np.ones( (img.shape[:]), dtype=np.uint8) * 255
+    
+    boundary_color = (0, 0, 255)  # Dark gray for the boundary
+    fill_color = (173, 216, 230)   # Lighter gray for the filled area
+    
+    cv2.drawContours(blank_image, contours, -1, fill_color, thickness=cv2.FILLED)  # Fill the contour
+    cv2.drawContours(blank_image, contours, -1, boundary_color, thickness=1)       # Draw the boundary
+    
+    img_final =cv2.cvtColor(blank_image, cv2.COLOR_BGR2RGB)
+    
+    added_image = cv2.addWeighted(img,alpha,img_final,1- alpha,0)
+    return added_image
 
 def visualize_model_output(prediction, img, task):
     if task == "binarization":
@@ -224,7 +281,262 @@ def get_textline_contours_for_visualization(xml_file):
                         break
                 co_use_case.append(np.array(c_t_in))
     return co_use_case, y_len, x_len
+
+
+def get_layout_contours_for_visualization(xml_file):
+    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding = 'iso-8859-5'))
+    root1=tree1.getroot()
+    alltags=[elem.tag for elem in root1.iter()]
+    link=alltags[0].split('}')[0]+'}'
+                            
+        
+                            
+    for jj in root1.iter(link+'Page'):
+        y_len=int(jj.attrib['imageHeight'])
+        x_len=int(jj.attrib['imageWidth'])
+        
+    region_tags=np.unique([x for x in alltags if x.endswith('Region')])   
+    co_text = {'drop-capital':[], "footnote":[], "footnote-continued":[], "heading":[], "signature-mark":[], "header":[], "catch-word":[], "page-number":[], "marginalia":[], "paragraph":[]}
+    all_defined_textregion_types = list(co_text.keys())
+    co_graphic = {"handwritten-annotation":[], "decoration":[], "stamp":[], "signature":[]}
+    all_defined_graphic_types = list(co_graphic.keys())
+    co_sep=[]
+    co_img=[]
+    co_table=[]
+    co_noise=[]
     
+    types_text = []
+    
+    for tag in region_tags:
+        if tag.endswith('}TextRegion') or tag.endswith('}Textregion'):
+            for nn in root1.iter(tag):
+                c_t_in = {'drop-capital':[], "footnote":[], "footnote-continued":[], "heading":[], "signature-mark":[], "header":[], "catch-word":[], "page-number":[], "marginalia":[], "paragraph":[]}
+                sumi=0
+                for vv in nn.iter():
+                    # check the format of coords
+                    if vv.tag==link+'Coords':
+    
+                        coords=bool(vv.attrib)
+                        if coords:
+                            p_h=vv.attrib['points'].split(' ')
+                            
+                            if "rest_as_paragraph" in types_text:
+                                types_text_without_paragraph = [element for element in types_text if element!='rest_as_paragraph' and element!='paragraph']
+                                if len(types_text_without_paragraph) == 0:
+                                    if "type" in nn.attrib:
+                                        c_t_in['paragraph'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                elif len(types_text_without_paragraph) >= 1:
+                                    if "type" in nn.attrib:
+                                        if nn.attrib['type'] in types_text_without_paragraph:
+                                            c_t_in[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                        else:
+                                            c_t_in['paragraph'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                            
+                            else:
+                                if "type" in nn.attrib:
+                                    if nn.attrib['type'] in all_defined_textregion_types:
+                                        c_t_in[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+    
+                            break
+                        else:
+                            pass
+    
+                    
+                    if vv.tag==link+'Point':
+                        if "rest_as_paragraph" in types_text:
+                            types_text_without_paragraph = [element for element in types_text if element!='rest_as_paragraph' and element!='paragraph']
+                            if len(types_text_without_paragraph) == 0:
+                                if "type" in nn.attrib:
+                                    c_t_in['paragraph'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                    sumi+=1
+                            elif len(types_text_without_paragraph) >= 1:
+                                if "type" in nn.attrib:
+                                    if nn.attrib['type'] in types_text_without_paragraph:
+                                        c_t_in[nn.attrib['type']].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                        sumi+=1
+                                    else:
+                                        c_t_in['paragraph'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                        sumi+=1
+                                        
+                        else:
+                            if "type" in nn.attrib:
+                                if nn.attrib['type'] in all_defined_textregion_types:
+                                    c_t_in[nn.attrib['type']].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                    sumi+=1
+
+
+                    elif vv.tag!=link+'Point' and sumi>=1:
+                        break
+    
+                for element_text in list(c_t_in.keys()):
+                    if len(c_t_in[element_text])>0:
+                        co_text[element_text].append(np.array(c_t_in[element_text]))
+                            
+                            
+        if tag.endswith('}GraphicRegion') or tag.endswith('}graphicregion'):
+            #print('sth')
+            for nn in root1.iter(tag):
+                c_t_in_graphic = {"handwritten-annotation":[], "decoration":[], "stamp":[], "signature":[]}
+                sumi=0
+                for vv in nn.iter():
+                    # check the format of coords
+                    if vv.tag==link+'Coords':
+                        coords=bool(vv.attrib)
+                        if coords:
+                            p_h=vv.attrib['points'].split(' ')
+                            
+                            if "rest_as_decoration" in types_graphic:
+                                types_graphic_without_decoration = [element for element in types_graphic if element!='rest_as_decoration' and element!='decoration']
+                                if len(types_graphic_without_decoration) == 0:
+                                    if "type" in nn.attrib:
+                                        c_t_in_graphic['decoration'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                elif len(types_graphic_without_decoration) >= 1:
+                                    if "type" in nn.attrib:
+                                        if nn.attrib['type'] in types_graphic_without_decoration:
+                                            c_t_in_graphic[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                        else:
+                                            c_t_in_graphic['decoration'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                            
+                            else:
+                                if "type" in nn.attrib:
+                                    if nn.attrib['type'] in all_defined_graphic_types:
+                                        c_t_in_graphic[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )        
+                            
+                            break
+                        else:
+                            pass
+    
+    
+                    if vv.tag==link+'Point':
+                        if "rest_as_decoration" in types_graphic:
+                            types_graphic_without_decoration = [element for element in types_graphic if element!='rest_as_decoration' and element!='decoration']
+                            if len(types_graphic_without_decoration) == 0:
+                                if "type" in nn.attrib:
+                                    c_t_in_graphic['decoration'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                    sumi+=1
+                            elif len(types_graphic_without_decoration) >= 1:
+                                if "type" in nn.attrib:
+                                    if nn.attrib['type'] in types_graphic_without_decoration:
+                                        c_t_in_graphic[nn.attrib['type']].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                        sumi+=1
+                                    else:
+                                        c_t_in_graphic['decoration'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                        sumi+=1
+                                        
+                        else:
+                            if "type" in nn.attrib:
+                                if nn.attrib['type'] in all_defined_graphic_types:
+                                    c_t_in_graphic[nn.attrib['type']].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] ) 
+                                    sumi+=1
+                                
+                    elif vv.tag!=link+'Point' and sumi>=1:
+                        break
+                    
+                for element_graphic in list(c_t_in_graphic.keys()):
+                    if len(c_t_in_graphic[element_graphic])>0:
+                        co_graphic[element_graphic].append(np.array(c_t_in_graphic[element_graphic]))
+                            
+    
+        if tag.endswith('}ImageRegion') or tag.endswith('}imageregion'):
+            for nn in root1.iter(tag):
+                c_t_in=[]
+                sumi=0
+                for vv in nn.iter():
+                    if vv.tag==link+'Coords':
+                        coords=bool(vv.attrib)
+                        if coords:
+                            p_h=vv.attrib['points'].split(' ')
+                            c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                            break
+                        else:
+                            pass
+    
+    
+                    if vv.tag==link+'Point':
+                        c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
+                        sumi+=1
+
+                    elif vv.tag!=link+'Point' and sumi>=1:
+                        break
+                co_img.append(np.array(c_t_in))
+    
+        
+        if tag.endswith('}SeparatorRegion') or tag.endswith('}separatorregion'):
+            for nn in root1.iter(tag):
+                c_t_in=[]
+                sumi=0
+                for vv in nn.iter():
+                    # check the format of coords
+                    if vv.tag==link+'Coords':
+                        coords=bool(vv.attrib)
+                        if coords:
+                            p_h=vv.attrib['points'].split(' ')
+                            c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                            break
+                        else:
+                            pass
+    
+    
+                    if vv.tag==link+'Point':
+                        c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
+                        sumi+=1
+
+                    elif vv.tag!=link+'Point' and sumi>=1:
+                        break
+                co_sep.append(np.array(c_t_in))
+
+
+        if tag.endswith('}TableRegion') or tag.endswith('}tableregion'):
+            #print('sth')
+            for nn in root1.iter(tag):
+                c_t_in=[]
+                sumi=0
+                for vv in nn.iter():
+                    # check the format of coords
+                    if vv.tag==link+'Coords':
+                        coords=bool(vv.attrib)
+                        if coords:
+                            p_h=vv.attrib['points'].split(' ')
+                            c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                            break
+                        else:
+                            pass
+    
+    
+                    if vv.tag==link+'Point':
+                        c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
+                        sumi+=1
+                    #print(vv.tag,'in')
+                    elif vv.tag!=link+'Point' and sumi>=1:
+                        break
+                co_table.append(np.array(c_t_in))
+    
+
+        if tag.endswith('}NoiseRegion') or tag.endswith('}noiseregion'):
+            #print('sth')
+            for nn in root1.iter(tag):
+                c_t_in=[]
+                sumi=0
+                for vv in nn.iter():
+                    # check the format of coords
+                    if vv.tag==link+'Coords':
+                        coords=bool(vv.attrib)
+                        if coords:
+                            p_h=vv.attrib['points'].split(' ')
+                            c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                            break
+                        else:
+                            pass
+    
+    
+                    if vv.tag==link+'Point':
+                        c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
+                        sumi+=1
+                    #print(vv.tag,'in')
+                    elif vv.tag!=link+'Point' and sumi>=1:
+                        break
+                co_noise.append(np.array(c_t_in))
+    return co_text, co_graphic, co_sep, co_img, co_table, co_noise, y_len, x_len
     
 def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_file, config_params, printspace, dir_images, dir_out_images):
     """

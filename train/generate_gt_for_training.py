@@ -366,18 +366,51 @@ def visualize_textline_segmentation(dir_xml, dir_out, dir_imgs):
             
         co_tetxlines, y_len, x_len = get_textline_contours_for_visualization(xml_file)
         
-        img_total = np.zeros((y_len, x_len, 3))
-        for cont in co_tetxlines:
-            img_in = np.zeros((y_len, x_len, 3))
-            img_in  = cv2.fillPoly(img_in, pts =[cont], color=(1,1,1))
-            
-            img_total = img_total + img_in
-            
-        img_total[:,:, 0][img_total[:,:, 0]>2] = 2
+        added_image = visualize_image_from_contours(co_tetxlines, img)
         
-        img_out, _ = visualize_model_output(img_total, img, task="textline")
+        cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
+
         
-        cv2.imwrite(os.path.join(dir_out, f_name+'.png'), img_out)
+        
+@main.command()
+@click.option(
+    "--dir_xml",
+    "-dx",
+    help="directory of GT page-xml files",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+@click.option(
+    "--dir_out",
+    "-do",
+    help="directory where plots will be written",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+@click.option(
+    "--dir_imgs",
+    "-dimg",
+    help="directory of images where textline segmentation will be overlayed", )
+
+def visualize_layout_segmentation(dir_xml, dir_out, dir_imgs):
+    xml_files_ind = os.listdir(dir_xml)
+    for ind_xml in tqdm(xml_files_ind):
+        indexer = 0
+        #print(ind_xml)
+        #print('########################')
+        xml_file = os.path.join(dir_xml,ind_xml )
+        f_name = Path(ind_xml).stem
+        
+        img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
+        img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+            
+        co_text, co_graphic, co_sep, co_img, co_table, co_noise, y_len, x_len = get_layout_contours_for_visualization(xml_file)
+        
+        
+        added_image = visualize_image_from_contours_layout(co_text['paragraph'], co_text['header'], co_text['drop-capital'], co_sep, co_img, co_text['marginalia'],  img)
+
+        cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
+
 
     
 if __name__ == "__main__":
