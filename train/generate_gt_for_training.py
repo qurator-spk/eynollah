@@ -2,6 +2,7 @@ import click
 import json
 from gt_gen_utils import *
 from tqdm import tqdm
+from pathlib import Path
 
 @click.group()
 def main():
@@ -331,6 +332,53 @@ def visualize_reading_order(dir_xml, dir_out, dir_imgs):
             cv2.imwrite(os.path.join(dir_out, f_name+'.png'), img)
 
     
+@main.command()
+@click.option(
+    "--dir_xml",
+    "-dx",
+    help="directory of GT page-xml files",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+@click.option(
+    "--dir_out",
+    "-do",
+    help="directory where plots will be written",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+@click.option(
+    "--dir_imgs",
+    "-dimg",
+    help="directory of images where textline segmentation will be overlayed", )
+
+def visualize_textline_segmentation(dir_xml, dir_out, dir_imgs):
+    xml_files_ind = os.listdir(dir_xml)
+    for ind_xml in tqdm(xml_files_ind):
+        indexer = 0
+        #print(ind_xml)
+        #print('########################')
+        xml_file = os.path.join(dir_xml,ind_xml )
+        f_name = Path(ind_xml).stem
+        
+        img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
+        img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+            
+        co_tetxlines, y_len, x_len = get_textline_contours_for_visualization(xml_file)
+        
+        img_total = np.zeros((y_len, x_len, 3))
+        for cont in co_tetxlines:
+            img_in = np.zeros((y_len, x_len, 3))
+            img_in  = cv2.fillPoly(img_in, pts =[cont], color=(1,1,1))
+            
+            img_total = img_total + img_in
+            
+        img_total[:,:, 0][img_total[:,:, 0]>2] = 2
+        
+        img_out, _ = visualize_model_output(img_total, img, task="textline")
+        
+        cv2.imwrite(os.path.join(dir_out, f_name+'.png'), img_out)
+
     
 if __name__ == "__main__":
     main()

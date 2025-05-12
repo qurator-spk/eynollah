@@ -16,6 +16,52 @@ KERNEL = np.ones((5, 5), np.uint8)
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
 
+def visualize_model_output(prediction, img, task):
+    if task == "binarization":
+        prediction = prediction * -1
+        prediction = prediction + 1
+        added_image = prediction * 255
+        layout_only = None
+    else:
+        unique_classes = np.unique(prediction[:,:,0])
+        rgb_colors = {'0' : [255, 255, 255],
+                    '1' : [255, 0, 0],
+                    '2' : [255, 125, 0],
+                    '3' : [255, 0, 125],
+                    '4' : [125, 125, 125],
+                    '5' : [125, 125, 0],
+                    '6' : [0, 125, 255],
+                    '7' : [0, 125, 0],
+                    '8' : [125, 125, 125],
+                    '9' : [0, 125, 255],
+                    '10' : [125, 0, 125],
+                    '11' : [0, 255, 0],
+                    '12' : [0, 0, 255],
+                    '13' : [0, 255, 255],
+                    '14' : [255, 125, 125],
+                    '15' : [255, 0, 255]}
+    
+        layout_only = np.zeros(prediction.shape)
+    
+        for unq_class in unique_classes:
+            rgb_class_unique = rgb_colors[str(int(unq_class))]
+            layout_only[:,:,0][prediction[:,:,0]==unq_class] = rgb_class_unique[0]
+            layout_only[:,:,1][prediction[:,:,0]==unq_class] = rgb_class_unique[1]
+            layout_only[:,:,2][prediction[:,:,0]==unq_class] = rgb_class_unique[2]
+    
+    
+    
+        img = resize_image(img, layout_only.shape[0], layout_only.shape[1])
+    
+        layout_only = layout_only.astype(np.int32)
+        img = img.astype(np.int32)
+    
+        
+        
+        added_image = cv2.addWeighted(img,0.5,layout_only,0.1,0)
+        
+    return added_image, layout_only
+    
 def get_content_of_dir(dir_in):
     """
     Listing all ground truth page xml files. All files are needed to have xml format.
@@ -138,6 +184,48 @@ def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y
         
         img_boundary[:,:][boundary[:,:]==1] =1
     return co_text_eroded, img_boundary
+
+def get_textline_contours_for_visualization(xml_file):
+    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding = 'iso-8859-5'))
+    root1=tree1.getroot()
+    alltags=[elem.tag for elem in root1.iter()]
+    link=alltags[0].split('}')[0]+'}'
+                            
+        
+                            
+    for jj in root1.iter(link+'Page'):
+        y_len=int(jj.attrib['imageHeight'])
+        x_len=int(jj.attrib['imageWidth'])
+        
+    region_tags = np.unique([x for x in alltags if x.endswith('TextLine')])
+    tag_endings = ['}TextLine','}textline']
+    co_use_case = []
+
+    for tag in region_tags:
+        if tag.endswith(tag_endings[0]) or tag.endswith(tag_endings[1]):
+            for nn in root1.iter(tag):
+                c_t_in = []
+                sumi = 0
+                for vv in nn.iter():
+                    if vv.tag == link + 'Coords':
+                        coords = bool(vv.attrib)
+                        if coords:
+                            p_h = vv.attrib['points'].split(' ')
+                            c_t_in.append(
+                                np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h]))
+                            break
+                        else:
+                            pass
+
+                    if vv.tag == link + 'Point':
+                        c_t_in.append([int(float(vv.attrib['x'])), int(float(vv.attrib['y']))])
+                        sumi += 1
+                    elif vv.tag != link + 'Point' and sumi >= 1:
+                        break
+                co_use_case.append(np.array(c_t_in))
+    return co_use_case, y_len, x_len
+    
+    
 def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_file, config_params, printspace, dir_images, dir_out_images):
     """
     Reading the page xml files and write the ground truth images into given output directory.
