@@ -119,7 +119,7 @@ class EynollahXmlWriter():
                     points_co += ','
                     points_co += str(textline_y_coord)
 
-                if (self.curved_line or self.textline_light) and np.abs(slopes[region_idx]) <= 45:
+                if self.textline_light or (self.curved_line and np.abs(slopes[region_idx]) <= 45):
                     if len(contour_textline) == 2:
                         points_co += str(int((contour_textline[0] + page_coord[2]) / self.scale_x))
                         points_co += ','
@@ -128,7 +128,7 @@ class EynollahXmlWriter():
                         points_co += str(int((contour_textline[0][0] + page_coord[2]) / self.scale_x))
                         points_co += ','
                         points_co += str(int((contour_textline[0][1] + page_coord[0])/self.scale_y))
-                elif (self.curved_line or self.textline_light) and np.abs(slopes[region_idx]) > 45:
+                elif self.curved_line and np.abs(slopes[region_idx]) > 45:
                     if len(contour_textline)==2:
                         points_co += str(int((contour_textline[0] + region_bboxes[2] + page_coord[2])/self.scale_x))
                         points_co += ','
