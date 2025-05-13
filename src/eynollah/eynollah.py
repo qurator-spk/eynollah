@@ -22,7 +22,6 @@ from multiprocessing import cpu_count
 import gc
 import copy
 import json
-
 from loky import ProcessPoolExecutor
 import xml.etree.ElementTree as ET
 import cv2
@@ -77,7 +76,8 @@ from .utils.contour import (
 from .utils.rotate import (
     rotate_image,
     rotation_not_90_func,
-    rotation_not_90_func_full_layout
+    rotation_not_90_func_full_layout,
+    rotation_image_new
 )
 from .utils.separate_lines import (
     textline_contours_postprocessing,
@@ -5310,6 +5310,75 @@ class Eynollah_ocr:
         img_fin = img_fin / 255.
         return img_fin
     
+    def get_deskewed_contour_and_bb_and_image(self, contour, image, deskew_angle):
+        (h_in, w_in) = image.shape[:2]
+        center = (w_in // 2, h_in // 2)
+        
+        rotation_matrix = cv2.getRotationMatrix2D(center, deskew_angle, 1.0)
+        
+        cos_angle = abs(rotation_matrix[0, 0])
+        sin_angle = abs(rotation_matrix[0, 1])
+        new_w = int((h_in * sin_angle) + (w_in * cos_angle))
+        new_h = int((h_in * cos_angle) + (w_in * sin_angle))
+        
+        rotation_matrix[0, 2] += (new_w / 2) - center[0]
+        rotation_matrix[1, 2] += (new_h / 2) - center[1]
+        
+        deskewed_image = cv2.warpAffine(image, rotation_matrix, (new_w, new_h))
+        
+        contour_points = np.array(contour, dtype=np.float32)
+        transformed_points = cv2.transform(np.array([contour_points]), rotation_matrix)[0]
+        
+        x, y, w, h = cv2.boundingRect(np.array(transformed_points, dtype=np.int32))
+        cropped_textline = deskewed_image[y:y+h, x:x+w]
+        
+        return cropped_textline
+    
+    def rotate_image_with_padding(self, image, angle):
+        # Get image dimensions
+        (h, w) = image.shape[:2]
+        
+        # Calculate the center of the image
+        center = (w // 2, h // 2)
+        
+        # Get the rotation matrix
+        rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+        
+        # Compute the new bounding dimensions
+        cos = abs(rotation_matrix[0, 0])
+        sin = abs(rotation_matrix[0, 1])
+        new_w = int((h * sin) + (w * cos))
+        new_h = int((h * cos) + (w * sin))
+        
+        # Adjust the rotation matrix to account for translation
+        rotation_matrix[0, 2] += (new_w / 2) - center[0]
+        rotation_matrix[1, 2] += (new_h / 2) - center[1]
+        
+        # Perform the rotation
+        rotated_image = cv2.warpAffine(image, rotation_matrix, (new_w, new_h), borderValue=(0, 0, 0))
+        
+        return rotated_image
+    
+    def get_orientation_moments(self, contour):
+        moments = cv2.moments(contour)
+        if moments["mu20"] - moments["mu02"] == 0:  # Avoid division by zero
+            return 90 if moments["mu11"] > 0 else -90
+        else:
+            angle = 0.5 * np.arctan2(2 * moments["mu11"], moments["mu20"] - moments["mu02"])
+            return np.degrees(angle)  # Convert radians to degrees
+    
+    def get_contours_and_bounding_boxes(self, mask):
+        # Find contours in the binary mask
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        largest_contour = max(contours, key=cv2.contourArea) if contours else None
+
+        # Get the bounding rectangle for the contour
+        x, y, w, h = cv2.boundingRect(largest_contour)
+        #bounding_boxes.append((x, y, w, h))
+        
+        return x, y, w, h
+
     def run(self):
         ls_imgs = os.listdir(self.dir_in)
         
@@ -5533,6 +5602,10 @@ class Eynollah_ocr:
                                     
                                     x,y,w,h = cv2.boundingRect(textline_coords)
                                     
+                                    angle_radians = math.atan2(h, w)
+                                    # Convert to degrees
+                                    angle_degrees = math.degrees(angle_radians)
+                                    
                                     if self.draw_texts_on_image:
                                         total_bb_coordinates.append([x,y,w,h])
                                         
@@ -5549,7 +5622,21 @@ class Eynollah_ocr:
                                     mask_poly = mask_poly[y:y+h, x:x+w, :]
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
                                     if not self.do_not_mask_with_textline_contour:
+                                        if angle_degrees > 15:
+                                            better_des_slope = self.get_orientation_moments(textline_coords)
+                                            
+                                            img_crop = self.rotate_image_with_padding(img_crop, -abs(better_des_slope) )
+                                            mask_poly = self.rotate_image_with_padding(mask_poly, -abs(better_des_slope) )
+                                            mask_poly = mask_poly.astype('uint8')
+                                            
+                                            #new bounding box
+                                            x_n, y_n, w_n, h_n = self.get_contours_and_bounding_boxes(mask_poly[:,:,0])
+                                            
+                                            mask_poly = mask_poly[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                                            img_crop = img_crop[y_n:y_n+h_n, x_n:x_n+w_n, :]
+
                                         img_crop[mask_poly==0] = 255
+                                        
                                         if self.prediction_with_both_of_rgb_and_bin:
                                             img_crop_bin[mask_poly==0] = 255
                                     
