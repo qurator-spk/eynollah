@@ -5133,7 +5133,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_ens_ocrcnn_125_225"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+                self.model_ocr_dir = dir_models + "/model_step_425000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
@@ -5585,6 +5585,7 @@ class Eynollah_ocr:
                 region_tags=np.unique([x for x in alltags if x.endswith('TextRegion')]) 
                     
                 cropped_lines = []
+                cropped_lines_ver_index = []
                 cropped_lines_region_indexer = []
                 cropped_lines_meging_indexing = []
                 
@@ -5644,6 +5645,11 @@ class Eynollah_ocr:
                                         if w_scaled < 1.5*image_width:
                                             img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
+                                            if angle_degrees > 15:
+                                                cropped_lines_ver_index.append(1)
+                                            else:
+                                                cropped_lines_ver_index.append(0)
+                                                
                                             cropped_lines_meging_indexing.append(0)
                                             if self.prediction_with_both_of_rgb_and_bin:
                                                 img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
@@ -5657,10 +5663,21 @@ class Eynollah_ocr:
                                                 img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(1)
+                                                
+                                                if angle_degrees > 15:
+                                                    cropped_lines_ver_index.append(1)
+                                                else:
+                                                    cropped_lines_ver_index.append(0)
+                                                
                                                 img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images[1], image_height, image_width)
                                                 
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(-1)
+                                                
+                                                if angle_degrees > 15:
+                                                    cropped_lines_ver_index.append(1)
+                                                else:
+                                                    cropped_lines_ver_index.append(0)
                                                 
                                                 if self.prediction_with_both_of_rgb_and_bin:
                                                     img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[0], image_height, image_width)
@@ -5672,6 +5689,11 @@ class Eynollah_ocr:
                                                 img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(0)
+                                                
+                                                if angle_degrees > 15:
+                                                    cropped_lines_ver_index.append(1)
+                                                else:
+                                                    cropped_lines_ver_index.append(0)
                                                 
                                                 if self.prediction_with_both_of_rgb_and_bin:
                                                     img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
@@ -5722,6 +5744,19 @@ class Eynollah_ocr:
                             imgs = cropped_lines[n_start:]
                             imgs = np.array(imgs)
                             imgs = imgs.reshape(imgs.shape[0], image_height, image_width, 3)
+                            
+                            ver_imgs = np.array( cropped_lines_ver_index[n_start:] )
+                            indices_ver = np.where(ver_imgs == 1)[0]
+                            
+                            #print(indices_ver, 'indices_ver')
+                            if len(indices_ver)>0:
+                                imgs_ver_flipped = imgs[indices_ver, : ,: ,:]
+                                imgs_ver_flipped = imgs_ver_flipped[:,::-1,::-1,:]
+                                #print(imgs_ver_flipped, 'imgs_ver_flipped')
+                                
+                            else:
+                                imgs_ver_flipped = None
+                            
                             if self.prediction_with_both_of_rgb_and_bin:
                                 imgs_bin = cropped_lines_bin[n_start:]
                                 imgs_bin = np.array(imgs_bin)
@@ -5732,12 +5767,54 @@ class Eynollah_ocr:
                             imgs = cropped_lines[n_start:n_end]
                             imgs = np.array(imgs).reshape(self.b_s, image_height, image_width, 3)
                             
+                            ver_imgs = np.array( cropped_lines_ver_index[n_start:n_end] )
+                            indices_ver = np.where(ver_imgs == 1)[0]
+                            #print(indices_ver, 'indices_ver')
+                            
+                            if len(indices_ver)>0:
+                                imgs_ver_flipped = imgs[indices_ver, : ,: ,:]
+                                imgs_ver_flipped = imgs_ver_flipped[:,::-1,::-1,:]
+                                #print(imgs_ver_flipped, 'imgs_ver_flipped')
+                            else:
+                                imgs_ver_flipped = None
+
+                            
                             if self.prediction_with_both_of_rgb_and_bin:
                                 imgs_bin = cropped_lines_bin[n_start:n_end]
                                 imgs_bin = np.array(imgs_bin).reshape(self.b_s, image_height, image_width, 3)
                             
 
                         preds = self.prediction_model.predict(imgs, verbose=0)
+                        
+                        if len(indices_ver)>0:
+                            #cv2.imwrite('flipped.png', (imgs_ver_flipped[0, :,:,:]*255).astype('uint8'))
+                            #cv2.imwrite('original.png', (imgs[0, :,:,:]*255).astype('uint8'))
+                            #sys.exit()
+                            #print(imgs_ver_flipped.shape, 'imgs_ver_flipped.shape')
+                            preds_flipped = self.prediction_model.predict(imgs_ver_flipped, verbose=0)
+                            preds_max_fliped = np.max(preds_flipped, axis=2 )
+                            preds_max_args_flipped = np.argmax(preds_flipped, axis=2 )
+                            pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=256
+                            masked_means_flipped = np.sum(preds_max_fliped * pred_max_not_unk_mask_bool_flipped, axis=1) / np.sum(pred_max_not_unk_mask_bool_flipped, axis=1)
+                            masked_means_flipped[np.isnan(masked_means_flipped)] = 0
+                            #print(masked_means_flipped, 'masked_means_flipped')
+                            
+                            preds_max = np.max(preds, axis=2 )
+                            preds_max_args = np.argmax(preds, axis=2 )
+                            pred_max_not_unk_mask_bool = preds_max_args[:,:]!=256
+                            
+                            masked_means = np.sum(preds_max * pred_max_not_unk_mask_bool, axis=1) / np.sum(pred_max_not_unk_mask_bool, axis=1)
+                            masked_means[np.isnan(masked_means)] = 0
+                            
+                            masked_means_ver = masked_means[indices_ver]
+                            #print(masked_means_ver, 'pred_max_not_unk')
+                            
+                            indices_where_flipped_conf_value_is_higher = np.where(masked_means_flipped > masked_means_ver)[0]
+                            
+                            #print(indices_where_flipped_conf_value_is_higher, 'indices_where_flipped_conf_value_is_higher')
+                            if len(indices_where_flipped_conf_value_is_higher)>0:
+                                indices_to_be_replaced = indices_ver[indices_where_flipped_conf_value_is_higher]
+                                preds[indices_to_be_replaced,:,:] = preds_flipped[indices_where_flipped_conf_value_is_higher, :, :]
                         if self.prediction_with_both_of_rgb_and_bin:
                             preds_bin = self.prediction_model.predict(imgs_bin, verbose=0)
                             preds = (preds + preds_bin) / 2.
