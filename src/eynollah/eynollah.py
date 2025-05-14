@@ -5626,8 +5626,8 @@ class Eynollah_ocr:
                                         if angle_degrees > 15:
                                             better_des_slope = self.get_orientation_moments(textline_coords)
                                             
-                                            img_crop = self.rotate_image_with_padding(img_crop, -abs(better_des_slope) )
-                                            mask_poly = self.rotate_image_with_padding(mask_poly, -abs(better_des_slope) )
+                                            img_crop = self.rotate_image_with_padding(img_crop, better_des_slope )
+                                            mask_poly = self.rotate_image_with_padding(mask_poly, better_des_slope )
                                             mask_poly = mask_poly.astype('uint8')
                                             
                                             #new bounding box
