@@ -19,7 +19,8 @@
 * Output in [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML)
 * [OCR-D](https://github.com/qurator-spk/eynollah#use-as-ocr-d-processor) interface
 
-:warning: Development is currently focused on achieving the best possible quality of results for a wide variety of historical documents and therefore processing can be very slow. We aim to improve this, but contributions are welcome.
+:warning: Development is currently focused on achieving the best possible quality of results for a wide variety of 
+historical documents and therefore processing can be very slow. We aim to improve this, but contributions are welcome.
 
 ## Installation
 Python `3.8-3.11` with Tensorflow `<2.13` on Linux are currently supported.
@@ -42,7 +43,7 @@ cd eynollah; pip install -e .
 Alternatively, you can run `make install` or `make install-dev` for editable installation.
 
 ## Models
-Pre-trained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
+Pretrained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
 
 For documentation on methods and models, have a look at [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
 
@@ -50,13 +51,17 @@ For documentation on methods and models, have a look at [`models.md`](https://gi
 In case you want to train your own model with Eynollah, have a look at [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md).
 
 ## Usage
+Eynollah supports four use cases: layout analysis (segmentation), binarization, text recognition (OCR), 
+and (trainable) reading order detection.
 
-Eynollah has four key use cases: layout analysis, binarization, OCR, and machine-based reading order.
+### Layout Analysis
+The layout analysis module is responsible for detecting layouts, identifying text lines, and determining reading order 
+using both heuristic methods or a machine-based reading order detection model. 
 
-### Layout
-The layout module is responsible for detecting layouts, identifying text lines, and determining reading order using both heuristic methods or a machine-based reading order detection model. It's important to note that this functionality should not be confused with the machine-based-reading-order use case. The latter, still under development, focuses specifically on determining the reading order for a given layout in an XML file. In contrast, layout detection takes an image as input, and after detecting the layout, it can also determine the reading order using a machine-based model.
+Note that there are currently two supported ways for reading order detection: either as part of layout analysis based 
+on image input, or, currently under development, for given layout analysis results based on PAGE-XML data as input.
 
-The command-line interface for layout can be called like this:
+The command-line interface for layout analysis can be called like this:
 
 ```sh
 eynollah layout \
@@ -87,18 +92,19 @@ The following options can be used to further configure the processing:
 | `-sp <directory>` | save cropped page image to this directory                                      |
 | `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory               |
 
-If no option is set, the tool performs layout detection of main regions (background, text, images, separators and marginals).
+If no option is set, the tool performs layout detection of main regions (background, text, images, separators 
+and marginals).
 The best output quality is produced when RGB images are used as input rather than greyscale or binarized images.
 
 ### Binarization
-Document Image Binarization
+The binarization module performs document image binarization using pretrained pixelwise segmentation models. 
 
 The command-line interface for binarization of single image can be called like this:
 
 ```sh
 eynollah binarization \
-  -m <path to directory containing model files> \
-  <input image> \
+  -m <directory containing model files> \
+  <single image file> \
   <output image>
 ```
 
@@ -117,16 +123,13 @@ Under development
 ### Machine-based-reading-order
 Under development
 
-
 #### Use as OCR-D processor
-
 Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) [processor](https://ocr-d.de/en/spec/cli),
 formally described in [`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json).
 
 In this case, the source image file group with (preferably) RGB images should be used as input like this:
 
     ocrd-eynollah-segment -I OCR-D-IMG -O OCR-D-SEG -P models 2022-04-05
-
 
 If the input file group is PAGE-XML (from a previous OCR-D workflow step), Eynollah behaves as follows:
 - existing regions are kept and ignored (i.e. in effect they might overlap segments from Eynollah results)
@@ -137,7 +140,6 @@ If the input file group is PAGE-XML (from a previous OCR-D workflow step), Eynol
 - if the page-level image nevertheless deviates from the original (`@imageFilename`)
   (because some other preprocessing step was in effect like `denoised`), then
   the output PAGE-XML will be based on that as new top-level (`@imageFilename`)
-
 
     ocrd-eynollah-segment -I OCR-D-XYZ -O OCR-D-SEG -P models 2022-04-05
 
