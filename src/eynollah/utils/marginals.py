@@ -26,8 +26,10 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
         text_with_lines=resize_image(text_with_lines,int(text_with_lines.shape[0]*1.8),text_with_lines.shape[1])
         text_with_lines=cv2.erode(text_with_lines,kernel,iterations=7)
         text_with_lines=resize_image(text_with_lines,text_with_lines_eroded.shape[0],text_with_lines_eroded.shape[1])
-
-
+    
+    if light_version:
+        text_with_lines=rotate_image(text_with_lines,-slope_deskew)
+    
     text_with_lines_y=text_with_lines.sum(axis=0)
     text_with_lines_y_eroded=text_with_lines_eroded.sum(axis=0)
 
