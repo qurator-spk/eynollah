@@ -154,7 +154,7 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
         jv += 1
     return found_polygons_early
 
-def filter_contours_area_of_image(image, contours, order_index, max_area, min_area, min_early):
+def filter_contours_area_of_image(image, contours, order_index, max_area, min_area, min_early=None):
     found_polygons_early = list()
     order_index_filtered = list()
     regions_ar_less_than_early_min = list()

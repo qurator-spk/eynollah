@@ -267,7 +267,7 @@ class sbb_predict:
             #print(np.shape(co_text_all[0]), len( np.shape(co_text_all[0]) ),'co_text_all')
             #co_text_all = filter_contours_area_of_image_tables(img_poly, co_text_all, _, max_area, min_area)
             #print(co_text_all,'co_text_all')
-            co_text_all, texts_corr_order_index_int = filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int, max_area, self.min_area)
+            co_text_all, texts_corr_order_index_int, _ = filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int, max_area, self.min_area)
             
             #print(texts_corr_order_index_int)
             
