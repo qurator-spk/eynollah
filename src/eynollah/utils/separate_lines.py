@@ -1466,7 +1466,7 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
                        main_page=False, logger=None, plotter=None, map=map):
     if main_page and plotter:
         plotter.save_plot_of_textline_density(img_patch_org)
-
+    
     img_int=np.zeros((img_patch_org.shape[0],img_patch_org.shape[1]))
     img_int[:,:]=img_patch_org[:,:]#img_patch_org[:,:,0]
 
@@ -1487,7 +1487,7 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
         angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
         angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
     elif main_page:
-        angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
+        angles = np.array (list(np.linspace(-12, -7, int(n_tot_angles/4))) + list(np.linspace(-6, 6, n_tot_angles- 2* int(n_tot_angles/4))) + list(np.linspace(7, 12, int(n_tot_angles/4))))#np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
         angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         early_slope_edge=11
