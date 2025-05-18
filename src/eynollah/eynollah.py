@@ -272,7 +272,7 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_region_dir_p_ens_light_only_images_extraction = dir_models + "/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18"
-        self.model_reading_order_dir = dir_models + "/model_ens_reading_order_machine_based"
+        self.model_reading_order_dir = dir_models + "/model_step_2500000_mb_ro"#"/model_ens_reading_order_machine_based"
         #"/modelens_12sp_elay_0_3_4__3_6_n"
         #"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"
         #"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"
@@ -1315,7 +1315,7 @@ class Eynollah:
                         seg_art[seg_art>0] =1
 
                         seg_line = label_p_pred[:,:,:,3]
-                        seg_line[seg_line>0.5] =1#seg_line[seg_line>0.1] =1
+                        seg_line[seg_line>0.3] =1#seg_line[seg_line>0.5] =1#seg_line[seg_line>0.1] =1
                         seg_line[seg_line<1] =0
 
                         ##seg[seg_art==1]=4
@@ -3667,7 +3667,6 @@ class Eynollah:
 
         peaks_real, _ = find_peaks(sum_smoothed, height=0)
         if len(peaks_real)>70:
-            print(len(peaks_real), 'len(peaks_real)')
 
             peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
 
@@ -5133,7 +5132,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_step_425000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+                self.model_ocr_dir = dir_models + "/model_step_600000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(

@@ -10,7 +10,6 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
     mask_marginals=np.zeros((text_with_lines.shape[0],text_with_lines.shape[1]))
     mask_marginals=mask_marginals.astype(np.uint8)
 
-
     text_with_lines=text_with_lines.astype(np.uint8)
     ##text_with_lines=cv2.erode(text_with_lines,self.kernel,iterations=3)
 
@@ -26,9 +25,11 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
         text_with_lines=resize_image(text_with_lines,int(text_with_lines.shape[0]*1.8),text_with_lines.shape[1])
         text_with_lines=cv2.erode(text_with_lines,kernel,iterations=7)
         text_with_lines=resize_image(text_with_lines,text_with_lines_eroded.shape[0],text_with_lines_eroded.shape[1])
-    
+        
+        
     if light_version:
-        text_with_lines=rotate_image(text_with_lines,-slope_deskew)
+        kernel_hor = np.ones((1, 5), dtype=np.uint8)
+        text_with_lines = cv2.erode(text_with_lines,kernel_hor,iterations=6)
     
     text_with_lines_y=text_with_lines.sum(axis=0)
     text_with_lines_y_eroded=text_with_lines_eroded.sum(axis=0)
@@ -42,8 +43,10 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
     elif thickness_along_y_percent>=30 and thickness_along_y_percent<50:
         min_textline_thickness=20
     else:
-        min_textline_thickness=40
-
+        if light_version:
+            min_textline_thickness=45
+        else:
+            min_textline_thickness=40
 
 
     if thickness_along_y_percent>=14:
