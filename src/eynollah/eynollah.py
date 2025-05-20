@@ -32,6 +32,7 @@ from numba import cuda
 from skimage.morphology import skeletonize
 from ocrd import OcrdPage
 from ocrd_utils import getLogger, tf_disable_interactive_logs
+import statistics
 
 try:
     import torch
@@ -797,7 +798,7 @@ class Eynollah:
             self, patches, img, model,
             n_batch_inference=1, marginal_of_patch_percent=0.1,
             thresholding_for_some_classes_in_light_version=False,
-            thresholding_for_artificial_class_in_light_version=False, threshold_art_class_textline=0.1):
+            thresholding_for_artificial_class_in_light_version=False, thresholding_for_fl_light_version=False, threshold_art_class_textline=0.1):
 
         self.logger.debug("enter do_prediction")
         img_height_model = model.layers[-1].output_shape[1]
@@ -822,6 +823,15 @@ class Eynollah:
                 skeleton_art = skeleton_art*1
 
                 seg[skeleton_art==1]=2
+                
+            if thresholding_for_fl_light_version:
+                seg_header = label_p_pred[0,:,:,2]
+
+                seg_header[seg_header<0.2] = 0
+                seg_header[seg_header>0] =1
+
+                seg[seg_header==1]=2
+                
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
             prediction_true = resize_image(seg_color, img_h_page, img_w_page).astype(np.uint8)
             return prediction_true
@@ -1613,10 +1623,11 @@ class Eynollah:
         model_region = self.model_region_fl if patches else self.model_region_fl_np
 
         if self.light_version:
-            pass
+            thresholding_for_fl_light_version = True
         elif not patches:
             img = otsu_copy_binary(img).astype(np.uint8)
             prediction_regions = None
+            thresholding_for_fl_light_version = False
         elif cols:
             img = otsu_copy_binary(img).astype(np.uint8)
             if cols == 1:
@@ -1632,7 +1643,7 @@ class Eynollah:
             else:
                 img = resize_image(img, int(img_height_h * 2500 / float(img_width_h)), 2500).astype(np.uint8)
 
-        prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=0.1, n_batch_inference=3)
+        prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=0.1, n_batch_inference=3, thresholding_for_fl_light_version=thresholding_for_fl_light_version)
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
         return prediction_regions, prediction_regions
@@ -3544,9 +3555,87 @@ class Eynollah:
         return model
 
     def do_order_of_regions_with_model(self, contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
+        #cv2.imwrite('textregions.png', text_regions_p*50)
+        min_cont_size_to_be_dilated = 10
+        if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
+            ver_kernel = np.ones((5, 1), dtype=np.uint8)
+            
+            cx_conts, cy_conts, x_min_conts, x_max_conts, y_min_conts, y_max_conts, _ = find_new_features_of_contours(contours_only_text_parent)
+            args_cont_located = np.array(range(len(contours_only_text_parent)))
+            
+            diff_y_conts = np.abs(y_max_conts[:]-y_min_conts)
+            diff_x_conts = np.abs(x_max_conts[:]-x_min_conts)
+            
+            mean_x = statistics.mean(diff_x_conts)
+            median_x = statistics.median(diff_x_conts)
+            
+            
+            diff_x_ratio= diff_x_conts/mean_x
+            
+            args_cont_located_excluded = args_cont_located[diff_x_ratio>=1.3]
+            args_cont_located_included = args_cont_located[diff_x_ratio<1.3]
+            
+            contours_only_text_parent_excluded = [contours_only_text_parent[ind] for ind in range(len(contours_only_text_parent)) if diff_x_ratio[ind]>=1.3]#contours_only_text_parent[diff_x_ratio>=1.3]
+            contours_only_text_parent_included = [contours_only_text_parent[ind] for ind in range(len(contours_only_text_parent)) if diff_x_ratio[ind]<1.3]#contours_only_text_parent[diff_x_ratio<1.3]
+            
+            
+            cx_conts_excluded = [cx_conts[ind] for ind in range(len(cx_conts)) if diff_x_ratio[ind]>=1.3]#cx_conts[diff_x_ratio>=1.3]
+            cx_conts_included = [cx_conts[ind] for ind in range(len(cx_conts)) if diff_x_ratio[ind]<1.3]#cx_conts[diff_x_ratio<1.3]
+            
+            cy_conts_excluded = [cy_conts[ind] for ind in range(len(cy_conts)) if diff_x_ratio[ind]>=1.3]#cy_conts[diff_x_ratio>=1.3]
+            cy_conts_included = [cy_conts[ind] for ind in range(len(cy_conts)) if diff_x_ratio[ind]<1.3]#cy_conts[diff_x_ratio<1.3]
+            
+            #print(diff_x_ratio, 'ratio')
+            text_regions_p = text_regions_p.astype('uint8')
+            
+            if len(contours_only_text_parent_excluded)>0:
+                textregion_par = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1])).astype('uint8')
+                textregion_par = cv2.fillPoly(textregion_par, pts=contours_only_text_parent_included, color=(1,1))
+            else:
+                textregion_par = (text_regions_p[:,:]==1)*1
+                textregion_par = textregion_par.astype('uint8')
+                
+            
+            text_regions_p_textregions_dilated = cv2.dilate(textregion_par , ver_kernel, iterations=8)
+            text_regions_p_textregions_dilated[text_regions_p[:,:]>1] = 0
+            
+            #cv2.imwrite('textregions_dilated.png', text_regions_p_textregions_dilated*255)
+
+            
+            contours_only_dilated, hir_on_text_dilated = return_contours_of_image(text_regions_p_textregions_dilated)
+            contours_only_dilated = return_parent_contours(contours_only_dilated, hir_on_text_dilated)
+            
+            indexes_of_located_cont, center_x_coordinates_of_located, center_y_coordinates_of_located = self.return_indexes_of_contours_loctaed_inside_another_list_of_contours(contours_only_dilated, contours_only_text_parent_included, cx_conts_included, cy_conts_included, args_cont_located_included)
+            
+            
+            if len(args_cont_located_excluded)>0:
+                for ind in args_cont_located_excluded:
+                    indexes_of_located_cont.append(np.array([ind]))
+                    contours_only_dilated.append(contours_only_text_parent[ind])
+                    center_y_coordinates_of_located.append(0)
+            
+            array_list = [np.array([elem]) if isinstance(elem, int) else elem for elem in indexes_of_located_cont]
+            flattened_array = np.concatenate([arr.ravel() for arr in array_list])
+            #print(len( np.unique(flattened_array)), 'indexes_of_located_cont uniques')
+            
+            missing_textregions = list( set(np.array(range(len(contours_only_text_parent))) ) - set(np.unique(flattened_array)) )
+            #print(missing_textregions, 'missing_textregions')
+
+            for ind in missing_textregions:
+                indexes_of_located_cont.append(np.array([ind]))
+                contours_only_dilated.append(contours_only_text_parent[ind])
+                center_y_coordinates_of_located.append(0)
+                
+                
+            if contours_only_text_parent_h:
+                for vi in range(len(contours_only_text_parent_h)):
+                    indexes_of_located_cont.append(int(vi+len(contours_only_text_parent)))
+                    
+            array_list = [np.array([elem]) if isinstance(elem, int) else elem for elem in indexes_of_located_cont]
+            flattened_array = np.concatenate([arr.ravel() for arr in array_list])
+        
         y_len = text_regions_p.shape[0]
         x_len = text_regions_p.shape[1]
-        
 
         img_poly = np.zeros((y_len,x_len), dtype='uint8')
         img_poly[text_regions_p[:,:]==1] = 1
@@ -3554,25 +3643,24 @@ class Eynollah:
         img_poly[text_regions_p[:,:]==3] = 4
         img_poly[text_regions_p[:,:]==6] = 5
         
-        
-        ###temp
-        ##sep_mask = (img_poly==5)*1
-        ##sep_mask = sep_mask.astype('uint8')
-        ##sep_mask = cv2.erode(sep_mask, kernel=KERNEL, iterations=2)
-        ##img_poly[img_poly==5] = 0
-        ##img_poly[sep_mask==1] = 5
-        ###
-
         img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
         if contours_only_text_parent_h:
             _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(
                 contours_only_text_parent_h)
             for j in range(len(cy_main)):
                 img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,
-                                   int(x_min_main[j]):int(x_max_main[j])] = 1 
-            co_text_all = contours_only_text_parent + contours_only_text_parent_h
+                                   int(x_min_main[j]):int(x_max_main[j])] = 1
+            co_text_all_org = contours_only_text_parent + contours_only_text_parent_h
+            if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
+                co_text_all = contours_only_dilated + contours_only_text_parent_h
+            else:
+                co_text_all = contours_only_text_parent + contours_only_text_parent_h
         else:
-            co_text_all = contours_only_text_parent
+            co_text_all_org = contours_only_text_parent
+            if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
+                co_text_all = contours_only_dilated
+            else:
+                co_text_all = contours_only_text_parent
 
         if not len(co_text_all):
             return [], []
@@ -3651,8 +3739,26 @@ class Eynollah:
                     break
 
         ordered = [i[0] for i in ordered]
-        region_ids = ['region_%04d' % i for i in range(len(co_text_all))]
-        return ordered, region_ids
+        
+        if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
+            org_contours_indexes = []
+            for ind in range(len(ordered)):
+                region_with_curr_order = ordered[ind]
+                if region_with_curr_order < len(contours_only_dilated):
+                    if np.isscalar(indexes_of_located_cont[region_with_curr_order]):
+                        org_contours_indexes = org_contours_indexes + [indexes_of_located_cont[region_with_curr_order]]
+                    else:
+                        arg_sort_located_cont = np.argsort(center_y_coordinates_of_located[region_with_curr_order])
+                        org_contours_indexes = org_contours_indexes + list(np.array(indexes_of_located_cont[region_with_curr_order])[arg_sort_located_cont]) ##org_contours_indexes + list ( 
+                else:
+                    org_contours_indexes = org_contours_indexes + [indexes_of_located_cont[region_with_curr_order]]
+            
+            region_ids = ['region_%04d' % i for i in range(len(co_text_all_org))]
+            return org_contours_indexes, region_ids
+        else:
+            region_ids = ['region_%04d' % i for i in range(len(co_text_all_org))]
+            return ordered, region_ids
+            
 
     def return_start_and_end_of_common_text_of_textline_ocr(self, textline_image, ind_tot):
         width = np.shape(textline_image)[1]
@@ -4293,6 +4399,29 @@ class Eynollah:
                     contours[ind_u_a_trs].pop(ittrd)
 
             return contours
+        
+    def return_indexes_of_contours_loctaed_inside_another_list_of_contours(self, contours, contours_loc, cx_main_loc, cy_main_loc, indexes_loc):
+        indexes_of_located_cont = []
+        center_x_coordinates_of_located = []
+        center_y_coordinates_of_located = []
+        #M_main_tot = [cv2.moments(contours_loc[j])
+                        #for j in range(len(contours_loc))]
+        #cx_main_loc = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
+        #cy_main_loc = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
+        
+        for ij in range(len(contours)):
+            results = [cv2.pointPolygonTest(contours[ij], (cx_main_loc[ind], cy_main_loc[ind]), False)
+                        for ind in range(len(cy_main_loc)) ]
+            results = np.array(results)
+            indexes_in = np.where((results == 0) | (results == 1))
+            indexes = indexes_loc[indexes_in]# [(results == 0) | (results == 1)]#np.where((results == 0) | (results == 1))
+
+            indexes_of_located_cont.append(indexes)
+            center_x_coordinates_of_located.append(np.array(cx_main_loc)[indexes_in] )
+            center_y_coordinates_of_located.append(np.array(cy_main_loc)[indexes_in] )
+            
+        return indexes_of_located_cont, center_x_coordinates_of_located, center_y_coordinates_of_located
+        
 
     def filter_contours_without_textline_inside(
             self, contours,text_con_org,  contours_textline, contours_only_text_parent_d_ordered, conf_contours_textregions):
@@ -4986,8 +5115,10 @@ class Eynollah:
 
         if self.full_layout:
             if self.reading_order_machine_based:
+                tror = time.time()
                 order_text_new, id_of_texts_tot = self.do_order_of_regions_with_model(
                     contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
+                print('time spend for mb ro', time.time()-tror)
             else:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     order_text_new, id_of_texts_tot = self.do_order_of_regions(
@@ -5619,8 +5750,15 @@ class Eynollah_ocr:
                                     mask_poly = np.zeros(img.shape)
                                     mask_poly = cv2.fillPoly(mask_poly, pts=[textline_coords], color=(1, 1, 1))
                                     
+                                    
                                     mask_poly = mask_poly[y:y+h, x:x+w, :]
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
+                                    
+                                    if angle_degrees<=15:
+                                        if mask_poly[:,:,0].sum() /float(w*h) < 0.6 and w_scaled > 520:
+                                            cv2.imwrite(file_name+'_desk.png', img_crop)
+                                        
+                                    print(file_name, angle_degrees,w*h , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w*h) , 'didi')
                                     if not self.do_not_mask_with_textline_contour:
                                         if angle_degrees > 15:
                                             better_des_slope = self.get_orientation_moments(textline_coords)
@@ -5634,6 +5772,11 @@ class Eynollah_ocr:
                                             
                                             mask_poly = mask_poly[y_n:y_n+h_n, x_n:x_n+w_n, :]
                                             img_crop = img_crop[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                                            
+                                            if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.6 and w_scaled > 520:
+                                                cv2.imwrite(file_name+'_desk.png', img_crop)
+                                            
+                                            print(file_name,w_n*h_n , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w_n*h_n) , 'ikiiiiii')
 
                                         img_crop[mask_poly==0] = 255
                                         
@@ -5641,7 +5784,7 @@ class Eynollah_ocr:
                                             img_crop_bin[mask_poly==0] = 255
                                     
                                     if not self.export_textline_images_and_text:
-                                        if w_scaled < 1.5*image_width:
+                                        if w_scaled < 640:#1.5*image_width:
                                             img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
                                             if angle_degrees > 15:
