@@ -5263,7 +5263,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_step_600000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+                self.model_ocr_dir = dir_models + "/model_step_750000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
@@ -5464,7 +5464,7 @@ class Eynollah_ocr:
         
         return cropped_textline
     
-    def rotate_image_with_padding(self, image, angle):
+    def rotate_image_with_padding(self, image, angle, border_value=(0,0,0)):
         # Get image dimensions
         (h, w) = image.shape[:2]
         
@@ -5485,12 +5485,27 @@ class Eynollah_ocr:
         rotation_matrix[1, 2] += (new_h / 2) - center[1]
         
         # Perform the rotation
-        rotated_image = cv2.warpAffine(image, rotation_matrix, (new_w, new_h), borderValue=(0, 0, 0))
+        rotated_image = cv2.warpAffine(image, rotation_matrix, (new_w, new_h), borderValue=border_value)
         
         return rotated_image
     
     def get_orientation_moments(self, contour):
         moments = cv2.moments(contour)
+        if moments["mu20"] - moments["mu02"] == 0:  # Avoid division by zero
+            return 90 if moments["mu11"] > 0 else -90
+        else:
+            angle = 0.5 * np.arctan2(2 * moments["mu11"], moments["mu20"] - moments["mu02"])
+            return np.degrees(angle)  # Convert radians to degrees
+        
+        
+    def get_orientation_moments_of_mask(self, mask):
+        mask=mask.astype('uint8')
+        print(mask.shape)
+        contours, _ = cv2.findContours(mask[:,:,0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        largest_contour = max(contours, key=cv2.contourArea) if contours else None
+        
+        moments = cv2.moments(largest_contour)
         if moments["mu20"] - moments["mu02"] == 0:  # Avoid division by zero
             return 90 if moments["mu11"] > 0 else -90
         else:
@@ -5508,6 +5523,121 @@ class Eynollah_ocr:
         #bounding_boxes.append((x, y, w, h))
         
         return x, y, w, h
+    
+    def return_splitting_point_of_image(self, image_to_spliited):
+        width = np.shape(image_to_spliited)[1]
+        height = np.shape(image_to_spliited)[0]
+        common_window = int(0.03*width)
+
+        width1 = int ( common_window)
+        width2 = int ( width - common_window )
+
+        img_sum = np.sum(image_to_spliited[:,:,0], axis=0)
+        sum_smoothed = gaussian_filter1d(img_sum, 3)
+
+        peaks_real, _ = find_peaks(sum_smoothed, height=0)
+        
+        peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
+
+        arg_sort = np.argsort(sum_smoothed[peaks_real])
+        arg_sort4 =arg_sort[::-1][:4]
+        peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
+        
+        return np.sort(peaks_sort_4)
+        
+    def break_curved_line_into_small_pieces_and_then_merge(self, img_curved, mask_curved):
+        peaks_4 = self.return_splitting_point_of_image(img_curved)
+        
+        
+        
+        img_0 = img_curved[:, :peaks_4[0], :]
+        img_1 = img_curved[:, peaks_4[0]:peaks_4[1], :]
+        img_2 = img_curved[:, peaks_4[1]:peaks_4[2], :]
+        img_3 = img_curved[:, peaks_4[2]:peaks_4[3], :]
+        img_4 = img_curved[:, peaks_4[3]:, :]
+        
+        
+        mask_0 = mask_curved[:, :peaks_4[0], :]
+        mask_1 = mask_curved[:, peaks_4[0]:peaks_4[1], :]
+        mask_2 = mask_curved[:, peaks_4[1]:peaks_4[2], :]
+        mask_3 = mask_curved[:, peaks_4[2]:peaks_4[3], :]
+        mask_4 = mask_curved[:, peaks_4[3]:, :]
+        
+        cv2.imwrite("split0.png", img_0)
+        cv2.imwrite("split1.png", img_1)
+        cv2.imwrite("split2.png", img_2)
+        cv2.imwrite("split3.png", img_3)
+        
+        or_ma_0 = self.get_orientation_moments_of_mask(mask_0)
+        or_ma_1 = self.get_orientation_moments_of_mask(mask_1)
+        or_ma_2 = self.get_orientation_moments_of_mask(mask_2)
+        or_ma_3 = self.get_orientation_moments_of_mask(mask_3)
+        or_ma_4 = self.get_orientation_moments_of_mask(mask_4)
+        
+        imgs_tot = []
+        imgs_tot.append([img_0, mask_0, or_ma_0] )
+        imgs_tot.append([img_1, mask_1, or_ma_1])
+        imgs_tot.append([img_2, mask_2, or_ma_2])
+        imgs_tot.append([img_3, mask_3, or_ma_3])
+        imgs_tot.append([img_4, mask_4, or_ma_4])
+        
+        w_tot_des_list = []
+        w_tot_des = 0
+        imgs_deskewed_list = []
+        for ind in range(len(imgs_tot)):
+            img_in = imgs_tot[ind][0]
+            mask_in = imgs_tot[ind][1]
+            ori_in = imgs_tot[ind][2]
+            
+            if abs(ori_in)<45:
+                img_in_des = self.rotate_image_with_padding(img_in, ori_in, border_value=(255,255,255) )
+                mask_in_des = self.rotate_image_with_padding(mask_in, ori_in)
+                mask_in_des = mask_in_des.astype('uint8')
+                
+                #new bounding box
+                x_n, y_n, w_n, h_n = self.get_contours_and_bounding_boxes(mask_in_des[:,:,0])
+                
+                mask_in_des = mask_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                img_in_des = img_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                
+                w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
+                img_in_des = resize_image(img_in_des, 32, w_relative)
+                
+
+            else:
+                img_in_des = np.copy(img_in)
+                w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
+                img_in_des = resize_image(img_in_des, 32, w_relative)
+                
+            w_tot_des+=img_in_des.shape[1]
+            w_tot_des_list.append(img_in_des.shape[1])
+            imgs_deskewed_list.append(img_in_des)
+            
+            
+            
+
+        img_final_deskewed = np.zeros((32, w_tot_des, 3))+255
+        
+        w_indexer = 0
+        for ind in range(len(w_tot_des_list)):
+            img_final_deskewed[:,w_indexer:w_indexer+w_tot_des_list[ind],:] = imgs_deskewed_list[ind][:,:,:]
+            w_indexer = w_indexer+w_tot_des_list[ind]
+            
+        #cv2.imwrite('final.png', img_final_deskewed)
+        #print(or_ma_0, or_ma_1, or_ma_2, or_ma_3, or_ma_4, 'orients')
+        
+        ##cv2.imwrite("split4.png", img_curved[:, peaks_4[3]:peaks_4[4], :])
+        ##cv2.imwrite("split5.png", img_curved[:, peaks_4[4]:peaks_4[5], :])
+        ##cv2.imwrite("split6.png", img_curved[:, peaks_4[5]:peaks_4[6], :])
+        
+        ##cv2.imwrite("split7.png", img_curved[:, peaks_4[6]:peaks_4[7], :])
+        ##cv2.imwrite("split8.png", img_curved[:, peaks_4[7]:peaks_4[8], :])
+        ##cv2.imwrite("split9.png", img_curved[:, peaks_4[8]:peaks_4[9], :])
+        
+        
+        #cv2.imwrite("split4.png", img_4)
+        #sys.exit()
+        return img_final_deskewed
 
     def run(self):
         ls_imgs = os.listdir(self.dir_in)
@@ -5754,11 +5884,9 @@ class Eynollah_ocr:
                                     mask_poly = mask_poly[y:y+h, x:x+w, :]
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
                                     
-                                    if angle_degrees<=15:
-                                        if mask_poly[:,:,0].sum() /float(w*h) < 0.6 and w_scaled > 520:
-                                            cv2.imwrite(file_name+'_desk.png', img_crop)
+
                                         
-                                    print(file_name, angle_degrees,w*h , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w*h) , 'didi')
+                                    #print(file_name, angle_degrees,w*h , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w*h) , 'didi')
                                     if not self.do_not_mask_with_textline_contour:
                                         if angle_degrees > 15:
                                             better_des_slope = self.get_orientation_moments(textline_coords)
@@ -5773,12 +5901,19 @@ class Eynollah_ocr:
                                             mask_poly = mask_poly[y_n:y_n+h_n, x_n:x_n+w_n, :]
                                             img_crop = img_crop[y_n:y_n+h_n, x_n:x_n+w_n, :]
                                             
-                                            if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.6 and w_scaled > 520:
-                                                cv2.imwrite(file_name+'_desk.png', img_crop)
+                                            img_crop[mask_poly==0] = 255
                                             
-                                            print(file_name,w_n*h_n , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w_n*h_n) , 'ikiiiiii')
+                                            if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.50 and w_scaled > 100:
+                                                img_crop = self.break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
 
-                                        img_crop[mask_poly==0] = 255
+                                            #print(file_name,w_n*h_n , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w_n*h_n) , 'ikiiiiii')
+                                        else:
+                                            img_crop[mask_poly==0] = 255
+                                            if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 100:
+                                                img_crop = self.break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
+
+
+                                        
                                         
                                         if self.prediction_with_both_of_rgb_and_bin:
                                             img_crop_bin[mask_poly==0] = 255
