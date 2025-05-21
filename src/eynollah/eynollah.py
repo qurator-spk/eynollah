@@ -5500,7 +5500,6 @@ class Eynollah_ocr:
         
     def get_orientation_moments_of_mask(self, mask):
         mask=mask.astype('uint8')
-        print(mask.shape)
         contours, _ = cv2.findContours(mask[:,:,0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         largest_contour = max(contours, key=cv2.contourArea) if contours else None
@@ -5547,97 +5546,69 @@ class Eynollah_ocr:
         
     def break_curved_line_into_small_pieces_and_then_merge(self, img_curved, mask_curved):
         peaks_4 = self.return_splitting_point_of_image(img_curved)
-        
-        
-        
-        img_0 = img_curved[:, :peaks_4[0], :]
-        img_1 = img_curved[:, peaks_4[0]:peaks_4[1], :]
-        img_2 = img_curved[:, peaks_4[1]:peaks_4[2], :]
-        img_3 = img_curved[:, peaks_4[2]:peaks_4[3], :]
-        img_4 = img_curved[:, peaks_4[3]:, :]
-        
-        
-        mask_0 = mask_curved[:, :peaks_4[0], :]
-        mask_1 = mask_curved[:, peaks_4[0]:peaks_4[1], :]
-        mask_2 = mask_curved[:, peaks_4[1]:peaks_4[2], :]
-        mask_3 = mask_curved[:, peaks_4[2]:peaks_4[3], :]
-        mask_4 = mask_curved[:, peaks_4[3]:, :]
-        
-        cv2.imwrite("split0.png", img_0)
-        cv2.imwrite("split1.png", img_1)
-        cv2.imwrite("split2.png", img_2)
-        cv2.imwrite("split3.png", img_3)
-        
-        or_ma_0 = self.get_orientation_moments_of_mask(mask_0)
-        or_ma_1 = self.get_orientation_moments_of_mask(mask_1)
-        or_ma_2 = self.get_orientation_moments_of_mask(mask_2)
-        or_ma_3 = self.get_orientation_moments_of_mask(mask_3)
-        or_ma_4 = self.get_orientation_moments_of_mask(mask_4)
-        
-        imgs_tot = []
-        imgs_tot.append([img_0, mask_0, or_ma_0] )
-        imgs_tot.append([img_1, mask_1, or_ma_1])
-        imgs_tot.append([img_2, mask_2, or_ma_2])
-        imgs_tot.append([img_3, mask_3, or_ma_3])
-        imgs_tot.append([img_4, mask_4, or_ma_4])
-        
-        w_tot_des_list = []
-        w_tot_des = 0
-        imgs_deskewed_list = []
-        for ind in range(len(imgs_tot)):
-            img_in = imgs_tot[ind][0]
-            mask_in = imgs_tot[ind][1]
-            ori_in = imgs_tot[ind][2]
+        if len(peaks_4)>0:
+            imgs_tot = []
             
-            if abs(ori_in)<45:
-                img_in_des = self.rotate_image_with_padding(img_in, ori_in, border_value=(255,255,255) )
-                mask_in_des = self.rotate_image_with_padding(mask_in, ori_in)
-                mask_in_des = mask_in_des.astype('uint8')
+            for ind in range(len(peaks_4)+1):
+                if ind==0:
+                    img = img_curved[:, :peaks_4[ind], :]
+                    mask = mask_curved[:, :peaks_4[ind], :]
+                elif ind==len(peaks_4):
+                    img = img_curved[:, peaks_4[ind-1]:, :]
+                    mask = mask_curved[:, peaks_4[ind-1]:, :]
+                else:
+                    img = img_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
+                    mask = mask_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
+                    
+                or_ma = self.get_orientation_moments_of_mask(mask)
+            
+                imgs_tot.append([img, mask, or_ma] )
+            
+            
+            w_tot_des_list = []
+            w_tot_des = 0
+            imgs_deskewed_list = []
+            for ind in range(len(imgs_tot)):
+                img_in = imgs_tot[ind][0]
+                mask_in = imgs_tot[ind][1]
+                ori_in = imgs_tot[ind][2]
                 
-                #new bounding box
-                x_n, y_n, w_n, h_n = self.get_contours_and_bounding_boxes(mask_in_des[:,:,0])
+                if abs(ori_in)<45:
+                    img_in_des = self.rotate_image_with_padding(img_in, ori_in, border_value=(255,255,255) )
+                    mask_in_des = self.rotate_image_with_padding(mask_in, ori_in)
+                    mask_in_des = mask_in_des.astype('uint8')
+                    
+                    #new bounding box
+                    x_n, y_n, w_n, h_n = self.get_contours_and_bounding_boxes(mask_in_des[:,:,0])
+                    
+                    mask_in_des = mask_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                    img_in_des = img_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                    
+                    w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
+                    img_in_des = resize_image(img_in_des, 32, w_relative)
+                    
+
+                else:
+                    img_in_des = np.copy(img_in)
+                    w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
+                    img_in_des = resize_image(img_in_des, 32, w_relative)
+                    
+                w_tot_des+=img_in_des.shape[1]
+                w_tot_des_list.append(img_in_des.shape[1])
+                imgs_deskewed_list.append(img_in_des)
                 
-                mask_in_des = mask_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                img_in_des = img_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
                 
-                w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
-                img_in_des = resize_image(img_in_des, 32, w_relative)
                 
 
-            else:
-                img_in_des = np.copy(img_in)
-                w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
-                img_in_des = resize_image(img_in_des, 32, w_relative)
-                
-            w_tot_des+=img_in_des.shape[1]
-            w_tot_des_list.append(img_in_des.shape[1])
-            imgs_deskewed_list.append(img_in_des)
+            img_final_deskewed = np.zeros((32, w_tot_des, 3))+255
             
-            
-            
-
-        img_final_deskewed = np.zeros((32, w_tot_des, 3))+255
-        
-        w_indexer = 0
-        for ind in range(len(w_tot_des_list)):
-            img_final_deskewed[:,w_indexer:w_indexer+w_tot_des_list[ind],:] = imgs_deskewed_list[ind][:,:,:]
-            w_indexer = w_indexer+w_tot_des_list[ind]
-            
-        #cv2.imwrite('final.png', img_final_deskewed)
-        #print(or_ma_0, or_ma_1, or_ma_2, or_ma_3, or_ma_4, 'orients')
-        
-        ##cv2.imwrite("split4.png", img_curved[:, peaks_4[3]:peaks_4[4], :])
-        ##cv2.imwrite("split5.png", img_curved[:, peaks_4[4]:peaks_4[5], :])
-        ##cv2.imwrite("split6.png", img_curved[:, peaks_4[5]:peaks_4[6], :])
-        
-        ##cv2.imwrite("split7.png", img_curved[:, peaks_4[6]:peaks_4[7], :])
-        ##cv2.imwrite("split8.png", img_curved[:, peaks_4[7]:peaks_4[8], :])
-        ##cv2.imwrite("split9.png", img_curved[:, peaks_4[8]:peaks_4[9], :])
-        
-        
-        #cv2.imwrite("split4.png", img_4)
-        #sys.exit()
-        return img_final_deskewed
+            w_indexer = 0
+            for ind in range(len(w_tot_des_list)):
+                img_final_deskewed[:,w_indexer:w_indexer+w_tot_des_list[ind],:] = imgs_deskewed_list[ind][:,:,:]
+                w_indexer = w_indexer+w_tot_des_list[ind]
+            return img_final_deskewed
+        else:
+            return img_curved
 
     def run(self):
         ls_imgs = os.listdir(self.dir_in)
@@ -6144,7 +6115,21 @@ class Eynollah_ocr:
                     text_by_textregion = []
                     for ind in unique_cropped_lines_region_indexer:
                         extracted_texts_merged_un = np.array(extracted_texts_merged)[np.array(cropped_lines_region_indexer)==ind]
-                        text_by_textregion.append("".join(extracted_texts_merged_un))
+                        if len(extracted_texts_merged_un)>1:
+                            text_by_textregion_ind = ""
+                            next_glue = ""
+                            for indt in range(len(extracted_texts_merged_un)):
+                                if extracted_texts_merged_un[indt].endswith('⸗') or extracted_texts_merged_un[indt].endswith('-'):
+                                    text_by_textregion_ind = text_by_textregion_ind + next_glue + extracted_texts_merged_un[indt][:-1]
+                                    next_glue = ""
+                                else:
+                                    text_by_textregion_ind = text_by_textregion_ind + next_glue + extracted_texts_merged_un[indt]
+                                    next_glue = " "
+                            text_by_textregion.append(text_by_textregion_ind)
+                                
+                        else:
+                            text_by_textregion.append(" ".join(extracted_texts_merged_un))
+                        #print(text_by_textregion, 'text_by_textregiontext_by_textregiontext_by_textregiontext_by_textregiontext_by_textregion')
                         
                     indexer = 0
                     indexer_textregion = 0
