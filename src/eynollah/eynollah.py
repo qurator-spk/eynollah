@@ -5532,14 +5532,12 @@ class Eynollah_ocr:
         width2 = int ( width - common_window )
 
         img_sum = np.sum(image_to_spliited[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 3)
+        sum_smoothed = gaussian_filter1d(img_sum, 1)
 
         peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        
         peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
-
+        
         arg_sort = np.argsort(sum_smoothed[peaks_real])
-        arg_sort4 =arg_sort[::-1][:4]
         peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
         
         return np.sort(peaks_sort_4)
@@ -5585,12 +5583,16 @@ class Eynollah_ocr:
                     img_in_des = img_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
                     
                     w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
+                    if w_relative==0:
+                        w_relative = img_in_des.shape[1]
                     img_in_des = resize_image(img_in_des, 32, w_relative)
                     
 
                 else:
                     img_in_des = np.copy(img_in)
                     w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
+                    if w_relative==0:
+                        w_relative = img_in_des.shape[1]
                     img_in_des = resize_image(img_in_des, 32, w_relative)
                     
                 w_tot_des+=img_in_des.shape[1]
