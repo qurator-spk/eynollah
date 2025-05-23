@@ -253,6 +253,12 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
                     
 @main.command()
 @click.option(
+    "--xml_file",
+    "-xml",
+    help="xml filename",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.option(
     "--dir_xml",
     "-dx",
     help="directory of GT page-xml files",
@@ -271,10 +277,14 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
     "-dimg",
     help="directory where the overlayed plots will be written", )
 
-def visualize_reading_order(dir_xml, dir_out, dir_imgs):
-    xml_files_ind = os.listdir(dir_xml)
+def visualize_reading_order(xml_file, dir_xml, dir_out, dir_imgs):
+    assert xml_file or dir_xml, "A single xml file -xml or a dir of xml files -dx is required not both of them"
 
-
+    if dir_xml:
+        xml_files_ind = os.listdir(dir_xml)
+    else:
+        xml_files_ind = [xml_file]
+        
     indexer_start= 0#55166
     #min_area = 0.0001
 
@@ -282,8 +292,17 @@ def visualize_reading_order(dir_xml, dir_out, dir_imgs):
         indexer = 0
         #print(ind_xml)
         #print('########################')
-        xml_file = os.path.join(dir_xml,ind_xml )
-        f_name = ind_xml.split('.')[0]
+        #xml_file = os.path.join(dir_xml,ind_xml )
+        
+        if dir_xml:
+            xml_file = os.path.join(dir_xml,ind_xml )
+            f_name = Path(ind_xml).stem
+        else:
+            xml_file = os.path.join(ind_xml )
+            f_name = Path(ind_xml).stem
+        print(f_name, 'f_name')
+        
+        #f_name = ind_xml.split('.')[0]
         _, _, _, file_name, id_paragraph, id_header,co_text_paragraph,co_text_header,tot_region_ref,x_len, y_len,index_tot_regions,img_poly = read_xml(xml_file)
         
         id_all_text = id_paragraph + id_header
@@ -374,6 +393,12 @@ def visualize_textline_segmentation(dir_xml, dir_out, dir_imgs):
         
 @main.command()
 @click.option(
+    "--xml_file",
+    "-xml",
+    help="xml filename",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.option(
     "--dir_xml",
     "-dx",
     help="directory of GT page-xml files",
@@ -392,14 +417,24 @@ def visualize_textline_segmentation(dir_xml, dir_out, dir_imgs):
     "-dimg",
     help="directory of images where textline segmentation will be overlayed", )
 
-def visualize_layout_segmentation(dir_xml, dir_out, dir_imgs):
-    xml_files_ind = os.listdir(dir_xml)
+def visualize_layout_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
+    assert xml_file and dir_xml, "A single xml file -xml or a dir of xml files -dx is required not both of them"
+    if dir_xml:
+        xml_files_ind = os.listdir(dir_xml)
+    else:
+        xml_files_ind = [xml_file]
+        
     for ind_xml in tqdm(xml_files_ind):
         indexer = 0
         #print(ind_xml)
         #print('########################')
-        xml_file = os.path.join(dir_xml,ind_xml )
-        f_name = Path(ind_xml).stem
+        if dir_xml:
+            xml_file = os.path.join(dir_xml,ind_xml )
+            f_name = Path(ind_xml).stem
+        else:
+            xml_file = os.path.join(ind_xml )
+            f_name = Path(ind_xml).stem
+        print(f_name, 'f_name')
         
         img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
         img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
