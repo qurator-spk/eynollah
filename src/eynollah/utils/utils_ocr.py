@@ -4,6 +4,7 @@ import tensorflow as tf
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 import math
+from PIL import Image, ImageDraw, ImageFont
 from .resize import resize_image
 
 def decode_batch_predictions(pred, num_to_char, max_len = 128):
