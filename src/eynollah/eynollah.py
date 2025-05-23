@@ -80,6 +80,13 @@ from .utils.rotate import (
     rotation_not_90_func_full_layout,
     rotation_image_new
 )
+from .utils.utils_ocr import (
+    return_textline_contour_with_added_box_coordinate,
+    preprocess_and_resize_image_for_ocrcnn_model,
+    return_textlines_split_if_needed,
+    decode_batch_predictions,
+    return_rnn_cnn_ocr_of_given_textlines
+)
 from .utils.separate_lines import (
     textline_contours_postprocessing,
     separate_lines_new2,
@@ -199,6 +206,8 @@ class Eynollah:
         ignore_page_extraction : bool = False,
         reading_order_machine_based : bool = False,
         do_ocr : bool = False,
+        transformer_ocr: bool = False,
+        batch_size_ocr: Optional[int] = None,
         num_col_upper : Optional[int] = None,
         num_col_lower : Optional[int] = None,
         threshold_art_class_layout: Optional[float] = None,
@@ -232,6 +241,7 @@ class Eynollah:
         self.ignore_page_extraction = ignore_page_extraction
         self.skip_layout_and_reading_order = skip_layout_and_reading_order
         self.ocr = do_ocr
+        self.tr = transformer_ocr
         if num_col_upper:
             self.num_col_upper = int(num_col_upper)
         else:
@@ -273,7 +283,7 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_region_dir_p_ens_light_only_images_extraction = dir_models + "/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18"
-        self.model_reading_order_dir = dir_models + "/model_step_2500000_mb_ro"#"/model_ens_reading_order_machine_based"
+        self.model_reading_order_dir = dir_models + "/model_step_4800000_mb_ro"#"/model_ens_reading_order_machine_based"
         #"/modelens_12sp_elay_0_3_4__3_6_n"
         #"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"
         #"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"
@@ -300,8 +310,10 @@ class Eynollah:
         else:
             #"/eynollah-textline_20210425"
             self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"
-        if self.ocr:
+        if self.ocr and self.tr:
             self.model_ocr_dir = dir_models + "/trocr_model_ens_of_3_checkpoints_201124"
+        elif self.ocr and not self.tr:
+            self.model_ocr_dir = dir_models + "/model_step_750000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
         if self.tables:
             if self.light_version:
                 self.model_table_dir = dir_models + "/modelens_table_0t4_201124"
@@ -341,11 +353,37 @@ class Eynollah:
             self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
             if self.reading_order_machine_based:
                 self.model_reading_order = self.our_load_model(self.model_reading_order_dir)
-            if self.ocr:
+            if self.ocr and self.tr:
                 self.model_ocr = VisionEncoderDecoderModel.from_pretrained(self.model_ocr_dir)
                 self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                 #("microsoft/trocr-base-printed")#("microsoft/trocr-base-handwritten")
                 self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
+            elif self.ocr and not self.tr:
+                model_ocr = load_model(self.model_ocr_dir , compile=False)
+                
+                self.prediction_model = tf.keras.models.Model(
+                                model_ocr.get_layer(name = "image").input, 
+                                model_ocr.get_layer(name = "dense2").output)
+                if not batch_size_ocr:
+                    self.b_s_ocr = 8
+                else:
+                    self.b_s_ocr = int(batch_size_ocr)
+
+                    
+                with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
+                    characters = json.load(config_file)
+
+                    
+                AUTOTUNE = tf.data.AUTOTUNE
+
+                # Mapping characters to integers.
+                char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
+
+                # Mapping integers back to original characters.
+                self.num_to_char = StringLookup(
+                    vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
+                )
+                
             if self.tables:
                 self.model_table = self.our_load_model(self.model_table_dir)
 
@@ -1325,11 +1363,11 @@ class Eynollah:
                         seg_art[seg_art>0] =1
 
                         seg_line = label_p_pred[:,:,:,3]
-                        seg_line[seg_line>0.3] =1#seg_line[seg_line>0.5] =1#seg_line[seg_line>0.1] =1
+                        seg_line[seg_line>0.4] =1#seg_line[seg_line>0.5] =1#seg_line[seg_line>0.1] =1
                         seg_line[seg_line<1] =0
 
                         ##seg[seg_art==1]=4
-                        seg[(seg_line==1) & (seg==0)]=3
+                        #seg[(seg_line==1) & (seg==0)]=3
                     if thresholding_for_artificial_class_in_light_version:
                         seg_art = label_p_pred[:,:,:,2]
 
@@ -2060,7 +2098,7 @@ class Eynollah:
             ###img_bin = np.copy(prediction_bin)
         ###else:
             ###img_bin = np.copy(img_resized)
-        if self.ocr and not self.input_binary:
+        if (self.ocr and self.tr) and not self.input_binary:
             prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
             prediction_bin = 255 * (prediction_bin[:,:,0] == 0)
             prediction_bin = np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
@@ -3485,8 +3523,10 @@ class Eynollah:
         # 6 is the separators lable in old full layout model
         # 4 is the drop capital class in old full layout model
         # in the new full layout drop capital is 3 and separators are 5
-
-        text_regions_p[:,:][regions_fully[:,:,0]==5]=6
+        
+        # the separators in full layout will not be written on layout
+        if not self.reading_order_machine_based:
+            text_regions_p[:,:][regions_fully[:,:,0]==5]=6
         ###regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 3] = 4
 
         #text_regions_p[:,:][regions_fully[:,:,0]==6]=6
@@ -3555,11 +3595,37 @@ class Eynollah:
         return model
 
     def do_order_of_regions_with_model(self, contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
-        #cv2.imwrite('textregions.png', text_regions_p*50)
+        
+        height1 =672#448
+        width1 = 448#224
+
+        height2 =672#448
+        width2= 448#224
+
+        height3 =672#448
+        width3 = 448#224
+        
+        inference_bs = 3
+        
+        cv2.imwrite('textregions.png', text_regions_p*50)
+        cv2.imwrite('sep.png', (text_regions_p[:,:]==6)*255)
+        
+        ver_kernel = np.ones((5, 1), dtype=np.uint8)
+        hor_kernel = np.ones((1, 5), dtype=np.uint8)
+        
+        
+        
+        #separators = (text_regions_p[:,:]==6)*1
+        #text_regions_p[text_regions_p[:,:]==6] = 0
+        #separators = separators.astype('uint8')
+        
+        #separators = cv2.erode(separators , hor_kernel, iterations=1)
+        #text_regions_p[separators[:,:]==1] = 6
+        
+        #cv2.imwrite('sep_new.png', (text_regions_p[:,:]==6)*255)
+        
         min_cont_size_to_be_dilated = 10
         if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
-            ver_kernel = np.ones((5, 1), dtype=np.uint8)
-            
             cx_conts, cy_conts, x_min_conts, x_max_conts, y_min_conts, y_max_conts, _ = find_new_features_of_contours(contours_only_text_parent)
             args_cont_located = np.array(range(len(contours_only_text_parent)))
             
@@ -3595,12 +3661,13 @@ class Eynollah:
                 textregion_par = (text_regions_p[:,:]==1)*1
                 textregion_par = textregion_par.astype('uint8')
                 
-            
-            text_regions_p_textregions_dilated = cv2.dilate(textregion_par , ver_kernel, iterations=8)
+            text_regions_p_textregions_dilated = cv2.erode(textregion_par , hor_kernel, iterations=2)
+            text_regions_p_textregions_dilated = cv2.dilate(text_regions_p_textregions_dilated , ver_kernel, iterations=4)
+            text_regions_p_textregions_dilated = cv2.erode(text_regions_p_textregions_dilated , hor_kernel, iterations=1)
+            text_regions_p_textregions_dilated = cv2.dilate(text_regions_p_textregions_dilated , ver_kernel, iterations=5)
             text_regions_p_textregions_dilated[text_regions_p[:,:]>1] = 0
             
-            #cv2.imwrite('textregions_dilated.png', text_regions_p_textregions_dilated*255)
-
+            cv2.imwrite('text_regions_p_textregions_dilated.png', text_regions_p_textregions_dilated*255)
             
             contours_only_dilated, hir_on_text_dilated = return_contours_of_image(text_regions_p_textregions_dilated)
             contours_only_dilated = return_parent_contours(contours_only_dilated, hir_on_text_dilated)
@@ -3664,7 +3731,8 @@ class Eynollah:
 
         if not len(co_text_all):
             return [], []
-
+        print(len(co_text_all), "co_text_all")
+        print(len(co_text_all_org), "co_text_all_org")
         labels_con = np.zeros((int(y_len /6.), int(x_len/6.), len(co_text_all)), dtype=bool)
         co_text_all = [(i/6).astype(int) for i in co_text_all]
         for i in range(len(co_text_all)):
@@ -3675,21 +3743,13 @@ class Eynollah:
             cv2.fillPoly(img, pts=[co_text_all[i]], color=(1,))
             labels_con[:,:,i] = img
 
-        height1 =672#448
-        width1 = 448#224
-
-        height2 =672#448
-        width2= 448#224
-
-        height3 =672#448
-        width3 = 448#224
 
         labels_con = resize_image(labels_con.astype(np.uint8), height1, width1).astype(bool)
         img_header_and_sep = resize_image(img_header_and_sep, height1, width1)
         img_poly = resize_image(img_poly, height3, width3)
         
 
-        inference_bs = 3
+        
         input_1 = np.zeros((inference_bs, height1, width1, 3))
         ordered = [list(range(len(co_text_all)))]
         index_update = 0
@@ -3760,217 +3820,213 @@ class Eynollah:
             return ordered, region_ids
             
 
-    def return_start_and_end_of_common_text_of_textline_ocr(self, textline_image, ind_tot):
-        width = np.shape(textline_image)[1]
-        height = np.shape(textline_image)[0]
-        common_window = int(0.2*width)
+    ####def return_start_and_end_of_common_text_of_textline_ocr(self, textline_image, ind_tot):
+        ####width = np.shape(textline_image)[1]
+        ####height = np.shape(textline_image)[0]
+        ####common_window = int(0.2*width)
 
-        width1 = int ( width/2. - common_window )
-        width2 = int ( width/2. + common_window )
+        ####width1 = int ( width/2. - common_window )
+        ####width2 = int ( width/2. + common_window )
 
-        img_sum = np.sum(textline_image[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 3)
+        ####img_sum = np.sum(textline_image[:,:,0], axis=0)
+        ####sum_smoothed = gaussian_filter1d(img_sum, 3)
 
-        peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        if len(peaks_real)>70:
+        ####peaks_real, _ = find_peaks(sum_smoothed, height=0)
+        ####if len(peaks_real)>70:
 
-            peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
+            ####peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
 
-            arg_sort = np.argsort(sum_smoothed[peaks_real])
-            arg_sort4 =arg_sort[::-1][:4]
-            peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
-            argsort_sorted = np.argsort(peaks_sort_4)
+            ####arg_sort = np.argsort(sum_smoothed[peaks_real])
+            ####arg_sort4 =arg_sort[::-1][:4]
+            ####peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
+            ####argsort_sorted = np.argsort(peaks_sort_4)
 
-            first_4_sorted = peaks_sort_4[argsort_sorted]
-            y_4_sorted = sum_smoothed[peaks_real][arg_sort4[argsort_sorted]]
-            #print(first_4_sorted,'first_4_sorted')
+            ####first_4_sorted = peaks_sort_4[argsort_sorted]
+            ####y_4_sorted = sum_smoothed[peaks_real][arg_sort4[argsort_sorted]]
+            #####print(first_4_sorted,'first_4_sorted')
 
-            arg_sortnew = np.argsort(y_4_sorted)
-            peaks_final =np.sort( first_4_sorted[arg_sortnew][2:] )
+            ####arg_sortnew = np.argsort(y_4_sorted)
+            ####peaks_final =np.sort( first_4_sorted[arg_sortnew][2:] )
 
-            #plt.figure(ind_tot)
-            #plt.imshow(textline_image)
-            #plt.plot([peaks_final[0], peaks_final[0]], [0, height-1])
-            #plt.plot([peaks_final[1], peaks_final[1]], [0, height-1])
-            #plt.savefig('./'+str(ind_tot)+'.png')
+            #####plt.figure(ind_tot)
+            #####plt.imshow(textline_image)
+            #####plt.plot([peaks_final[0], peaks_final[0]], [0, height-1])
+            #####plt.plot([peaks_final[1], peaks_final[1]], [0, height-1])
+            #####plt.savefig('./'+str(ind_tot)+'.png')
 
-            return peaks_final[0], peaks_final[1]
-        else:
-            pass
+            ####return peaks_final[0], peaks_final[1]
+        ####else:
+            ####pass
 
-    def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(self, textline_image, ind_tot):
-        width = np.shape(textline_image)[1]
-        height = np.shape(textline_image)[0]
-        common_window = int(0.06*width)
+    ##def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(self, textline_image, ind_tot):
+        ##width = np.shape(textline_image)[1]
+        ##height = np.shape(textline_image)[0]
+        ##common_window = int(0.06*width)
 
-        width1 = int ( width/2. - common_window )
-        width2 = int ( width/2. + common_window )
+        ##width1 = int ( width/2. - common_window )
+        ##width2 = int ( width/2. + common_window )
 
-        img_sum = np.sum(textline_image[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 3)
+        ##img_sum = np.sum(textline_image[:,:,0], axis=0)
+        ##sum_smoothed = gaussian_filter1d(img_sum, 3)
 
-        peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        if len(peaks_real)>70:
-            #print(len(peaks_real), 'len(peaks_real)')
+        ##peaks_real, _ = find_peaks(sum_smoothed, height=0)
+        ##if len(peaks_real)>70:
+            ###print(len(peaks_real), 'len(peaks_real)')
 
-            peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
+            ##peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
 
-            arg_max = np.argmax(sum_smoothed[peaks_real])
-            peaks_final = peaks_real[arg_max]
+            ##arg_max = np.argmax(sum_smoothed[peaks_real])
+            ##peaks_final = peaks_real[arg_max]
 
-            #plt.figure(ind_tot)
-            #plt.imshow(textline_image)
-            #plt.plot([peaks_final, peaks_final], [0, height-1])
-            ##plt.plot([peaks_final[1], peaks_final[1]], [0, height-1])
-            #plt.savefig('./'+str(ind_tot)+'.png')
+            ###plt.figure(ind_tot)
+            ###plt.imshow(textline_image)
+            ###plt.plot([peaks_final, peaks_final], [0, height-1])
+            ####plt.plot([peaks_final[1], peaks_final[1]], [0, height-1])
+            ###plt.savefig('./'+str(ind_tot)+'.png')
 
-            return peaks_final
-        else:
-            return None
+            ##return peaks_final
+        ##else:
+            ##return None
 
-    def return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
-            self, peaks_real, sum_smoothed, start_split, end_split):
+    ###def return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
+            ###self, peaks_real, sum_smoothed, start_split, end_split):
 
-        peaks_real = peaks_real[(peaks_real<end_split) & (peaks_real>start_split)]
+        ###peaks_real = peaks_real[(peaks_real<end_split) & (peaks_real>start_split)]
 
-        arg_sort = np.argsort(sum_smoothed[peaks_real])
-        arg_sort4 =arg_sort[::-1][:4]
-        peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
-        argsort_sorted = np.argsort(peaks_sort_4)
+        ###arg_sort = np.argsort(sum_smoothed[peaks_real])
+        ###arg_sort4 =arg_sort[::-1][:4]
+        ###peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
+        ###argsort_sorted = np.argsort(peaks_sort_4)
 
-        first_4_sorted = peaks_sort_4[argsort_sorted]
-        y_4_sorted = sum_smoothed[peaks_real][arg_sort4[argsort_sorted]]
-        #print(first_4_sorted,'first_4_sorted')
+        ###first_4_sorted = peaks_sort_4[argsort_sorted]
+        ###y_4_sorted = sum_smoothed[peaks_real][arg_sort4[argsort_sorted]]
+        ####print(first_4_sorted,'first_4_sorted')
 
-        arg_sortnew = np.argsort(y_4_sorted)
-        peaks_final =np.sort( first_4_sorted[arg_sortnew][3:] )
-        return peaks_final[0]
+        ###arg_sortnew = np.argsort(y_4_sorted)
+        ###peaks_final =np.sort( first_4_sorted[arg_sortnew][3:] )
+        ###return peaks_final[0]
 
-    def return_start_and_end_of_common_text_of_textline_ocr_new(self, textline_image, ind_tot):
-        width = np.shape(textline_image)[1]
-        height = np.shape(textline_image)[0]
-        common_window = int(0.15*width)
+    ###def return_start_and_end_of_common_text_of_textline_ocr_new(self, textline_image, ind_tot):
+        ###width = np.shape(textline_image)[1]
+        ###height = np.shape(textline_image)[0]
+        ###common_window = int(0.15*width)
 
-        width1 = int ( width/2. - common_window )
-        width2 = int ( width/2. + common_window )
-        mid = int(width/2.)
+        ###width1 = int ( width/2. - common_window )
+        ###width2 = int ( width/2. + common_window )
+        ###mid = int(width/2.)
 
-        img_sum = np.sum(textline_image[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 3)
+        ###img_sum = np.sum(textline_image[:,:,0], axis=0)
+        ###sum_smoothed = gaussian_filter1d(img_sum, 3)
 
-        peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        if len(peaks_real)>70:
-            peak_start = self.return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
-                peaks_real, sum_smoothed, width1, mid+2)
-            peak_end = self.return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
-                peaks_real, sum_smoothed, mid-2, width2)
+        ###peaks_real, _ = find_peaks(sum_smoothed, height=0)
+        ###if len(peaks_real)>70:
+            ###peak_start = self.return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
+                ###peaks_real, sum_smoothed, width1, mid+2)
+            ###peak_end = self.return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
+                ###peaks_real, sum_smoothed, mid-2, width2)
 
-            #plt.figure(ind_tot)
-            #plt.imshow(textline_image)
-            #plt.plot([peak_start, peak_start], [0, height-1])
-            #plt.plot([peak_end, peak_end], [0, height-1])
-            #plt.savefig('./'+str(ind_tot)+'.png')
+            ####plt.figure(ind_tot)
+            ####plt.imshow(textline_image)
+            ####plt.plot([peak_start, peak_start], [0, height-1])
+            ####plt.plot([peak_end, peak_end], [0, height-1])
+            ####plt.savefig('./'+str(ind_tot)+'.png')
 
-            return peak_start, peak_end
-        else:
-            pass
+            ###return peak_start, peak_end
+        ###else:
+            ###pass
 
-    def return_ocr_of_textline_without_common_section(
-            self, textline_image, model_ocr, processor, device, width_textline, h2w_ratio,ind_tot):
+    ##def return_ocr_of_textline_without_common_section(
+            ##self, textline_image, model_ocr, processor, device, width_textline, h2w_ratio,ind_tot):
 
-        if h2w_ratio > 0.05:
-            pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-            generated_ids = model_ocr.generate(pixel_values.to(device))
-            generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        else:
-            #width = np.shape(textline_image)[1]
-            #height = np.shape(textline_image)[0]
-            #common_window = int(0.3*width)
-            #width1 = int ( width/2. - common_window )
-            #width2 = int ( width/2. + common_window )
+        ##if h2w_ratio > 0.05:
+            ##pixel_values = processor(textline_image, return_tensors="pt").pixel_values
+            ##generated_ids = model_ocr.generate(pixel_values.to(device))
+            ##generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        ##else:
+            ###width = np.shape(textline_image)[1]
+            ###height = np.shape(textline_image)[0]
+            ###common_window = int(0.3*width)
+            ###width1 = int ( width/2. - common_window )
+            ###width2 = int ( width/2. + common_window )
 
-            split_point = self.return_start_and_end_of_common_text_of_textline_ocr_without_common_section(
-                textline_image, ind_tot)
-            if split_point:
-                image1 = textline_image[:, :split_point,:]# image.crop((0, 0, width2, height))
-                image2 = textline_image[:, split_point:,:]#image.crop((width1, 0, width, height))
+            ##split_point = self.return_start_and_end_of_common_text_of_textline_ocr_without_common_section(
+                ##textline_image, ind_tot)
+            ##if split_point:
+                ##image1 = textline_image[:, :split_point,:]# image.crop((0, 0, width2, height))
+                ##image2 = textline_image[:, split_point:,:]#image.crop((width1, 0, width, height))
 
-                #pixel_values1 = processor(image1, return_tensors="pt").pixel_values
-                #pixel_values2 = processor(image2, return_tensors="pt").pixel_values
+                ###pixel_values1 = processor(image1, return_tensors="pt").pixel_values
+                ###pixel_values2 = processor(image2, return_tensors="pt").pixel_values
 
-                pixel_values_merged = processor([image1,image2], return_tensors="pt").pixel_values
-                generated_ids_merged = model_ocr.generate(pixel_values_merged.to(device))
-                generated_text_merged = processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
+                ##pixel_values_merged = processor([image1,image2], return_tensors="pt").pixel_values
+                ##generated_ids_merged = model_ocr.generate(pixel_values_merged.to(device))
+                ##generated_text_merged = processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
 
-                #print(generated_text_merged,'generated_text_merged')
+                ###print(generated_text_merged,'generated_text_merged')
 
-                #generated_ids1 = model_ocr.generate(pixel_values1.to(device))
-                #generated_ids2 = model_ocr.generate(pixel_values2.to(device))
+                ###generated_ids1 = model_ocr.generate(pixel_values1.to(device))
+                ###generated_ids2 = model_ocr.generate(pixel_values2.to(device))
 
-                #generated_text1 = processor.batch_decode(generated_ids1, skip_special_tokens=True)[0]
-                #generated_text2 = processor.batch_decode(generated_ids2, skip_special_tokens=True)[0]
+                ###generated_text1 = processor.batch_decode(generated_ids1, skip_special_tokens=True)[0]
+                ###generated_text2 = processor.batch_decode(generated_ids2, skip_special_tokens=True)[0]
 
-                #generated_text = generated_text1 + ' ' + generated_text2
-                generated_text = generated_text_merged[0] + ' ' + generated_text_merged[1]
+                ###generated_text = generated_text1 + ' ' + generated_text2
+                ##generated_text = generated_text_merged[0] + ' ' + generated_text_merged[1]
 
-                #print(generated_text1,'generated_text1')
-                #print(generated_text2, 'generated_text2')
-                #print('########################################')
-            else:
-                pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-                generated_ids = model_ocr.generate(pixel_values.to(device))
-                generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+                ###print(generated_text1,'generated_text1')
+                ###print(generated_text2, 'generated_text2')
+                ###print('########################################')
+            ##else:
+                ##pixel_values = processor(textline_image, return_tensors="pt").pixel_values
+                ##generated_ids = model_ocr.generate(pixel_values.to(device))
+                ##generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
-        #print(generated_text,'generated_text')
-        #print('########################################')
-        return generated_text
+        ###print(generated_text,'generated_text')
+        ###print('########################################')
+        ##return generated_text
 
-    def return_ocr_of_textline(
-            self, textline_image, model_ocr, processor, device, width_textline, h2w_ratio,ind_tot):
+    ###def return_ocr_of_textline(
+            ###self, textline_image, model_ocr, processor, device, width_textline, h2w_ratio,ind_tot):
 
-        if h2w_ratio > 0.05:
-            pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-            generated_ids = model_ocr.generate(pixel_values.to(device))
-            generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        else:
-            #width = np.shape(textline_image)[1]
-            #height = np.shape(textline_image)[0]
-            #common_window = int(0.3*width)
-            #width1 = int ( width/2. - common_window )
-            #width2 = int ( width/2. + common_window )
+        ###if h2w_ratio > 0.05:
+            ###pixel_values = processor(textline_image, return_tensors="pt").pixel_values
+            ###generated_ids = model_ocr.generate(pixel_values.to(device))
+            ###generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        ###else:
+            ####width = np.shape(textline_image)[1]
+            ####height = np.shape(textline_image)[0]
+            ####common_window = int(0.3*width)
+            ####width1 = int ( width/2. - common_window )
+            ####width2 = int ( width/2. + common_window )
 
-            try:
-                width1, width2 = self.return_start_and_end_of_common_text_of_textline_ocr_new(textline_image, ind_tot)
+            ###try:
+                ###width1, width2 = self.return_start_and_end_of_common_text_of_textline_ocr_new(textline_image, ind_tot)
 
-                image1 = textline_image[:, :width2,:]# image.crop((0, 0, width2, height))
-                image2 = textline_image[:, width1:,:]#image.crop((width1, 0, width, height))
+                ###image1 = textline_image[:, :width2,:]# image.crop((0, 0, width2, height))
+                ###image2 = textline_image[:, width1:,:]#image.crop((width1, 0, width, height))
 
-                pixel_values1 = processor(image1, return_tensors="pt").pixel_values
-                pixel_values2 = processor(image2, return_tensors="pt").pixel_values
+                ###pixel_values1 = processor(image1, return_tensors="pt").pixel_values
+                ###pixel_values2 = processor(image2, return_tensors="pt").pixel_values
 
-                generated_ids1 = model_ocr.generate(pixel_values1.to(device))
-                generated_ids2 = model_ocr.generate(pixel_values2.to(device))
+                ###generated_ids1 = model_ocr.generate(pixel_values1.to(device))
+                ###generated_ids2 = model_ocr.generate(pixel_values2.to(device))
 
-                generated_text1 = processor.batch_decode(generated_ids1, skip_special_tokens=True)[0]
-                generated_text2 = processor.batch_decode(generated_ids2, skip_special_tokens=True)[0]
-                #print(generated_text1,'generated_text1')
-                #print(generated_text2, 'generated_text2')
-                #print('########################################')
+                ###generated_text1 = processor.batch_decode(generated_ids1, skip_special_tokens=True)[0]
+                ###generated_text2 = processor.batch_decode(generated_ids2, skip_special_tokens=True)[0]
+                ####print(generated_text1,'generated_text1')
+                ####print(generated_text2, 'generated_text2')
+                ####print('########################################')
 
-                match = sq(None, generated_text1, generated_text2).find_longest_match(
-                    0, len(generated_text1), 0, len(generated_text2))
-                generated_text = generated_text1 + generated_text2[match.b+match.size:]
-            except:
-                pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-                generated_ids = model_ocr.generate(pixel_values.to(device))
-                generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+                ###match = sq(None, generated_text1, generated_text2).find_longest_match(
+                    ###0, len(generated_text1), 0, len(generated_text2))
+                ###generated_text = generated_text1 + generated_text2[match.b+match.size:]
+            ###except:
+                ###pixel_values = processor(textline_image, return_tensors="pt").pixel_values
+                ###generated_ids = model_ocr.generate(pixel_values.to(device))
+                ###generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
-        return generated_text
+        ###return generated_text
 
-    def return_textline_contour_with_added_box_coordinate(self, textline_contour,  box_ind):
-        textline_contour[:,0] = textline_contour[:,0] + box_ind[2]
-        textline_contour[:,1] = textline_contour[:,1] + box_ind[0]
-        return textline_contour
 
     def return_list_of_contours_with_desired_order(self, ls_cons, sorted_indexes):
         return [ls_cons[sorted_indexes[index]] for index in range(len(sorted_indexes))]
@@ -4625,6 +4681,7 @@ class Eynollah:
             raise ValueError("run requires either a single image filename or a directory")
 
         for img_filename in self.ls_imgs:
+            print(img_filename, 'img_filename')
             self.logger.info(img_filename)
             t0 = time.time()
 
@@ -4698,13 +4755,19 @@ class Eynollah:
             all_box_coord_marginals = []
             polygons_lines_xml = []
             contours_tables = []
-            ocr_all_textlines = None
             conf_contours_textregions =[0]
+            
+            if self.ocr and not self.tr:
+                gc.collect()
+                ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons, self.prediction_model, self.b_s_ocr, self.num_to_char, textline_light=True)
+            else:
+                ocr_all_textlines = None
+            
             pcgts = self.writer.build_pagexml_no_full_layout(
                 cont_page, page_coord, order_text_new, id_of_texts_tot,
                 all_found_textline_polygons, page_coord, polygons_of_images, polygons_of_marginals,
                 all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
-                cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, conf_contours_textregions)
+                cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, conf_contours_textregions, self.skip_layout_and_reading_order)
             return pcgts
 
         #print("text region early -1 in %.1fs", time.time() - t0)
@@ -5118,7 +5181,7 @@ class Eynollah:
                 tror = time.time()
                 order_text_new, id_of_texts_tot = self.do_order_of_regions_with_model(
                     contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
-                print('time spend for mb ro', time.time()-tror)
+                print('time spend for mb ro',  time.time()-tror)
             else:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     order_text_new, id_of_texts_tot = self.do_order_of_regions(
@@ -5160,7 +5223,7 @@ class Eynollah:
                 order_text_new, id_of_texts_tot = self.do_order_of_regions(
                     contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
 
-        if self.ocr:
+        if self.ocr and self.tr:
             device = cuda.get_current_device()
             device.reset()
             gc.collect()
@@ -5207,6 +5270,11 @@ class Eynollah:
                     ocr_textline_in_textregion.append(text_ocr)
                     ind_tot = ind_tot +1
                 ocr_all_textlines.append(ocr_textline_in_textregion)
+                
+        elif self.ocr and not self.tr:
+            gc.collect()
+            ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+
 
         else:
             ocr_all_textlines = None
@@ -5288,329 +5356,6 @@ class Eynollah_ocr:
                 self.num_to_char = StringLookup(
                     vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
                 )
-
-        
-    def decode_batch_predictions(self, pred, max_len = 128):
-        # input_len is the product of the batch size and the
-        # number of time steps.
-        input_len = np.ones(pred.shape[0]) * pred.shape[1]
-        
-        # Decode CTC predictions using greedy search.
-        # decoded is a tuple with 2 elements.
-        decoded = tf.keras.backend.ctc_decode(pred, 
-                        input_length = input_len, 
-                                    beam_width = 100)
-        # The outputs are in the first element of the tuple.
-        # Additionally, the first element is actually a list,
-        # therefore we take the first element of that list as well.
-        #print(decoded,'decoded')
-        decoded = decoded[0][0][:, :max_len]
-        
-        #print(decoded, decoded.shape,'decoded')
-
-        output = []
-        for d in decoded:
-            # Convert the predicted indices to the corresponding chars.
-            d = tf.strings.reduce_join(self.num_to_char(d))
-            d = d.numpy().decode("utf-8")
-            output.append(d)
-        return output
-        
-        
-    def distortion_free_resize(self, image, img_size):
-        w, h = img_size
-        image = tf.image.resize(image, size=(h, w), preserve_aspect_ratio=True)
-
-        # Check tha amount of padding needed to be done.
-        pad_height = h - tf.shape(image)[0]
-        pad_width = w - tf.shape(image)[1]
-
-        # Only necessary if you want to do same amount of padding on both sides.
-        if pad_height % 2 != 0:
-            height = pad_height // 2
-            pad_height_top = height + 1
-            pad_height_bottom = height
-        else:
-            pad_height_top = pad_height_bottom = pad_height // 2
-
-        if pad_width % 2 != 0:
-            width = pad_width // 2
-            pad_width_left = width + 1
-            pad_width_right = width
-        else:
-            pad_width_left = pad_width_right = pad_width // 2
-
-        image = tf.pad(
-            image,
-            paddings=[
-                [pad_height_top, pad_height_bottom],
-                [pad_width_left, pad_width_right],
-                [0, 0],
-            ],
-        )
-
-        image = tf.transpose(image, (1, 0, 2))
-        image = tf.image.flip_left_right(image)
-        return image
-    
-    def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(self, textline_image):
-        width = np.shape(textline_image)[1]
-        height = np.shape(textline_image)[0]
-        common_window = int(0.22*width)
-
-        width1 = int ( width/2. - common_window )
-        width2 = int ( width/2. + common_window )
-        
-        img_sum = np.sum(textline_image[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 3)
-        
-        peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        
-        if len(peaks_real)>35:
-
-            #peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
-            argsort = np.argsort(sum_smoothed[peaks_real])[::-1]
-            peaks_real_top_six = peaks_real[argsort[:6]]
-            midpoint = textline_image.shape[1] / 2.
-            arg_closest = np.argmin(np.abs(peaks_real_top_six - midpoint))
-
-            #arg_max = np.argmax(sum_smoothed[peaks_real])
-
-            peaks_final = peaks_real_top_six[arg_closest]#peaks_real[arg_max]
-            
-            return peaks_final
-        else:
-            return None
-        
-    # Function to fit text inside the given area
-    def fit_text_single_line(self, draw, text, font_path, max_width, max_height):
-        initial_font_size = 50
-        font_size = initial_font_size
-        while font_size > 10:  # Minimum font size
-            font = ImageFont.truetype(font_path, font_size)
-            text_bbox = draw.textbbox((0, 0), text, font=font)  # Get text bounding box
-            text_width = text_bbox[2] - text_bbox[0]
-            text_height = text_bbox[3] - text_bbox[1]
-
-            if text_width <= max_width and text_height <= max_height:
-                return font  # Return the best-fitting font
-
-            font_size -= 2  # Reduce font size and retry
-
-        return ImageFont.truetype(font_path, 10)  # Smallest font fallback
-    
-    def return_textlines_split_if_needed(self, textline_image, textline_image_bin):
-
-        split_point = self.return_start_and_end_of_common_text_of_textline_ocr_without_common_section(textline_image)
-        if split_point:
-            image1 = textline_image[:, :split_point,:]# image.crop((0, 0, width2, height))
-            image2 = textline_image[:, split_point:,:]#image.crop((width1, 0, width, height))
-            if self.prediction_with_both_of_rgb_and_bin:
-                image1_bin = textline_image_bin[:, :split_point,:]# image.crop((0, 0, width2, height))
-                image2_bin = textline_image_bin[:, split_point:,:]#image.crop((width1, 0, width, height))
-                return [image1, image2], [image1_bin, image2_bin]
-            else:
-                return [image1, image2], None
-        else:
-            return None, None
-    def preprocess_and_resize_image_for_ocrcnn_model(self, img, image_height, image_width):
-        ratio = image_height /float(img.shape[0])
-        w_ratio = int(ratio * img.shape[1])
-        
-        if w_ratio <= image_width:
-            width_new = w_ratio
-        else:
-            width_new = image_width
-            
-        if width_new == 0:
-            width_new = img.shape[1]
-            
-        ##if width_new+32 >= image_width:
-            ##width_new = width_new - 32
-            
-        ###patch_zero = np.zeros((32, 32, 3))#+255
-        ###patch_zero[9:19,8:18,:] = 0
-            
-        
-        img = resize_image(img, image_height, width_new)
-        img_fin = np.ones((image_height, image_width, 3))*255
-        ###img_fin[:,:32,:] = patch_zero[:,:,:]
-        ###img_fin[:,32:32+width_new,:] = img[:,:,:]
-        img_fin[:,:width_new,:] = img[:,:,:]
-        img_fin = img_fin / 255.
-        return img_fin
-    
-    def get_deskewed_contour_and_bb_and_image(self, contour, image, deskew_angle):
-        (h_in, w_in) = image.shape[:2]
-        center = (w_in // 2, h_in // 2)
-        
-        rotation_matrix = cv2.getRotationMatrix2D(center, deskew_angle, 1.0)
-        
-        cos_angle = abs(rotation_matrix[0, 0])
-        sin_angle = abs(rotation_matrix[0, 1])
-        new_w = int((h_in * sin_angle) + (w_in * cos_angle))
-        new_h = int((h_in * cos_angle) + (w_in * sin_angle))
-        
-        rotation_matrix[0, 2] += (new_w / 2) - center[0]
-        rotation_matrix[1, 2] += (new_h / 2) - center[1]
-        
-        deskewed_image = cv2.warpAffine(image, rotation_matrix, (new_w, new_h))
-        
-        contour_points = np.array(contour, dtype=np.float32)
-        transformed_points = cv2.transform(np.array([contour_points]), rotation_matrix)[0]
-        
-        x, y, w, h = cv2.boundingRect(np.array(transformed_points, dtype=np.int32))
-        cropped_textline = deskewed_image[y:y+h, x:x+w]
-        
-        return cropped_textline
-    
-    def rotate_image_with_padding(self, image, angle, border_value=(0,0,0)):
-        # Get image dimensions
-        (h, w) = image.shape[:2]
-        
-        # Calculate the center of the image
-        center = (w // 2, h // 2)
-        
-        # Get the rotation matrix
-        rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-        
-        # Compute the new bounding dimensions
-        cos = abs(rotation_matrix[0, 0])
-        sin = abs(rotation_matrix[0, 1])
-        new_w = int((h * sin) + (w * cos))
-        new_h = int((h * cos) + (w * sin))
-        
-        # Adjust the rotation matrix to account for translation
-        rotation_matrix[0, 2] += (new_w / 2) - center[0]
-        rotation_matrix[1, 2] += (new_h / 2) - center[1]
-        
-        # Perform the rotation
-        rotated_image = cv2.warpAffine(image, rotation_matrix, (new_w, new_h), borderValue=border_value)
-        
-        return rotated_image
-    
-    def get_orientation_moments(self, contour):
-        moments = cv2.moments(contour)
-        if moments["mu20"] - moments["mu02"] == 0:  # Avoid division by zero
-            return 90 if moments["mu11"] > 0 else -90
-        else:
-            angle = 0.5 * np.arctan2(2 * moments["mu11"], moments["mu20"] - moments["mu02"])
-            return np.degrees(angle)  # Convert radians to degrees
-        
-        
-    def get_orientation_moments_of_mask(self, mask):
-        mask=mask.astype('uint8')
-        contours, _ = cv2.findContours(mask[:,:,0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        largest_contour = max(contours, key=cv2.contourArea) if contours else None
-        
-        moments = cv2.moments(largest_contour)
-        if moments["mu20"] - moments["mu02"] == 0:  # Avoid division by zero
-            return 90 if moments["mu11"] > 0 else -90
-        else:
-            angle = 0.5 * np.arctan2(2 * moments["mu11"], moments["mu20"] - moments["mu02"])
-            return np.degrees(angle)  # Convert radians to degrees
-    
-    def get_contours_and_bounding_boxes(self, mask):
-        # Find contours in the binary mask
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        largest_contour = max(contours, key=cv2.contourArea) if contours else None
-
-        # Get the bounding rectangle for the contour
-        x, y, w, h = cv2.boundingRect(largest_contour)
-        #bounding_boxes.append((x, y, w, h))
-        
-        return x, y, w, h
-    
-    def return_splitting_point_of_image(self, image_to_spliited):
-        width = np.shape(image_to_spliited)[1]
-        height = np.shape(image_to_spliited)[0]
-        common_window = int(0.03*width)
-
-        width1 = int ( common_window)
-        width2 = int ( width - common_window )
-
-        img_sum = np.sum(image_to_spliited[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 1)
-
-        peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
-        
-        arg_sort = np.argsort(sum_smoothed[peaks_real])
-        peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
-        
-        return np.sort(peaks_sort_4)
-        
-    def break_curved_line_into_small_pieces_and_then_merge(self, img_curved, mask_curved):
-        peaks_4 = self.return_splitting_point_of_image(img_curved)
-        if len(peaks_4)>0:
-            imgs_tot = []
-            
-            for ind in range(len(peaks_4)+1):
-                if ind==0:
-                    img = img_curved[:, :peaks_4[ind], :]
-                    mask = mask_curved[:, :peaks_4[ind], :]
-                elif ind==len(peaks_4):
-                    img = img_curved[:, peaks_4[ind-1]:, :]
-                    mask = mask_curved[:, peaks_4[ind-1]:, :]
-                else:
-                    img = img_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
-                    mask = mask_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
-                    
-                or_ma = self.get_orientation_moments_of_mask(mask)
-            
-                imgs_tot.append([img, mask, or_ma] )
-            
-            
-            w_tot_des_list = []
-            w_tot_des = 0
-            imgs_deskewed_list = []
-            for ind in range(len(imgs_tot)):
-                img_in = imgs_tot[ind][0]
-                mask_in = imgs_tot[ind][1]
-                ori_in = imgs_tot[ind][2]
-                
-                if abs(ori_in)<45:
-                    img_in_des = self.rotate_image_with_padding(img_in, ori_in, border_value=(255,255,255) )
-                    mask_in_des = self.rotate_image_with_padding(mask_in, ori_in)
-                    mask_in_des = mask_in_des.astype('uint8')
-                    
-                    #new bounding box
-                    x_n, y_n, w_n, h_n = self.get_contours_and_bounding_boxes(mask_in_des[:,:,0])
-                    
-                    mask_in_des = mask_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                    img_in_des = img_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                    
-                    w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
-                    if w_relative==0:
-                        w_relative = img_in_des.shape[1]
-                    img_in_des = resize_image(img_in_des, 32, w_relative)
-                    
-
-                else:
-                    img_in_des = np.copy(img_in)
-                    w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
-                    if w_relative==0:
-                        w_relative = img_in_des.shape[1]
-                    img_in_des = resize_image(img_in_des, 32, w_relative)
-                    
-                w_tot_des+=img_in_des.shape[1]
-                w_tot_des_list.append(img_in_des.shape[1])
-                imgs_deskewed_list.append(img_in_des)
-                
-                
-                
-
-            img_final_deskewed = np.zeros((32, w_tot_des, 3))+255
-            
-            w_indexer = 0
-            for ind in range(len(w_tot_des_list)):
-                img_final_deskewed[:,w_indexer:w_indexer+w_tot_des_list[ind],:] = imgs_deskewed_list[ind][:,:,:]
-                w_indexer = w_indexer+w_tot_des_list[ind]
-            return img_final_deskewed
-        else:
-            return img_curved
 
     def run(self):
         ls_imgs = os.listdir(self.dir_in)
@@ -6069,7 +5814,7 @@ class Eynollah_ocr:
                             preds_bin = self.prediction_model.predict(imgs_bin, verbose=0)
                             preds = (preds + preds_bin) / 2.
 
-                        pred_texts = self.decode_batch_predictions(preds)
+                        pred_texts = self.decode_batch_predictions(preds, self.num_to_char)
 
                         for ib in range(imgs.shape[0]):
                             pred_texts_ib = pred_texts[ib].replace("[UNK]", "")
