@@ -85,7 +85,12 @@ from .utils.utils_ocr import (
     preprocess_and_resize_image_for_ocrcnn_model,
     return_textlines_split_if_needed,
     decode_batch_predictions,
-    return_rnn_cnn_ocr_of_given_textlines
+    return_rnn_cnn_ocr_of_given_textlines,
+    fit_text_single_line,
+    break_curved_line_into_small_pieces_and_then_merge,
+    get_orientation_moments,
+    rotate_image_with_padding,
+    get_contours_and_bounding_boxes
 )
 from .utils.separate_lines import (
     textline_contours_postprocessing,
@@ -5421,7 +5426,7 @@ class Eynollah_ocr:
                                         cropped_lines.append(resize_image(img_crop, tr_ocr_input_height_and_width, tr_ocr_input_height_and_width)  )
                                         cropped_lines_meging_indexing.append(0)
                                     else:
-                                        splited_images, _ = self.return_textlines_split_if_needed(img_crop, None)
+                                        splited_images, _ = return_textlines_split_if_needed(img_crop, None)
                                         #print(splited_images)
                                         if splited_images:
                                             cropped_lines.append(resize_image(splited_images[0], tr_ocr_input_height_and_width, tr_ocr_input_height_and_width))
@@ -5474,7 +5479,7 @@ class Eynollah_ocr:
                         w_bb = bb_ind[2]
                         h_bb = bb_ind[3]
                         
-                        font = self.fit_text_single_line(draw, extracted_texts_merged[indexer_text], font_path, w_bb, int(h_bb*0.4) )
+                        font = fit_text_single_line(draw, extracted_texts_merged[indexer_text], font_path, w_bb, int(h_bb*0.4) )
                         
                         ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
                         
@@ -5607,14 +5612,14 @@ class Eynollah_ocr:
                                     #print(file_name, angle_degrees,w*h , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w*h) , 'didi')
                                     if not self.do_not_mask_with_textline_contour:
                                         if angle_degrees > 15:
-                                            better_des_slope = self.get_orientation_moments(textline_coords)
+                                            better_des_slope = get_orientation_moments(textline_coords)
                                             
-                                            img_crop = self.rotate_image_with_padding(img_crop, better_des_slope )
-                                            mask_poly = self.rotate_image_with_padding(mask_poly, better_des_slope )
+                                            img_crop = rotate_image_with_padding(img_crop, better_des_slope )
+                                            mask_poly = rotate_image_with_padding(mask_poly, better_des_slope )
                                             mask_poly = mask_poly.astype('uint8')
                                             
                                             #new bounding box
-                                            x_n, y_n, w_n, h_n = self.get_contours_and_bounding_boxes(mask_poly[:,:,0])
+                                            x_n, y_n, w_n, h_n = get_contours_and_bounding_boxes(mask_poly[:,:,0])
                                             
                                             mask_poly = mask_poly[y_n:y_n+h_n, x_n:x_n+w_n, :]
                                             img_crop = img_crop[y_n:y_n+h_n, x_n:x_n+w_n, :]
@@ -5622,13 +5627,13 @@ class Eynollah_ocr:
                                             img_crop[mask_poly==0] = 255
                                             
                                             if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.50 and w_scaled > 100:
-                                                img_crop = self.break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
+                                                img_crop = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
 
                                             #print(file_name,w_n*h_n , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w_n*h_n) , 'ikiiiiii')
                                         else:
                                             img_crop[mask_poly==0] = 255
                                             if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 100:
-                                                img_crop = self.break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
+                                                img_crop = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
 
 
                                         
@@ -5638,7 +5643,7 @@ class Eynollah_ocr:
                                     
                                     if not self.export_textline_images_and_text:
                                         if w_scaled < 640:#1.5*image_width:
-                                            img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
+                                            img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
                                             if angle_degrees > 15:
                                                 cropped_lines_ver_index.append(1)
@@ -5647,15 +5652,15 @@ class Eynollah_ocr:
                                                 
                                             cropped_lines_meging_indexing.append(0)
                                             if self.prediction_with_both_of_rgb_and_bin:
-                                                img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
+                                                img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
                                                 cropped_lines_bin.append(img_fin)
                                         else:
                                             if self.prediction_with_both_of_rgb_and_bin:
-                                                splited_images, splited_images_bin = self.return_textlines_split_if_needed(img_crop, img_crop_bin)
+                                                splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, img_crop_bin)
                                             else:
-                                                splited_images, splited_images_bin = self.return_textlines_split_if_needed(img_crop, None)
+                                                splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, None)
                                             if splited_images:
-                                                img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
+                                                img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(1)
                                                 
@@ -5664,7 +5669,7 @@ class Eynollah_ocr:
                                                 else:
                                                     cropped_lines_ver_index.append(0)
                                                 
-                                                img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images[1], image_height, image_width)
+                                                img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[1], image_height, image_width)
                                                 
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(-1)
@@ -5675,13 +5680,13 @@ class Eynollah_ocr:
                                                     cropped_lines_ver_index.append(0)
                                                 
                                                 if self.prediction_with_both_of_rgb_and_bin:
-                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[0], image_height, image_width)
+                                                    img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[0], image_height, image_width)
                                                     cropped_lines_bin.append(img_fin)
-                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[1], image_height, image_width)
+                                                    img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[1], image_height, image_width)
                                                     cropped_lines_bin.append(img_fin)
                                                     
                                             else:
-                                                img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
+                                                img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(0)
                                                 
@@ -5691,7 +5696,7 @@ class Eynollah_ocr:
                                                     cropped_lines_ver_index.append(0)
                                                 
                                                 if self.prediction_with_both_of_rgb_and_bin:
-                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
+                                                    img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
                                                     cropped_lines_bin.append(img_fin)
                                         
                                 if self.export_textline_images_and_text:
@@ -5814,7 +5819,7 @@ class Eynollah_ocr:
                             preds_bin = self.prediction_model.predict(imgs_bin, verbose=0)
                             preds = (preds + preds_bin) / 2.
 
-                        pred_texts = self.decode_batch_predictions(preds, self.num_to_char)
+                        pred_texts = decode_batch_predictions(preds, self.num_to_char)
 
                         for ib in range(imgs.shape[0]):
                             pred_texts_ib = pred_texts[ib].replace("[UNK]", "")
@@ -5844,7 +5849,7 @@ class Eynollah_ocr:
                             w_bb = bb_ind[2]
                             h_bb = bb_ind[3]
                             
-                            font = self.fit_text_single_line(draw, extracted_texts_merged[indexer_text], font_path, w_bb, int(h_bb*0.4) )
+                            font = fit_text_single_line(draw, extracted_texts_merged[indexer_text], font_path, w_bb, int(h_bb*0.4) )
                             
                             ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
                             
