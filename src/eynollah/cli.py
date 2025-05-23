@@ -226,6 +226,17 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
     help="if this parameter set to true, this tool will try to do ocr",
 )
 @click.option(
+    "--transformer_ocr",
+    "-tr/-notr",
+    is_flag=True,
+    help="if this parameter set to true, this tool will apply transformer ocr",
+)
+@click.option(
+    "--batch_size_ocr",
+    "-bs_ocr",
+    help="number of inference batch size of ocr model. Default b_s for trocr and cnn_rnn models are 2 and 8 respectively",
+)
+@click.option(
     "--num_col_upper",
     "-ncu",
     help="lower limit of columns in document image",
@@ -258,7 +269,7 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
     help="Override log level globally to this",
 )
 
-def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, num_col_upper, num_col_lower, threshold_art_class_textline, threshold_art_class_layout, skip_layout_and_reading_order, ignore_page_extraction, log_level):
+def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, transformer_ocr, batch_size_ocr, num_col_upper, num_col_lower, threshold_art_class_textline, threshold_art_class_layout, skip_layout_and_reading_order, ignore_page_extraction, log_level):
     initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
@@ -305,6 +316,8 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
         ignore_page_extraction=ignore_page_extraction,
         reading_order_machine_based=reading_order_machine_based,
         do_ocr=do_ocr,
+        transformer_ocr=transformer_ocr,
+        batch_size_ocr=batch_size_ocr,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
         skip_layout_and_reading_order=skip_layout_and_reading_order,
