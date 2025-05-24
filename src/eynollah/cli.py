@@ -332,6 +332,12 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
 
 @main.command()
 @click.option(
+    "--image",
+    "-i",
+    help="image filename",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.option(
     "--dir_in",
     "-di",
     help="directory of images",
@@ -415,7 +421,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     help="Override log level globally to this",
 )
 
-def ocr(dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, batch_size, dataset_abbrevation, log_level):
+def ocr(image, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, batch_size, dataset_abbrevation, log_level):
     initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
@@ -426,8 +432,9 @@ def ocr(dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, ex
     assert not export_textline_images_and_text or not dir_out_image_text, "Exporting textline and text  -etit can not be set alongside directory of images with predicted text -doit"
     assert not export_textline_images_and_text or not draw_texts_on_image, "Exporting textline and text  -etit can not be set alongside draw text on image -dtoi"
     assert not export_textline_images_and_text or not prediction_with_both_of_rgb_and_bin, "Exporting textline and text  -etit can not be set alongside prediction with both rgb and bin -brb"
-    
+    assert (bool(image) ^ bool(dir_in)), "Either -i (single image) or -di (directory) must be provided, but not both."
     eynollah_ocr = Eynollah_ocr(
+        image_filename=image,
         dir_xmls=dir_xmls,
         dir_out_image_text=dir_out_image_text,
         dir_in=dir_in,
