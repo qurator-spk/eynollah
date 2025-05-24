@@ -5134,10 +5134,10 @@ class Eynollah:
 
             pixel_img = 4
             polygons_of_drop_capitals = return_contours_of_interested_region_by_min_size(text_regions_p, pixel_img)
-            all_found_textline_polygons = adhere_drop_capital_region_into_corresponding_textline(
-                text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h,
-                all_box_coord, all_box_coord_h, all_found_textline_polygons, all_found_textline_polygons_h,
-                kernel=KERNEL, curved_line=self.curved_line, textline_light=self.textline_light)
+            ##all_found_textline_polygons = adhere_drop_capital_region_into_corresponding_textline(
+                ##text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h,
+                ##all_box_coord, all_box_coord_h, all_found_textline_polygons, all_found_textline_polygons_h,
+                ##kernel=KERNEL, curved_line=self.curved_line, textline_light=self.textline_light)
 
             if not self.reading_order_machine_based:
                 pixel_seps = 6
@@ -5299,6 +5299,7 @@ class Eynollah_ocr:
         dir_models,
         dir_xmls=None,
         dir_in=None,
+        image_filename=None,
         dir_in_bin=None,
         dir_out=None,
         dir_out_image_text=None,
@@ -5312,6 +5313,7 @@ class Eynollah_ocr:
         logger=None,
     ):
         self.dir_in = dir_in
+        self.image_filename = image_filename
         self.dir_in_bin = dir_in_bin
         self.dir_out = dir_out
         self.dir_xmls = dir_xmls
@@ -5363,13 +5365,20 @@ class Eynollah_ocr:
                 )
 
     def run(self):
-        ls_imgs = os.listdir(self.dir_in)
+        if self.dir_in:
+            ls_imgs = os.listdir(self.dir_in)
+        else:
+            ls_imgs = [self.image_filename]
         
         if self.tr_ocr:
             tr_ocr_input_height_and_width = 384
             for ind_img in ls_imgs:
-                file_name = Path(ind_img).stem
-                dir_img = os.path.join(self.dir_in, ind_img)
+                if self.dir_in:
+                    file_name = Path(ind_img).stem
+                    dir_img = os.path.join(self.dir_in, ind_img)
+                else:
+                    file_name = Path(self.image_filename).stem
+                    dir_img = self.image_filename
                 dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
                 out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
                 img = cv2.imread(dir_img)
@@ -5541,8 +5550,15 @@ class Eynollah_ocr:
             img_size=(image_width, image_height)
             
             for ind_img in ls_imgs:
-                file_name = Path(ind_img).stem
-                dir_img = os.path.join(self.dir_in, ind_img)
+                if self.dir_in:
+                    file_name = Path(ind_img).stem
+                    dir_img = os.path.join(self.dir_in, ind_img)
+                else:
+                    file_name = Path(self.image_filename).stem
+                    dir_img = self.image_filename
+                    
+                #file_name = Path(ind_img).stem
+                #dir_img = os.path.join(self.dir_in, ind_img)
                 dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
                 out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
                 img = cv2.imread(dir_img)
@@ -5576,6 +5592,7 @@ class Eynollah_ocr:
                 indexer_text_region = 0
                 indexer_textlines = 0
                 for nn in root1.iter(region_tags):
+                    type_textregion = nn.attrib['type']
                     for child_textregion in nn:
                         if child_textregion.tag.endswith("TextLine"):
                             for child_textlines in child_textregion:
@@ -5589,7 +5606,9 @@ class Eynollah_ocr:
                                     angle_radians = math.atan2(h, w)
                                     # Convert to degrees
                                     angle_degrees = math.degrees(angle_radians)
-                                    
+                                    if type_textregion=='drop-capital':
+                                        angle_degrees = 0
+                                        
                                     if self.draw_texts_on_image:
                                         total_bb_coordinates.append([x,y,w,h])
                                         
@@ -5632,8 +5651,11 @@ class Eynollah_ocr:
                                             #print(file_name,w_n*h_n , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w_n*h_n) , 'ikiiiiii')
                                         else:
                                             img_crop[mask_poly==0] = 255
-                                            if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 100:
-                                                img_crop = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
+                                            if type_textregion=='drop-capital':
+                                                pass
+                                            else:
+                                                if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 100:
+                                                    img_crop = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
 
 
                                         
