@@ -6,3 +6,4 @@ tensorflow < 2.13
 numba <= 0.58.1
 scikit-image
 loky
+biopython

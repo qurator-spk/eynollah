@@ -5,6 +5,7 @@ from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 import math
 from PIL import Image, ImageDraw, ImageFont
+from Bio import pairwise2
 from .resize import resize_image
 
 def decode_batch_predictions(pred, num_to_char, max_len = 128):
@@ -252,7 +253,7 @@ def return_splitting_point_of_image(image_to_spliited):
     
     return np.sort(peaks_sort_4)
     
-def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved):
+def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved, img_bin_curved=None):
     peaks_4 = return_splitting_point_of_image(img_curved)
     if len(peaks_4)>0:
         imgs_tot = []
@@ -260,29 +261,44 @@ def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved):
         for ind in range(len(peaks_4)+1):
             if ind==0:
                 img = img_curved[:, :peaks_4[ind], :]
+                if img_bin_curved:
+                    img_bin = img_curved_bin[:, :peaks_4[ind], :]
                 mask = mask_curved[:, :peaks_4[ind], :]
             elif ind==len(peaks_4):
                 img = img_curved[:, peaks_4[ind-1]:, :]
+                if img_bin_curved:
+                    img_bin = img_curved_bin[:, peaks_4[ind-1]:, :]
                 mask = mask_curved[:, peaks_4[ind-1]:, :]
             else:
                 img = img_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
+                if img_bin_curved:
+                    img_bin = img_curved_bin[:, peaks_4[ind-1]:peaks_4[ind], :]
                 mask = mask_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
                 
             or_ma = get_orientation_moments_of_mask(mask)
-        
-            imgs_tot.append([img, mask, or_ma] )
+            
+            if img_bin_curved:
+                imgs_tot.append([img, mask, or_ma, img_bin] )
+            else:
+                imgs_tot.append([img, mask, or_ma] )
         
         
         w_tot_des_list = []
         w_tot_des = 0
         imgs_deskewed_list = []
+        imgs_bin_deskewed_list = []
+        
         for ind in range(len(imgs_tot)):
             img_in = imgs_tot[ind][0]
             mask_in = imgs_tot[ind][1]
             ori_in = imgs_tot[ind][2]
+            if img_bin_curved:
+                img_bin_in = imgs_tot[ind][3]
             
             if abs(ori_in)<45:
                 img_in_des = rotate_image_with_padding(img_in, ori_in, border_value=(255,255,255) )
+                if img_bin_curved:
+                    img_bin_in_des = rotate_image_with_padding(img_bin_in, ori_in, border_value=(255,255,255) )
                 mask_in_des = rotate_image_with_padding(mask_in, ori_in)
                 mask_in_des = mask_in_des.astype('uint8')
                 
@@ -291,36 +307,52 @@ def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved):
                 
                 mask_in_des = mask_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
                 img_in_des = img_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                if img_bin_curved:
+                    img_bin_in_des = img_bin_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
                 
                 w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
                 if w_relative==0:
                     w_relative = img_in_des.shape[1]
                 img_in_des = resize_image(img_in_des, 32, w_relative)
+                if img_bin_curved:
+                    img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
                 
 
             else:
                 img_in_des = np.copy(img_in)
+                if img_bin_curved:
+                    img_bin_in_des = np.copy(img_bin_in)
                 w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
                 if w_relative==0:
                     w_relative = img_in_des.shape[1]
                 img_in_des = resize_image(img_in_des, 32, w_relative)
+                if img_bin_curved:
+                    img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
                 
             w_tot_des+=img_in_des.shape[1]
             w_tot_des_list.append(img_in_des.shape[1])
             imgs_deskewed_list.append(img_in_des)
+            if img_bin_curved:
+                imgs_bin_deskewed_list.append(img_bin_in_des)
             
             
             
 
         img_final_deskewed = np.zeros((32, w_tot_des, 3))+255
+        if img_bin_curved:
+            img_bin_final_deskewed = np.zeros((32, w_tot_des, 3))+255
+        else:
+            img_bin_final_deskewed = None
         
         w_indexer = 0
         for ind in range(len(w_tot_des_list)):
             img_final_deskewed[:,w_indexer:w_indexer+w_tot_des_list[ind],:] = imgs_deskewed_list[ind][:,:,:]
+            if img_bin_curved:
+                img_bin_final_deskewed[:,w_indexer:w_indexer+w_tot_des_list[ind],:] = imgs_bin_deskewed_list[ind][:,:,:]
             w_indexer = w_indexer+w_tot_des_list[ind]
-        return img_final_deskewed
+        return img_final_deskewed, img_bin_final_deskewed
     else:
-        return img_curved
+        return img_curved, img_bin_curved
     
 def return_textline_contour_with_added_box_coordinate(textline_contour,  box_ind):
     textline_contour[:,0] = textline_contour[:,0] + box_ind[2]
@@ -434,3 +466,8 @@ def return_rnn_cnn_ocr_of_given_textlines(image, all_found_textline_polygons, pr
             ocr_textline_in_textregion.append(text_textline)
         ocr_all_textlines.append(ocr_textline_in_textregion)
     return ocr_all_textlines
+
+def biopython_align(str1, str2):
+    alignments = pairwise2.align.globalms(str1, str2, 2, -1, -2, -2)
+    best_alignment = alignments[0]  # Get the best alignment
+    return best_alignment.seqA, best_alignment.seqB

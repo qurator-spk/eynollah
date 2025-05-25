@@ -5647,6 +5647,10 @@ class Eynollah_ocr:
                                             better_des_slope = get_orientation_moments(textline_coords)
                                             
                                             img_crop = rotate_image_with_padding(img_crop, better_des_slope )
+                                            
+                                            if self.prediction_with_both_of_rgb_and_bin:
+                                                img_crop_bin = rotate_image_with_padding(img_crop_bin, better_des_slope )
+                                                
                                             mask_poly = rotate_image_with_padding(mask_poly, better_des_slope )
                                             mask_poly = mask_poly.astype('uint8')
                                             
@@ -5655,26 +5659,35 @@ class Eynollah_ocr:
                                             
                                             mask_poly = mask_poly[y_n:y_n+h_n, x_n:x_n+w_n, :]
                                             img_crop = img_crop[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                                            
+                                                
                                             img_crop[mask_poly==0] = 255
+                                            
+                                            if self.prediction_with_both_of_rgb_and_bin:
+                                                img_crop_bin = img_crop_bin[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                                                img_crop_bin[mask_poly==0] = 255
                                             
                                             if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.50 and w_scaled > 100:
-                                                img_crop = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
-
-                                            #print(file_name,w_n*h_n , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w_n*h_n) , 'ikiiiiii')
+                                                if self.prediction_with_both_of_rgb_and_bin:
+                                                    img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
+                                                else:
+                                                    img_crop, _ = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
+        
+                                                
                                         else:
                                             img_crop[mask_poly==0] = 255
+                                            if self.prediction_with_both_of_rgb_and_bin:
+                                                img_crop_bin[mask_poly==0] = 255
                                             if type_textregion=='drop-capital':
                                                 pass
                                             else:
                                                 if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 100:
-                                                    img_crop = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
+                                                    if self.prediction_with_both_of_rgb_and_bin:
+                                                        img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
+                                                    else:
+                                                        img_crop, _ = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
 
 
-                                        
-                                        
-                                        if self.prediction_with_both_of_rgb_and_bin:
-                                            img_crop_bin[mask_poly==0] = 255
+                                    
                                     
                                     if not self.export_textline_images_and_text:
                                         if w_scaled < 640:#1.5*image_width:
@@ -5796,6 +5809,14 @@ class Eynollah_ocr:
                                 imgs_bin = cropped_lines_bin[n_start:]
                                 imgs_bin = np.array(imgs_bin)
                                 imgs_bin = imgs_bin.reshape(imgs_bin.shape[0], image_height, image_width, 3)
+                                
+                                if len(indices_ver)>0:
+                                    imgs_bin_ver_flipped = imgs_bin[indices_ver, : ,: ,:]
+                                    imgs_bin_ver_flipped = imgs_bin_ver_flipped[:,::-1,::-1,:]
+                                    #print(imgs_ver_flipped, 'imgs_ver_flipped')
+                                    
+                                else:
+                                    imgs_bin_ver_flipped = None
                         else:
                             n_start = i*self.b_s
                             n_end = (i+1)*self.b_s
@@ -5817,22 +5838,25 @@ class Eynollah_ocr:
                             if self.prediction_with_both_of_rgb_and_bin:
                                 imgs_bin = cropped_lines_bin[n_start:n_end]
                                 imgs_bin = np.array(imgs_bin).reshape(self.b_s, image_height, image_width, 3)
+                                
+                                
+                                if len(indices_ver)>0:
+                                    imgs_bin_ver_flipped = imgs_bin[indices_ver, : ,: ,:]
+                                    imgs_bin_ver_flipped = imgs_bin_ver_flipped[:,::-1,::-1,:]
+                                    #print(imgs_ver_flipped, 'imgs_ver_flipped')
+                                else:
+                                    imgs_bin_ver_flipped = None
                             
 
                         preds = self.prediction_model.predict(imgs, verbose=0)
                         
                         if len(indices_ver)>0:
-                            #cv2.imwrite('flipped.png', (imgs_ver_flipped[0, :,:,:]*255).astype('uint8'))
-                            #cv2.imwrite('original.png', (imgs[0, :,:,:]*255).astype('uint8'))
-                            #sys.exit()
-                            #print(imgs_ver_flipped.shape, 'imgs_ver_flipped.shape')
                             preds_flipped = self.prediction_model.predict(imgs_ver_flipped, verbose=0)
                             preds_max_fliped = np.max(preds_flipped, axis=2 )
                             preds_max_args_flipped = np.argmax(preds_flipped, axis=2 )
                             pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=256
                             masked_means_flipped = np.sum(preds_max_fliped * pred_max_not_unk_mask_bool_flipped, axis=1) / np.sum(pred_max_not_unk_mask_bool_flipped, axis=1)
                             masked_means_flipped[np.isnan(masked_means_flipped)] = 0
-                            #print(masked_means_flipped, 'masked_means_flipped')
                             
                             preds_max = np.max(preds, axis=2 )
                             preds_max_args = np.argmax(preds, axis=2 )
@@ -5852,6 +5876,32 @@ class Eynollah_ocr:
                                 preds[indices_to_be_replaced,:,:] = preds_flipped[indices_where_flipped_conf_value_is_higher, :, :]
                         if self.prediction_with_both_of_rgb_and_bin:
                             preds_bin = self.prediction_model.predict(imgs_bin, verbose=0)
+                            
+                            if len(indices_ver)>0:
+                                preds_flipped = self.prediction_model.predict(imgs_bin_ver_flipped, verbose=0)
+                                preds_max_fliped = np.max(preds_flipped, axis=2 )
+                                preds_max_args_flipped = np.argmax(preds_flipped, axis=2 )
+                                pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=256
+                                masked_means_flipped = np.sum(preds_max_fliped * pred_max_not_unk_mask_bool_flipped, axis=1) / np.sum(pred_max_not_unk_mask_bool_flipped, axis=1)
+                                masked_means_flipped[np.isnan(masked_means_flipped)] = 0
+                                
+                                preds_max = np.max(preds, axis=2 )
+                                preds_max_args = np.argmax(preds, axis=2 )
+                                pred_max_not_unk_mask_bool = preds_max_args[:,:]!=256
+                                
+                                masked_means = np.sum(preds_max * pred_max_not_unk_mask_bool, axis=1) / np.sum(pred_max_not_unk_mask_bool, axis=1)
+                                masked_means[np.isnan(masked_means)] = 0
+                                
+                                masked_means_ver = masked_means[indices_ver]
+                                #print(masked_means_ver, 'pred_max_not_unk')
+                                
+                                indices_where_flipped_conf_value_is_higher = np.where(masked_means_flipped > masked_means_ver)[0]
+                                
+                                #print(indices_where_flipped_conf_value_is_higher, 'indices_where_flipped_conf_value_is_higher')
+                                if len(indices_where_flipped_conf_value_is_higher)>0:
+                                    indices_to_be_replaced = indices_ver[indices_where_flipped_conf_value_is_higher]
+                                    preds_bin[indices_to_be_replaced,:,:] = preds_flipped[indices_where_flipped_conf_value_is_higher, :, :]
+                            
                             preds = (preds + preds_bin) / 2.
 
                         pred_texts = decode_batch_predictions(preds, self.num_to_char)
