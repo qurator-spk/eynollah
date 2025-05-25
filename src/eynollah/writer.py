@@ -56,10 +56,12 @@ class EynollahXmlWriter():
             points_page_print = points_page_print + ' '
         return points_page_print[:-1]
 
-    def serialize_lines_in_marginal(self, marginal_region, all_found_textline_polygons_marginals, marginal_idx, page_coord, all_box_coord_marginals, slopes_marginals, counter):
+    def serialize_lines_in_marginal(self, marginal_region, all_found_textline_polygons_marginals, marginal_idx, page_coord, all_box_coord_marginals, slopes_marginals, counter, ocr_all_textlines_textregion):
         for j in range(len(all_found_textline_polygons_marginals[marginal_idx])):
             coords = CoordsType()
             textline = TextLineType(id=counter.next_line_id, Coords=coords)
+            if ocr_all_textlines_textregion:
+                textline.set_TextEquiv( [ TextEquivType(Unicode=ocr_all_textlines_textregion[j]) ] )
             marginal_region.add_TextLine(textline)
             marginal_region.set_orientation(-slopes_marginals[marginal_idx])
             points_co = ''
@@ -168,7 +170,7 @@ class EynollahXmlWriter():
         with open(self.output_filename, 'w') as f:
             f.write(to_xml(pcgts))
 
-    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, found_polygons_tables, ocr_all_textlines, conf_contours_textregion, skip_layout_reading_order=False):
+    def build_pagexml_no_full_layout(self, found_polygons_text_region, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_box_coord, found_polygons_text_region_img, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, found_polygons_tables, ocr_all_textlines=None, ocr_all_textlines_marginals=None, conf_contours_textregion=None, skip_layout_reading_order=False):
         self.logger.debug('enter build_pagexml_no_full_layout')
 
         # create the file structure
@@ -198,7 +200,12 @@ class EynollahXmlWriter():
             marginal = TextRegionType(id=counter.next_region_id, type_='marginalia',
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_marginals[mm], page_coord)))
             page.add_TextRegion(marginal)
-            self.serialize_lines_in_marginal(marginal, all_found_textline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter)
+            if ocr_all_textlines_marginals:
+                ocr_textlines = ocr_all_textlines_marginals[mm]
+            else:
+                ocr_textlines = None
+                
+            self.serialize_lines_in_marginal(marginal, all_found_textline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter, ocr_textlines)
 
         for mm in range(len(found_polygons_text_region_img)):
             img_region = ImageRegionType(id=counter.next_region_id, Coords=CoordsType())
@@ -242,7 +249,7 @@ class EynollahXmlWriter():
 
         return pcgts
 
-    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, ocr_all_textlines, conf_contours_textregion, conf_contours_textregion_h):
+    def build_pagexml_full_layout(self, found_polygons_text_region, found_polygons_text_region_h, page_coord, order_of_texts, id_of_texts, all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h, found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals, found_polygons_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals, cont_page, polygons_lines_to_be_written_in_xml, ocr_all_textlines=None, ocr_all_textlines_h=None, ocr_all_textlines_marginals=None, ocr_all_textlines_drop=None, conf_contours_textregion=None, conf_contours_textregion_h=None):
         self.logger.debug('enter build_pagexml_full_layout')
 
         # create the file structure
@@ -272,8 +279,8 @@ class EynollahXmlWriter():
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region_h[mm], page_coord)))
             page.add_TextRegion(textregion)
 
-            if ocr_all_textlines:
-                ocr_textlines = ocr_all_textlines[mm]
+            if ocr_all_textlines_h:
+                ocr_textlines = ocr_all_textlines_h[mm]
             else:
                 ocr_textlines = None
             self.serialize_lines_in_region(textregion, all_found_textline_polygons_h, mm, page_coord, all_box_coord_h, slopes_h, counter, ocr_textlines)
@@ -282,7 +289,11 @@ class EynollahXmlWriter():
             marginal = TextRegionType(id=counter.next_region_id, type_='marginalia',
                     Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_marginals[mm], page_coord)))
             page.add_TextRegion(marginal)
-            self.serialize_lines_in_marginal(marginal, all_found_textline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter)
+            if ocr_all_textlines_marginals:
+                ocr_textlines = ocr_all_textlines_marginals[mm]
+            else:
+                ocr_textlines = None
+            self.serialize_lines_in_marginal(marginal, all_found_textline_polygons_marginals, mm, page_coord, all_box_coord_marginals, slopes_marginals, counter, ocr_textlines)
         
         for mm in range(len(found_polygons_drop_capitals)):
             dropcapital = TextRegionType(id=counter.next_region_id, type_='drop-capital',
@@ -290,7 +301,11 @@ class EynollahXmlWriter():
             page.add_TextRegion(dropcapital)
             all_box_coord_drop = None
             slopes_drop = None
-            self.serialize_lines_in_dropcapital(dropcapital, [found_polygons_drop_capitals[mm]], mm, page_coord, all_box_coord_drop, slopes_drop, counter, ocr_all_textlines_textregion=None)
+            if ocr_all_textlines_drop:
+                ocr_textlines = ocr_all_textlines_drop[mm]
+            else:
+                ocr_textlines = None
+            self.serialize_lines_in_dropcapital(dropcapital, [found_polygons_drop_capitals[mm]], mm, page_coord, all_box_coord_drop, slopes_drop, counter, ocr_all_textlines_textregion=ocr_textlines)
 
         for mm in range(len(found_polygons_text_region_img)):
             page.add_ImageRegion(ImageRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region_img[mm], page_coord))))
