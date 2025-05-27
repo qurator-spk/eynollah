@@ -253,23 +253,23 @@ def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved, 
         for ind in range(len(peaks_4)+1):
             if ind==0:
                 img = img_curved[:, :peaks_4[ind], :]
-                if img_bin_curved:
-                    img_bin = img_curved_bin[:, :peaks_4[ind], :]
+                if img_bin_curved is not None:
+                    img_bin = img_bin_curved[:, :peaks_4[ind], :]
                 mask = mask_curved[:, :peaks_4[ind], :]
             elif ind==len(peaks_4):
                 img = img_curved[:, peaks_4[ind-1]:, :]
-                if img_bin_curved:
-                    img_bin = img_curved_bin[:, peaks_4[ind-1]:, :]
+                if img_bin_curved is not None:
+                    img_bin = img_bin_curved[:, peaks_4[ind-1]:, :]
                 mask = mask_curved[:, peaks_4[ind-1]:, :]
             else:
                 img = img_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
-                if img_bin_curved:
-                    img_bin = img_curved_bin[:, peaks_4[ind-1]:peaks_4[ind], :]
+                if img_bin_curved is not None:
+                    img_bin = img_bin_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
                 mask = mask_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
                 
             or_ma = get_orientation_moments_of_mask(mask)
             
-            if img_bin_curved:
+            if img_bin_curved is not None:
                 imgs_tot.append([img, mask, or_ma, img_bin] )
             else:
                 imgs_tot.append([img, mask, or_ma] )
@@ -284,12 +284,12 @@ def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved, 
             img_in = imgs_tot[ind][0]
             mask_in = imgs_tot[ind][1]
             ori_in = imgs_tot[ind][2]
-            if img_bin_curved:
+            if img_bin_curved is not None:
                 img_bin_in = imgs_tot[ind][3]
             
             if abs(ori_in)<45:
                 img_in_des = rotate_image_with_padding(img_in, ori_in, border_value=(255,255,255) )
-                if img_bin_curved:
+                if img_bin_curved is not None:
                     img_bin_in_des = rotate_image_with_padding(img_bin_in, ori_in, border_value=(255,255,255) )
                 mask_in_des = rotate_image_with_padding(mask_in, ori_in)
                 mask_in_des = mask_in_des.astype('uint8')
@@ -299,50 +299,50 @@ def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved, 
                 
                 if w_n==0 or h_n==0:
                     img_in_des = np.copy(img_in)
-                    if img_bin_curved:
+                    if img_bin_curved is not None:
                         img_bin_in_des = np.copy(img_bin_in)
                     w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
                     if w_relative==0:
                         w_relative = img_in_des.shape[1]
                     img_in_des = resize_image(img_in_des, 32, w_relative)
-                    if img_bin_curved:
+                    if img_bin_curved is not None:
                         img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
                 else:
                     mask_in_des = mask_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
                     img_in_des = img_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                    if img_bin_curved:
+                    if img_bin_curved is not None:
                         img_bin_in_des = img_bin_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
                     
                     w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
                     if w_relative==0:
                         w_relative = img_in_des.shape[1]
                     img_in_des = resize_image(img_in_des, 32, w_relative)
-                    if img_bin_curved:
+                    if img_bin_curved is not None:
                         img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
                 
 
             else:
                 img_in_des = np.copy(img_in)
-                if img_bin_curved:
+                if img_bin_curved is not None:
                     img_bin_in_des = np.copy(img_bin_in)
                 w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
                 if w_relative==0:
                     w_relative = img_in_des.shape[1]
                 img_in_des = resize_image(img_in_des, 32, w_relative)
-                if img_bin_curved:
+                if img_bin_curved is not None:
                     img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
                 
             w_tot_des+=img_in_des.shape[1]
             w_tot_des_list.append(img_in_des.shape[1])
             imgs_deskewed_list.append(img_in_des)
-            if img_bin_curved:
+            if img_bin_curved is not None:
                 imgs_bin_deskewed_list.append(img_bin_in_des)
             
             
             
 
         img_final_deskewed = np.zeros((32, w_tot_des, 3))+255
-        if img_bin_curved:
+        if img_bin_curved is not None:
             img_bin_final_deskewed = np.zeros((32, w_tot_des, 3))+255
         else:
             img_bin_final_deskewed = None
@@ -350,7 +350,7 @@ def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved, 
         w_indexer = 0
         for ind in range(len(w_tot_des_list)):
             img_final_deskewed[:,w_indexer:w_indexer+w_tot_des_list[ind],:] = imgs_deskewed_list[ind][:,:,:]
-            if img_bin_curved:
+            if img_bin_curved is not None:
                 img_bin_final_deskewed[:,w_indexer:w_indexer+w_tot_des_list[ind],:] = imgs_bin_deskewed_list[ind][:,:,:]
             w_indexer = w_indexer+w_tot_des_list[ind]
         return img_final_deskewed, img_bin_final_deskewed
