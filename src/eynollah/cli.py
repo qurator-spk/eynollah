@@ -338,6 +338,12 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     type=click.Path(exists=True, dir_okay=False),
 )
 @click.option(
+    "--overwrite",
+    "-O",
+    help="overwrite (instead of skipping) if output xml exists",
+    is_flag=True,
+)
+@click.option(
     "--dir_in",
     "-di",
     help="directory of images",
@@ -421,7 +427,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     help="Override log level globally to this",
 )
 
-def ocr(image, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, batch_size, dataset_abbrevation, log_level):
+def ocr(image, overwrite, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, batch_size, dataset_abbrevation, log_level):
     initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
@@ -449,7 +455,7 @@ def ocr(image, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_
         batch_size=batch_size,
         pref_of_dataset=dataset_abbrevation,
     )
-    eynollah_ocr.run()
+    eynollah_ocr.run(overwrite=overwrite)
 
 if __name__ == "__main__":
     main()

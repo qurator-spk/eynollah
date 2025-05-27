@@ -5338,6 +5338,8 @@ class Eynollah_ocr:
         self.dir_out_image_text = dir_out_image_text
         self.prediction_with_both_of_rgb_and_bin = prediction_with_both_of_rgb_and_bin
         self.pref_of_dataset = pref_of_dataset
+        self.logger = logger if logger else getLogger('eynollah')
+        
         if not export_textline_images_and_text:
             if tr_ocr:
                 self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
@@ -5351,7 +5353,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_step_750000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+                self.model_ocr_dir = dir_models + "/model_step_1075000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
@@ -5377,7 +5379,7 @@ class Eynollah_ocr:
                     vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
                 )
 
-    def run(self):
+    def run(self, overwrite : bool = False):
         if self.dir_in:
             ls_imgs = os.listdir(self.dir_in)
         else:
@@ -5394,6 +5396,14 @@ class Eynollah_ocr:
                     dir_img = self.image_filename
                 dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
                 out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
+                
+                if os.path.exists(out_file_ocr):
+                    if overwrite:
+                        self.logger.warning("will overwrite existing output file '%s'", out_file_ocr)
+                    else:
+                        self.logger.warning("will skip input for existing output file '%s'", out_file_ocr)
+                        continue
+                    
                 img = cv2.imread(dir_img)
                 
                 if self.draw_texts_on_image:
@@ -5574,6 +5584,14 @@ class Eynollah_ocr:
                 #dir_img = os.path.join(self.dir_in, ind_img)
                 dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
                 out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
+                
+                if os.path.exists(out_file_ocr):
+                    if overwrite:
+                        self.logger.warning("will overwrite existing output file '%s'", out_file_ocr)
+                    else:
+                        self.logger.warning("will skip input for existing output file '%s'", out_file_ocr)
+                        continue
+                
                 img = cv2.imread(dir_img)
                 if self.prediction_with_both_of_rgb_and_bin:
                     cropped_lines_bin = []
@@ -5704,7 +5722,7 @@ class Eynollah_ocr:
                                                 cropped_lines_bin.append(img_fin)
                                         else:
                                             if self.prediction_with_both_of_rgb_and_bin:
-                                                splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, img_crop_bin)
+                                                splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, img_crop_bin, prediction_with_both_of_rgb_and_bin=self.prediction_with_both_of_rgb_and_bin)
                                             else:
                                                 splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, None)
                                             if splited_images:

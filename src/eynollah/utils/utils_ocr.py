@@ -74,32 +74,24 @@ def distortion_free_resize(image, img_size):
 def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(textline_image):
     width = np.shape(textline_image)[1]
     height = np.shape(textline_image)[0]
-    common_window = int(0.22*width)
+    common_window = int(0.06*width)
 
     width1 = int ( width/2. - common_window )
     width2 = int ( width/2. + common_window )
-    
+
     img_sum = np.sum(textline_image[:,:,0], axis=0)
     sum_smoothed = gaussian_filter1d(img_sum, 3)
-    
+
     peaks_real, _ = find_peaks(sum_smoothed, height=0)
-    
-    if len(peaks_real)>35:
+    if len(peaks_real)>70:
 
-        #peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
-        argsort = np.argsort(sum_smoothed[peaks_real])[::-1]
-        peaks_real_top_six = peaks_real[argsort[:6]]
-        midpoint = textline_image.shape[1] / 2.
-        arg_closest = np.argmin(np.abs(peaks_real_top_six - midpoint))
+        peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
 
-        #arg_max = np.argmax(sum_smoothed[peaks_real])
-
-        peaks_final = peaks_real_top_six[arg_closest]#peaks_real[arg_max]
-        
+        arg_max = np.argmax(sum_smoothed[peaks_real])
+        peaks_final = peaks_real[arg_max]
         return peaks_final
     else:
         return None
-    
 # Function to fit text inside the given area
 def fit_text_single_line(draw, text, font_path, max_width, max_height):
     initial_font_size = 50
@@ -305,17 +297,28 @@ def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved, 
                 #new bounding box
                 x_n, y_n, w_n, h_n = get_contours_and_bounding_boxes(mask_in_des[:,:,0])
                 
-                mask_in_des = mask_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                img_in_des = img_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                if img_bin_curved:
-                    img_bin_in_des = img_bin_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                
-                w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
-                if w_relative==0:
-                    w_relative = img_in_des.shape[1]
-                img_in_des = resize_image(img_in_des, 32, w_relative)
-                if img_bin_curved:
-                    img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
+                if w_n==0 or h_n==0:
+                    img_in_des = np.copy(img_in)
+                    if img_bin_curved:
+                        img_bin_in_des = np.copy(img_bin_in)
+                    w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
+                    if w_relative==0:
+                        w_relative = img_in_des.shape[1]
+                    img_in_des = resize_image(img_in_des, 32, w_relative)
+                    if img_bin_curved:
+                        img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
+                else:
+                    mask_in_des = mask_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                    img_in_des = img_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                    if img_bin_curved:
+                        img_bin_in_des = img_bin_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                    
+                    w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
+                    if w_relative==0:
+                        w_relative = img_in_des.shape[1]
+                    img_in_des = resize_image(img_in_des, 32, w_relative)
+                    if img_bin_curved:
+                        img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
                 
 
             else:
