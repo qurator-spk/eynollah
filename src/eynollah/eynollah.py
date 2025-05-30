@@ -5353,7 +5353,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_step_1150000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+                self.model_ocr_dir = dir_models + "/model_step_1225000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
@@ -5642,7 +5642,7 @@ class Eynollah_ocr:
                                         
                                     if self.draw_texts_on_image:
                                         total_bb_coordinates.append([x,y,w,h])
-                                        
+                                       
                                     w_scaled = w *  image_height/float(h)
                                     
                                     img_poly_on_img = np.copy(img)
@@ -5684,7 +5684,7 @@ class Eynollah_ocr:
                                                 img_crop_bin = img_crop_bin[y_n:y_n+h_n, x_n:x_n+w_n, :]
                                                 img_crop_bin[mask_poly==0] = 255
                                             
-                                            if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.50 and w_scaled > 100:
+                                            if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.50 and w_scaled > 90:
                                                 if self.prediction_with_both_of_rgb_and_bin:
                                                     img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
                                                 else:
@@ -5698,7 +5698,7 @@ class Eynollah_ocr:
                                             if type_textregion=='drop-capital':
                                                 pass
                                             else:
-                                                if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 100:
+                                                if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 90:
                                                     if self.prediction_with_both_of_rgb_and_bin:
                                                         img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
                                                     else:
@@ -5708,7 +5708,7 @@ class Eynollah_ocr:
                                     
                                     
                                     if not self.export_textline_images_and_text:
-                                        if w_scaled < 640:#1.5*image_width:
+                                        if w_scaled < 530:#640:#1.5*image_width:
                                             img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
                                             if angle_degrees > 15:
