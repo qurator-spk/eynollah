@@ -241,7 +241,7 @@ def return_splitting_point_of_image(image_to_spliited):
     peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
     
     arg_sort = np.argsort(sum_smoothed[peaks_real])
-    peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
+    peaks_sort_4 = peaks_real[arg_sort][::-1][:3]
     
     return np.sort(peaks_sort_4)
     
