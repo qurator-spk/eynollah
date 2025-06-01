@@ -225,47 +225,23 @@ class Enhancer:
     
     def calculate_width_height_by_columns(self, img, num_col, width_early, label_p_pred):
         self.logger.debug("enter calculate_width_height_by_columns")
-        if num_col == 1 and width_early < 1100:
+        if num_col == 1:
             img_w_new = 2000
-        elif num_col == 1 and width_early >= 2500:
-            img_w_new = 2000
-        elif num_col == 1 and width_early >= 1100 and width_early < 2500:
-            img_w_new = width_early
-        elif num_col == 2 and width_early < 2000:
+        elif num_col == 2:
             img_w_new = 2400
-        elif num_col == 2 and width_early >= 3500:
-            img_w_new = 2400
-        elif num_col == 2 and width_early >= 2000 and width_early < 3500:
-            img_w_new = width_early
-        elif num_col == 3 and width_early < 2000:
+        elif num_col == 3:
             img_w_new = 3000
-        elif num_col == 3 and width_early >= 4000:
-            img_w_new = 3000
-        elif num_col == 3 and width_early >= 2000 and width_early < 4000:
-            img_w_new = width_early
-        elif num_col == 4 and width_early < 2500:
+        elif num_col == 4:
             img_w_new = 4000
-        elif num_col == 4 and width_early >= 5000:
-            img_w_new = 4000
-        elif num_col == 4 and width_early >= 2500 and width_early < 5000:
-            img_w_new = width_early
-        elif num_col == 5 and width_early < 3700:
+        elif num_col == 5:
             img_w_new = 5000
-        elif num_col == 5 and width_early >= 7000:
-            img_w_new = 5000
-        elif num_col == 5 and width_early >= 3700 and width_early < 7000:
-            img_w_new = width_early
-        elif num_col == 6 and width_early < 4500:
-            img_w_new = 6500  # 5400
+        elif num_col == 6:
+            img_w_new = 6500
         else:
             img_w_new = width_early
         img_h_new = img_w_new * img.shape[0] // img.shape[1]
 
-        if label_p_pred[0][int(num_col - 1)] < 0.9 and img_w_new < width_early:
-            img_new = np.copy(img)
-            num_column_is_classified = False
-        #elif label_p_pred[0][int(num_col - 1)] < 0.8 and img_h_new >= 8000:
-        elif img_h_new >= 8000:
+        if img_h_new >= 8000:
             img_new = np.copy(img)
             num_column_is_classified = False
         else:
