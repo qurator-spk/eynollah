@@ -3,6 +3,7 @@ import click
 from ocrd_utils import initLogging, getLevelName, getLogger
 from eynollah.eynollah import Eynollah, Eynollah_ocr
 from eynollah.sbb_binarize import SbbBinarizer
+from eynollah.image_enhancer import Enhancer
 
 @click.group()
 def main():
@@ -70,6 +71,74 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
 
 
 
+@main.command()
+@click.option(
+    "--image",
+    "-i",
+    help="image filename",
+    type=click.Path(exists=True, dir_okay=False),
+)
+
+@click.option(
+    "--out",
+    "-o",
+    help="directory to write output xml data",
+    type=click.Path(exists=True, file_okay=False),
+    required=True,
+)
+@click.option(
+    "--overwrite",
+    "-O",
+    help="overwrite (instead of skipping) if output xml exists",
+    is_flag=True,
+)
+@click.option(
+    "--dir_in",
+    "-di",
+    help="directory of images",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
+    "--model",
+    "-m",
+    help="directory of models",
+    type=click.Path(exists=True, file_okay=False),
+    required=True,
+)
+
+@click.option(
+    "--num_col_upper",
+    "-ncu",
+    help="lower limit of columns in document image",
+)
+@click.option(
+    "--num_col_lower",
+    "-ncl",
+    help="upper limit of columns in document image",
+)
+@click.option(
+    "--log_level",
+    "-l",
+    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
+    help="Override log level globally to this",
+)
+
+def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_lower, log_level):
+    initLogging()
+    if log_level:
+        getLogger('enhancement').setLevel(getLevelName(log_level))
+    assert image or dir_in, "Either a single image -i or a dir_in -di is required"
+    enhancer_object = Enhancer(
+        model,
+        logger=getLogger('enhancement'),
+        dir_out=out,
+        num_col_upper=num_col_upper,
+        num_col_lower=num_col_lower,
+    )
+    if dir_in:
+        enhancer_object.run(dir_in=dir_in, overwrite=overwrite)
+    else:
+        enhancer_object.run(image_filename=image, overwrite=overwrite)
 
 @main.command()
 @click.option(

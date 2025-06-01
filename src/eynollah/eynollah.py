@@ -3612,25 +3612,12 @@ class Eynollah:
         
         inference_bs = 3
         
-        cv2.imwrite('textregions.png', text_regions_p*50)
-        cv2.imwrite('sep.png', (text_regions_p[:,:]==6)*255)
-        
         ver_kernel = np.ones((5, 1), dtype=np.uint8)
         hor_kernel = np.ones((1, 5), dtype=np.uint8)
         
         
-        
-        #separators = (text_regions_p[:,:]==6)*1
-        #text_regions_p[text_regions_p[:,:]==6] = 0
-        #separators = separators.astype('uint8')
-        
-        #separators = cv2.erode(separators , hor_kernel, iterations=1)
-        #text_regions_p[separators[:,:]==1] = 6
-        
-        #cv2.imwrite('sep_new.png', (text_regions_p[:,:]==6)*255)
-        
         min_cont_size_to_be_dilated = 10
-        if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
+        if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
             cx_conts, cy_conts, x_min_conts, x_max_conts, y_min_conts, y_max_conts, _ = find_new_features_of_contours(contours_only_text_parent)
             args_cont_located = np.array(range(len(contours_only_text_parent)))
             
@@ -3672,7 +3659,6 @@ class Eynollah:
             text_regions_p_textregions_dilated = cv2.dilate(text_regions_p_textregions_dilated , ver_kernel, iterations=5)
             text_regions_p_textregions_dilated[text_regions_p[:,:]>1] = 0
             
-            cv2.imwrite('text_regions_p_textregions_dilated.png', text_regions_p_textregions_dilated*255)
             
             contours_only_dilated, hir_on_text_dilated = return_contours_of_image(text_regions_p_textregions_dilated)
             contours_only_dilated = return_parent_contours(contours_only_dilated, hir_on_text_dilated)
@@ -3723,21 +3709,20 @@ class Eynollah:
                 img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,
                                    int(x_min_main[j]):int(x_max_main[j])] = 1
             co_text_all_org = contours_only_text_parent + contours_only_text_parent_h
-            if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
+            if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
                 co_text_all = contours_only_dilated + contours_only_text_parent_h
             else:
                 co_text_all = contours_only_text_parent + contours_only_text_parent_h
         else:
             co_text_all_org = contours_only_text_parent
-            if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
+            if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
                 co_text_all = contours_only_dilated
             else:
                 co_text_all = contours_only_text_parent
 
         if not len(co_text_all):
             return [], []
-        print(len(co_text_all), "co_text_all")
-        print(len(co_text_all_org), "co_text_all_org")
+
         labels_con = np.zeros((int(y_len /6.), int(x_len/6.), len(co_text_all)), dtype=bool)
         co_text_all = [(i/6).astype(int) for i in co_text_all]
         for i in range(len(co_text_all)):
@@ -3805,7 +3790,7 @@ class Eynollah:
 
         ordered = [i[0] for i in ordered]
         
-        if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
+        if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
             org_contours_indexes = []
             for ind in range(len(ordered)):
                 region_with_curr_order = ordered[ind]
@@ -3823,215 +3808,6 @@ class Eynollah:
         else:
             region_ids = ['region_%04d' % i for i in range(len(co_text_all_org))]
             return ordered, region_ids
-            
-
-    ####def return_start_and_end_of_common_text_of_textline_ocr(self, textline_image, ind_tot):
-        ####width = np.shape(textline_image)[1]
-        ####height = np.shape(textline_image)[0]
-        ####common_window = int(0.2*width)
-
-        ####width1 = int ( width/2. - common_window )
-        ####width2 = int ( width/2. + common_window )
-
-        ####img_sum = np.sum(textline_image[:,:,0], axis=0)
-        ####sum_smoothed = gaussian_filter1d(img_sum, 3)
-
-        ####peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        ####if len(peaks_real)>70:
-
-            ####peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
-
-            ####arg_sort = np.argsort(sum_smoothed[peaks_real])
-            ####arg_sort4 =arg_sort[::-1][:4]
-            ####peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
-            ####argsort_sorted = np.argsort(peaks_sort_4)
-
-            ####first_4_sorted = peaks_sort_4[argsort_sorted]
-            ####y_4_sorted = sum_smoothed[peaks_real][arg_sort4[argsort_sorted]]
-            #####print(first_4_sorted,'first_4_sorted')
-
-            ####arg_sortnew = np.argsort(y_4_sorted)
-            ####peaks_final =np.sort( first_4_sorted[arg_sortnew][2:] )
-
-            #####plt.figure(ind_tot)
-            #####plt.imshow(textline_image)
-            #####plt.plot([peaks_final[0], peaks_final[0]], [0, height-1])
-            #####plt.plot([peaks_final[1], peaks_final[1]], [0, height-1])
-            #####plt.savefig('./'+str(ind_tot)+'.png')
-
-            ####return peaks_final[0], peaks_final[1]
-        ####else:
-            ####pass
-
-    ##def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(self, textline_image, ind_tot):
-        ##width = np.shape(textline_image)[1]
-        ##height = np.shape(textline_image)[0]
-        ##common_window = int(0.06*width)
-
-        ##width1 = int ( width/2. - common_window )
-        ##width2 = int ( width/2. + common_window )
-
-        ##img_sum = np.sum(textline_image[:,:,0], axis=0)
-        ##sum_smoothed = gaussian_filter1d(img_sum, 3)
-
-        ##peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        ##if len(peaks_real)>70:
-            ###print(len(peaks_real), 'len(peaks_real)')
-
-            ##peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
-
-            ##arg_max = np.argmax(sum_smoothed[peaks_real])
-            ##peaks_final = peaks_real[arg_max]
-
-            ###plt.figure(ind_tot)
-            ###plt.imshow(textline_image)
-            ###plt.plot([peaks_final, peaks_final], [0, height-1])
-            ####plt.plot([peaks_final[1], peaks_final[1]], [0, height-1])
-            ###plt.savefig('./'+str(ind_tot)+'.png')
-
-            ##return peaks_final
-        ##else:
-            ##return None
-
-    ###def return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
-            ###self, peaks_real, sum_smoothed, start_split, end_split):
-
-        ###peaks_real = peaks_real[(peaks_real<end_split) & (peaks_real>start_split)]
-
-        ###arg_sort = np.argsort(sum_smoothed[peaks_real])
-        ###arg_sort4 =arg_sort[::-1][:4]
-        ###peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
-        ###argsort_sorted = np.argsort(peaks_sort_4)
-
-        ###first_4_sorted = peaks_sort_4[argsort_sorted]
-        ###y_4_sorted = sum_smoothed[peaks_real][arg_sort4[argsort_sorted]]
-        ####print(first_4_sorted,'first_4_sorted')
-
-        ###arg_sortnew = np.argsort(y_4_sorted)
-        ###peaks_final =np.sort( first_4_sorted[arg_sortnew][3:] )
-        ###return peaks_final[0]
-
-    ###def return_start_and_end_of_common_text_of_textline_ocr_new(self, textline_image, ind_tot):
-        ###width = np.shape(textline_image)[1]
-        ###height = np.shape(textline_image)[0]
-        ###common_window = int(0.15*width)
-
-        ###width1 = int ( width/2. - common_window )
-        ###width2 = int ( width/2. + common_window )
-        ###mid = int(width/2.)
-
-        ###img_sum = np.sum(textline_image[:,:,0], axis=0)
-        ###sum_smoothed = gaussian_filter1d(img_sum, 3)
-
-        ###peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        ###if len(peaks_real)>70:
-            ###peak_start = self.return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
-                ###peaks_real, sum_smoothed, width1, mid+2)
-            ###peak_end = self.return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
-                ###peaks_real, sum_smoothed, mid-2, width2)
-
-            ####plt.figure(ind_tot)
-            ####plt.imshow(textline_image)
-            ####plt.plot([peak_start, peak_start], [0, height-1])
-            ####plt.plot([peak_end, peak_end], [0, height-1])
-            ####plt.savefig('./'+str(ind_tot)+'.png')
-
-            ###return peak_start, peak_end
-        ###else:
-            ###pass
-
-    ##def return_ocr_of_textline_without_common_section(
-            ##self, textline_image, model_ocr, processor, device, width_textline, h2w_ratio,ind_tot):
-
-        ##if h2w_ratio > 0.05:
-            ##pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-            ##generated_ids = model_ocr.generate(pixel_values.to(device))
-            ##generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        ##else:
-            ###width = np.shape(textline_image)[1]
-            ###height = np.shape(textline_image)[0]
-            ###common_window = int(0.3*width)
-            ###width1 = int ( width/2. - common_window )
-            ###width2 = int ( width/2. + common_window )
-
-            ##split_point = self.return_start_and_end_of_common_text_of_textline_ocr_without_common_section(
-                ##textline_image, ind_tot)
-            ##if split_point:
-                ##image1 = textline_image[:, :split_point,:]# image.crop((0, 0, width2, height))
-                ##image2 = textline_image[:, split_point:,:]#image.crop((width1, 0, width, height))
-
-                ###pixel_values1 = processor(image1, return_tensors="pt").pixel_values
-                ###pixel_values2 = processor(image2, return_tensors="pt").pixel_values
-
-                ##pixel_values_merged = processor([image1,image2], return_tensors="pt").pixel_values
-                ##generated_ids_merged = model_ocr.generate(pixel_values_merged.to(device))
-                ##generated_text_merged = processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
-
-                ###print(generated_text_merged,'generated_text_merged')
-
-                ###generated_ids1 = model_ocr.generate(pixel_values1.to(device))
-                ###generated_ids2 = model_ocr.generate(pixel_values2.to(device))
-
-                ###generated_text1 = processor.batch_decode(generated_ids1, skip_special_tokens=True)[0]
-                ###generated_text2 = processor.batch_decode(generated_ids2, skip_special_tokens=True)[0]
-
-                ###generated_text = generated_text1 + ' ' + generated_text2
-                ##generated_text = generated_text_merged[0] + ' ' + generated_text_merged[1]
-
-                ###print(generated_text1,'generated_text1')
-                ###print(generated_text2, 'generated_text2')
-                ###print('########################################')
-            ##else:
-                ##pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-                ##generated_ids = model_ocr.generate(pixel_values.to(device))
-                ##generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-
-        ###print(generated_text,'generated_text')
-        ###print('########################################')
-        ##return generated_text
-
-    ###def return_ocr_of_textline(
-            ###self, textline_image, model_ocr, processor, device, width_textline, h2w_ratio,ind_tot):
-
-        ###if h2w_ratio > 0.05:
-            ###pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-            ###generated_ids = model_ocr.generate(pixel_values.to(device))
-            ###generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        ###else:
-            ####width = np.shape(textline_image)[1]
-            ####height = np.shape(textline_image)[0]
-            ####common_window = int(0.3*width)
-            ####width1 = int ( width/2. - common_window )
-            ####width2 = int ( width/2. + common_window )
-
-            ###try:
-                ###width1, width2 = self.return_start_and_end_of_common_text_of_textline_ocr_new(textline_image, ind_tot)
-
-                ###image1 = textline_image[:, :width2,:]# image.crop((0, 0, width2, height))
-                ###image2 = textline_image[:, width1:,:]#image.crop((width1, 0, width, height))
-
-                ###pixel_values1 = processor(image1, return_tensors="pt").pixel_values
-                ###pixel_values2 = processor(image2, return_tensors="pt").pixel_values
-
-                ###generated_ids1 = model_ocr.generate(pixel_values1.to(device))
-                ###generated_ids2 = model_ocr.generate(pixel_values2.to(device))
-
-                ###generated_text1 = processor.batch_decode(generated_ids1, skip_special_tokens=True)[0]
-                ###generated_text2 = processor.batch_decode(generated_ids2, skip_special_tokens=True)[0]
-                ####print(generated_text1,'generated_text1')
-                ####print(generated_text2, 'generated_text2')
-                ####print('########################################')
-
-                ###match = sq(None, generated_text1, generated_text2).find_longest_match(
-                    ###0, len(generated_text1), 0, len(generated_text2))
-                ###generated_text = generated_text1 + generated_text2[match.b+match.size:]
-            ###except:
-                ###pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-                ###generated_ids = model_ocr.generate(pixel_values.to(device))
-                ###generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-
-        ###return generated_text
-
 
     def return_list_of_contours_with_desired_order(self, ls_cons, sorted_indexes):
         return [ls_cons[sorted_indexes[index]] for index in range(len(sorted_indexes))]
