@@ -41,11 +41,13 @@ class Enhancer:
         dir_out : Optional[str] = None,
         num_col_upper : Optional[int] = None,
         num_col_lower : Optional[int] = None,
+        save_org_scale : bool = False,
         logger : Optional[Logger] = None,
     ):
         self.dir_out = dir_out
         self.input_binary = False
         self.light_version = False
+        self.save_org_scale = save_org_scale
         if num_col_upper:
             self.num_col_upper = int(num_col_upper)
         else:
@@ -750,7 +752,8 @@ class Enhancer:
                     continue
 
             image_enhanced = self.run_single()
-            img_enhanced_org_scale = resize_image(image_enhanced, self.h_org, self.w_org)
+            if self.save_org_scale:
+                image_enhanced = resize_image(image_enhanced, self.h_org, self.w_org)
             
-            cv2.imwrite(self.output_filename, img_enhanced_org_scale)
+            cv2.imwrite(self.output_filename, image_enhanced)
             

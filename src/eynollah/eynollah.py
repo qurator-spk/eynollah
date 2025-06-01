@@ -5434,10 +5434,9 @@ class Eynollah_ocr:
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
                                     
 
-                                        
                                     #print(file_name, angle_degrees,w*h , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w*h) , 'didi')
                                     if not self.do_not_mask_with_textline_contour:
-                                        if angle_degrees > 15:
+                                        if angle_degrees > 3:
                                             better_des_slope = get_orientation_moments(textline_coords)
                                             
                                             img_crop = rotate_image_with_padding(img_crop, better_des_slope )
@@ -5484,7 +5483,7 @@ class Eynollah_ocr:
                                     
                                     
                                     if not self.export_textline_images_and_text:
-                                        if w_scaled < 530:#640:#1.5*image_width:
+                                        if w_scaled < 640:#1.5*image_width:
                                             img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
                                             if angle_degrees > 15:

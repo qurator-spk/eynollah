@@ -117,13 +117,19 @@ def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out)
     help="upper limit of columns in document image",
 )
 @click.option(
+    "--save_org_scale/--no_save_org_scale",
+    "-sos/-nosos",
+    is_flag=True,
+    help="if this parameter set to true, this tool will save the enhanced image in org scale.",
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
 
-def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_lower, log_level):
+def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_lower, save_org_scale,  log_level):
     initLogging()
     if log_level:
         getLogger('enhancement').setLevel(getLevelName(log_level))
@@ -134,6 +140,7 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
         dir_out=out,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
+        save_org_scale=save_org_scale,
     )
     if dir_in:
         enhancer_object.run(dir_in=dir_in, overwrite=overwrite)
