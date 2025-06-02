@@ -306,6 +306,7 @@ def get_layout_contours_for_visualization(xml_file):
     co_noise=[]
     
     types_text = []
+    types_graphic = []
     
     for tag in region_tags:
         if tag.endswith('}TextRegion') or tag.endswith('}Textregion'):
@@ -325,6 +326,9 @@ def get_layout_contours_for_visualization(xml_file):
                                 if len(types_text_without_paragraph) == 0:
                                     if "type" in nn.attrib:
                                         c_t_in['paragraph'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                    else:
+                                        c_t_in['paragraph'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                        
                                 elif len(types_text_without_paragraph) >= 1:
                                     if "type" in nn.attrib:
                                         if nn.attrib['type'] in types_text_without_paragraph:
@@ -332,10 +336,15 @@ def get_layout_contours_for_visualization(xml_file):
                                         else:
                                             c_t_in['paragraph'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                                             
+                                    else:
+                                        c_t_in['paragraph'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                            
                             else:
                                 if "type" in nn.attrib:
                                     if nn.attrib['type'] in all_defined_textregion_types:
                                         c_t_in[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                else:
+                                    c_t_in['paragraph'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
     
                             break
                         else:

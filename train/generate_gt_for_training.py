@@ -418,7 +418,7 @@ def visualize_textline_segmentation(dir_xml, dir_out, dir_imgs):
     help="directory of images where textline segmentation will be overlayed", )
 
 def visualize_layout_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
-    assert xml_file and dir_xml, "A single xml file -xml or a dir of xml files -dx is required not both of them"
+    assert xml_file or dir_xml, "A single xml file -xml or a dir of xml files -dx is required not both of them"
     if dir_xml:
         xml_files_ind = os.listdir(dir_xml)
     else:
@@ -442,7 +442,7 @@ def visualize_layout_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
         co_text, co_graphic, co_sep, co_img, co_table, co_noise, y_len, x_len = get_layout_contours_for_visualization(xml_file)
         
         
-        added_image = visualize_image_from_contours_layout(co_text['paragraph'], co_text['header'], co_text['drop-capital'], co_sep, co_img, co_text['marginalia'],  img)
+        added_image = visualize_image_from_contours_layout(co_text['paragraph'], co_text['header']+co_text['heading'], co_text['drop-capital'], co_sep, co_img, co_text['marginalia'],  img)
 
         cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
 
