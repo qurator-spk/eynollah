@@ -5399,7 +5399,10 @@ class Eynollah_ocr:
                 indexer_text_region = 0
                 indexer_textlines = 0
                 for nn in root1.iter(region_tags):
-                    type_textregion = nn.attrib['type']
+                    try:
+                        type_textregion = nn.attrib['type']
+                    except:
+                        type_textregion = 'paragraph'
                     for child_textregion in nn:
                         if child_textregion.tag.endswith("TextLine"):
                             for child_textlines in child_textregion:
@@ -5467,6 +5470,7 @@ class Eynollah_ocr:
         
                                                 
                                         else:
+                                            better_des_slope = 0
                                             img_crop[mask_poly==0] = 255
                                             if self.prediction_with_both_of_rgb_and_bin:
                                                 img_crop_bin[mask_poly==0] = 255
@@ -5486,7 +5490,7 @@ class Eynollah_ocr:
                                         if w_scaled < 640:#1.5*image_width:
                                             img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
-                                            if angle_degrees > 15:
+                                            if abs(better_des_slope) > 45:
                                                 cropped_lines_ver_index.append(1)
                                             else:
                                                 cropped_lines_ver_index.append(0)
@@ -5505,7 +5509,7 @@ class Eynollah_ocr:
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(1)
                                                 
-                                                if angle_degrees > 15:
+                                                if abs(better_des_slope) > 45:
                                                     cropped_lines_ver_index.append(1)
                                                 else:
                                                     cropped_lines_ver_index.append(0)
@@ -5515,7 +5519,7 @@ class Eynollah_ocr:
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(-1)
                                                 
-                                                if angle_degrees > 15:
+                                                if abs(better_des_slope) > 45:
                                                     cropped_lines_ver_index.append(1)
                                                 else:
                                                     cropped_lines_ver_index.append(0)
@@ -5531,7 +5535,7 @@ class Eynollah_ocr:
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(0)
                                                 
-                                                if angle_degrees > 15:
+                                                if abs(better_des_slope) > 45:
                                                     cropped_lines_ver_index.append(1)
                                                 else:
                                                     cropped_lines_ver_index.append(0)
