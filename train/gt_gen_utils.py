@@ -125,7 +125,7 @@ def get_content_of_dir(dir_in):
     """
 
     gt_all=os.listdir(dir_in)
-    gt_list=[file for file in gt_all if file.split('.')[ len(file.split('.'))-1 ]=='xml' ]
+    gt_list = [file for file in gt_all if os.path.splitext(file)[1] == '.xml']
     return gt_list
     
 def return_parent_contours(contours, hierarchy):
@@ -555,7 +555,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
     
     if dir_images:
         ls_org_imgs = os.listdir(dir_images)
-        ls_org_imgs_stem = [item.split('.')[0] for item in ls_org_imgs]
+        ls_org_imgs_stem = [os.path.splitext(item)[0] for item in ls_org_imgs]
     for index in tqdm(range(len(gt_list))):
         #try:
         print(gt_list[index])
@@ -722,10 +722,10 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 img_poly = resize_image(img_poly, y_new, x_new)
 
             try:
-                xml_file_stem = gt_list[index].split('-')[1].split('.')[0]
+                xml_file_stem = os.path.splitext(gt_list[index])[0]
                 cv2.imwrite(os.path.join(output_dir, xml_file_stem + '.png'), img_poly)
             except:
-                xml_file_stem = gt_list[index].split('.')[0]
+                xml_file_stem = os.path.splitext(gt_list[index])[0]
                 cv2.imwrite(os.path.join(output_dir, xml_file_stem + '.png'), img_poly)
                 
             if dir_images:
@@ -1185,10 +1185,10 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 img_poly = resize_image(img_poly, y_new, x_new)
                 
             try:
-                xml_file_stem = gt_list[index].split('-')[1].split('.')[0]
+                xml_file_stem = os.path.splitext(gt_list[index])[0]
                 cv2.imwrite(os.path.join(output_dir, xml_file_stem + '.png'), img_poly)
             except:
-                xml_file_stem = gt_list[index].split('.')[0]
+                xml_file_stem = os.path.splitext(gt_list[index])[0]
                 cv2.imwrite(os.path.join(output_dir, xml_file_stem + '.png'), img_poly)
                 
                 
