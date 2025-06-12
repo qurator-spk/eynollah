@@ -14,9 +14,10 @@ class EynollahProcessor(Processor):
         return 'ocrd-eynollah-segment'
 
     def setup(self) -> None:
-        if self.parameter['textline_light'] and not self.parameter['light_version']:
-            raise ValueError("Error: You set parameter 'textline_light' to enable light textline detection, "
-                             "but parameter 'light_version' is not enabled")
+        assert self.parameter
+        if self.parameter['textline_light'] != self.parameter['light_version']:
+            raise ValueError("Error: You must set or unset both parameter 'textline_light' (to enable light textline detection), "
+                             "and parameter 'light_version' (faster+simpler method for main region detection and deskewing)")
         self.eynollah = Eynollah(
             self.resolve_resource(self.parameter['models']),
             logger=self.logger,
