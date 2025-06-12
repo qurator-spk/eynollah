@@ -11,8 +11,12 @@ def cv2pil(img):
 
 def pil2cv(img):
     # from ocrd/workspace.py
-    color_conversion = COLOR_GRAY2BGR if img.mode in ('1', 'L') else  COLOR_RGB2BGR
+    color_conversion = COLOR_GRAY2BGR if img.mode in ('1', 'L', 'LA') else  COLOR_RGB2BGR
     pil_as_np_array = np.array(img).astype('uint8') if img.mode == '1' else np.array(img)
+    if pil_as_np_array.shape[-1] == 2:
+        pil_as_np_array = pil_as_np_array[:,:,0]
+    elif pil_as_np_array.shape[-1] == 4:
+        pil_as_np_array = pil_as_np_array[:,:,:3]
     return cvtColor(pil_as_np_array, color_conversion)
 
 def check_dpi(img):
