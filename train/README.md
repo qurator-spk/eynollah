@@ -24,7 +24,19 @@ each class will be defined with a RGB value and beside images, a text file of cl
 
 ### Train
 To train a model, run: ``python train.py with config_params.json``
-      
+
+### Train using Docker
+
+#### Build the Docker image
+
+   ```bash
+   docker build -t model-training .
+   ```
+#### Run Docker image 
+   ```bash
+   docker run --gpus all -v /host/path/to/entry_point_dir:/entry_point_dir model-training
+   ```
+
 ### Ground truth format
 Lables for each pixel are identified by a number. So if you have a 
 binary case, ``n_classes`` should be set to ``2`` and labels should 
