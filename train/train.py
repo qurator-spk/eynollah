@@ -53,7 +53,7 @@ def get_dirs_or_files(input_data):
     return image_input, labels_input
 
 
-ex = Experiment()
+ex = Experiment(save_git_info=False)
 
 
 @ex.config
