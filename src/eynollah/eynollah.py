@@ -5435,7 +5435,6 @@ class Eynollah_ocr:
                                     
                                     mask_poly = mask_poly[y:y+h, x:x+w, :]
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
-                                    
 
                                     #print(file_name, angle_degrees,w*h , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w*h) , 'didi')
                                     if not self.do_not_mask_with_textline_contour:
@@ -5482,9 +5481,6 @@ class Eynollah_ocr:
                                                         img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
                                                     else:
                                                         img_crop, _ = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
-
-
-                                    
                                     
                                     if not self.export_textline_images_and_text:
                                         if w_scaled < 750:#1.5*image_width:

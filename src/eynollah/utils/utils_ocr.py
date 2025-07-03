@@ -124,23 +124,26 @@ def return_textlines_split_if_needed(textline_image, textline_image_bin, predict
     else:
         return None, None
 def preprocess_and_resize_image_for_ocrcnn_model(img, image_height, image_width):
-    ratio = image_height /float(img.shape[0])
-    w_ratio = int(ratio * img.shape[1])
-    
-    if w_ratio <= image_width:
-        width_new = w_ratio
+    if img.shape[0]==0 or img.shape[1]==0:
+        img_fin = np.ones((image_height, image_width, 3))
     else:
-        width_new = image_width
+        ratio = image_height /float(img.shape[0])
+        w_ratio = int(ratio * img.shape[1])
         
-    if width_new == 0:
-        width_new = img.shape[1]
+        if w_ratio <= image_width:
+            width_new = w_ratio
+        else:
+            width_new = image_width
+            
+        if width_new == 0:
+            width_new = img.shape[1]
+            
         
-    
-    img = resize_image(img, image_height, width_new)
-    img_fin = np.ones((image_height, image_width, 3))*255
+        img = resize_image(img, image_height, width_new)
+        img_fin = np.ones((image_height, image_width, 3))*255
 
-    img_fin[:,:width_new,:] = img[:,:,:]
-    img_fin = img_fin / 255.
+        img_fin[:,:width_new,:] = img[:,:,:]
+        img_fin = img_fin / 255.
     return img_fin
 
 def get_deskewed_contour_and_bb_and_image(contour, image, deskew_angle):
@@ -188,7 +191,10 @@ def rotate_image_with_padding(image, angle, border_value=(0,0,0)):
     rotation_matrix[1, 2] += (new_h / 2) - center[1]
     
     # Perform the rotation
-    rotated_image = cv2.warpAffine(image, rotation_matrix, (new_w, new_h), borderValue=border_value)
+    try:
+        rotated_image = cv2.warpAffine(image, rotation_matrix, (new_w, new_h), borderValue=border_value)
+    except:
+        rotated_image = np.copy(image)
     
     return rotated_image
 
