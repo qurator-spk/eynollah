@@ -5129,7 +5129,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_step_1225000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+                self.model_ocr_dir = dir_models + "/model_step_900000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
@@ -5487,7 +5487,7 @@ class Eynollah_ocr:
                                     
                                     
                                     if not self.export_textline_images_and_text:
-                                        if w_scaled < 640:#1.5*image_width:
+                                        if w_scaled < 750:#1.5*image_width:
                                             img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
                                             if abs(better_des_slope) > 45:
@@ -5580,6 +5580,7 @@ class Eynollah_ocr:
                     
                 if not self.export_textline_images_and_text:
                     extracted_texts = []
+                    extracted_conf_value = []
 
                     n_iterations  = math.ceil(len(cropped_lines) / self.b_s) 
 
@@ -5700,12 +5701,19 @@ class Eynollah_ocr:
                                     preds_bin[indices_to_be_replaced,:,:] = preds_flipped[indices_where_flipped_conf_value_is_higher, :, :]
                             
                             preds = (preds + preds_bin) / 2.
+                            
 
                         pred_texts = decode_batch_predictions(preds, self.num_to_char)
+                        
+                        preds_max = np.max(preds, axis=2 )
+                        preds_max_args = np.argmax(preds, axis=2 )
+                        pred_max_not_unk_mask_bool = preds_max_args[:,:]!=256
+                        masked_means = np.sum(preds_max * pred_max_not_unk_mask_bool, axis=1) / np.sum(pred_max_not_unk_mask_bool, axis=1)
 
                         for ib in range(imgs.shape[0]):
                             pred_texts_ib = pred_texts[ib].replace("[UNK]", "")
                             extracted_texts.append(pred_texts_ib)
+                            extracted_conf_value.append(masked_means[ib])
                             
                     del cropped_lines
                     if self.prediction_with_both_of_rgb_and_bin:
@@ -5713,7 +5721,10 @@ class Eynollah_ocr:
                     gc.collect()
                     
                     extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+" "+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
+                    
+                    extracted_conf_value_merged = [extracted_conf_value[ind]  if cropped_lines_meging_indexing[ind]==0 else (extracted_conf_value[ind]+extracted_conf_value[ind+1])/2. if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
 
+                    extracted_conf_value_merged = [extracted_conf_value_merged[ind_cfm] for ind_cfm in range(len(extracted_texts_merged)) if extracted_texts_merged[ind_cfm] is not None]
                     extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
                     unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
                     
@@ -5791,6 +5802,7 @@ class Eynollah_ocr:
                                 
                                 if not is_textline_text:
                                     text_subelement = ET.SubElement(child_textregion, 'TextEquiv')
+                                    text_subelement.set('conf', f"{extracted_conf_value_merged[indexer]:.2f}")
                                     unicode_textline = ET.SubElement(text_subelement, 'Unicode')
                                     unicode_textline.text = extracted_texts_merged[indexer]
                                 else:
@@ -5798,6 +5810,7 @@ class Eynollah_ocr:
                                         if childtest3.tag.endswith("TextEquiv"):
                                             for child_uc in childtest3:
                                                 if child_uc.tag.endswith("Unicode"):
+                                                    childtest3.set('conf', f"{extracted_conf_value_merged[indexer]:.2f}")
                                                     child_uc.text = extracted_texts_merged[indexer]
                                         
                                 indexer = indexer + 1
