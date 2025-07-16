@@ -318,7 +318,7 @@ class Eynollah:
         if self.ocr and self.tr:
             self.model_ocr_dir = dir_models + "/trocr_model_ens_of_3_checkpoints_201124"
         elif self.ocr and not self.tr:
-            self.model_ocr_dir = dir_models + "/model_step_750000_ocr"#"/model_step_125000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+            self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250716"
         if self.tables:
             if self.light_version:
                 self.model_table_dir = dir_models + "/modelens_table_0t4_201124"
@@ -5129,7 +5129,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_step_900000_ocr"#"/model_step_25000_ocr"#"/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
+                self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250716"
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
@@ -5276,7 +5276,7 @@ class Eynollah_ocr:
                 
                 if self.draw_texts_on_image:
                     
-                    font_path = "NotoSans-Regular.ttf"  # Make sure this file exists!
+                    font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
                     font = ImageFont.truetype(font_path, 40)
                     
                     for indexer_text, bb_ind in enumerate(total_bb_coordinates):
@@ -5340,8 +5340,8 @@ class Eynollah_ocr:
                 tree1.write(out_file_ocr,xml_declaration=True,method='xml',encoding="utf8",default_namespace=None)
                 #print("Job done in %.1fs", time.time() - t0)
         else:
-            max_len = 512
-            padding_token = 299
+            max_len = 512#280#512
+            padding_token = 299#1500#299
             image_width = 512#max_len * 4
             image_height = 32
 
@@ -5435,52 +5435,57 @@ class Eynollah_ocr:
                                     
                                     mask_poly = mask_poly[y:y+h, x:x+w, :]
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
-
-                                    #print(file_name, angle_degrees,w*h , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w*h) , 'didi')
-                                    if not self.do_not_mask_with_textline_contour:
-                                        if angle_degrees > 3:
-                                            better_des_slope = get_orientation_moments(textline_coords)
-                                            
-                                            img_crop = rotate_image_with_padding(img_crop, better_des_slope )
-                                            
-                                            if self.prediction_with_both_of_rgb_and_bin:
-                                                img_crop_bin = rotate_image_with_padding(img_crop_bin, better_des_slope )
-                                                
-                                            mask_poly = rotate_image_with_padding(mask_poly, better_des_slope )
-                                            mask_poly = mask_poly.astype('uint8')
-                                            
-                                            #new bounding box
-                                            x_n, y_n, w_n, h_n = get_contours_and_bounding_boxes(mask_poly[:,:,0])
-                                            
-                                            mask_poly = mask_poly[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                                            img_crop = img_crop[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                                                
+                                    
+                                    if self.export_textline_images_and_text:
+                                        if not self.do_not_mask_with_textline_contour:
                                             img_crop[mask_poly==0] = 255
-                                            
-                                            if self.prediction_with_both_of_rgb_and_bin:
-                                                img_crop_bin = img_crop_bin[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                                                img_crop_bin[mask_poly==0] = 255
-                                            
-                                            if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.50 and w_scaled > 90:
+                                        
+                                    else:
+                                        #print(file_name, angle_degrees,w*h , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w*h) , 'didi')
+                                        if not self.do_not_mask_with_textline_contour:
+                                            if angle_degrees > 3:
+                                                better_des_slope = get_orientation_moments(textline_coords)
+                                                
+                                                img_crop = rotate_image_with_padding(img_crop, better_des_slope )
+                                                
                                                 if self.prediction_with_both_of_rgb_and_bin:
-                                                    img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
-                                                else:
-                                                    img_crop, _ = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
-        
+                                                    img_crop_bin = rotate_image_with_padding(img_crop_bin, better_des_slope )
+                                                    
+                                                mask_poly = rotate_image_with_padding(mask_poly, better_des_slope )
+                                                mask_poly = mask_poly.astype('uint8')
                                                 
-                                        else:
-                                            better_des_slope = 0
-                                            img_crop[mask_poly==0] = 255
-                                            if self.prediction_with_both_of_rgb_and_bin:
-                                                img_crop_bin[mask_poly==0] = 255
-                                            if type_textregion=='drop-capital':
-                                                pass
-                                            else:
-                                                if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 90:
+                                                #new bounding box
+                                                x_n, y_n, w_n, h_n = get_contours_and_bounding_boxes(mask_poly[:,:,0])
+                                                
+                                                mask_poly = mask_poly[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                                                img_crop = img_crop[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                                                    
+                                                img_crop[mask_poly==0] = 255
+                                                
+                                                if self.prediction_with_both_of_rgb_and_bin:
+                                                    img_crop_bin = img_crop_bin[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                                                    img_crop_bin[mask_poly==0] = 255
+                                                
+                                                if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.50 and w_scaled > 90:
                                                     if self.prediction_with_both_of_rgb_and_bin:
                                                         img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
                                                     else:
                                                         img_crop, _ = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
+            
+                                                    
+                                            else:
+                                                better_des_slope = 0
+                                                img_crop[mask_poly==0] = 255
+                                                if self.prediction_with_both_of_rgb_and_bin:
+                                                    img_crop_bin[mask_poly==0] = 255
+                                                if type_textregion=='drop-capital':
+                                                    pass
+                                                else:
+                                                    if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 90:
+                                                        if self.prediction_with_both_of_rgb_and_bin:
+                                                            img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
+                                                        else:
+                                                            img_crop, _ = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
                                     
                                     if not self.export_textline_images_and_text:
                                         if w_scaled < 750:#1.5*image_width:
@@ -5541,35 +5546,38 @@ class Eynollah_ocr:
                                                     cropped_lines_bin.append(img_fin)
                                         
                                 if self.export_textline_images_and_text:
-                                    if child_textlines.tag.endswith("TextEquiv"):
-                                        for cheild_text in child_textlines:
-                                            if cheild_text.tag.endswith("Unicode"):
-                                                textline_text = cheild_text.text
-                                                if textline_text:
-                                                    if self.do_not_mask_with_textline_contour:
-                                                        if self.pref_of_dataset:
-                                                            with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'.txt'), 'w') as text_file:
-                                                                text_file.write(textline_text)
+                                    if img_crop.shape[0]==0 or img_crop.shape[1]==0:
+                                        pass
+                                    else:
+                                        if child_textlines.tag.endswith("TextEquiv"):
+                                            for cheild_text in child_textlines:
+                                                if cheild_text.tag.endswith("Unicode"):
+                                                    textline_text = cheild_text.text
+                                                    if textline_text:
+                                                        if self.do_not_mask_with_textline_contour:
+                                                            if self.pref_of_dataset:
+                                                                with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'.txt'), 'w') as text_file:
+                                                                    text_file.write(textline_text)
 
-                                                            cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'.png'), img_crop )
+                                                                cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'.png'), img_crop )
+                                                            else:
+                                                                with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.txt'), 'w') as text_file:
+                                                                    text_file.write(textline_text)
+
+                                                                cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.png'), img_crop )
                                                         else:
-                                                            with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.txt'), 'w') as text_file:
-                                                                text_file.write(textline_text)
+                                                            if self.pref_of_dataset:
+                                                                with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'_masked.txt'), 'w') as text_file:
+                                                                    text_file.write(textline_text)
 
-                                                            cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.png'), img_crop )
-                                                    else:
-                                                        if self.pref_of_dataset:
-                                                            with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'_masked.txt'), 'w') as text_file:
-                                                                text_file.write(textline_text)
+                                                                cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'_masked.png'), img_crop )
+                                                            else:
+                                                                with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_masked.txt'), 'w') as text_file:
+                                                                    text_file.write(textline_text)
 
-                                                            cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'_masked.png'), img_crop )
-                                                        else:
-                                                            with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_masked.txt'), 'w') as text_file:
-                                                                text_file.write(textline_text)
-
-                                                            cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_masked.png'), img_crop )
-                                                        
-                                                indexer_textlines+=1
+                                                                cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_masked.png'), img_crop )
+                                                            
+                                                    indexer_textlines+=1
 
                     if not self.export_textline_images_and_text:
                         indexer_text_region = indexer_text_region +1
@@ -5727,7 +5735,7 @@ class Eynollah_ocr:
                     
                     if self.draw_texts_on_image:
                         
-                        font_path = "NotoSans-Regular.ttf"  # Make sure this file exists!
+                        font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
                         font = ImageFont.truetype(font_path, 40)
                         
                         for indexer_text, bb_ind in enumerate(total_bb_coordinates):
