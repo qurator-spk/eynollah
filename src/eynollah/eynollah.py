@@ -5129,7 +5129,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250716"
+                self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250716"#"/model_ens_ocrcnn_new6"#"/model_ens_ocrcnn_new2"#
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
@@ -5143,7 +5143,6 @@ class Eynollah_ocr:
                     
                 with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
                     characters = json.load(config_file)
-
                     
                 AUTOTUNE = tf.data.AUTOTUNE
 
@@ -5154,6 +5153,7 @@ class Eynollah_ocr:
                 self.num_to_char = StringLookup(
                     vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
                 )
+                self.end_character = len(characters) + 2
 
     def run(self, overwrite : bool = False):
         if self.dir_in:
@@ -5340,8 +5340,8 @@ class Eynollah_ocr:
                 tree1.write(out_file_ocr,xml_declaration=True,method='xml',encoding="utf8",default_namespace=None)
                 #print("Job done in %.1fs", time.time() - t0)
         else:
-            max_len = 512#280#512
-            padding_token = 299#1500#299
+            ###max_len = 280#512#280#512
+            ###padding_token = 1500#299#1500#299
             image_width = 512#max_len * 4
             image_height = 32
 
@@ -5656,13 +5656,13 @@ class Eynollah_ocr:
                             preds_flipped = self.prediction_model.predict(imgs_ver_flipped, verbose=0)
                             preds_max_fliped = np.max(preds_flipped, axis=2 )
                             preds_max_args_flipped = np.argmax(preds_flipped, axis=2 )
-                            pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=256
+                            pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=self.end_character
                             masked_means_flipped = np.sum(preds_max_fliped * pred_max_not_unk_mask_bool_flipped, axis=1) / np.sum(pred_max_not_unk_mask_bool_flipped, axis=1)
                             masked_means_flipped[np.isnan(masked_means_flipped)] = 0
                             
                             preds_max = np.max(preds, axis=2 )
                             preds_max_args = np.argmax(preds, axis=2 )
-                            pred_max_not_unk_mask_bool = preds_max_args[:,:]!=256
+                            pred_max_not_unk_mask_bool = preds_max_args[:,:]!=self.end_character
                             
                             masked_means = np.sum(preds_max * pred_max_not_unk_mask_bool, axis=1) / np.sum(pred_max_not_unk_mask_bool, axis=1)
                             masked_means[np.isnan(masked_means)] = 0
@@ -5683,13 +5683,13 @@ class Eynollah_ocr:
                                 preds_flipped = self.prediction_model.predict(imgs_bin_ver_flipped, verbose=0)
                                 preds_max_fliped = np.max(preds_flipped, axis=2 )
                                 preds_max_args_flipped = np.argmax(preds_flipped, axis=2 )
-                                pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=256
+                                pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=self.end_character
                                 masked_means_flipped = np.sum(preds_max_fliped * pred_max_not_unk_mask_bool_flipped, axis=1) / np.sum(pred_max_not_unk_mask_bool_flipped, axis=1)
                                 masked_means_flipped[np.isnan(masked_means_flipped)] = 0
                                 
                                 preds_max = np.max(preds, axis=2 )
                                 preds_max_args = np.argmax(preds, axis=2 )
-                                pred_max_not_unk_mask_bool = preds_max_args[:,:]!=256
+                                pred_max_not_unk_mask_bool = preds_max_args[:,:]!=self.end_character
                                 
                                 masked_means = np.sum(preds_max * pred_max_not_unk_mask_bool, axis=1) / np.sum(pred_max_not_unk_mask_bool, axis=1)
                                 masked_means[np.isnan(masked_means)] = 0
@@ -5711,7 +5711,7 @@ class Eynollah_ocr:
                         
                         preds_max = np.max(preds, axis=2 )
                         preds_max_args = np.argmax(preds, axis=2 )
-                        pred_max_not_unk_mask_bool = preds_max_args[:,:]!=256
+                        pred_max_not_unk_mask_bool = preds_max_args[:,:]!=self.end_character
                         masked_means = np.sum(preds_max * pred_max_not_unk_mask_bool, axis=1) / np.sum(pred_max_not_unk_mask_bool, axis=1)
 
                         for ib in range(imgs.shape[0]):
