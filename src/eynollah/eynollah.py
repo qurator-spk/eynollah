@@ -5129,7 +5129,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250716"#"/model_ens_ocrcnn_new6"#"/model_ens_ocrcnn_new2"#
+                self.model_ocr_dir = dir_models + "/model_ens_ocrcnn_new6"#"/model_eynollah_ocr_cnnrnn_20250716"#"/model_ens_ocrcnn_new6"#"/model_ens_ocrcnn_new2"#
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
@@ -5141,7 +5141,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
                     
-                with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
+                with open(os.path.join(self.model_ocr_dir, "characters_20250707_all_lang.txt"),"r") as config_file:
                     characters = json.load(config_file)
                     
                 AUTOTUNE = tf.data.AUTOTUNE
@@ -5780,9 +5780,24 @@ class Eynollah_ocr:
                             text_by_textregion.append(" ".join(extracted_texts_merged_un))
                         #print(text_by_textregion, 'text_by_textregiontext_by_textregiontext_by_textregiontext_by_textregiontext_by_textregion')
                         
+                        
+                    ###index_tot_regions = []
+                    ###tot_region_ref = []
+
+                    ###for jj in root1.iter(link+'RegionRefIndexed'):
+                        ###index_tot_regions.append(jj.attrib['index'])
+                        ###tot_region_ref.append(jj.attrib['regionRef'])
+                        
+                    ###id_to_order = {tid: ro for tid, ro in zip(tot_region_ref, index_tot_regions)}
+        
+                    id_textregions = []
+                    textregions_by_existing_ids = []
                     indexer = 0
                     indexer_textregion = 0
                     for nn in root1.iter(region_tags):
+                        id_textregion = nn.attrib['id']
+                        id_textregions.append(id_textregion)
+                        textregions_by_existing_ids.append(text_by_textregion[indexer_textregion])
                         
                         is_textregion_text = False
                         for childtest in nn:
@@ -5829,7 +5844,17 @@ class Eynollah_ocr:
                             else:
                                 unicode_textregion.text = text_by_textregion[indexer_textregion]
                             indexer_textregion = indexer_textregion + 1
-
+                            
+                    ###sample_order  = [(id_to_order[tid], text) for tid, text in zip(id_textregions, textregions_by_existing_ids) if tid in id_to_order]
+                    
+                    ##ordered_texts_sample = [text for _, text in sorted(sample_order)]
+                    ##tot_page_text = ' '.join(ordered_texts_sample)
+                    
+                    ##for page_element in root1.iter(link+'Page'):
+                        ##text_page = ET.SubElement(page_element, 'TextEquiv')
+                        ##unicode_textpage = ET.SubElement(text_page, 'Unicode')
+                        ##unicode_textpage.text = tot_page_text
+                    
                     ET.register_namespace("",name_space)
                     tree1.write(out_file_ocr,xml_declaration=True,method='xml',encoding="utf8",default_namespace=None)
                     #print("Job done in %.1fs", time.time() - t0)
