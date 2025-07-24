@@ -85,8 +85,8 @@ def test_run_eynollah_binarization_filename(tmp_path, subtests, pytestconfig, ca
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     args = [
         '-m', SBBBIN_MODELS,
-        str(infile),
-        str(outfile),
+        '-i', str(infile),
+        '-o', str(outfile),
     ]
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
@@ -117,7 +117,7 @@ def test_run_eynollah_binarization_directory(tmp_path, subtests, pytestconfig, c
     args = [
         '-m', SBBBIN_MODELS,
         '-di', str(indir),
-        '-do', str(outdir),
+        '-o', str(outdir),
     ]
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):

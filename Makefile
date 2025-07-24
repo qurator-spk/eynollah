@@ -85,7 +85,7 @@ smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	eynollah layout -di $(<D) -o $(TMPDIR) -m $(CURDIR)/models_eynollah
 	test -s $(TMPDIR)/euler_rechenkunst01_1738_0025.xml
 	# binarize:
-	eynollah binarization -m $(CURDIR)/default-2021-03-09 $< $(TMPDIR)/$(<F)
+	eynollah binarization -m $(CURDIR)/default-2021-03-09 -i $< -o $(TMPDIR)/$(<F)
 	test -s $(TMPDIR)/$(<F)
 	@set -x; test "$$(identify -format '%w %h' $<)" = "$$(identify -format '%w %h' $(TMPDIR)/$(<F))"
 	$(RM) -r $(TMPDIR)
