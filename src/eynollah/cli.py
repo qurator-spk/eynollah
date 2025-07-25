@@ -497,13 +497,18 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     help="in the case of extracting textline and text from a xml GT file user can add an abbrevation of dataset name to generated dataset",
 )
 @click.option(
+    "--min_conf_value_of_textline_text",
+    "-min_conf",
+    help="minimum OCR confidence value. Text lines with a confidence value lower than this threshold will not be included in the output XML file.",
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
 
-def ocr(image, overwrite, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, batch_size, dataset_abbrevation, log_level):
+def ocr(image, overwrite, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, batch_size, dataset_abbrevation, min_conf_value_of_textline_text, log_level):
     initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
@@ -530,6 +535,7 @@ def ocr(image, overwrite, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text,
         prediction_with_both_of_rgb_and_bin=prediction_with_both_of_rgb_and_bin,
         batch_size=batch_size,
         pref_of_dataset=dataset_abbrevation,
+        min_conf_value_of_textline_text=min_conf_value_of_textline_text,
     )
     eynollah_ocr.run(overwrite=overwrite)
 
