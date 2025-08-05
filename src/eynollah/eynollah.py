@@ -318,7 +318,7 @@ class Eynollah:
         if self.ocr and self.tr:
             self.model_ocr_dir = dir_models + "/trocr_model_ens_of_3_checkpoints_201124"
         elif self.ocr and not self.tr:
-            self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250725"
+            self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250805"
         if self.tables:
             if self.light_version:
                 self.model_table_dir = dir_models + "/modelens_table_0t4_201124"
@@ -5144,7 +5144,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250725"#"/model_step_1020000_ocr"#"/model_ens_ocrcnn_new10"#"/model_step_255000_ocr"#"/model_ens_ocrcnn_new9"#"/model_step_900000_ocr"#"/model_eynollah_ocr_cnnrnn_20250716"#"/model_ens_ocrcnn_new6"#"/model_ens_ocrcnn_new2"#
+                self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250805"
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
