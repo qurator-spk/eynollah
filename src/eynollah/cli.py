@@ -325,12 +325,12 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
 @click.option(
     "--threshold_art_class_layout",
     "-tharl",
-    help="threshold of artifical class in the case of layout detection",
+    help="threshold of artifical class in the case of layout detection. The default value is 0.1",
 )
 @click.option(
     "--threshold_art_class_textline",
     "-thart",
-    help="threshold of artifical class in the case of textline detection",
+    help="threshold of artifical class in the case of textline detection. The default value is 0.1",
 )
 @click.option(
     "--skip_layout_and_reading_order",
