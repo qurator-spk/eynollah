@@ -3,6 +3,7 @@ import json
 from gt_gen_utils import *
 from tqdm import tqdm
 from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont
 
 @click.group()
 def main():
@@ -447,6 +448,86 @@ def visualize_layout_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
         cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
 
 
+
+
+@main.command()
+@click.option(
+    "--xml_file",
+    "-xml",
+    help="xml filename",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.option(
+    "--dir_xml",
+    "-dx",
+    help="directory of GT page-xml files",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+@click.option(
+    "--dir_out",
+    "-do",
+    help="directory where plots will be written",
+    type=click.Path(exists=True, file_okay=False),
+)
+
+
+def visualize_ocr_text(xml_file, dir_xml, dir_out):
+    assert xml_file or dir_xml, "A single xml file -xml or a dir of xml files -dx is required not both of them"
+    if dir_xml:
+        xml_files_ind = os.listdir(dir_xml)
+    else:
+        xml_files_ind = [xml_file]
+        
+    font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
+    font = ImageFont.truetype(font_path, 40)
+        
+    for ind_xml in tqdm(xml_files_ind):
+        indexer = 0
+        #print(ind_xml)
+        #print('########################')
+        if dir_xml:
+            xml_file = os.path.join(dir_xml,ind_xml )
+            f_name = Path(ind_xml).stem
+        else:
+            xml_file = os.path.join(ind_xml )
+            f_name = Path(ind_xml).stem
+        print(f_name, 'f_name')
+            
+        co_tetxlines, y_len, x_len, ocr_texts = get_textline_contours_and_ocr_text(xml_file)
+        
+        total_bb_coordinates = []
+        
+        image_text = Image.new("RGB", (x_len, y_len), "white")
+        draw = ImageDraw.Draw(image_text)
+        
+        
+        
+        for index, cnt in enumerate(co_tetxlines):
+            x,y,w,h = cv2.boundingRect(cnt)
+            #total_bb_coordinates.append([x,y,w,h])
+            
+            #fit_text_single_line
+            
+            #x_bb = bb_ind[0]
+            #y_bb = bb_ind[1]
+            #w_bb = bb_ind[2]
+            #h_bb = bb_ind[3]
+            
+            font = fit_text_single_line(draw, ocr_texts[index], font_path, w, int(h*0.4) )
+            
+            ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
+            
+            text_bbox = draw.textbbox((0, 0), ocr_texts[index], font=font)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_height = text_bbox[3] - text_bbox[1]
+
+            text_x = x + (w - text_width) // 2  # Center horizontally
+            text_y = y + (h - text_height) // 2  # Center vertically
+
+            # Draw the text
+            draw.text((text_x, text_y), ocr_texts[index], fill="black", font=font)
+        image_text.save(os.path.join(dir_out, f_name+'.png'))
     
 if __name__ == "__main__":
     main()

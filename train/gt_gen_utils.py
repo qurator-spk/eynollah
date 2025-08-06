@@ -9,6 +9,7 @@ import cv2
 from shapely import geometry
 from pathlib import Path
 import matplotlib.pyplot as plt
+from PIL import Image, ImageDraw, ImageFont
 
 
 KERNEL = np.ones((5, 5), np.uint8)
@@ -282,6 +283,76 @@ def get_textline_contours_for_visualization(xml_file):
                 co_use_case.append(np.array(c_t_in))
     return co_use_case, y_len, x_len
 
+
+def get_textline_contours_and_ocr_text(xml_file):
+    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding = 'iso-8859-5'))
+    root1=tree1.getroot()
+    alltags=[elem.tag for elem in root1.iter()]
+    link=alltags[0].split('}')[0]+'}'
+                            
+        
+                            
+    for jj in root1.iter(link+'Page'):
+        y_len=int(jj.attrib['imageHeight'])
+        x_len=int(jj.attrib['imageWidth'])
+        
+    region_tags = np.unique([x for x in alltags if x.endswith('TextLine')])
+    tag_endings = ['}TextLine','}textline']
+    co_use_case = []
+    ocr_textlines = []
+
+    for tag in region_tags:
+        if tag.endswith(tag_endings[0]) or tag.endswith(tag_endings[1]):
+            for nn in root1.iter(tag):
+                c_t_in = []
+                ocr_text_in = ['']
+                sumi = 0
+                for vv in nn.iter():
+                    if vv.tag == link + 'Coords':
+                        for childtest2 in nn:
+                            if childtest2.tag.endswith("TextEquiv"):
+                                for child_uc in childtest2:
+                                    if child_uc.tag.endswith("Unicode"):
+                                        text = child_uc.text
+                                        ocr_text_in[0]= text
+                            
+                        coords = bool(vv.attrib)
+                        if coords:
+                            p_h = vv.attrib['points'].split(' ')
+                            c_t_in.append(
+                                np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h]))
+                            break
+                        else:
+                            pass
+                        
+                        
+
+                    if vv.tag == link + 'Point':
+                        c_t_in.append([int(float(vv.attrib['x'])), int(float(vv.attrib['y']))])
+                        sumi += 1
+                    elif vv.tag != link + 'Point' and sumi >= 1:
+                        break
+                
+                        
+                co_use_case.append(np.array(c_t_in))
+                ocr_textlines.append(ocr_text_in[0])
+    return co_use_case, y_len, x_len, ocr_textlines
+
+def fit_text_single_line(draw, text, font_path, max_width, max_height):
+    initial_font_size = 50
+    font_size = initial_font_size
+    while font_size > 10:  # Minimum font size
+        font = ImageFont.truetype(font_path, font_size)
+        text_bbox = draw.textbbox((0, 0), text, font=font)  # Get text bounding box
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+
+        if text_width <= max_width and text_height <= max_height:
+            return font  # Return the best-fitting font
+
+        font_size -= 2  # Reduce font size and retry
+
+    return ImageFont.truetype(font_path, 10)  # Smallest font fallback
 
 def get_layout_contours_for_visualization(xml_file):
     tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding = 'iso-8859-5'))
