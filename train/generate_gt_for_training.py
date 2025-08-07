@@ -495,7 +495,7 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
         print(f_name, 'f_name')
             
         co_tetxlines, y_len, x_len, ocr_texts = get_textline_contours_and_ocr_text(xml_file)
-        
+    
         total_bb_coordinates = []
         
         image_text = Image.new("RGB", (x_len, y_len), "white")
@@ -513,20 +513,20 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
             #y_bb = bb_ind[1]
             #w_bb = bb_ind[2]
             #h_bb = bb_ind[3]
-            
-            font = fit_text_single_line(draw, ocr_texts[index], font_path, w, int(h*0.4) )
-            
-            ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
-            
-            text_bbox = draw.textbbox((0, 0), ocr_texts[index], font=font)
-            text_width = text_bbox[2] - text_bbox[0]
-            text_height = text_bbox[3] - text_bbox[1]
+            if ocr_texts[index]:
+                font = fit_text_single_line(draw, ocr_texts[index], font_path, w, int(h*0.4) )
+                
+                ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
+                
+                text_bbox = draw.textbbox((0, 0), ocr_texts[index], font=font)
+                text_width = text_bbox[2] - text_bbox[0]
+                text_height = text_bbox[3] - text_bbox[1]
 
-            text_x = x + (w - text_width) // 2  # Center horizontally
-            text_y = y + (h - text_height) // 2  # Center vertically
+                text_x = x + (w - text_width) // 2  # Center horizontally
+                text_y = y + (h - text_height) // 2  # Center vertically
 
-            # Draw the text
-            draw.text((text_x, text_y), ocr_texts[index], fill="black", font=font)
+                # Draw the text
+                draw.text((text_x, text_y), ocr_texts[index], fill="black", font=font)
         image_text.save(os.path.join(dir_out, f_name+'.png'))
     
 if __name__ == "__main__":

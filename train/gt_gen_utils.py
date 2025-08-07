@@ -244,7 +244,7 @@ def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y
     return co_text_eroded, img_boundary
 
 def get_textline_contours_for_visualization(xml_file):
-    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding = 'iso-8859-5'))
+    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding='utf-8'))
     root1=tree1.getroot()
     alltags=[elem.tag for elem in root1.iter()]
     link=alltags[0].split('}')[0]+'}'
@@ -285,7 +285,7 @@ def get_textline_contours_for_visualization(xml_file):
 
 
 def get_textline_contours_and_ocr_text(xml_file):
-    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding = 'iso-8859-5'))
+    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding='utf-8'))
     root1=tree1.getroot()
     alltags=[elem.tag for elem in root1.iter()]
     link=alltags[0].split('}')[0]+'}'
@@ -355,7 +355,7 @@ def fit_text_single_line(draw, text, font_path, max_width, max_height):
     return ImageFont.truetype(font_path, 10)  # Smallest font fallback
 
 def get_layout_contours_for_visualization(xml_file):
-    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding = 'iso-8859-5'))
+    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding='utf-8'))
     root1=tree1.getroot()
     alltags=[elem.tag for elem in root1.iter()]
     link=alltags[0].split('}')[0]+'}'
@@ -630,7 +630,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
     for index in tqdm(range(len(gt_list))):
         #try:
         print(gt_list[index])
-        tree1 = ET.parse(dir_in+'/'+gt_list[index], parser = ET.XMLParser(encoding = 'iso-8859-5'))
+        tree1 = ET.parse(dir_in+'/'+gt_list[index], parser = ET.XMLParser(encoding='utf-8'))
         root1=tree1.getroot()
         alltags=[elem.tag for elem in root1.iter()]
         link=alltags[0].split('}')[0]+'}'
@@ -1311,7 +1311,7 @@ def find_new_features_of_contours(contours_main):
     return cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin
 def read_xml(xml_file):
     file_name = Path(xml_file).stem
-    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding = 'iso-8859-5'))
+    tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding='utf-8'))
     root1=tree1.getroot()
     alltags=[elem.tag for elem in root1.iter()]
     link=alltags[0].split('}')[0]+'}'
