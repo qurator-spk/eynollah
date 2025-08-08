@@ -96,6 +96,7 @@ from .utils.separate_lines import (
     textline_contours_postprocessing,
     separate_lines_new2,
     return_deskew_slop,
+    return_deskew_slop_old_mp,
     do_work_of_slopes_new,
     do_work_of_slopes_new_curved,
     do_work_of_slopes_new_light,
@@ -1936,8 +1937,8 @@ class Eynollah:
                 y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
                 sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
                 crop_img[crop_img > 0] = 1
-                slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des,
-                                                                    map=self.executor.map, logger=self.logger, plotter=self.plotter)
+                slope_corresponding_textregion = return_deskew_slop_old_mp(crop_img, sigma_des,
+                                                                    logger=self.logger, plotter=self.plotter)
             except Exception as why:
                 self.logger.error(why)
                 slope_corresponding_textregion = MAX_SLOPE
@@ -3203,8 +3204,8 @@ class Eynollah:
 
     def run_deskew(self, textline_mask_tot_ea):
         #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
-        slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), 2, 30, True,
-                                          map=self.executor.map, logger=self.logger, plotter=self.plotter)
+        slope_deskew = return_deskew_slop_old_mp(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), 2, 30, True,
+                                          logger=self.logger, plotter=self.plotter)
         slope_first = 0
 
         if self.plotter:
