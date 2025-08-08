@@ -514,19 +514,37 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
             #w_bb = bb_ind[2]
             #h_bb = bb_ind[3]
             if ocr_texts[index]:
+                
+                
+                is_vertical = h > 2*w  # Check orientation
                 font = fit_text_single_line(draw, ocr_texts[index], font_path, w, int(h*0.4) )
                 
-                ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
-                
-                text_bbox = draw.textbbox((0, 0), ocr_texts[index], font=font)
-                text_width = text_bbox[2] - text_bbox[0]
-                text_height = text_bbox[3] - text_bbox[1]
+                if is_vertical:
+                    
+                    vertical_font = fit_text_single_line(draw, ocr_texts[index], font_path, h, int(w * 0.8))
 
-                text_x = x + (w - text_width) // 2  # Center horizontally
-                text_y = y + (h - text_height) // 2  # Center vertically
+                    text_img = Image.new("RGBA", (h, w), (255, 255, 255, 0))  # Note: dimensions are swapped
+                    text_draw = ImageDraw.Draw(text_img)
+                    text_draw.text((0, 0), ocr_texts[index], font=vertical_font, fill="black")
 
-                # Draw the text
-                draw.text((text_x, text_y), ocr_texts[index], fill="black", font=font)
+                    # Rotate text image by 90 degrees
+                    rotated_text = text_img.rotate(90, expand=1)
+
+                    # Calculate paste position (centered in bbox)
+                    paste_x = x + (w - rotated_text.width) // 2
+                    paste_y = y + (h - rotated_text.height) // 2
+
+                    image_text.paste(rotated_text, (paste_x, paste_y), rotated_text)  # Use rotated image as mask
+                else:
+                    text_bbox = draw.textbbox((0, 0), ocr_texts[index], font=font)
+                    text_width = text_bbox[2] - text_bbox[0]
+                    text_height = text_bbox[3] - text_bbox[1]
+
+                    text_x = x + (w - text_width) // 2  # Center horizontally
+                    text_y = y + (h - text_height) // 2  # Center vertically
+
+                    # Draw the text
+                    draw.text((text_x, text_y), ocr_texts[index], fill="black", font=font)
         image_text.save(os.path.join(dir_out, f_name+'.png'))
     
 if __name__ == "__main__":
