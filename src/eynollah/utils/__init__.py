@@ -1801,8 +1801,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                             #print(y_type_2_up,x_starting_up,x_ending_up,'didid')
                             nodes_in = []
                             for ij in range(len(x_starting_up)):
-                                nodes_in = nodes_in + list(range(x_starting_up[ij],
-                                                                 x_ending_up[ij]))
+                                nodes_in = nodes_in + list(range(int(x_starting_up[ij]),
+                                                                 int(x_ending_up[ij])))
                             nodes_in = np.unique(nodes_in)
                             #print(nodes_in,'nodes_in')
 
@@ -1825,8 +1825,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                         elif len(y_diff_main_separator_up)==0:
                             nodes_in = []
                             for ij in range(len(x_starting_up)):
-                                nodes_in = nodes_in + list(range(x_starting_up[ij],
-                                                                 x_ending_up[ij]))
+                                nodes_in = nodes_in + list(range(int(x_starting_up[ij]),
+                                                                 int(x_ending_up[ij])))
                             nodes_in = np.unique(nodes_in)
                             #print(nodes_in,'nodes_in2')
                             #print(np.array(range(len(peaks_neg_tot)-1)),'np.array(range(len(peaks_neg_tot)-1))')
@@ -1866,8 +1866,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                             columns_covered_by_mothers = []
                             for dj in range(len(x_start_without_mother)):
                                 columns_covered_by_mothers = columns_covered_by_mothers + \
-                                    list(range(x_start_without_mother[dj],
-                                               x_end_without_mother[dj]))
+                                    list(range(int(x_start_without_mother[dj]),
+                                               int(x_end_without_mother[dj])))
                             columns_covered_by_mothers = list(set(columns_covered_by_mothers))
 
                             all_columns=np.arange(len(peaks_neg_tot)-1)
@@ -1909,8 +1909,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                         columns_covered_by_mothers = []
                         for dj in range(len(x_start_without_mother)):
                             columns_covered_by_mothers = columns_covered_by_mothers + \
-                                list(range(x_start_without_mother[dj],
-                                           x_end_without_mother[dj]))
+                                list(range(int(x_start_without_mother[dj]),
+                                           int(x_end_without_mother[dj])))
                         columns_covered_by_mothers = list(set(columns_covered_by_mothers))
 
                         all_columns=np.arange(len(peaks_neg_tot)-1)
@@ -1926,8 +1926,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                         columns_covered_by_with_child_no_mothers = []
                         for dj in range(len(x_end_with_child_without_mother)):
                             columns_covered_by_with_child_no_mothers = columns_covered_by_with_child_no_mothers + \
-                                list(range(x_start_with_child_without_mother[dj],
-                                           x_end_with_child_without_mother[dj]))
+                                list(range(int(x_start_with_child_without_mother[dj]),
+                                           int(x_end_with_child_without_mother[dj])))
                         columns_covered_by_with_child_no_mothers = list(set(columns_covered_by_with_child_no_mothers))
 
                         all_columns = np.arange(len(peaks_neg_tot)-1)
@@ -1970,8 +1970,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                                     columns_covered_by_mothers = []
                                     for dj in range(len(x_starting_all_between_nm_wc)):
                                         columns_covered_by_mothers = columns_covered_by_mothers + \
-                                            list(range(x_starting_all_between_nm_wc[dj],
-                                                       x_ending_all_between_nm_wc[dj]))
+                                            list(range(int(x_starting_all_between_nm_wc[dj]),
+                                                       int(x_ending_all_between_nm_wc[dj])))
                                     columns_covered_by_mothers = list(set(columns_covered_by_mothers))
 
                                     all_columns=np.arange(i_s_nc, x_end_biggest_column)
@@ -1979,8 +1979,8 @@ def return_boxes_of_images_by_order_of_reading_new(
 
                                     should_longest_line_be_extended=0
                                     if (len(x_diff_all_between_nm_wc) > 0 and
-                                        set(list(range(x_starting_all_between_nm_wc[biggest],
-                                                        x_ending_all_between_nm_wc[biggest])) +
+                                        set(list(range(int(x_starting_all_between_nm_wc[biggest]),
+                                                        int(x_ending_all_between_nm_wc[biggest]))) +
                                             list(columns_not_covered)) != set(all_columns)):
                                         should_longest_line_be_extended=1
                                         index_lines_so_close_to_top_separator = \
@@ -2012,7 +2012,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                                     x_ending_all_between_nm_wc = np.append(x_ending_all_between_nm_wc, np.array(columns_not_covered) + 1)
 
                                     ind_args_between=np.arange(len(x_ending_all_between_nm_wc))
-                                    for column in range(i_s_nc, x_end_biggest_column):
+                                    for column in range(int(i_s_nc), int(x_end_biggest_column)):
                                         ind_args_in_col=ind_args_between[x_starting_all_between_nm_wc==column]
                                         #print('babali2')
                                         #print(ind_args_in_col,'ind_args_in_col')
@@ -2064,7 +2064,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                         x_end_itself=x_end_copy.pop(il)
 
                         #print(y_copy,'y_copy2')
-                        for column in range(x_start_itself, x_end_itself+1):
+                        for column in range(int(x_start_itself), int(x_end_itself)+1):
                             #print(column,'cols')
                             y_in_cols=[]
                             for yic in range(len(y_copy)):
@@ -2095,11 +2095,11 @@ def return_boxes_of_images_by_order_of_reading_new(
                     all_columns = np.arange(len(peaks_neg_tot)-1)
                     columns_covered_by_lines_covered_more_than_2col = []
                     for dj in range(len(x_starting)):
-                        if set(list(range(x_starting[dj],x_ending[dj]))) == set(all_columns):
+                        if set(list(range(int(x_starting[dj]),int(x_ending[dj]) ))) == set(all_columns):
                             pass
                         else:
                             columns_covered_by_lines_covered_more_than_2col = columns_covered_by_lines_covered_more_than_2col + \
-                                list(range(x_starting[dj],x_ending[dj]))
+                                list(range(int(x_starting[dj]),int(x_ending[dj]) ))
                     columns_covered_by_lines_covered_more_than_2col = list(set(columns_covered_by_lines_covered_more_than_2col))
                     columns_not_covered = list(set(all_columns) - set(columns_covered_by_lines_covered_more_than_2col))
 
@@ -2124,7 +2124,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                     x_ending = np.append(x_ending, np.array(columns_not_covered) + 1)
 
                 ind_args=np.array(range(len(y_type_2)))
-                #ind_args=np.array(ind_args)
+                
                 for column in range(len(peaks_neg_tot)-1):
                     #print(column,'column')
                     ind_args_in_col=ind_args[x_starting==column]
@@ -2155,8 +2155,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                     x_start_itself=x_start_copy.pop(il)
                     x_end_itself=x_end_copy.pop(il)
 
-                    #print(y_copy,'y_copy2')
-                    for column in range(x_start_itself, x_end_itself+1):
+                    for column in range(int(x_start_itself), int(x_end_itself)+1):
                         #print(column,'cols')
                         y_in_cols=[]
                         for yic in range(len(y_copy)):
