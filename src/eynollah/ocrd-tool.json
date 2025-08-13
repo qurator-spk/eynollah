@@ -74,6 +74,11 @@
           "type": "boolean",
           "default": false,
           "description": "ignore the special role of headings during reading order detection"
+        },
+        "reading_order_machine_based": {
+          "type": "boolean",
+          "default": false,
+          "description": "use data-driven (rather than rule-based) reading order detection"
         }
       },
       "resources": [
