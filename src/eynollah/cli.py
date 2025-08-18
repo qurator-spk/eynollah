@@ -4,6 +4,7 @@ from ocrd_utils import initLogging, getLevelName, getLogger
 from eynollah.eynollah import Eynollah, Eynollah_ocr
 from eynollah.sbb_binarize import SbbBinarizer
 from eynollah.image_enhancer import Enhancer
+from eynollah.mb_ro_on_layout import machine_based_reading_order_on_layout
 
 @click.group()
 def main():
@@ -13,38 +14,37 @@ def main():
 @click.option(
     "--dir_xml",
     "-dx",
-    help="directory of GT page-xml files",
+    help="directory of page-xml files",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
-    "--dir_out_modal_image",
-    "-domi",
-    help="directory where ground truth images would be written",
+    "--xml_file",
+    "-xml",
+    help="xml filename",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.option(
+    "--dir_out",
+    "-do",
+    help="directory for output images",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
-    "--dir_out_classes",
-    "-docl",
-    help="directory where ground truth classes would be written",
+    "--model",
+    "-m",
+    help="directory of models",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
-@click.option(
-    "--input_height",
-    "-ih",
-    help="input height",
-)
-@click.option(
-    "--input_width",
-    "-iw",
-    help="input width",
-)
-@click.option(
-    "--min_area_size",
-    "-min",
-    help="min area size of regions considered for reading order training.",
-)
-def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size):
-    xml_files_ind = os.listdir(dir_xml)
+
+def machine_based_reading_order(dir_xml, xml_file, dir_out, model):
+    raedingorder_object = machine_based_reading_order_on_layout(model, dir_out=dir_out, logger=getLogger('enhancement'))
+    
+    if dir_xml:
+        raedingorder_object.run(dir_in=dir_xml)
+    else:
+        raedingorder_object.run(xml_filename=xml_file)
+    
 
 @main.command()
 @click.option('--patches/--no-patches', default=True, help='by enabling this parameter you let the model to see the image in patches.')
