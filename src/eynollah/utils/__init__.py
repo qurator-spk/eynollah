@@ -2156,6 +2156,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                     x_end_itself=x_end_copy.pop(il)
 
                     #print(y_copy,'y_copy2')
+                    # FIXME: cannot convert numpy.float64 to integer...
                     for column in range(x_start_itself, x_end_itself+1):
                         #print(column,'cols')
                         y_in_cols=[]

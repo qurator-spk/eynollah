@@ -1,7 +1,7 @@
 from functools import partial
 import cv2
 import numpy as np
-from shapely import geometry
+from shapely.geometry import Polygon
 
 from .rotate import rotate_image, rotation_image_new
 
@@ -43,7 +43,7 @@ def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area
         if len(c) < 3:  # A polygon cannot have less than 3 points
             continue
 
-        polygon = geometry.Polygon([point[0] for point in c])
+        polygon = Polygon([point[0] for point in c])
         area = polygon.area
         if (area >= min_area * np.prod(image.shape[:2]) and
             area <= max_area * np.prod(image.shape[:2]) and
@@ -58,7 +58,7 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
         if len(c) < 3:  # A polygon cannot have less than 3 points
             continue
 
-        polygon = geometry.Polygon([point[0] for point in c])
+        polygon = Polygon([point[0] for point in c])
         # area = cv2.contourArea(c)
         area = polygon.area
         ##print(np.prod(thresh.shape[:2]))
@@ -332,3 +332,27 @@ def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, 
 
     return img_ret[:, :, 0]
 
+def make_valid(polygon: Polygon) -> Polygon:
+    """Ensures shapely.geometry.Polygon object is valid by repeated rearrangement/simplification/enlargement."""
+    points = list(polygon.exterior.coords)
+    # try by re-arranging points
+    for split in range(1, len(points)):
+        if polygon.is_valid or polygon.simplify(polygon.area).is_valid:
+            break
+        # simplification may not be possible (at all) due to ordering
+        # in that case, try another starting point
+        polygon = Polygon(points[-split:]+points[:-split])
+    # try by simplification
+    for tolerance in range(int(polygon.area + 1.5)):
+        if polygon.is_valid:
+            break
+        # simplification may require a larger tolerance
+        polygon = polygon.simplify(tolerance + 1)
+    # try by enlarging
+    for tolerance in range(1, int(polygon.area + 2.5)):
+        if polygon.is_valid:
+            break
+        # enlargement may require a larger tolerance
+        polygon = polygon.buffer(tolerance)
+    assert polygon.is_valid, polygon.wkt
+    return polygon
