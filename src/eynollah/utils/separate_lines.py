@@ -1345,24 +1345,26 @@ def textline_contours_postprocessing(textline_mask, slope, contour_text_interest
 
     return contours_rotated_clean
 
-def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, plotter=None):
+def separate_lines_new2(img_crop, thetha, num_col, slope_region, logger=None, plotter=None):
     if logger is None:
         logger = getLogger(__package__)
+    if not np.prod(img_crop.shape):
+        return img_crop
 
     if num_col == 1:
-        num_patches = int(img_path.shape[1] / 200.0)
+        num_patches = int(img_crop.shape[1] / 200.0)
     else:
-        num_patches = int(img_path.shape[1] / 140.0)
-    # num_patches=int(img_path.shape[1]/200.)
+        num_patches = int(img_crop.shape[1] / 140.0)
+    # num_patches=int(img_crop.shape[1]/200.)
     if num_patches == 0:
         num_patches = 1
 
-    img_patch_ineterst = img_path[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[15]+dis_down ,:]
+    img_patch_interest = img_crop[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[15]+dis_down ,:]
 
-    # plt.imshow(img_patch_ineterst)
+    # plt.imshow(img_patch_interest)
     # plt.show()
 
-    length_x = int(img_path.shape[1] / float(num_patches))
+    length_x = int(img_crop.shape[1] / float(num_patches))
     # margin = int(0.04 * length_x) just recently this was changed because it break lines into 2
     margin = int(0.04 * length_x)
     # if margin<=4:
@@ -1370,7 +1372,7 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
     # margin=0
 
     width_mid = length_x - 2 * margin
-    nxf = img_path.shape[1] / float(width_mid)
+    nxf = img_crop.shape[1] / float(width_mid)
 
     if nxf > int(nxf):
         nxf = int(nxf) + 1
@@ -1386,12 +1388,12 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
             index_x_d = i * width_mid
             index_x_u = index_x_d + length_x
 
-        if index_x_u > img_path.shape[1]:
-            index_x_u = img_path.shape[1]
-            index_x_d = img_path.shape[1] - length_x
+        if index_x_u > img_crop.shape[1]:
+            index_x_u = img_crop.shape[1]
+            index_x_d = img_crop.shape[1] - length_x
 
         # img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-        img_xline = img_patch_ineterst[:, index_x_d:index_x_u]
+        img_xline = img_patch_interest[:, index_x_d:index_x_u]
 
         try:
             assert img_xline.any()
@@ -1407,9 +1409,9 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
         img_line_rotated = rotate_image(img_xline, slope_xline)
         img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
         
-    img_patch_ineterst = img_path[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[14]+dis_down ,:]
+    img_patch_interest = img_crop[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[14]+dis_down ,:]
 
-    img_patch_ineterst_revised = np.zeros(img_patch_ineterst.shape)
+    img_patch_interest_revised = np.zeros(img_patch_interest.shape)
 
     for i in range(nxf):
         if i == 0:
@@ -1419,11 +1421,11 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
             index_x_d = i * width_mid
             index_x_u = index_x_d + length_x
 
-        if index_x_u > img_path.shape[1]:
-            index_x_u = img_path.shape[1]
-            index_x_d = img_path.shape[1] - length_x
+        if index_x_u > img_crop.shape[1]:
+            index_x_u = img_crop.shape[1]
+            index_x_d = img_crop.shape[1] - length_x
 
-        img_xline = img_patch_ineterst[:, index_x_d:index_x_u]
+        img_xline = img_patch_interest[:, index_x_d:index_x_u]
 
         img_int = np.zeros((img_xline.shape[0], img_xline.shape[1]))
         img_int[:, :] = img_xline[:, :]  # img_patch_org[:,:,0]
@@ -1446,9 +1448,9 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
             int(img_int.shape[1] * (1.0)) : int(img_int.shape[1] * (1.0)) + img_int.shape[1]]
 
         img_patch_separated_returned_true_size = img_patch_separated_returned_true_size[:, margin : length_x - margin]
-        img_patch_ineterst_revised[:, index_x_d + margin : index_x_u - margin] = img_patch_separated_returned_true_size
+        img_patch_interest_revised[:, index_x_d + margin : index_x_u - margin] = img_patch_separated_returned_true_size
 
-    return img_patch_ineterst_revised
+    return img_patch_interest_revised
 
 def do_image_rotation(angle, img, sigma_des, logger=None):
     if logger is None:
@@ -1546,7 +1548,7 @@ def do_work_of_slopes_new(
     img_int_p = all_text_region_raw[:,:]
     img_int_p = cv2.erode(img_int_p, KERNEL, iterations=2)
 
-    if img_int_p.shape[0] /img_int_p.shape[1] < 0.1:
+    if not np.prod(img_int_p.shape) or img_int_p.shape[0] /img_int_p.shape[1] < 0.1:
         slope = 0
         slope_for_all = slope_deskew
         all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w]
@@ -1603,7 +1605,7 @@ def do_work_of_slopes_new_curved(
     # plt.imshow(img_int_p)
     # plt.show()
 
-    if img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
+    if not np.prod(img_int_p.shape) or img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
         slope = 0
         slope_for_all = slope_deskew
     else:
