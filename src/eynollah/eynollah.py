@@ -3678,7 +3678,7 @@ class Eynollah:
                 for region in all_found_textline_polygons]
 
     def dilate_textregions_contours(self, all_found_textline_polygons):
-        return [np.array(make_valid(Polygon(poly[:, 0])).buffer(5).exterior.coords,
+        return [np.array(make_valid(Polygon(poly[:, 0]).buffer(5)).exterior.coords,
                          dtype=int)[:, np.newaxis]
                 for poly in all_found_textline_polygons]
 
