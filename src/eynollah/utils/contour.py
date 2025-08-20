@@ -247,23 +247,19 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
         cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
     return cont_int[0], index_r_con, confidence_contour
 
-def get_textregion_contours_in_org_image_light(cnts, img, slope_first, confidence_matrix, map=map):
+def get_textregion_contours_in_org_image_light(cnts, img, confidence_matrix):
     if not len(cnts):
         return [], []
-    
-    confidence_matrix = cv2.resize(confidence_matrix, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
-    img = cv2.resize(img, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
-    ##cnts = list( (np.array(cnts)/2).astype(np.int16) )
-    #cnts = cnts/2
-    cnts = [(i/6).astype(int) for i in cnts]
-    results = map(partial(do_back_rotation_and_get_cnt_back,
-                          img=img,
-                          slope_first=slope_first,
-                          confidence_matrix=confidence_matrix,
-                          ),
-                  cnts, range(len(cnts)))
-    contours, indexes, conf_contours = tuple(zip(*results))
-    return [i*6 for i in contours], list(conf_contours)
+
+    confidence_matrix = cv2.resize(confidence_matrix,
+                                   (img.shape[1] // 6, img.shape[0] // 6),
+                                   interpolation=cv2.INTER_NEAREST)
+    confs = []
+    for cnt in cnts:
+        cnt_mask = np.zeros(confidence_matrix.shape)
+        cnt_mask = cv2.fillPoly(cnt_mask, pts=[cnt // 6], color=1.0)
+        confs.append(np.sum(confidence_matrix * cnt_mask) / np.sum(cnt_mask))
+    return cnts, confs
 
 def return_contours_of_interested_textline(region_pre_p, pixel):
     # pixels of images are identified by 5
