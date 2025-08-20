@@ -957,11 +957,11 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
     regions_model_full = cv2.resize(regions_model_full, (regions_model_full.shape[1] // zoom,
                                                          regions_model_full.shape[0] // zoom),
                                     interpolation=cv2.INTER_NEAREST)
-    contours_only_text_parent = [(i / zoom).astype(int) for i in  contours_only_text_parent]
+    contours_only_text_parent_z = [(cnt / zoom).astype(int) for cnt in contours_only_text_parent]
 
     ###
     cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin = \
-        find_new_features_of_contours(contours_only_text_parent)
+        find_new_features_of_contours(contours_only_text_parent_z)
 
     length_con=x_max_main-x_min_main
     height_con=y_max_main-y_min_main
@@ -984,8 +984,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
     contours_only_text_parent_main_d=[]
     contours_only_text_parent_head_d=[]
 
-    for ii in range(len(contours_only_text_parent)):
-        con=contours_only_text_parent[ii]
+    for ii, con in enumerate(contours_only_text_parent_z):
         img=np.zeros((regions_model_1.shape[0], regions_model_1.shape[1], 3))
         img = cv2.fillPoly(img, pts=[con], color=(255, 255, 255))
 
@@ -996,23 +995,22 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
 
         if (pixels_header/float(pixels_main)>=0.3) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ):
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=2
-            contours_only_text_parent_head.append(con)
+            contours_only_text_parent_head.append(contours_only_text_parent[ii])
+            conf_contours_head.append(None) # why not conf_contours[ii], too?
             if contours_only_text_parent_d_ordered is not None:
                 contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_head.append(all_box_coord[ii])
             slopes_head.append(slopes[ii])
             all_found_textline_polygons_head.append(all_found_textline_polygons[ii])
-            conf_contours_head.append(None)
         else:
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=1
-            contours_only_text_parent_main.append(con)
+            contours_only_text_parent_main.append(contours_only_text_parent[ii])
             conf_contours_main.append(conf_contours[ii])
             if contours_only_text_parent_d_ordered is not None:
                 contours_only_text_parent_main_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_main.append(all_box_coord[ii])
             slopes_main.append(slopes[ii])
             all_found_textline_polygons_main.append(all_found_textline_polygons[ii])
-
         #print(all_pixels,pixels_main,pixels_header)
 
     ### to make it faster
@@ -1020,8 +1018,6 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
     # regions_model_full = cv2.resize(img, (regions_model_full.shape[1] // zoom,
     #                                       regions_model_full.shape[0] // zoom),
     #                                 interpolation=cv2.INTER_NEAREST)
-    contours_only_text_parent_head = [(i * zoom).astype(int) for i in contours_only_text_parent_head]
-    contours_only_text_parent_main = [(i * zoom).astype(int) for i in contours_only_text_parent_main]
     ###
 
     return (regions_model_1,
