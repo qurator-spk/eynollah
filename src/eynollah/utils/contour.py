@@ -325,6 +325,17 @@ def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, 
 
     return img_ret[:, :, 0]
 
+def dilate_textline_contours(self, all_found_textline_polygons):
+    return [[np.array(make_valid(Polygon(poly[:, 0]).buffer(5)).exterior.coords[:-1],
+                      dtype=np.uint)[:, np.newaxis]
+             for poly in region]
+            for region in all_found_textline_polygons]
+
+def dilate_textregion_contours(self, all_found_textline_polygons):
+    return [np.array(make_valid(Polygon(poly[:, 0]).buffer(5)).exterior.coords[:-1],
+                     dtype=np.uint)[:, np.newaxis]
+            for poly in all_found_textline_polygons]
+
 def make_valid(polygon: Polygon) -> Polygon:
     """Ensures shapely.geometry.Polygon object is valid by repeated rearrangement/simplification/enlargement."""
     def isint(x):
