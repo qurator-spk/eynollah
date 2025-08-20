@@ -1713,9 +1713,9 @@ class Eynollah:
         mask_texts_only = (prediction_regions_org[:,:] ==1)*1
         mask_images_only=(prediction_regions_org[:,:] ==2)*1
 
-        polygons_lines_xml, hir_lines_xml = return_contours_of_image(mask_lines_only)
-        polygons_lines_xml = textline_con_fil = filter_contours_area_of_image(
-            mask_lines_only, polygons_lines_xml, hir_lines_xml, max_area=1, min_area=0.00001)
+        polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
+        polygons_seplines = textline_con_fil = filter_contours_area_of_image(
+            mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001)
 
         polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
         polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
@@ -1779,7 +1779,7 @@ class Eynollah:
                                                         [page_coord_img[2], page_coord_img[1]]]))
 
         self.logger.debug("exit get_regions_extract_images_only")
-        return text_regions_p_true, erosion_hurts, polygons_lines_xml, polygons_of_images_fin, image_page, page_coord, cont_page
+        return text_regions_p_true, erosion_hurts, polygons_seplines, polygons_of_images_fin, image_page, page_coord, cont_page
 
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier, skip_layout_and_reading_order=False):
         self.logger.debug("enter get_regions_light_v")
@@ -1895,24 +1895,24 @@ class Eynollah:
             mask_texts_only = cv2.dilate(mask_texts_only, kernel=np.ones((2,2), np.uint8), iterations=1)
             mask_images_only=(prediction_regions_org[:,:] ==2)*1
 
-            polygons_lines_xml, hir_lines_xml = return_contours_of_image(mask_lines_only)
+            polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
             test_khat = np.zeros(prediction_regions_org.shape)
-            test_khat = cv2.fillPoly(test_khat, pts=polygons_lines_xml, color=(1,1,1))
+            test_khat = cv2.fillPoly(test_khat, pts=polygons_seplines, color=(1,1,1))
 
             #plt.imshow(test_khat[:,:])
             #plt.show()
             #for jv in range(1):
-                #print(jv, hir_lines_xml[0][232][3])
+                #print(jv, hir_seplines[0][232][3])
                 #test_khat = np.zeros(prediction_regions_org.shape)
-                #test_khat = cv2.fillPoly(test_khat, pts = [polygons_lines_xml[232]], color=(1,1,1))
+                #test_khat = cv2.fillPoly(test_khat, pts = [polygons_seplines[232]], color=(1,1,1))
                 #plt.imshow(test_khat[:,:])
                 #plt.show()
 
-            polygons_lines_xml = filter_contours_area_of_image(
-                mask_lines_only, polygons_lines_xml, hir_lines_xml, max_area=1, min_area=0.00001)
+            polygons_seplines = filter_contours_area_of_image(
+                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001)
 
             test_khat = np.zeros(prediction_regions_org.shape)
-            test_khat = cv2.fillPoly(test_khat, pts = polygons_lines_xml, color=(1,1,1))
+            test_khat = cv2.fillPoly(test_khat, pts = polygons_seplines, color=(1,1,1))
 
             #plt.imshow(test_khat[:,:])
             #plt.show()
@@ -1937,7 +1937,7 @@ class Eynollah:
             #plt.show()
             #print("inside 4 ", time.time()-t_in)
             self.logger.debug("exit get_regions_light_v")
-            return text_regions_p_true, erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin, confidence_matrix
+            return text_regions_p_true, erosion_hurts, polygons_seplines, textline_mask_tot_ea, img_bin, confidence_matrix
         else:
             img_bin = resize_image(img_bin,img_height_h, img_width_h )
             self.logger.debug("exit get_regions_light_v")
@@ -2020,9 +2020,9 @@ class Eynollah:
             mask_texts_only=(prediction_regions_org[:,:]==1)*1
             mask_images_only=(prediction_regions_org[:,:]==2)*1
 
-            polygons_lines_xml, hir_lines_xml = return_contours_of_image(mask_lines_only)
-            polygons_lines_xml = filter_contours_area_of_image(
-                mask_lines_only, polygons_lines_xml, hir_lines_xml, max_area=1, min_area=0.00001)
+            polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
+            polygons_seplines = filter_contours_area_of_image(
+                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001)
 
             polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only, 1, 0.00001)
             polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only, 1, 0.00001)
@@ -2034,7 +2034,7 @@ class Eynollah:
             text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
 
             self.logger.debug("exit get_regions_from_xy_2models")
-            return text_regions_p_true, erosion_hurts, polygons_lines_xml
+            return text_regions_p_true, erosion_hurts, polygons_seplines
         except:
             if self.input_binary:
                 prediction_bin = np.copy(img_org)
@@ -2069,9 +2069,9 @@ class Eynollah:
             mask_texts_only = (prediction_regions_org == 1)*1
             mask_images_only= (prediction_regions_org == 2)*1
 
-            polygons_lines_xml, hir_lines_xml = return_contours_of_image(mask_lines_only)
-            polygons_lines_xml = filter_contours_area_of_image(
-                mask_lines_only, polygons_lines_xml, hir_lines_xml, max_area=1, min_area=0.00001)
+            polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
+            polygons_seplines = filter_contours_area_of_image(
+                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001)
 
             polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
             polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
@@ -2084,7 +2084,7 @@ class Eynollah:
 
             erosion_hurts = True
             self.logger.debug("exit get_regions_from_xy_2models")
-            return text_regions_p_true, erosion_hurts, polygons_lines_xml
+            return text_regions_p_true, erosion_hurts, polygons_seplines
 
     def do_order_of_regions_full_layout(
             self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
@@ -4102,7 +4102,7 @@ class Eynollah:
         img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
         self.logger.info("Enhancing took %.1fs ", time.time() - t0)
         if self.extract_only_images:
-            text_regions_p_1, erosion_hurts, polygons_lines_xml, polygons_of_images, image_page, page_coord, cont_page = \
+            text_regions_p_1, erosion_hurts, polygons_seplines, polygons_of_images, image_page, page_coord, cont_page = \
                 self.get_regions_light_v_extract_only_images(img_res, is_image_enhanced, num_col_classifier)
             ocr_all_textlines = None
             pcgts = self.writer.build_pagexml_no_full_layout(
@@ -4145,7 +4145,7 @@ class Eynollah:
             polygons_of_marginals = []
             all_found_textline_polygons_marginals = []
             all_box_coord_marginals = []
-            polygons_lines_xml = []
+            polygons_seplines = []
             contours_tables = []
             ocr_all_textlines = None
             conf_contours_textregions =None
@@ -4153,13 +4153,13 @@ class Eynollah:
                 cont_page, page_coord, order_text_new, id_of_texts_tot,
                 all_found_textline_polygons, page_coord, polygons_of_images, polygons_of_marginals,
                 all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
-                cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, conf_contours_textregions)
+                cont_page, polygons_seplines, contours_tables, ocr_all_textlines, conf_contours_textregions)
             return pcgts
 
         #print("text region early -1 in %.1fs", time.time() - t0)
         t1 = time.time()
         if self.light_version:
-            text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin_light, confidence_matrix = \
+            text_regions_p_1, erosion_hurts, polygons_seplines, textline_mask_tot_ea, img_bin_light, confidence_matrix = \
                 self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
             #print("text region early -2 in %.1fs", time.time() - t0)
 
@@ -4186,7 +4186,7 @@ class Eynollah:
             textline_mask_tot_ea_org = np.copy(textline_mask_tot_ea)
             #print("text region early -4 in %.1fs", time.time() - t0)
         else:
-            text_regions_p_1 ,erosion_hurts, polygons_lines_xml = \
+            text_regions_p_1, erosion_hurts, polygons_seplines = \
                 self.get_regions_from_xy_2models(img_res, is_image_enhanced,
                                                  num_col_classifier)
             self.logger.info("Textregion detection took %.1fs ", time.time() - t1)
@@ -4385,13 +4385,13 @@ class Eynollah:
                     [], [], page_coord, [], [], [], [], [], [],
                     polygons_of_images, contours_tables, [],
                     polygons_of_marginals, empty_marginals, empty_marginals, [], [], [],
-                    cont_page, polygons_lines_xml, [], [], [])
+                    cont_page, polygons_seplines, [], [], [])
             else:
                 pcgts = self.writer.build_pagexml_no_full_layout(
                     [], page_coord, [], [], [], [],
                     polygons_of_images,
                     polygons_of_marginals, empty_marginals, empty_marginals, [], [],
-                    cont_page, polygons_lines_xml, contours_tables, [], [])
+                    cont_page, polygons_seplines, contours_tables, [], [])
             return pcgts
 
 
@@ -4586,7 +4586,7 @@ class Eynollah:
                 all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h,
                 polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals,
                 all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals,
-                cont_page, polygons_lines_xml, ocr_all_textlines, conf_contours_textregions, conf_contours_textregions_h)
+                cont_page, polygons_seplines, ocr_all_textlines, conf_contours_textregions, conf_contours_textregions_h)
             return pcgts
 
         contours_only_text_parent_h = None
@@ -4665,7 +4665,7 @@ class Eynollah:
             txt_con_org, page_coord, order_text_new, id_of_texts_tot,
             all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals,
             all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
-            cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, conf_contours_textregions)
+            cont_page, polygons_seplines, contours_tables, ocr_all_textlines, conf_contours_textregions)
         return pcgts
 
 
