@@ -48,8 +48,8 @@ def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area
         if (area >= min_area * np.prod(image.shape[:2]) and
             area <= max_area * np.prod(image.shape[:2]) and
             hierarchy[0][jv][3] == -1):
-            found_polygons_early.append(np.array([[point]
-                                                  for point in polygon.exterior.coords[:-1]], dtype=np.uint))
+            found_polygons_early.append(np.array(make_valid(polygon).exterior.coords[:-1],
+                                                 dtype=np.uint)[:, np.newaxis])
     return found_polygons_early
 
 def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, min_area):
@@ -69,8 +69,8 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
             # hierarchy[0][jv][3]==-1
             True):
             # print(c[0][0][1])
-            found_polygons_early.append(np.array([[point]
-                                                  for point in polygon.exterior.coords[:-1]], dtype=np.int32))
+            found_polygons_early.append(np.array(make_valid(polygon).exterior.coords[:-1],
+                                                 dtype=np.uint)[:, np.newaxis])
     return found_polygons_early
 
 def find_new_features_of_contours(contours_main):
