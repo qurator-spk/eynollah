@@ -2927,12 +2927,10 @@ class Eynollah:
         #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
         slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), 2, 30, True,
                                           map=self.executor.map, logger=self.logger, plotter=self.plotter)
-        slope_first = 0
-
         if self.plotter:
             self.plotter.save_deskewed_image(slope_deskew)
         self.logger.info("slope_deskew: %.2f°", slope_deskew)
-        return slope_deskew, slope_first
+        return slope_deskew
 
     def run_marginals(
             self, image_page, textline_mask_tot_ea, mask_images, mask_lines,
@@ -4173,9 +4171,9 @@ class Eynollah:
 
                 textline_mask_tot_ea_deskew = resize_image(textline_mask_tot_ea,img_h_new, img_w_new )
 
-                slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea_deskew)
+                slope_deskew = self.run_deskew(textline_mask_tot_ea_deskew)
             else:
-                slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
+                slope_deskew = self.run_deskew(textline_mask_tot_ea)
             #print("text region early -2,5 in %.1fs", time.time() - t0)
             #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
             num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, \
@@ -4216,7 +4214,7 @@ class Eynollah:
             textline_mask_tot_ea = self.run_textline(image_page)
             self.logger.info("textline detection took %.1fs", time.time() - t1)
             t1 = time.time()
-            slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
+            slope_deskew = self.run_deskew(textline_mask_tot_ea)
             self.logger.info("deskewing took %.1fs", time.time() - t1)
         elif num_col_classifier in (1,2):
             org_h_l_m = textline_mask_tot_ea.shape[0]
@@ -4405,12 +4403,12 @@ class Eynollah:
                 contours_only_text_parent, contours_only_text_parent_d_ordered, text_only, marginal_cnts=polygons_of_marginals)
             #print("text region early 3.5 in %.1fs", time.time() - t0)
             txt_con_org , conf_contours_textregions = get_textregion_contours_in_org_image_light(
-                contours_only_text_parent, self.image, slope_first, confidence_matrix,  map=self.executor.map)
+                contours_only_text_parent, self.image, confidence_matrix,  map=self.executor.map)
             #txt_con_org = self.dilate_textregions_contours(txt_con_org)
             #contours_only_text_parent = self.dilate_textregions_contours(contours_only_text_parent)
         else:
             txt_con_org , conf_contours_textregions = get_textregion_contours_in_org_image_light(
-                contours_only_text_parent, self.image, slope_first, confidence_matrix,  map=self.executor.map)
+                contours_only_text_parent, self.image, confidence_matrix,  map=self.executor.map)
         #print("text region early 4 in %.1fs", time.time() - t0)
         boxes_text, _ = get_text_region_boxes_by_given_contours(contours_only_text_parent)
         boxes_marginals, _ = get_text_region_boxes_by_given_contours(polygons_of_marginals)
