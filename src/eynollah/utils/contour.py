@@ -49,7 +49,7 @@ def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area
             area <= max_area * np.prod(image.shape[:2]) and
             hierarchy[0][jv][3] == -1):
             found_polygons_early.append(np.array([[point]
-                                                  for point in polygon.exterior.coords], dtype=np.uint))
+                                                  for point in polygon.exterior.coords[:-1]], dtype=np.uint))
     return found_polygons_early
 
 def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, min_area):
@@ -70,7 +70,7 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
             True):
             # print(c[0][0][1])
             found_polygons_early.append(np.array([[point]
-                                                  for point in polygon.exterior.coords], dtype=np.int32))
+                                                  for point in polygon.exterior.coords[:-1]], dtype=np.int32))
     return found_polygons_early
 
 def find_new_features_of_contours(contours_main):
@@ -330,6 +330,11 @@ def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, 
 
 def make_valid(polygon: Polygon) -> Polygon:
     """Ensures shapely.geometry.Polygon object is valid by repeated rearrangement/simplification/enlargement."""
+    def isint(x):
+        return isinstance(x, int) or int(x) == x
+    # make sure rounding does not invalidate
+    if not all(map(isint, np.array(polygon.exterior.coords).flat)) and polygon.minimum_clearance < 1.0:
+        polygon = Polygon(np.round(polygon.exterior.coords))
     points = list(polygon.exterior.coords)
     # try by re-arranging points
     for split in range(1, len(points)):
