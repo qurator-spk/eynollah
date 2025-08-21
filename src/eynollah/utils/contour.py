@@ -1,7 +1,15 @@
+from typing import Sequence, Union
+from numbers import Number
 from functools import partial
+import itertools
+
 import cv2
 import numpy as np
-from shapely.geometry import Polygon
+from scipy.sparse.csgraph import minimum_spanning_tree
+from shapely.geometry import Polygon, LineString
+from shapely.geometry.polygon import orient
+from shapely import set_precision
+from shapely.ops import unary_union, nearest_points
 
 from .rotate import rotate_image, rotation_image_new
 
@@ -37,29 +45,28 @@ def get_text_region_boxes_by_given_contours(contours):
 
     return boxes, contours_new
 
-def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area):
+def filter_contours_area_of_image(image, contours, hierarchy, max_area=1.0, min_area=0.0, dilate=0):
     found_polygons_early = []
-    for jv,c in enumerate(contours):
-        if len(c) < 3:  # A polygon cannot have less than 3 points
+    for jv, contour in enumerate(contours):
+        if len(contour) < 3:  # A polygon cannot have less than 3 points
             continue
 
-        polygon = Polygon([point[0] for point in c])
+        polygon = contour2polygon(contour, dilate=dilate)
         area = polygon.area
         if (area >= min_area * np.prod(image.shape[:2]) and
             area <= max_area * np.prod(image.shape[:2]) and
             hierarchy[0][jv][3] == -1):
-            found_polygons_early.append(np.array(make_valid(polygon).exterior.coords[:-1],
-                                                 dtype=np.uint)[:, np.newaxis])
+            found_polygons_early.append(polygon2contour(polygon))
     return found_polygons_early
 
-def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, min_area):
+def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area=1.0, min_area=0.0, dilate=0):
     found_polygons_early = []
-    for jv,c in enumerate(contours):
-        if len(c) < 3:  # A polygon cannot have less than 3 points
+    for jv, contour in enumerate(contours):
+        if len(contour) < 3:  # A polygon cannot have less than 3 points
             continue
 
-        polygon = Polygon([point[0] for point in c])
-        # area = cv2.contourArea(c)
+        polygon = contour2polygon(contour, dilate=dilate)
+        # area = cv2.contourArea(contour)
         area = polygon.area
         ##print(np.prod(thresh.shape[:2]))
         # Check that polygon has area greater than minimal area
@@ -68,9 +75,8 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
             area <= max_area * np.prod(image.shape[:2]) and
             # hierarchy[0][jv][3]==-1
             True):
-            # print(c[0][0][1])
-            found_polygons_early.append(np.array(make_valid(polygon).exterior.coords[:-1],
-                                                 dtype=np.uint)[:, np.newaxis])
+            # print(contour[0][0][1])
+            found_polygons_early.append(polygon2contour(polygon))
     return found_polygons_early
 
 def find_new_features_of_contours(contours_main):
@@ -328,16 +334,29 @@ def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, 
 
     return img_ret[:, :, 0]
 
-def dilate_textline_contours(self, all_found_textline_polygons):
-    return [[np.array(make_valid(Polygon(poly[:, 0]).buffer(5)).exterior.coords[:-1],
-                      dtype=np.uint)[:, np.newaxis]
-             for poly in region]
+def dilate_textline_contours(all_found_textline_polygons):
+    return [[polygon2contour(contour2polygon(contour, dilate=5))
+             for contour in region]
             for region in all_found_textline_polygons]
 
-def dilate_textregion_contours(self, all_found_textline_polygons):
-    return [np.array(make_valid(Polygon(poly[:, 0]).buffer(5)).exterior.coords[:-1],
-                     dtype=np.uint)[:, np.newaxis]
-            for poly in all_found_textline_polygons]
+def dilate_textregion_contours(all_found_textline_polygons):
+    return [polygon2contour(contour2polygon(contour, dilate=5))
+            for contour in all_found_textline_polygons]
+
+def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number]]]], dilate=0):
+    polygon = Polygon([point[0] for point in contour])
+    if dilate:
+        polygon = polygon.buffer(dilate)
+    if polygon.geom_type == 'GeometryCollection':
+        # heterogeneous result: filter zero-area shapes (LineString, Point)
+        polygon = unary_union([geom for geom in polygon.geoms if geom.area > 0])
+    if polygon.geom_type == 'MultiPolygon':
+        # homogeneous result: construct convex hull to connect
+        polygon = join_polygons(polygon.geoms)
+    return make_valid(polygon)
+
+def polygon2contour(polygon: Polygon) -> np.ndarray:
+    return np.array(polygon.exterior.coords[:-1], dtype=np.uint)[:, np.newaxis]
 
 def make_valid(polygon: Polygon) -> Polygon:
     """Ensures shapely.geometry.Polygon object is valid by repeated rearrangement/simplification/enlargement."""
@@ -346,7 +365,7 @@ def make_valid(polygon: Polygon) -> Polygon:
     # make sure rounding does not invalidate
     if not all(map(isint, np.array(polygon.exterior.coords).flat)) and polygon.minimum_clearance < 1.0:
         polygon = Polygon(np.round(polygon.exterior.coords))
-    points = list(polygon.exterior.coords)
+    points = list(polygon.exterior.coords[:-1])
     # try by re-arranging points
     for split in range(1, len(points)):
         if polygon.is_valid or polygon.simplify(polygon.area).is_valid:
@@ -368,3 +387,43 @@ def make_valid(polygon: Polygon) -> Polygon:
         polygon = polygon.buffer(tolerance)
     assert polygon.is_valid, polygon.wkt
     return polygon
+
+def join_polygons(polygons: Sequence[Polygon], scale=20) -> Polygon:
+    """construct concave hull (alpha shape) from input polygons by connecting their pairwise nearest points"""
+    # ensure input polygons are simply typed and all oriented equally
+    polygons = [orient(poly)
+                for poly in itertools.chain.from_iterable(
+                        [poly.geoms
+                         if poly.geom_type in ['MultiPolygon', 'GeometryCollection']
+                         else [poly]
+                         for poly in polygons])]
+    npoly = len(polygons)
+    if npoly == 1:
+        return polygons[0]
+    # find min-dist path through all polygons (travelling salesman)
+    pairs = itertools.combinations(range(npoly), 2)
+    dists = np.zeros((npoly, npoly), dtype=float)
+    for i, j in pairs:
+        dist = polygons[i].distance(polygons[j])
+        if dist < 1e-5:
+            dist = 1e-5 # if pair merely touches, we still need to get an edge
+        dists[i, j] = dist
+        dists[j, i] = dist
+    dists = minimum_spanning_tree(dists, overwrite=True)
+    # add bridge polygons (where necessary)
+    for prevp, nextp in zip(*dists.nonzero()):
+        prevp = polygons[prevp]
+        nextp = polygons[nextp]
+        nearest = nearest_points(prevp, nextp)
+        bridgep = orient(LineString(nearest).buffer(max(1, scale/5), resolution=1), -1)
+        polygons.append(bridgep)
+    jointp = unary_union(polygons)
+    assert jointp.geom_type == 'Polygon', jointp.wkt
+    # follow-up calculations will necessarily be integer;
+    # so anticipate rounding here and then ensure validity
+    jointp2 = set_precision(jointp, 1.0)
+    if jointp2.geom_type != 'Polygon' or not jointp2.is_valid:
+        jointp2 = Polygon(np.round(jointp.exterior.coords))
+        jointp2 = make_valid(jointp2)
+    assert jointp2.geom_type == 'Polygon', jointp2.wkt
+    return jointp2

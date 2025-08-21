@@ -27,7 +27,6 @@ from loky import ProcessPoolExecutor
 import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
-from shapely.geometry import Polygon
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from numba import cuda
