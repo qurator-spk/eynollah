@@ -1714,8 +1714,8 @@ class Eynollah:
         mask_images_only=(prediction_regions_org[:,:] ==2)*1
 
         polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
-        polygons_seplines = textline_con_fil = filter_contours_area_of_image(
-            mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001)
+        polygons_seplines = filter_contours_area_of_image(
+            mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001, dilate=1)
 
         polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
         polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
@@ -1909,7 +1909,7 @@ class Eynollah:
                 #plt.show()
 
             polygons_seplines = filter_contours_area_of_image(
-                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001)
+                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001, dilate=1)
 
             test_khat = np.zeros(prediction_regions_org.shape)
             test_khat = cv2.fillPoly(test_khat, pts = polygons_seplines, color=(1,1,1))
@@ -2022,7 +2022,7 @@ class Eynollah:
 
             polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
             polygons_seplines = filter_contours_area_of_image(
-                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001)
+                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001, dilate=1)
 
             polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only, 1, 0.00001)
             polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only, 1, 0.00001)
@@ -2071,7 +2071,7 @@ class Eynollah:
 
             polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
             polygons_seplines = filter_contours_area_of_image(
-                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001)
+                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001, dilate=1)
 
             polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
             polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)

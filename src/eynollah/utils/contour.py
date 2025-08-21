@@ -332,12 +332,12 @@ def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, 
     return img_ret[:, :, 0]
 
 def dilate_textline_contours(all_found_textline_polygons):
-    return [[polygon2contour(contour2polygon(contour, dilate=5))
+    return [[polygon2contour(contour2polygon(contour, dilate=6))
              for contour in region]
             for region in all_found_textline_polygons]
 
 def dilate_textregion_contours(all_found_textline_polygons):
-    return [polygon2contour(contour2polygon(contour, dilate=5))
+    return [polygon2contour(contour2polygon(contour, dilate=6))
             for contour in all_found_textline_polygons]
 
 def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number]]]], dilate=0):
