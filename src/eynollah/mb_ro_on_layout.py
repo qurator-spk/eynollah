@@ -64,7 +64,7 @@ class machine_based_reading_order_on_layout:
         self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
         atexit.register(self.executor.shutdown)
         self.dir_models = dir_models
-        self.model_reading_order_dir = dir_models + "/model_step_5100000_mb_ro"#"/model_ens_reading_order_machine_based"
+        self.model_reading_order_dir = dir_models + "/model_eynollah_reading_order_20250824"#"/model_ens_reading_order_machine_based"
         
         try:
             for device in tf.config.list_physical_devices('GPU'):
@@ -942,10 +942,18 @@ class machine_based_reading_order_on_layout:
         x_len = text_regions_p.shape[1]
 
         img_poly = np.zeros((y_len,x_len), dtype='uint8')
-        img_poly[text_regions_p[:,:]==1] = 1
-        img_poly[text_regions_p[:,:]==2] = 2
-        img_poly[text_regions_p[:,:]==3] = 4
-        img_poly[text_regions_p[:,:]==6] = 5
+        ###img_poly[text_regions_p[:,:]==1] = 1
+        ###img_poly[text_regions_p[:,:]==2] = 2
+        ###img_poly[text_regions_p[:,:]==3] = 4
+        ###img_poly[text_regions_p[:,:]==6] = 5
+        
+        ##img_poly[text_regions_p[:,:]==1] = 1
+        ##img_poly[text_regions_p[:,:]==2] = 2
+        ##img_poly[text_regions_p[:,:]==3] = 3
+        ##img_poly[text_regions_p[:,:]==4] = 4
+        ##img_poly[text_regions_p[:,:]==5] = 5
+        
+        img_poly = np.copy(text_regions_p)
         
         img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
         if contours_only_text_parent_h:

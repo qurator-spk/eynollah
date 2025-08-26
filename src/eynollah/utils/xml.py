@@ -46,16 +46,22 @@ def create_page_xml(imageFilename, height, width):
         ))
     return pcgts
 
-def xml_reading_order(page, order_of_texts, id_of_marginalia):
+def xml_reading_order(page, order_of_texts, id_of_marginalia_left, id_of_marginalia_right):
     region_order = ReadingOrderType()
     og = OrderedGroupType(id="ro357564684568544579089")
     page.set_ReadingOrder(region_order)
     region_order.set_OrderedGroup(og)
     region_counter = EynollahIdCounter()
+    
+    for id_marginal in id_of_marginalia_left:
+        og.add_RegionRefIndexed(RegionRefIndexedType(index=str(region_counter.get('region')), regionRef=id_marginal))
+        region_counter.inc('region')
+        
     for idx_textregion, _ in enumerate(order_of_texts):
         og.add_RegionRefIndexed(RegionRefIndexedType(index=str(region_counter.get('region')), regionRef=region_counter.region_id(order_of_texts[idx_textregion] + 1)))
         region_counter.inc('region')
-    for id_marginal in id_of_marginalia:
+        
+    for id_marginal in id_of_marginalia_right:
         og.add_RegionRefIndexed(RegionRefIndexedType(index=str(region_counter.get('region')), regionRef=id_marginal))
         region_counter.inc('region')
 

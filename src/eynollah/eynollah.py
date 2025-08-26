@@ -289,7 +289,7 @@ class Eynollah:
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_region_dir_p_ens_light_only_images_extraction = dir_models + "/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18"
-        self.model_reading_order_dir = dir_models + "/model_step_4800000_mb_ro"#"/model_ens_reading_order_machine_based"
+        self.model_reading_order_dir = dir_models + "/model_eynollah_reading_order_20250824"#"/model_mb_ro_aug_ens_11"#"/model_step_3200000_mb_ro"#"/model_ens_reading_order_machine_based"#"/model_mb_ro_aug_ens_8"#"/model_ens_reading_order_machine_based"
         #"/modelens_12sp_elay_0_3_4__3_6_n"
         #"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"
         #"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"
@@ -725,6 +725,7 @@ class Eynollah:
 
             label_p_pred = self.model_classifier.predict(img_in, verbose=0)
             num_col = np.argmax(label_p_pred[0]) + 1
+            
         elif (self.num_col_upper and self.num_col_lower) and (self.num_col_upper!=self.num_col_lower):
             if self.input_binary:
                 img_in = np.copy(img)
@@ -3090,6 +3091,26 @@ class Eynollah:
             num_col = num_col + 1
             if not num_column_is_classified:
                 num_col_classifier = num_col + 1
+            if self.num_col_upper and self.num_col_lower:
+                if self.num_col_upper == self.num_col_lower:
+                    num_col_classifier = self.num_col_upper
+                else:
+                    if num_col_classifier < self.num_col_lower:
+                        num_col_classifier = self.num_col_lower
+                    if num_col_classifier > self.num_col_upper:
+                        num_col_classifier = self.num_col_upper
+                        
+            elif self.num_col_lower and not self.num_col_upper:
+                if num_col_classifier < self.num_col_lower:
+                    num_col_classifier = self.num_col_lower
+                    
+            elif self.num_col_upper and not self.num_col_lower:
+                if num_col_classifier > self.num_col_upper:
+                    num_col_classifier = self.num_col_upper
+                    
+            else:
+                pass
+                
         except Exception as why:
             self.logger.error(why)
             num_col = None
@@ -3223,7 +3244,6 @@ class Eynollah:
         text_regions_p_1[mask_lines[:, :] == 1] = 3
         text_regions_p = text_regions_p_1[:, :]
         text_regions_p = np.array(text_regions_p)
-
         if num_col_classifier in (1, 2):
             try:
                 regions_without_separators = (text_regions_p[:, :] == 1) * 1
@@ -4447,6 +4467,43 @@ class Eynollah:
 
         return (slopes_rem, all_found_textline_polygons_rem, boxes_text_rem, txt_con_org_rem,
                 contours_only_text_parent_rem, index_by_text_par_con_rem_sort)
+    
+    def separate_marginals_to_left_and_right_and_order_from_top_to_down(self, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes_marginals, mid_point_of_page_width):
+        cx_marg, cy_marg, _, _, _, _, _ = find_new_features_of_contours(
+            polygons_of_marginals)
+        
+        cx_marg = np.array(cx_marg)
+        cy_marg = np.array(cy_marg)
+        
+        poly_marg_left = list( np.array(polygons_of_marginals)[cx_marg < mid_point_of_page_width] )
+        poly_marg_right = list( np.array(polygons_of_marginals)[cx_marg >= mid_point_of_page_width] )
+        
+        all_found_textline_polygons_marginals_left = list( np.array(all_found_textline_polygons_marginals)[cx_marg < mid_point_of_page_width] )
+        all_found_textline_polygons_marginals_right = list( np.array(all_found_textline_polygons_marginals)[cx_marg >= mid_point_of_page_width] )
+        
+        all_box_coord_marginals_left = list( np.array(all_box_coord_marginals)[cx_marg < mid_point_of_page_width] )
+        all_box_coord_marginals_right = list( np.array(all_box_coord_marginals)[cx_marg >= mid_point_of_page_width] )
+        
+        slopes_marg_left = list( np.array(slopes_marginals)[cx_marg < mid_point_of_page_width] )
+        slopes_marg_right = list( np.array(slopes_marginals)[cx_marg >= mid_point_of_page_width] )
+        
+        cy_marg_left = cy_marg[cx_marg < mid_point_of_page_width]
+        cy_marg_right = cy_marg[cx_marg >= mid_point_of_page_width]
+        
+        ordered_left_marginals = [poly for _, poly in sorted(zip(cy_marg_left, poly_marg_left), key=lambda x: x[0])]
+        ordered_right_marginals = [poly for _, poly in sorted(zip(cy_marg_right, poly_marg_right), key=lambda x: x[0])]
+        
+        ordered_left_marginals_textline = [poly for _, poly in sorted(zip(cy_marg_left, all_found_textline_polygons_marginals_left), key=lambda x: x[0])]
+        ordered_right_marginals_textline = [poly for _, poly in sorted(zip(cy_marg_right, all_found_textline_polygons_marginals_right), key=lambda x: x[0])]
+        
+        ordered_left_marginals_bbox = [poly for _, poly in sorted(zip(cy_marg_left, all_box_coord_marginals_left), key=lambda x: x[0])]
+        ordered_right_marginals_bbox = [poly for _, poly in sorted(zip(cy_marg_right, all_box_coord_marginals_right), key=lambda x: x[0])]
+        
+        ordered_left_slopes_marginals = [poly for _, poly in sorted(zip(cy_marg_left, slopes_marg_left), key=lambda x: x[0])]
+        ordered_right_slopes_marginals = [poly for _, poly in sorted(zip(cy_marg_right, slopes_marg_right), key=lambda x: x[0])]
+        
+        return ordered_left_marginals, ordered_right_marginals, ordered_left_marginals_textline, ordered_right_marginals_textline, ordered_left_marginals_bbox, ordered_right_marginals_bbox, ordered_left_slopes_marginals, ordered_right_slopes_marginals
+
 
     def run(self, image_filename : Optional[str] = None, dir_in : Optional[str] = None, overwrite : bool = False):
         """
@@ -4489,12 +4546,13 @@ class Eynollah:
         t0 = time.time()
         img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
         self.logger.info("Enhancing took %.1fs ", time.time() - t0)
+        
         if self.extract_only_images:
             text_regions_p_1, erosion_hurts, polygons_lines_xml, polygons_of_images, image_page, page_coord, cont_page = \
                 self.get_regions_light_v_extract_only_images(img_res, is_image_enhanced, num_col_classifier)
             pcgts = self.writer.build_pagexml_no_full_layout(
                 [], page_coord, [], [], [], [],
-                polygons_of_images, [], [], [], [], [],
+                polygons_of_images, [], [], [], [], [], [], [], [], [],
                 cont_page, [], [])
             if self.plotter:
                 self.plotter.write_images_into_directory(polygons_of_images, image_page)
@@ -4507,7 +4565,6 @@ class Eynollah:
 
             page_coord, image_page, textline_mask_tot_ea, img_bin_light, cont_page = \
                 self.run_graphics_and_columns_without_layout(textline_mask_tot_ea, img_bin_light)
-
 
             ##all_found_textline_polygons =self.scale_contours_new(textline_mask_tot_ea)
 
@@ -4530,10 +4587,14 @@ class Eynollah:
             id_of_texts_tot =['region_0001']
 
             polygons_of_images = []
-            slopes_marginals = []
-            polygons_of_marginals = []
-            all_found_textline_polygons_marginals = []
-            all_box_coord_marginals = []
+            slopes_marginals_left = []
+            slopes_marginals_right = []
+            polygons_of_marginals_left = []
+            polygons_of_marginals_right = []
+            all_found_textline_polygons_marginals_left = []
+            all_found_textline_polygons_marginals_right = []
+            all_box_coord_marginals_left = []
+            all_box_coord_marginals_right = []
             polygons_lines_xml = []
             contours_tables = []
             conf_contours_textregions =[0]
@@ -4546,8 +4607,8 @@ class Eynollah:
             
             pcgts = self.writer.build_pagexml_no_full_layout(
                 cont_page, page_coord, order_text_new, id_of_texts_tot,
-                all_found_textline_polygons, page_coord, polygons_of_images, polygons_of_marginals,
-                all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
+                all_found_textline_polygons, page_coord, polygons_of_images, polygons_of_marginals_left, polygons_of_marginals_right,
+                all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_marginals_left, slopes_marginals_right, 
                 cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines=ocr_all_textlines, conf_contours_textregion=conf_contours_textregions, skip_layout_reading_order=self.skip_layout_and_reading_order)
             return pcgts
 
@@ -4595,11 +4656,10 @@ class Eynollah:
             #self.logger.info('cont_page %s', cont_page)
         #plt.imshow(table_prediction)
         #plt.show()
-
         if not num_col:
             self.logger.info("No columns detected, outputting an empty PAGE-XML")
             pcgts = self.writer.build_pagexml_no_full_layout(
-                [], page_coord, [], [], [], [], [], [], [], [], [], [],
+                [], page_coord, [], [], [], [], [], [], [], [], [], [], [], [], [], [],
                 cont_page, [], [])
             return pcgts
 
@@ -4771,6 +4831,7 @@ class Eynollah:
                 contours_only_text_parent_d_ordered = []
                 contours_only_text_parent_d = []
                 #contours_only_text_parent = []
+
         if not len(contours_only_text_parent):
             # stop early
             empty_marginals = [[]] * len(polygons_of_marginals)
@@ -4778,13 +4839,13 @@ class Eynollah:
                 pcgts = self.writer.build_pagexml_full_layout(
                     [], [], page_coord, [], [], [], [], [], [],
                     polygons_of_images, contours_tables, [],
-                    polygons_of_marginals, empty_marginals, empty_marginals, [], [], [],
+                    polygons_of_marginals, polygons_of_marginals, empty_marginals, empty_marginals, empty_marginals, empty_marginals, [], [], [], [],
                     cont_page, polygons_lines_xml)
             else:
                 pcgts = self.writer.build_pagexml_no_full_layout(
                     [], page_coord, [], [], [], [],
                     polygons_of_images,
-                    polygons_of_marginals, empty_marginals, empty_marginals, [], [],
+                    polygons_of_marginals, polygons_of_marginals,  empty_marginals, empty_marginals, empty_marginals, empty_marginals,  [], [], [], 
                     cont_page, polygons_lines_xml, contours_tables)
             return pcgts
 
@@ -4877,8 +4938,11 @@ class Eynollah:
                     num_col_classifier, scale_param, slope_deskew)
             all_found_textline_polygons_marginals = small_textlines_to_parent_adherence2(
                 all_found_textline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
-
-        #print("text region early 6 in %.1fs", time.time() - t0)
+        
+        mid_point_of_page_width = text_regions_p.shape[1] / 2.
+        polygons_of_marginals_left, polygons_of_marginals_right, all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes_marginals_left, slopes_marginals_right = self.separate_marginals_to_left_and_right_and_order_from_top_to_down(polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes_marginals, mid_point_of_page_width)
+        
+        #print(len(polygons_of_marginals), len(ordered_left_marginals), len(ordered_right_marginals), 'marginals ordred')
         if self.full_layout:
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 contours_only_text_parent_d_ordered = self.return_list_of_contours_with_desired_order(
@@ -4961,7 +5025,6 @@ class Eynollah:
                 tror = time.time()
                 order_text_new, id_of_texts_tot = self.do_order_of_regions_with_model(
                     contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
-                print('time spend for mb ro',  time.time()-tror)
             else:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     order_text_new, id_of_texts_tot = self.do_order_of_regions(
@@ -4978,10 +5041,15 @@ class Eynollah:
                 else:
                     ocr_all_textlines = None
                     
-                if all_found_textline_polygons_marginals and len(all_found_textline_polygons_marginals)>0:
-                    ocr_all_textlines_marginals = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_marginals, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                if all_found_textline_polygons_marginals_left and len(all_found_textline_polygons_marginals_left)>0:
+                    ocr_all_textlines_marginals_left = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_marginals_left, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
                 else:
-                    ocr_all_textlines_marginals = None
+                    ocr_all_textlines_marginals_left = None
+                    
+                if all_found_textline_polygons_marginals_right and len(all_found_textline_polygons_marginals_right)>0:
+                    ocr_all_textlines_marginals_right = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_marginals_right, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                else:
+                    ocr_all_textlines_marginals_right = None
                 
                 if all_found_textline_polygons_h and len(all_found_textline_polygons)>0:
                     ocr_all_textlines_h = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_h, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
@@ -4994,15 +5062,16 @@ class Eynollah:
                     ocr_all_textlines_drop = None
             else:
                 ocr_all_textlines = None
-                ocr_all_textlines_marginals = None
+                ocr_all_textlines_marginals_left = None
+                ocr_all_textlines_marginals_right = None
                 ocr_all_textlines_h = None
                 ocr_all_textlines_drop = None
             pcgts = self.writer.build_pagexml_full_layout(
                 contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot,
                 all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h,
-                polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals,
-                all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals,
-                cont_page, polygons_lines_xml, ocr_all_textlines, ocr_all_textlines_h, ocr_all_textlines_marginals, ocr_all_textlines_drop,  conf_contours_textregions, conf_contours_textregions_h)
+                polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals_left, polygons_of_marginals_right,
+                all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_h, slopes_marginals_left, slopes_marginals_right,
+                cont_page, polygons_lines_xml, ocr_all_textlines, ocr_all_textlines_h, ocr_all_textlines_marginals_left, ocr_all_textlines_marginals_right, ocr_all_textlines_drop,  conf_contours_textregions, conf_contours_textregions_h)
             return pcgts
 
         contours_only_text_parent_h = None
@@ -5077,19 +5146,24 @@ class Eynollah:
             gc.collect()
             if len(all_found_textline_polygons)>0:
                 ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
-            if all_found_textline_polygons_marginals and len(all_found_textline_polygons_marginals)>0:
-                ocr_all_textlines_marginals = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_marginals, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                
+            if all_found_textline_polygons_marginals_left and len(all_found_textline_polygons_marginals_left)>0:
+                ocr_all_textlines_marginals_left = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_marginals_left, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                
+            if all_found_textline_polygons_marginals_right and len(all_found_textline_polygons_marginals_right)>0:
+                ocr_all_textlines_marginals_right = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_marginals_right, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
 
         else:
             ocr_all_textlines = None
-            ocr_all_textlines_marginals = None
+            ocr_all_textlines_marginals_left = None
+            ocr_all_textlines_marginals_right = None
         self.logger.info("detection of reading order took %.1fs", time.time() - t_order)
 
         pcgts = self.writer.build_pagexml_no_full_layout(
             txt_con_org, page_coord, order_text_new, id_of_texts_tot,
-            all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals,
-            all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
-            cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, ocr_all_textlines_marginals, conf_contours_textregions)
+            all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals_left, polygons_of_marginals_right,
+            all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_marginals_left, slopes_marginals_right, 
+            cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, ocr_all_textlines_marginals_left, ocr_all_textlines_marginals_right, conf_contours_textregions)
         return pcgts
 
 
@@ -5145,7 +5219,7 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250805"
+                self.model_ocr_dir = dir_models + "/model_step_45000_ocr"#"/model_eynollah_ocr_cnnrnn_20250805"#
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
@@ -5156,7 +5230,7 @@ class Eynollah_ocr:
                 else:
                     self.b_s = int(batch_size)
                     
-                with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
+                with open(os.path.join(self.model_ocr_dir, "characters_20250707_all_lang.txt"),"r") as config_file:
                     characters = json.load(config_file)
                     
                 AUTOTUNE = tf.data.AUTOTUNE

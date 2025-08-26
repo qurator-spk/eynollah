@@ -384,56 +384,62 @@ def return_rnn_cnn_ocr_of_given_textlines(image, all_found_textline_polygons, pr
     
     for indexing, ind_poly_first in enumerate(all_found_textline_polygons):
         #ocr_textline_in_textregion = []
-        for indexing2, ind_poly in enumerate(ind_poly_first):
+        if len(ind_poly_first)==0:
             cropped_lines_region_indexer.append(indexer_text_region)
-            if not (textline_light or curved_line):
-                ind_poly = copy.deepcopy(ind_poly)
-                box_ind = all_box_coord[indexing]
+            cropped_lines_meging_indexing.append(0)
+            img_fin = np.ones((image_height, image_width, 3))*1
+            cropped_lines.append(img_fin)
 
-                ind_poly = return_textline_contour_with_added_box_coordinate(ind_poly, box_ind)
-                #print(ind_poly_copy)
-                ind_poly[ind_poly<0] = 0
-            x, y, w, h = cv2.boundingRect(ind_poly)
-            
-            w_scaled = w *  image_height/float(h)
+        else:
+            for indexing2, ind_poly in enumerate(ind_poly_first):
+                cropped_lines_region_indexer.append(indexer_text_region)
+                if not (textline_light or curved_line):
+                    ind_poly = copy.deepcopy(ind_poly)
+                    box_ind = all_box_coord[indexing]
 
-            mask_poly = np.zeros(image.shape)
-
-            img_poly_on_img = np.copy(image)
-            
-            mask_poly = cv2.fillPoly(mask_poly, pts=[ind_poly], color=(1, 1, 1))
-
-
-            
-            mask_poly = mask_poly[y:y+h, x:x+w, :]
-            img_crop = img_poly_on_img[y:y+h, x:x+w, :]
-            
-            img_crop[mask_poly==0] = 255
-            
-            if w_scaled < 640:#1.5*image_width:
-                img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
-                cropped_lines.append(img_fin)
-                cropped_lines_meging_indexing.append(0)
-            else:
-                splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, None)
+                    ind_poly = return_textline_contour_with_added_box_coordinate(ind_poly, box_ind)
+                    #print(ind_poly_copy)
+                    ind_poly[ind_poly<0] = 0
+                x, y, w, h = cv2.boundingRect(ind_poly)
                 
-                if splited_images:
-                    img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
-                    cropped_lines.append(img_fin)
-                    cropped_lines_meging_indexing.append(1)
-                    
-                    img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[1], image_height, image_width)
-                    
-                    cropped_lines.append(img_fin)
-                    cropped_lines_meging_indexing.append(-1)
-                    
-                else:
+                w_scaled = w *  image_height/float(h)
+
+                mask_poly = np.zeros(image.shape)
+
+                img_poly_on_img = np.copy(image)
+                
+                mask_poly = cv2.fillPoly(mask_poly, pts=[ind_poly], color=(1, 1, 1))
+
+
+                
+                mask_poly = mask_poly[y:y+h, x:x+w, :]
+                img_crop = img_poly_on_img[y:y+h, x:x+w, :]
+                
+                img_crop[mask_poly==0] = 255
+                
+                if w_scaled < 640:#1.5*image_width:
                     img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                     cropped_lines.append(img_fin)
                     cropped_lines_meging_indexing.append(0)
+                else:
+                    splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, None)
+                    
+                    if splited_images:
+                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
+                        cropped_lines.append(img_fin)
+                        cropped_lines_meging_indexing.append(1)
+                        
+                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[1], image_height, image_width)
+                        
+                        cropped_lines.append(img_fin)
+                        cropped_lines_meging_indexing.append(-1)
+                        
+                    else:
+                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
+                        cropped_lines.append(img_fin)
+                        cropped_lines_meging_indexing.append(0)
             
         indexer_text_region+=1
-        
         
     extracted_texts = []
 
