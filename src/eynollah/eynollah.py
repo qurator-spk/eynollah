@@ -98,6 +98,8 @@ from .utils.resize import resize_image
 from .utils import (
     boosting_headers_by_longshot_region_segmentation,
     crop_image_inside_box,
+    box2rect,
+    box2slice,
     find_num_col,
     otsu_copy_binary,
     put_drop_out_from_only_drop_model,
@@ -1542,7 +1544,7 @@ class Eynollah:
             all_found_textline_polygons.append(textlines_ins[::-1])
             slopes.append(slope_deskew)
 
-            _, crop_coor = crop_image_inside_box(boxes[index],image_page_rotated)
+            crop_coor = box2rect(boxes[index])
             all_box_coord.append(crop_coor)
 
         return all_found_textline_polygons, boxes, contours, contours_par, all_box_coord, np.array(range(len(contours_par))), slopes
@@ -1754,7 +1756,7 @@ class Eynollah:
                 ##polygons_of_images_fin.append(ploy_img_ind)
 
                 box = cv2.boundingRect(ploy_img_ind)
-                _, page_coord_img = crop_image_inside_box(box, text_regions_p_true)
+                page_coord_img = box2rect(box)
                 # cont_page.append(np.array([[page_coord[2], page_coord[0]],
                 #                            [page_coord[3], page_coord[0]],
                 #                            [page_coord[3], page_coord[1]],
@@ -1768,7 +1770,7 @@ class Eynollah:
             if h < 150 or w < 150:
                 pass
             else:
-                _, page_coord_img = crop_image_inside_box(box, text_regions_p_true)
+                page_coord_img = box2rect(box)
                 # cont_page.append(np.array([[page_coord[2], page_coord[0]],
                 #                            [page_coord[3], page_coord[0]],
                 #                            [page_coord[3], page_coord[1]],

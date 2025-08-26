@@ -18,6 +18,8 @@ from .contour import (
 from . import (
     find_num_col_deskew,
     crop_image_inside_box,
+    box2rect,
+    box2slice,
 )
 
 def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
@@ -1540,7 +1542,7 @@ def do_work_of_slopes_new(
     logger.debug('enter do_work_of_slopes_new')
 
     x, y, w, h = box_text
-    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    crop_coor = box2rect(box_text)
     mask_textline = np.zeros(textline_mask_tot_ea.shape)
     mask_textline = cv2.fillPoly(mask_textline, pts=[contour], color=(1,1,1))
     all_text_region_raw = textline_mask_tot_ea * mask_textline
@@ -1631,7 +1633,7 @@ def do_work_of_slopes_new_curved(
             slope_for_all = slope_deskew
         slope = slope_for_all
 
-    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    crop_coor = box2rect(box_text)
 
     if abs(slope_for_all) < 45:
         textline_region_in_image = np.zeros(textline_mask_tot_ea.shape)
@@ -1685,7 +1687,7 @@ def do_work_of_slopes_new_light(
     logger.debug('enter do_work_of_slopes_new_light')
 
     x, y, w, h = box_text
-    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    crop_coor = box2rect(box_text)
     mask_textline = np.zeros(textline_mask_tot_ea.shape)
     mask_textline = cv2.fillPoly(mask_textline, pts=[contour], color=(1,1,1))
     all_text_region_raw = textline_mask_tot_ea * mask_textline
