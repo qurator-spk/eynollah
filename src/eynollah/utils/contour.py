@@ -141,12 +141,12 @@ def return_parent_contours(contours, hierarchy):
                        if hierarchy[0][i][3] == -1]
     return contours_parent
 
-def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
+def return_contours_of_interested_region(region_pre_p, label, min_area=0.0002):
     # pixels of images are identified by 5
     if len(region_pre_p.shape) == 3:
-        cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
+        cnts_images = (region_pre_p[:, :, 0] == label) * 1
     else:
-        cnts_images = (region_pre_p[:, :] == pixel) * 1
+        cnts_images = (region_pre_p[:, :] == label) * 1
     cnts_images = cnts_images.astype(np.uint8)
     cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
     imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
@@ -267,12 +267,12 @@ def get_textregion_contours_in_org_image_light(cnts, img, confidence_matrix):
         confs.append(np.sum(confidence_matrix * cnt_mask) / np.sum(cnt_mask))
     return cnts, confs
 
-def return_contours_of_interested_textline(region_pre_p, pixel):
+def return_contours_of_interested_textline(region_pre_p, label):
     # pixels of images are identified by 5
     if len(region_pre_p.shape) == 3:
-        cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
+        cnts_images = (region_pre_p[:, :, 0] == label) * 1
     else:
-        cnts_images = (region_pre_p[:, :] == pixel) * 1
+        cnts_images = (region_pre_p[:, :] == label) * 1
     cnts_images = cnts_images.astype(np.uint8)
     cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
     imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
@@ -295,12 +295,12 @@ def return_contours_of_image(image):
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     return contours, hierarchy
 
-def return_contours_of_interested_region_by_min_size(region_pre_p, pixel, min_size=0.00003):
+def return_contours_of_interested_region_by_min_size(region_pre_p, label, min_size=0.00003):
     # pixels of images are identified by 5
     if len(region_pre_p.shape) == 3:
-        cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
+        cnts_images = (region_pre_p[:, :, 0] == label) * 1
     else:
-        cnts_images = (region_pre_p[:, :] == pixel) * 1
+        cnts_images = (region_pre_p[:, :] == label) * 1
     cnts_images = cnts_images.astype(np.uint8)
     cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
     imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
@@ -313,12 +313,12 @@ def return_contours_of_interested_region_by_min_size(region_pre_p, pixel, min_si
 
     return contours_imgs
 
-def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, max_area):
+def return_contours_of_interested_region_by_size(region_pre_p, label, min_area, max_area):
     # pixels of images are identified by 5
     if len(region_pre_p.shape) == 3:
-        cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
+        cnts_images = (region_pre_p[:, :, 0] == label) * 1
     else:
-        cnts_images = (region_pre_p[:, :] == pixel) * 1
+        cnts_images = (region_pre_p[:, :] == label) * 1
     cnts_images = cnts_images.astype(np.uint8)
     cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
     imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
