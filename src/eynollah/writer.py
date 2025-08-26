@@ -296,7 +296,7 @@ class EynollahXmlWriter():
             page.add_ImageRegion(ImageRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_text_region_img[mm], page_coord))))
 
         for mm in range(len(polygons_lines_to_be_written_in_xml)):
-            page.add_SeparatorRegion(ImageRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(polygons_lines_to_be_written_in_xml[mm], [0 , 0, 0, 0]))))
+            page.add_SeparatorRegion(SeparatorRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(polygons_lines_to_be_written_in_xml[mm], [0 , 0, 0, 0]))))
 
         for mm in range(len(found_polygons_tables)):
             page.add_TableRegion(TableRegionType(id=counter.next_region_id, Coords=CoordsType(points=self.calculate_polygon_coords(found_polygons_tables[mm], page_coord))))
