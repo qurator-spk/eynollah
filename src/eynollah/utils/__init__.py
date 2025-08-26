@@ -300,9 +300,17 @@ def return_x_start_end_mothers_childs_and_type_of_reading_order(
             x_end_with_child_without_mother,
             new_main_sep_y)
 
+def box2rect(box: Tuple[int, int, int, int]) -> Tuple[int, int, int, int]:
+    return (box[1], box[1] + box[3],
+            box[0], box[0] + box[2])
+
+def box2slice(box: Tuple[int, int, int, int]) -> Tuple[slice, slice]:
+    return (slice(box[1], box[1] + box[3]),
+            slice(box[0], box[0] + box[2]))
+
 def crop_image_inside_box(box, img_org_copy):
-    image_box = img_org_copy[box[1] : box[1] + box[3], box[0] : box[0] + box[2]]
-    return image_box, [box[1], box[1] + box[3], box[0], box[0] + box[2]]
+    image_box = img_org_copy[box2slice(box)]
+    return image_box, box2rect(box)
 
 def otsu_copy_binary(img):
     img_r = np.zeros((img.shape[0], img.shape[1], 3))
