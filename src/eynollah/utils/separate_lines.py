@@ -1532,7 +1532,7 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map
 
 def do_work_of_slopes_new(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, image_page_rotated, slope_deskew,
+        textline_mask_tot_ea, slope_deskew,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
     if KERNEL is None:
@@ -1590,7 +1590,7 @@ def do_work_of_slopes_new(
 
 def do_work_of_slopes_new_curved(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, image_page_rotated, mask_texts_only, num_col, scale_par, slope_deskew,
+        textline_mask_tot_ea, mask_texts_only, num_col, scale_par, slope_deskew,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
     if KERNEL is None:
@@ -1679,7 +1679,7 @@ def do_work_of_slopes_new_curved(
 
 def do_work_of_slopes_new_light(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, image_page_rotated, slope_deskew, textline_light,
+        textline_mask_tot_ea, slope_deskew, textline_light,
         logger=None
 ):
     if logger is None:
