@@ -5171,6 +5171,7 @@ class Eynollah_ocr:
     def __init__(
         self,
         dir_models,
+        model_name=None,
         dir_xmls=None,
         dir_in=None,
         image_filename=None,
@@ -5181,7 +5182,6 @@ class Eynollah_ocr:
         batch_size=None,
         export_textline_images_and_text=False,
         do_not_mask_with_textline_contour=False,
-        draw_texts_on_image=False,
         prediction_with_both_of_rgb_and_bin=False,
         pref_of_dataset=None,
         min_conf_value_of_textline_text : Optional[float]=None,
@@ -5193,10 +5193,10 @@ class Eynollah_ocr:
         self.dir_out = dir_out
         self.dir_xmls = dir_xmls
         self.dir_models = dir_models
+        self.model_name = model_name
         self.tr_ocr = tr_ocr
         self.export_textline_images_and_text = export_textline_images_and_text
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
-        self.draw_texts_on_image = draw_texts_on_image
         self.dir_out_image_text = dir_out_image_text
         self.prediction_with_both_of_rgb_and_bin = prediction_with_both_of_rgb_and_bin
         self.pref_of_dataset = pref_of_dataset
@@ -5210,7 +5210,10 @@ class Eynollah_ocr:
             if tr_ocr:
                 self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
                 self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-                self.model_ocr_dir = dir_models + "/trocr_model_ens_of_3_checkpoints_201124"
+                if self.model_name:
+                    self.model_ocr_dir = self.model_name
+                else:
+                    self.model_ocr_dir = dir_models + "/trocr_model_ens_of_3_checkpoints_201124"
                 self.model_ocr = VisionEncoderDecoderModel.from_pretrained(self.model_ocr_dir)
                 self.model_ocr.to(self.device)
                 if not batch_size:
@@ -5219,7 +5222,10 @@ class Eynollah_ocr:
                     self.b_s = int(batch_size)
 
             else:
-                self.model_ocr_dir = dir_models + "/model_step_45000_ocr"#"/model_eynollah_ocr_cnnrnn_20250805"#
+                if self.model_name:
+                    self.model_ocr_dir = self.model_name
+                else:
+                    self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250805"
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
@@ -5230,7 +5236,7 @@ class Eynollah_ocr:
                 else:
                     self.b_s = int(batch_size)
                     
-                with open(os.path.join(self.model_ocr_dir, "characters_20250707_all_lang.txt"),"r") as config_file:
+                with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
                     characters = json.load(config_file)
                     
                 AUTOTUNE = tf.data.AUTOTUNE
@@ -5271,7 +5277,7 @@ class Eynollah_ocr:
                     
                 img = cv2.imread(dir_img)
                 
-                if self.draw_texts_on_image:
+                if self.dir_out_image_text:
                     out_image_with_text = os.path.join(self.dir_out_image_text, file_name+'.png')
                     image_text = Image.new("RGB", (img.shape[1], img.shape[0]), "white")
                     draw = ImageDraw.Draw(image_text)
@@ -5306,7 +5312,7 @@ class Eynollah_ocr:
                                     textline_coords =  np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] )
                                     x,y,w,h = cv2.boundingRect(textline_coords)
                                     
-                                    if self.draw_texts_on_image:
+                                    if self.dir_out_image_text:
                                         total_bb_coordinates.append([x,y,w,h])
                                     
                                     h2w_ratio = h/float(w)
@@ -5363,7 +5369,7 @@ class Eynollah_ocr:
 
                 unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
                 
-                if self.draw_texts_on_image:
+                if self.dir_out_image_text:
                     
                     font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
                     font = ImageFont.truetype(font_path, 40)
@@ -5463,7 +5469,7 @@ class Eynollah_ocr:
                     dir_img_bin = os.path.join(self.dir_in_bin, file_name+'.png')
                     img_bin = cv2.imread(dir_img_bin)
                 
-                if self.draw_texts_on_image:
+                if self.dir_out_image_text:
                     out_image_with_text = os.path.join(self.dir_out_image_text, file_name+'.png')
                     image_text = Image.new("RGB", (img.shape[1], img.shape[0]), "white")
                     draw = ImageDraw.Draw(image_text)
@@ -5508,7 +5514,7 @@ class Eynollah_ocr:
                                     if type_textregion=='drop-capital':
                                         angle_degrees = 0
                                         
-                                    if self.draw_texts_on_image:
+                                    if self.dir_out_image_text:
                                         total_bb_coordinates.append([x,y,w,h])
                                        
                                     w_scaled = w *  image_height/float(h)
@@ -5829,7 +5835,7 @@ class Eynollah_ocr:
                     unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
                     
                     
-                    if self.draw_texts_on_image:
+                    if self.dir_out_image_text:
                         
                         font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
                         font = ImageFont.truetype(font_path, 40)

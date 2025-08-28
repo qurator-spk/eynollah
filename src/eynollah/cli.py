@@ -457,6 +457,11 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
+    "--model_name",
+    help="Specific model file path to use for OCR",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
     "--tr_ocr",
     "-trocr/-notrocr",
     is_flag=True,
@@ -473,12 +478,6 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     "-nmtc/-mtc",
     is_flag=True,
     help="if this parameter set to true, cropped textline images will not be masked with textline contour.",
-)
-@click.option(
-    "--draw_texts_on_image",
-    "-dtoi/-ndtoi",
-    is_flag=True,
-    help="if this parameter set to true, the predicted texts will be displayed on an image.",
 )
 @click.option(
     "--prediction_with_both_of_rgb_and_bin",
@@ -508,16 +507,17 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     help="Override log level globally to this",
 )
 
-def ocr(image, overwrite, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, draw_texts_on_image, prediction_with_both_of_rgb_and_bin, batch_size, dataset_abbrevation, min_conf_value_of_textline_text, log_level):
+def ocr(image, overwrite, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, model_name, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, prediction_with_both_of_rgb_and_bin, batch_size, dataset_abbrevation, min_conf_value_of_textline_text, log_level):
     initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
+        
+    assert not model or not model_name, "model directory  -m can not be set alongside specific model name --model_name"
     assert not export_textline_images_and_text or not tr_ocr, "Exporting textline and text  -etit can not be set alongside transformer ocr -tr_ocr"
     assert not export_textline_images_and_text or not model, "Exporting textline and text  -etit can not be set alongside model -m"
     assert not export_textline_images_and_text or not batch_size, "Exporting textline and text  -etit can not be set alongside batch size -bs"
     assert not export_textline_images_and_text or not dir_in_bin, "Exporting textline and text  -etit can not be set alongside directory of bin images -dib"
     assert not export_textline_images_and_text or not dir_out_image_text, "Exporting textline and text  -etit can not be set alongside directory of images with predicted text -doit"
-    assert not export_textline_images_and_text or not draw_texts_on_image, "Exporting textline and text  -etit can not be set alongside draw text on image -dtoi"
     assert not export_textline_images_and_text or not prediction_with_both_of_rgb_and_bin, "Exporting textline and text  -etit can not be set alongside prediction with both rgb and bin -brb"
     assert (bool(image) ^ bool(dir_in)), "Either -i (single image) or -di (directory) must be provided, but not both."
     eynollah_ocr = Eynollah_ocr(
@@ -528,10 +528,10 @@ def ocr(image, overwrite, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text,
         dir_in_bin=dir_in_bin,
         dir_out=out,
         dir_models=model,
+        model_name=model_name,
         tr_ocr=tr_ocr,
         export_textline_images_and_text=export_textline_images_and_text,
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
-        draw_texts_on_image=draw_texts_on_image,
         prediction_with_both_of_rgb_and_bin=prediction_with_both_of_rgb_and_bin,
         batch_size=batch_size,
         pref_of_dataset=dataset_abbrevation,
