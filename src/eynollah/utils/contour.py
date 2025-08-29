@@ -353,7 +353,7 @@ def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number
     return make_valid(polygon)
 
 def polygon2contour(polygon: Polygon) -> np.ndarray:
-    polygon = np.array(polygon.exterior.coords[:-1], dtype=np.int)
+    polygon = np.array(polygon.exterior.coords[:-1], dtype=int)
     return np.maximum(0, polygon).astype(np.uint)[:, np.newaxis]
 
 def make_valid(polygon: Polygon) -> Polygon:
