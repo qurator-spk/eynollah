@@ -118,10 +118,29 @@ eynollah binarization \
 ```
 
 ### OCR
-Under development
+The OCR module performs text recognition from images using two main families of pretrained models: CNN-RNN–based OCR and Transformer-based OCR.
+
+The command-line interface for ocr can be called like this:
+
+```sh
+eynollah ocr \
+  -m <path to directory containing model files> | --model_name <path to specific model> \
+  -i <single image file> | -di <directory containing image files> \
+  -dx <directory of xmls> \
+  -o <output directory> 
+```
 
 ### Machine-based-reading-order
-Under development
+The machine-based reading-order module employs a pretrained model to identify the reading order from layouts represented in PAGE-XML files.
+
+The command-line interface for machine based reading order can be called like this:
+
+```sh
+eynollah machine-based-reading-order \
+  -m <path to directory containing model files> \
+  -xml <xml file name> | -dx <directory containing xml files> \
+  -o <output directory> 
+```
 
 #### Use as OCR-D processor
 Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) [processor](https://ocr-d.de/en/spec/cli),
