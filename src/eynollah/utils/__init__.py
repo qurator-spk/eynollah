@@ -851,7 +851,8 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop
         all_drop_capital_pixels = np.sum(mask_of_drop_cpaital_in_early_layout==1)
 
         percent_text_to_all_in_drop = all_drop_capital_pixels_which_is_text_in_early_lo / float(all_drop_capital_pixels)
-        if (areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) / float(w * h) > 0.6 and
+        
+        if (areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) / float(w * h) > 0.7 and
             percent_text_to_all_in_drop >= 0.3):
             layout_in_patch[box0] = drop_capital_label
         else:
