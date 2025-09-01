@@ -6,6 +6,8 @@
 document layout analysis (segmentation) with output in PAGE-XML
 """
 
+print("Just a test, don't actually merge!")
+
 from logging import Logger
 from difflib import SequenceMatcher as sq
 from PIL import Image, ImageDraw, ImageFont
