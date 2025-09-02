@@ -15,6 +15,7 @@ from .contour import (
     return_contours_of_interested_textline,
     find_contours_mean_y_diff,
 )
+from .shm import share_ndarray, wrap_ndarray_shared
 from . import (
     find_num_col_deskew,
     crop_image_inside_box,
@@ -1454,7 +1455,8 @@ def separate_lines_new2(img_crop, thetha, num_col, slope_region, logger=None, pl
 
     return img_patch_interest_revised
 
-def do_image_rotation(angle, img, sigma_des, logger=None):
+@wrap_ndarray_shared(kw='img')
+def do_image_rotation(angle, img=None, sigma_des=1.0, logger=None):
     if logger is None:
         logger = getLogger(__package__)
     img_rot = rotate_image(img, angle)
@@ -1521,7 +1523,8 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
 def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map):
     if logger is None:
         logger = getLogger(__package__)
-    results = list(map(partial(do_image_rotation, img=img, sigma_des=sigma_des, logger=logger), angles))
+    with share_ndarray(img) as img_shared:
+        results = list(map(partial(do_image_rotation, img=img_shared, sigma_des=sigma_des, logger=logger), angles))
     if plotter:
         plotter.save_plot_of_rotation_angle(angles, results)
     try:
@@ -1594,9 +1597,12 @@ def do_work_of_slopes_new(
 
     return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope
 
+@wrap_ndarray_shared(kw='textline_mask_tot_ea')
+@wrap_ndarray_shared(kw='mask_texts_only')
 def do_work_of_slopes_new_curved(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, mask_texts_only, num_col, scale_par, slope_deskew,
+        textline_mask_tot_ea=None, mask_texts_only=None,
+        num_col=1, scale_par=1.0, slope_deskew=0.0,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
     if KERNEL is None:

@@ -95,6 +95,7 @@ from .utils.drop_capitals import (
 )
 from .utils.marginals import get_marginals
 from .utils.resize import resize_image
+from .utils.shm import share_ndarray
 from .utils import (
     boosting_headers_by_longshot_region_segmentation,
     crop_image_inside_box,
@@ -1582,9 +1583,11 @@ class Eynollah:
         if not len(contours):
             return [], [], [], [], [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_curved")
-        results = self.executor.map(partial(do_work_of_slopes_new_curved,
-                                            textline_mask_tot_ea=textline_mask_tot,
-                                            mask_texts_only=mask_texts_only,
+        with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
+            with share_ndarray(mask_texts_only) as mask_texts_only_shared:
+                results = self.executor.map(partial(do_work_of_slopes_new_curved,
+                                            textline_mask_tot_ea=textline_mask_tot_shared,
+                                            mask_texts_only=mask_texts_only_shared,
                                             num_col=num_col,
                                             scale_par=scale_par,
                                             slope_deskew=slope_deskew,
@@ -1593,7 +1596,8 @@ class Eynollah:
                                             logger=self.logger,
                                             plotter=self.plotter,),
                                     boxes, contours, contours_par, range(len(contours_par)))
-        #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
+                #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
+                results = list(results) # exhaust prior to release
         self.logger.debug("exit get_slopes_and_deskew_new_curved")
         return tuple(zip(*results))
 
