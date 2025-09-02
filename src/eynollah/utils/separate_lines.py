@@ -1486,33 +1486,36 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
 
     if main_page and img_patch_org.shape[1] > img_patch_org.shape[0]:
         angles = np.array([-45, 0, 45, 90,])
-        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
-        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
     elif main_page:
         angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
-        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         early_slope_edge=11
         if abs(angle) > early_slope_edge:
             if angle < 0:
-                angles = np.linspace(-90, -12, n_tot_angles)
+                angles2 = np.linspace(-90, -12, n_tot_angles)
             else:
-                angles = np.linspace(90, 12, n_tot_angles)
-            angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+                angles2 = np.linspace(90, 12, n_tot_angles)
+            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, plotter=plotter)
+            if var2 > var:
+                angle = angle2
     else:
         angles = np.linspace(-25, 25, int(0.5 * n_tot_angles) + 10)
-        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         early_slope_edge=22
         if abs(angle) > early_slope_edge:
             if angle < 0:
-                angles = np.linspace(-90, -25, int(0.5 * n_tot_angles) + 10)
+                angles2 = np.linspace(-90, -25, int(0.5 * n_tot_angles) + 10)
             else:
-                angles = np.linspace(90, 25, int(0.5 * n_tot_angles) + 10)
-            angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
-
+                angles2 = np.linspace(90, 25, int(0.5 * n_tot_angles) + 10)
+            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, plotter=plotter)
+            if var2 > var:
+                angle = angle2
     return angle
 
 def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map):
@@ -1524,11 +1527,14 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map
     try:
         var_res = np.array(results)
         assert var_res.any()
-        angle = angles[np.argmax(var_res)]
+        idx = np.argmax(var_res)
+        angle = angles[idx]
+        var = var_res[idx]
     except:
         logger.exception("cannot determine best angle among %s", str(angles))
         angle = 0
-    return angle
+        var = 0
+    return angle, var
 
 def do_work_of_slopes_new(
         box_text, contour, contour_par, index_r_con,
