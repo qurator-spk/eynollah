@@ -18,6 +18,8 @@ from .contour import (
 from . import (
     find_num_col_deskew,
     crop_image_inside_box,
+    box2rect,
+    box2slice,
 )
 
 def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
@@ -1530,7 +1532,7 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map
 
 def do_work_of_slopes_new(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, image_page_rotated, slope_deskew,
+        textline_mask_tot_ea, slope_deskew,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
     if KERNEL is None:
@@ -1540,7 +1542,7 @@ def do_work_of_slopes_new(
     logger.debug('enter do_work_of_slopes_new')
 
     x, y, w, h = box_text
-    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    crop_coor = box2rect(box_text)
     mask_textline = np.zeros(textline_mask_tot_ea.shape)
     mask_textline = cv2.fillPoly(mask_textline, pts=[contour], color=(1,1,1))
     all_text_region_raw = textline_mask_tot_ea * mask_textline
@@ -1588,7 +1590,7 @@ def do_work_of_slopes_new(
 
 def do_work_of_slopes_new_curved(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, image_page_rotated, mask_texts_only, num_col, scale_par, slope_deskew,
+        textline_mask_tot_ea, mask_texts_only, num_col, scale_par, slope_deskew,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
     if KERNEL is None:
@@ -1631,7 +1633,7 @@ def do_work_of_slopes_new_curved(
             slope_for_all = slope_deskew
         slope = slope_for_all
 
-    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    crop_coor = box2rect(box_text)
 
     if abs(slope_for_all) < 45:
         textline_region_in_image = np.zeros(textline_mask_tot_ea.shape)
@@ -1677,7 +1679,7 @@ def do_work_of_slopes_new_curved(
 
 def do_work_of_slopes_new_light(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, image_page_rotated, slope_deskew, textline_light,
+        textline_mask_tot_ea, slope_deskew, textline_light,
         logger=None
 ):
     if logger is None:
@@ -1685,7 +1687,7 @@ def do_work_of_slopes_new_light(
     logger.debug('enter do_work_of_slopes_new_light')
 
     x, y, w, h = box_text
-    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    crop_coor = box2rect(box_text)
     mask_textline = np.zeros(textline_mask_tot_ea.shape)
     mask_textline = cv2.fillPoly(mask_textline, pts=[contour], color=(1,1,1))
     all_text_region_raw = textline_mask_tot_ea * mask_textline
