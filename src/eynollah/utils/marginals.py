@@ -99,8 +99,6 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
         except:
             point_left=first_nonzero
 
-        if point_left == first_nonzero and point_right == last_nonzero:
-            return text_regions
 
 
         if point_right>=mask_marginals.shape[1]:

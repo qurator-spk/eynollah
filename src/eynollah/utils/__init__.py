@@ -1,4 +1,3 @@
-from typing import Tuple
 import time
 import math
 
@@ -299,17 +298,9 @@ def return_x_start_end_mothers_childs_and_type_of_reading_order(
             x_end_with_child_without_mother,
             new_main_sep_y)
 
-def box2rect(box: Tuple[int, int, int, int]) -> Tuple[int, int, int, int]:
-    return (box[1], box[1] + box[3],
-            box[0], box[0] + box[2])
-
-def box2slice(box: Tuple[int, int, int, int]) -> Tuple[slice, slice]:
-    return (slice(box[1], box[1] + box[3]),
-            slice(box[0], box[0] + box[2]))
-
 def crop_image_inside_box(box, img_org_copy):
-    image_box = img_org_copy[box2slice(box)]
-    return image_box, box2rect(box)
+    image_box = img_org_copy[box[1] : box[1] + box[3], box[0] : box[0] + box[2]]
+    return image_box, [box[1], box[1] + box[3], box[0], box[0] + box[2]]
 
 def otsu_copy_binary(img):
     img_r = np.zeros((img.shape[0], img.shape[1], 3))
@@ -860,8 +851,7 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop
         all_drop_capital_pixels = np.sum(mask_of_drop_cpaital_in_early_layout==1)
 
         percent_text_to_all_in_drop = all_drop_capital_pixels_which_is_text_in_early_lo / float(all_drop_capital_pixels)
-        
-        if (areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) / float(w * h) > 0.7 and
+        if (areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) / float(w * h) > 0.6 and
             percent_text_to_all_in_drop >= 0.3):
             layout_in_patch[box0] = drop_capital_label
         else:
@@ -965,11 +955,11 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
     regions_model_full = cv2.resize(regions_model_full, (regions_model_full.shape[1] // zoom,
                                                          regions_model_full.shape[0] // zoom),
                                     interpolation=cv2.INTER_NEAREST)
-    contours_only_text_parent_z = [(cnt / zoom).astype(int) for cnt in contours_only_text_parent]
+    contours_only_text_parent = [(i / zoom).astype(int) for i in  contours_only_text_parent]
 
     ###
     cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin = \
-        find_new_features_of_contours(contours_only_text_parent_z)
+        find_new_features_of_contours(contours_only_text_parent)
 
     length_con=x_max_main-x_min_main
     height_con=y_max_main-y_min_main
@@ -992,7 +982,8 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
     contours_only_text_parent_main_d=[]
     contours_only_text_parent_head_d=[]
 
-    for ii, con in enumerate(contours_only_text_parent_z):
+    for ii in range(len(contours_only_text_parent)):
+        con=contours_only_text_parent[ii]
         img=np.zeros((regions_model_1.shape[0], regions_model_1.shape[1], 3))
         img = cv2.fillPoly(img, pts=[con], color=(255, 255, 255))
 
@@ -1003,22 +994,23 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
 
         if ( (pixels_header/float(pixels_main)>=0.6) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ) and ( (length_con[ii]/float(height_con[ii]) )<=3 )) or ( (pixels_header/float(pixels_main)>=0.3) and ( (length_con[ii]/float(height_con[ii]) )>=3 ) ):
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=2
-            contours_only_text_parent_head.append(contours_only_text_parent[ii])
-            conf_contours_head.append(None) # why not conf_contours[ii], too?
+            contours_only_text_parent_head.append(con)
             if contours_only_text_parent_d_ordered is not None:
                 contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_head.append(all_box_coord[ii])
             slopes_head.append(slopes[ii])
             all_found_textline_polygons_head.append(all_found_textline_polygons[ii])
+            conf_contours_head.append(None)
         else:
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=1
-            contours_only_text_parent_main.append(contours_only_text_parent[ii])
+            contours_only_text_parent_main.append(con)
             conf_contours_main.append(conf_contours[ii])
             if contours_only_text_parent_d_ordered is not None:
                 contours_only_text_parent_main_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_main.append(all_box_coord[ii])
             slopes_main.append(slopes[ii])
             all_found_textline_polygons_main.append(all_found_textline_polygons[ii])
+
         #print(all_pixels,pixels_main,pixels_header)
 
     ### to make it faster
@@ -1026,6 +1018,8 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
     # regions_model_full = cv2.resize(img, (regions_model_full.shape[1] // zoom,
     #                                       regions_model_full.shape[0] // zoom),
     #                                 interpolation=cv2.INTER_NEAREST)
+    contours_only_text_parent_head = [(i * zoom).astype(int) for i in contours_only_text_parent_head]
+    contours_only_text_parent_main = [(i * zoom).astype(int) for i in contours_only_text_parent_main]
     ###
 
     return (regions_model_1,
@@ -1748,7 +1742,6 @@ def return_boxes_of_images_by_order_of_reading_new(
             x_ending = np.array(x_ending)
             y_type_2 = np.array(y_type_2)
             y_diff_type_2 = np.array(y_diff_type_2)
-            all_columns = set(range(len(peaks_neg_tot) - 1))
 
             if ((reading_order_type==1) or
                 (reading_order_type==0 and
@@ -1870,7 +1863,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                             x_end_by_order.append(len(peaks_neg_tot)-2)
                         else:
                             #print(x_start_without_mother,x_end_without_mother,peaks_neg_tot,'dodo')
-                            columns_covered_by_mothers = set()
+                            columns_covered_by_mothers = []
                             for dj in range(len(x_start_without_mother)):
                                 columns_covered_by_mothers = columns_covered_by_mothers + \
                                     list(range(int(x_start_without_mother[dj]),
@@ -1882,7 +1875,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                             y_type_2 = np.append(y_type_2, [int(splitter_y_new[i])] * (len(columns_not_covered) + len(x_start_without_mother)))
                             ##y_lines_by_order = np.append(y_lines_by_order, [int(splitter_y_new[i])] * len(columns_not_covered))
                             ##x_start_by_order = np.append(x_start_by_order, [0] * len(columns_not_covered))
-                            x_starting = np.append(x_starting, np.array(columns_not_covered, x_starting.dtype))
+                            x_starting = np.append(x_starting, columns_not_covered)
                             x_starting = np.append(x_starting, x_start_without_mother)
                             x_ending = np.append(x_ending, np.array(columns_not_covered) + 1)
                             x_ending = np.append(x_ending, x_end_without_mother)
@@ -1913,7 +1906,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                                 x_end_by_order.append(x_end_column_sort[ii]-1)
                     else:
                         #print(x_start_without_mother,x_end_without_mother,peaks_neg_tot,'dodo')
-                        columns_covered_by_mothers = set()
+                        columns_covered_by_mothers = []
                         for dj in range(len(x_start_without_mother)):
                             columns_covered_by_mothers = columns_covered_by_mothers + \
                                 list(range(int(x_start_without_mother[dj]),
@@ -1925,12 +1918,12 @@ def return_boxes_of_images_by_order_of_reading_new(
                         y_type_2 = np.append(y_type_2, [int(splitter_y_new[i])] * (len(columns_not_covered) + len(x_start_without_mother)))
                         ##y_lines_by_order = np.append(y_lines_by_order, [int(splitter_y_new[i])] * len(columns_not_covered))
                         ##x_start_by_order = np.append(x_start_by_order, [0] * len(columns_not_covered))
-                        x_starting = np.append(x_starting, np.array(columns_not_covered, x_starting.dtype))
+                        x_starting = np.append(x_starting, columns_not_covered)
                         x_starting = np.append(x_starting, x_start_without_mother)
-                        x_ending = np.append(x_ending, np.array(columns_not_covered, x_ending.dtype) + 1)
+                        x_ending = np.append(x_ending, np.array(columns_not_covered) + 1)
                         x_ending = np.append(x_ending, x_end_without_mother)
 
-                        columns_covered_by_with_child_no_mothers = set()
+                        columns_covered_by_with_child_no_mothers = []
                         for dj in range(len(x_end_with_child_without_mother)):
                             columns_covered_by_with_child_no_mothers = columns_covered_by_with_child_no_mothers + \
                                 list(range(int(x_start_with_child_without_mother[dj]),
@@ -1974,7 +1967,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                                     if len(x_diff_all_between_nm_wc)>0:
                                         biggest=np.argmax(x_diff_all_between_nm_wc)
 
-                                    columns_covered_by_mothers = set()
+                                    columns_covered_by_mothers = []
                                     for dj in range(len(x_starting_all_between_nm_wc)):
                                         columns_covered_by_mothers = columns_covered_by_mothers + \
                                             list(range(int(x_starting_all_between_nm_wc[dj]),
@@ -2099,7 +2092,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                 x_start_by_order=[]
                 x_end_by_order=[]
                 if len(x_starting)>0:
-                    columns_covered_by_lines_covered_more_than_2col = set()
+                    all_columns = np.arange(len(peaks_neg_tot)-1)
+                    columns_covered_by_lines_covered_more_than_2col = []
                     for dj in range(len(x_starting)):
                         if set(list(range(int(x_starting[dj]),int(x_ending[dj]) ))) == set(all_columns):
                             pass
@@ -2112,21 +2106,22 @@ def return_boxes_of_images_by_order_of_reading_new(
                     y_type_2 = np.append(y_type_2, [int(splitter_y_new[i])] * (len(columns_not_covered) + 1))
                     ##y_lines_by_order = np.append(y_lines_by_order, [int(splitter_y_new[i])] * len(columns_not_covered))
                     ##x_start_by_order = np.append(x_start_by_order, [0] * len(columns_not_covered))
-                    x_starting = np.append(x_starting, np.array(columns_not_covered, x_starting.dtype))
-                    x_ending = np.append(x_ending, np.array(columns_not_covered, x_ending.dtype) + 1)
+                    x_starting = np.append(x_starting, columns_not_covered)
+                    x_ending = np.append(x_ending, np.array(columns_not_covered) + 1)
                     if len(new_main_sep_y) > 0:
                         x_starting = np.append(x_starting, 0)
-                        x_ending = np.append(x_ending, len(peaks_neg_tot) - 1)
+                        x_ending = np.append(x_ending, len(peaks_neg_tot)-1)
                     else:
                         x_starting = np.append(x_starting, x_starting[0])
                         x_ending = np.append(x_ending, x_ending[0])
                 else:
-                    columns_not_covered = list(all_columns)
+                    all_columns = np.arange(len(peaks_neg_tot)-1)
+                    columns_not_covered = list(set(all_columns))
                     y_type_2 = np.append(y_type_2, [int(splitter_y_new[i])] * len(columns_not_covered))
                     ##y_lines_by_order = np.append(y_lines_by_order, [int(splitter_y_new[i])] * len(columns_not_covered))
                     ##x_start_by_order = np.append(x_start_by_order, [0] * len(columns_not_covered))
-                    x_starting = np.append(x_starting, np.array(columns_not_covered, x_starting.dtype))
-                    x_ending = np.append(x_ending, np.array(columns_not_covered, x_ending.dtype) + 1)
+                    x_starting = np.append(x_starting, columns_not_covered)
+                    x_ending = np.append(x_ending, np.array(columns_not_covered) + 1)
 
                 ind_args=np.array(range(len(y_type_2)))
                 
