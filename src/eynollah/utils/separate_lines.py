@@ -1539,9 +1539,10 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map
         var = 0
     return angle, var
 
+@wrap_ndarray_shared(kw='textline_mask_tot_ea')
 def do_work_of_slopes_new(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, slope_deskew,
+        textline_mask_tot_ea=None, slope_deskew=0.0,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
     if KERNEL is None:
@@ -1689,9 +1690,10 @@ def do_work_of_slopes_new_curved(
 
     return textlines_cnt_per_region[::-1], box_text, contour, contour_par, crop_coor, index_r_con, slope
 
+@wrap_ndarray_shared(kw='textline_mask_tot_ea')
 def do_work_of_slopes_new_light(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, slope_deskew, textline_light,
+        textline_mask_tot_ea=None, slope_deskew=0, textline_light=True,
         logger=None
 ):
     if logger is None:

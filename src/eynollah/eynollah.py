@@ -1554,11 +1554,14 @@ class Eynollah:
         if not len(contours):
             return [], [], [], [], [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_light")
-        results = self.executor.map(partial(do_work_of_slopes_new_light,
-                                            textline_mask_tot_ea=textline_mask_tot,
-                                            slope_deskew=slope_deskew,textline_light=self.textline_light,
-                                            logger=self.logger,),
-                                    boxes, contours, contours_par, range(len(contours_par)))
+        with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
+            results = self.executor.map(partial(do_work_of_slopes_new_light,
+                                                textline_mask_tot_ea=textline_mask_tot_shared,
+                                                slope_deskew=slope_deskew,
+                                                textline_light=self.textline_light,
+                                                logger=self.logger,),
+                                        boxes, contours, contours_par, range(len(contours_par)))
+            results = list(results) # exhaust prior to release
         #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new_light")
         return tuple(zip(*results))
@@ -1567,14 +1570,16 @@ class Eynollah:
         if not len(contours):
             return [], [], [], [], [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new")
-        results = self.executor.map(partial(do_work_of_slopes_new,
-                                            textline_mask_tot_ea=textline_mask_tot,
-                                            slope_deskew=slope_deskew,
-                                            MAX_SLOPE=MAX_SLOPE,
-                                            KERNEL=KERNEL,
-                                            logger=self.logger,
-                                            plotter=self.plotter,),
-                                    boxes, contours, contours_par, range(len(contours_par)))
+        with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
+            results = self.executor.map(partial(do_work_of_slopes_new,
+                                                textline_mask_tot_ea=textline_mask_tot_shared,
+                                                slope_deskew=slope_deskew,
+                                                MAX_SLOPE=MAX_SLOPE,
+                                                KERNEL=KERNEL,
+                                                logger=self.logger,
+                                                plotter=self.plotter,),
+                                        boxes, contours, contours_par, range(len(contours_par)))
+            results = list(results) # exhaust prior to release
         #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new")
         return tuple(zip(*results))
@@ -1596,8 +1601,8 @@ class Eynollah:
                                             logger=self.logger,
                                             plotter=self.plotter,),
                                     boxes, contours, contours_par, range(len(contours_par)))
-                #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
                 results = list(results) # exhaust prior to release
+        #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new_curved")
         return tuple(zip(*results))
 
