@@ -14,15 +14,17 @@ class EynollahProcessor(Processor):
         return 'ocrd-eynollah-segment'
 
     def setup(self) -> None:
-        if self.parameter['textline_light'] and not self.parameter['light_version']:
-            raise ValueError("Error: You set parameter 'textline_light' to enable light textline detection, "
-                             "but parameter 'light_version' is not enabled")
+        assert self.parameter
+        if self.parameter['textline_light'] != self.parameter['light_version']:
+            raise ValueError("Error: You must set or unset both parameter 'textline_light' (to enable light textline detection), "
+                             "and parameter 'light_version' (faster+simpler method for main region detection and deskewing)")
         self.eynollah = Eynollah(
             self.resolve_resource(self.parameter['models']),
             logger=self.logger,
             allow_enhancement=self.parameter['allow_enhancement'],
             curved_line=self.parameter['curved_line'],
             right2left=self.parameter['right_to_left'],
+            reading_order_machine_based=self.parameter['reading_order_machine_based'],
             ignore_page_extraction=self.parameter['ignore_page_extraction'],
             light_version=self.parameter['light_version'],
             textline_light=self.parameter['textline_light'],
@@ -56,6 +58,8 @@ class EynollahProcessor(Processor):
         - If ``ignore_page_extraction``, then attempt no cropping of the page.
         - If ``curved_line``, then compute contour polygons for text lines
           instead of simple bounding boxes.
+        - If ``reading_order_machine_based``, then detect reading order via
+          data-driven model instead of geometrical heuristics.
 
         Produce a new output file by serialising the resulting hierarchy.
         """

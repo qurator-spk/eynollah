@@ -38,7 +38,7 @@
          "textline_light": {
           "type": "boolean",
           "default": true,
-          "description": "Light version need textline light"
+          "description": "Light version need textline light. If this parameter set to true, this tool will try to return contoure of textlines instead of rectangle bounding box of textline with a faster method."
         },
         "tables": {
           "type": "boolean",
@@ -65,11 +65,6 @@
           "default": false,
           "description": "if this parameter set to true, this tool would check that input image need resizing and enhancement or not."
         },
-        "textline_light": {
-          "type": "boolean",
-          "default": false,
-          "description": "if this parameter set to true, this tool will try to return contoure of textlines instead of rectangle bounding box of textline with a faster method."
-        },
         "right_to_left": {
           "type": "boolean",
           "default": false,
@@ -79,6 +74,11 @@
           "type": "boolean",
           "default": false,
           "description": "ignore the special role of headings during reading order detection"
+        },
+        "reading_order_machine_based": {
+          "type": "boolean",
+          "default": false,
+          "description": "use data-driven (rather than rule-based) reading order detection"
         }
       },
       "resources": [
