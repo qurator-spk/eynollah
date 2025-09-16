@@ -285,7 +285,7 @@ class Eynollah:
         #"/eynollah-full-regions-1column_20210425"
         self.model_region_dir_fully_np = dir_models + "/modelens_full_lay_1__4_3_091124"
         #self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425"
-        self.model_page_dir = dir_models + "/model_ens_page"
+        self.model_page_dir = dir_models + "/model_eynollah_page_extraction_20250915"
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_region_dir_p_ens_light_only_images_extraction = dir_models + "/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18"
