@@ -1469,7 +1469,7 @@ def do_image_rotation(angle, img=None, sigma_des=1.0, logger=None):
     return var
 
 def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
-                       main_page=False, logger=None, plotter=None, map=map):
+                       main_page=False, logger=None, plotter=None, map=None):
     if main_page and plotter:
         plotter.save_plot_of_textline_density(img_patch_org)
 
@@ -1523,8 +1523,13 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
 def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map):
     if logger is None:
         logger = getLogger(__package__)
-    with share_ndarray(img) as img_shared:
-        results = list(map(partial(do_image_rotation, img=img_shared, sigma_des=sigma_des, logger=logger), angles))
+    if map is None:
+        results = [do_image_rotation.__wrapped__(angle, img=img, sigma_des=sigma_des, logger=logger)
+                   for angle in angles]
+    else:
+        with share_ndarray(img) as img_shared:
+            results = list(map(partial(do_image_rotation, img=img_shared, sigma_des=sigma_des, logger=logger),
+                               angles))
     if plotter:
         plotter.save_plot_of_rotation_angle(angles, results)
     try:
