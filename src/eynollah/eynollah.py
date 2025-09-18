@@ -6,7 +6,6 @@
 document layout analysis (segmentation) with output in PAGE-XML
 """
 
-from logging import Logger
 from difflib import SequenceMatcher as sq
 from PIL import Image, ImageDraw, ImageFont
 import math
@@ -201,18 +200,8 @@ class Eynollah:
         num_col_upper : Optional[int] = None,
         num_col_lower : Optional[int] = None,
         skip_layout_and_reading_order : bool = False,
-        logger : Optional[Logger] = None,
     ):
-        if logger:
-            self.logger = logger
-        else:
-            self.logger = getLogger('eynollah')
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setLevel(logging.INFO)
-            formatter = logging.Formatter('%(message)s')
-            console_handler.setFormatter(formatter)
-            self.logger.addHandler(console_handler)
-            self.logger.setLevel(logging.INFO)
+        self.logger = getLogger('eynollah')
             
         if skip_layout_and_reading_order:
             textline_light = True
