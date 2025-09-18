@@ -4293,7 +4293,6 @@ class Eynollah:
 
             pcgts = self.run_single()
             self.logger.info("Job done in %.1fs", time.time() - t0)
-            #print("Job done in %.1fs" % (time.time() - t0))
             self.writer.write_pagexml(pcgts)
 
         if dir_in:
@@ -4504,7 +4503,6 @@ class Eynollah:
             image_page_rotated = resize_image(image_page_rotated,org_h_l_m, org_w_l_m )
 
         self.logger.info(f"Detection of marginals took {time.time() - t1:.1f}s")
-        #print("text region early 2 marginal in %.1fs", time.time() - t0)
         ## birdan sora chock chakir
         t1 = time.time()
         if not self.full_layout:
@@ -5007,8 +5005,6 @@ class Eynollah:
             all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals,
             all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
             cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, conf_contours_textregions)
-        
-        self.logger.info(f"\nProcessing completed in {time.time() - t0:.1f}s")
         
         self.logger.info(f"Output file: {self.writer.output_filename}")
         
