@@ -157,6 +157,7 @@ def image_enhancement(dir_imgs, dir_out_images, dir_out_labels, scales):
 
 def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size, min_area_early):
     xml_files_ind = os.listdir(dir_xml)
+    xml_files_ind = [ind_xml for ind_xml in xml_files_ind if ind_xml.endswith('.xml')]
     input_height = int(input_height)
     input_width = int(input_width)
     min_area = float(min_area_size)
@@ -268,14 +269,14 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
 
 @click.option(
     "--dir_out",
-    "-do",
+    "-o",
     help="directory where plots will be written",
     type=click.Path(exists=True, file_okay=False),
 )
 
 @click.option(
     "--dir_imgs",
-    "-dimg",
+    "-di",
     help="directory where the overlayed plots will be written", )
 
 def visualize_reading_order(xml_file, dir_xml, dir_out, dir_imgs):
@@ -283,6 +284,7 @@ def visualize_reading_order(xml_file, dir_xml, dir_out, dir_imgs):
 
     if dir_xml:
         xml_files_ind = os.listdir(dir_xml)
+        xml_files_ind = [ind_xml for ind_xml in xml_files_ind if ind_xml.endswith('.xml')]
     else:
         xml_files_ind = [xml_file]
         
@@ -354,6 +356,12 @@ def visualize_reading_order(xml_file, dir_xml, dir_out, dir_imgs):
     
 @main.command()
 @click.option(
+    "--xml_file",
+    "-xml",
+    help="xml filename",
+    type=click.Path(exists=True, dir_okay=False),
+)
+@click.option(
     "--dir_xml",
     "-dx",
     help="directory of GT page-xml files",
@@ -362,18 +370,24 @@ def visualize_reading_order(xml_file, dir_xml, dir_out, dir_imgs):
 
 @click.option(
     "--dir_out",
-    "-do",
+    "-o",
     help="directory where plots will be written",
     type=click.Path(exists=True, file_okay=False),
 )
 
 @click.option(
     "--dir_imgs",
-    "-dimg",
+    "-di",
     help="directory of images where textline segmentation will be overlayed", )
 
-def visualize_textline_segmentation(dir_xml, dir_out, dir_imgs):
-    xml_files_ind = os.listdir(dir_xml)
+def visualize_textline_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
+    assert xml_file or dir_xml, "A single xml file -xml or a dir of xml files -dx is required not both of them"
+    if dir_xml:
+        xml_files_ind = os.listdir(dir_xml)
+        xml_files_ind = [ind_xml for ind_xml in xml_files_ind if ind_xml.endswith('.xml')]
+    else:
+        xml_files_ind = [xml_file]
+        
     for ind_xml in tqdm(xml_files_ind):
         indexer = 0
         #print(ind_xml)
@@ -408,20 +422,21 @@ def visualize_textline_segmentation(dir_xml, dir_out, dir_imgs):
 
 @click.option(
     "--dir_out",
-    "-do",
+    "-o",
     help="directory where plots will be written",
     type=click.Path(exists=True, file_okay=False),
 )
 
 @click.option(
     "--dir_imgs",
-    "-dimg",
+    "-di",
     help="directory of images where textline segmentation will be overlayed", )
 
 def visualize_layout_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
     assert xml_file or dir_xml, "A single xml file -xml or a dir of xml files -dx is required not both of them"
     if dir_xml:
         xml_files_ind = os.listdir(dir_xml)
+        xml_files_ind = [ind_xml for ind_xml in xml_files_ind if ind_xml.endswith('.xml')]
     else:
         xml_files_ind = [xml_file]
         
@@ -466,7 +481,7 @@ def visualize_layout_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
 
 @click.option(
     "--dir_out",
-    "-do",
+    "-o",
     help="directory where plots will be written",
     type=click.Path(exists=True, file_okay=False),
 )
@@ -476,6 +491,7 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
     assert xml_file or dir_xml, "A single xml file -xml or a dir of xml files -dx is required not both of them"
     if dir_xml:
         xml_files_ind = os.listdir(dir_xml)
+        xml_files_ind = [ind_xml for ind_xml in xml_files_ind if ind_xml.endswith('.xml')]
     else:
         xml_files_ind = [xml_file]
         
