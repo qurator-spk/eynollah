@@ -4553,11 +4553,13 @@ class Eynollah:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(
                         splitter_y_new, regions_without_separators, matrix_of_lines_ch,
-                        num_col_classifier, erosion_hurts, self.tables, self.right2left)
+                        num_col_classifier, erosion_hurts, self.tables, self.right2left,
+                        logger=self.logger)
                 else:
                     boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(
                         splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d,
-                        num_col_classifier, erosion_hurts, self.tables, self.right2left)
+                        num_col_classifier, erosion_hurts, self.tables, self.right2left,
+                        logger=self.logger)
 
         if self.plotter:
             self.plotter.write_images_into_directory(polygons_of_images, image_page)

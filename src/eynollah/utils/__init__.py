@@ -1,3 +1,5 @@
+from typing import Tuple
+from logging import getLogger
 import time
 import math
 
@@ -1626,10 +1628,16 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
 def return_boxes_of_images_by_order_of_reading_new(
         splitter_y_new, regions_without_separators,
         matrix_of_lines_ch,
-        num_col_classifier, erosion_hurts, tables, right2left_readingorder):
+        num_col_classifier, erosion_hurts, tables,
+        right2left_readingorder,
+        logger=None):
 
     if right2left_readingorder:
         regions_without_separators = cv2.flip(regions_without_separators,1)
+    if logger is None:
+        logger = getLogger(__package__)
+    logger.debug('enter return_boxes_of_images_by_order_of_reading_new')
+
     boxes=[]
     peaks_neg_tot_tables = []
     splitter_y_new = np.array(splitter_y_new, dtype=int)
@@ -1710,7 +1718,7 @@ def return_boxes_of_images_by_order_of_reading_new(
 
                     #print(peaks_neg_fin,'peaks_neg_fin')
             except:
-                pass
+                logger.exception("cannot find peaks consistent with columns")
             #num_col, peaks_neg_fin = find_num_col(
             #    regions_without_separators[splitter_y_new[i]:splitter_y_new[i+1],:],
             #    multiplier=7.0)
@@ -1987,7 +1995,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                                             x_starting_all_between_nm_wc = np.append(x_starting_all_between_nm_wc, x_starting_all_between_nm_wc[biggest])
                                             x_ending_all_between_nm_wc = np.append(x_ending_all_between_nm_wc, x_ending_all_between_nm_wc[biggest])
                                         except:
-                                            pass
+                                            logger.exception("cannot append")
 
                                     y_all_between_nm_wc = np.append(y_all_between_nm_wc, [y_column_nc[i_c]] * len(columns_not_covered))
                                     x_starting_all_between_nm_wc = np.append(x_starting_all_between_nm_wc, np.array(columns_not_covered, int))
@@ -2067,6 +2075,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                                           y_itself,
                                           y_down])
                 except:
+                    logger.exception("cannot assign boxes")
                     boxes.append([0, peaks_neg_tot[len(peaks_neg_tot)-1],
                                   splitter_y_new[i], splitter_y_new[i+1]])
             else:
@@ -2170,6 +2179,7 @@ def return_boxes_of_images_by_order_of_reading_new(
             x_end_new = regions_without_separators.shape[1] - boxes[i][0]
             boxes[i][0] = x_start_new
             boxes[i][1] = x_end_new
-        return boxes, peaks_neg_tot_tables_new
-    else:
-        return boxes, peaks_neg_tot_tables
+        peaks_neg_tot_tables = peaks_neg_tot_tables_new
+
+    logger.debug('exit return_boxes_of_images_by_order_of_reading_new')
+    return boxes, peaks_neg_tot_tables
