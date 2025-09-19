@@ -1528,7 +1528,7 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map
                    for angle in angles]
     else:
         with share_ndarray(img) as img_shared:
-            results = list(map(partial(do_image_rotation, img=img_shared, sigma_des=sigma_des, logger=logger),
+            results = list(map(partial(do_image_rotation, img=img_shared, sigma_des=sigma_des, logger=None),
                                angles))
     if plotter:
         plotter.save_plot_of_rotation_angle(angles, results)
