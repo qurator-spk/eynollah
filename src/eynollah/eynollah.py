@@ -3065,11 +3065,12 @@ class Eynollah:
         if self.plotter:
             self.plotter.save_page_image(image_page)
         
-        mask_page = np.zeros((text_regions_p_1.shape[0], text_regions_p_1.shape[1])).astype(np.int8)
-        mask_page = cv2.fillPoly(mask_page, pts=[cont_page], color=(1,))
-        
-        text_regions_p_1[mask_page==0] = 0
-        textline_mask_tot_ea[mask_page==0] = 0
+        if not self.ignore_page_extraction:
+            mask_page = np.zeros((text_regions_p_1.shape[0], text_regions_p_1.shape[1])).astype(np.int8)
+            mask_page = cv2.fillPoly(mask_page, pts=[cont_page], color=(1,))
+            
+            text_regions_p_1[mask_page==0] = 0
+            textline_mask_tot_ea[mask_page==0] = 0
         
         text_regions_p_1 = text_regions_p_1[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
         textline_mask_tot_ea = textline_mask_tot_ea[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
