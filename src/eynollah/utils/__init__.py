@@ -383,6 +383,10 @@ def find_num_col_deskew(regions_without_separators, sigma_, multiplier=3.8):
     return np.std(z)
 
 def find_num_col(regions_without_separators, num_col_classifier, tables, multiplier=3.8):
+    if not regions_without_separators.any():
+        return 0, []
+    #plt.imshow(regions_without_separators)
+    #plt.show()
     regions_without_separators_0 = regions_without_separators.sum(axis=0)
     ##plt.plot(regions_without_separators_0)
     ##plt.show()
@@ -402,6 +406,9 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
     zneg = gaussian_filter1d(zneg, sigma_)
 
     peaks_neg, _ = find_peaks(zneg, height=0)
+    #plt.plot(zneg)
+    #plt.plot(peaks_neg, zneg[peaks_neg], 'rx')
+    #plt.show()
     peaks, _ = find_peaks(z, height=0)
     peaks_neg = peaks_neg - 10 - 10
 
@@ -416,9 +423,13 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
                           (peaks_neg < (regions_without_separators.shape[1] - 370))]
     interest_pos = z[peaks]
     interest_pos = interest_pos[interest_pos > 10]
+    if not interest_pos.any():
+        return 0, []
     # plt.plot(z)
     # plt.show()
     interest_neg = z[peaks_neg]
+    if not interest_neg.any():
+        return 0, []
 
     min_peaks_pos = np.min(interest_pos)
     max_peaks_pos = np.max(interest_pos)
