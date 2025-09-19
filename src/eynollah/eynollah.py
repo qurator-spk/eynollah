@@ -1617,7 +1617,7 @@ class Eynollah:
             else:
                 box = [0, 0, img.shape[1], img.shape[0]]
             cropped_page, page_coord = crop_image_inside_box(box, self.image)
-            cont_page = cnt
+            cont_page = [cnt]
             #cont_page.append(np.array([[page_coord[2], page_coord[0]],
                                        #[page_coord[3], page_coord[0]],
                                        #[page_coord[3], page_coord[1]],
@@ -3067,7 +3067,7 @@ class Eynollah:
         
         if not self.ignore_page_extraction:
             mask_page = np.zeros((text_regions_p_1.shape[0], text_regions_p_1.shape[1])).astype(np.int8)
-            mask_page = cv2.fillPoly(mask_page, pts=[cont_page], color=(1,))
+            mask_page = cv2.fillPoly(mask_page, pts=[cont_page[0]], color=(1,))
             
             text_regions_p_1[mask_page==0] = 0
             textline_mask_tot_ea[mask_page==0] = 0
@@ -4526,6 +4526,7 @@ class Eynollah:
 
         if dir_in:
             self.ls_imgs  = os.listdir(dir_in)
+            self.ls_imgs = [ind_img for ind_img in self.ls_imgs if ind_img.endswith('.jpg') or ind_img.endswith('.jpeg') or ind_img.endswith('.png') or ind_img.endswith('.tif') or ind_img.endswith('.tiff') or ind_img.endswith('.JPG') or ind_img.endswith('.JPEG')]
         elif image_filename:
             self.ls_imgs = [image_filename]
         else:
@@ -5265,6 +5266,7 @@ class Eynollah_ocr:
     def run(self, overwrite : bool = False):
         if self.dir_in:
             ls_imgs = os.listdir(self.dir_in)
+            ls_imgs = [ind_img for ind_img in ls_imgs if ind_img.endswith('.jpg') or ind_img.endswith('.jpeg') or ind_img.endswith('.png') or ind_img.endswith('.tif') or ind_img.endswith('.tiff') or ind_img.endswith('.JPG') or ind_img.endswith('.JPEG')]
         else:
             ls_imgs = [self.image_filename]
         
