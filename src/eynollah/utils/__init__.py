@@ -1675,9 +1675,9 @@ def return_boxes_of_images_by_order_of_reading_new(
                 peaks_neg_fin=[]
                 num_col = 0
             try:
-                peaks_neg_fin_org=np.copy(peaks_neg_fin)
                 if (len(peaks_neg_fin)+1)<num_col_classifier or num_col_classifier==6:
                     #print('burda')
+                    peaks_neg_fin_org = np.copy(peaks_neg_fin)
                     if len(peaks_neg_fin)==0:
                         num_col, peaks_neg_fin = find_num_col(
                             regions_without_separators[splitter_y_new[i]:splitter_y_new[i+1], :],

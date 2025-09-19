@@ -3182,26 +3182,9 @@ class Eynollah:
             num_col = num_col + 1
             if not num_column_is_classified:
                 num_col_classifier = num_col + 1
-            if self.num_col_upper and self.num_col_lower:
-                if self.num_col_upper == self.num_col_lower:
-                    num_col_classifier = self.num_col_upper
-                else:
-                    if num_col_classifier < self.num_col_lower:
-                        num_col_classifier = self.num_col_lower
-                    if num_col_classifier > self.num_col_upper:
-                        num_col_classifier = self.num_col_upper
-                        
-            elif self.num_col_lower and not self.num_col_upper:
-                if num_col_classifier < self.num_col_lower:
-                    num_col_classifier = self.num_col_lower
-                    
-            elif self.num_col_upper and not self.num_col_lower:
-                if num_col_classifier > self.num_col_upper:
-                    num_col_classifier = self.num_col_upper
-                    
-            else:
-                pass
-                
+            num_col_classifier = min(self.num_col_upper or num_col_classifier,
+                                     max(self.num_col_lower or num_col_classifier,
+                                         num_col_classifier))
         except Exception as why:
             self.logger.error(why)
             num_col = None
