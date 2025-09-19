@@ -5481,17 +5481,31 @@ class Eynollah_ocr:
                     image_text.save(out_image_with_text)
 
                 #print(len(unique_cropped_lines_region_indexer), 'unique_cropped_lines_region_indexer')
+                #######text_by_textregion = []
+                #######for ind in unique_cropped_lines_region_indexer:
+                    #######extracted_texts_merged_un = np.array(extracted_texts_merged)[np.array(cropped_lines_region_indexer)==ind]
+                    
+                    #######text_by_textregion.append(" ".join(extracted_texts_merged_un))
+                    
                 text_by_textregion = []
                 for ind in unique_cropped_lines_region_indexer:
                     extracted_texts_merged_un = np.array(extracted_texts_merged)[np.array(cropped_lines_region_indexer)==ind]
-                    
-                    text_by_textregion.append(" ".join(extracted_texts_merged_un))
-                    
-                #print(len(text_by_textregion) , indexer_text_region, "text_by_textregion")
-
-
-                #print(time.time() - t0 ,'elapsed time')
-
+                    if len(extracted_texts_merged_un)>1:
+                        text_by_textregion_ind = ""
+                        next_glue = ""
+                        for indt in range(len(extracted_texts_merged_un)):
+                            if extracted_texts_merged_un[indt].endswith('⸗') or extracted_texts_merged_un[indt].endswith('-') or extracted_texts_merged_un[indt].endswith('¬'):
+                                text_by_textregion_ind = text_by_textregion_ind + next_glue + extracted_texts_merged_un[indt][:-1]
+                                next_glue = ""
+                            else:
+                                text_by_textregion_ind = text_by_textregion_ind + next_glue + extracted_texts_merged_un[indt]
+                                next_glue = " "
+                        text_by_textregion.append(text_by_textregion_ind)
+                            
+                    else:
+                        text_by_textregion.append(" ".join(extracted_texts_merged_un))
+                        
+                        
                 indexer = 0
                 indexer_textregion = 0
                 for nn in root1.iter(region_tags):
@@ -5993,7 +6007,7 @@ class Eynollah_ocr:
                             text_by_textregion_ind = ""
                             next_glue = ""
                             for indt in range(len(extracted_texts_merged_un)):
-                                if extracted_texts_merged_un[indt].endswith('⸗') or extracted_texts_merged_un[indt].endswith('-'):
+                                if extracted_texts_merged_un[indt].endswith('⸗') or extracted_texts_merged_un[indt].endswith('-') or extracted_texts_merged_un[indt].endswith('¬'):
                                     text_by_textregion_ind = text_by_textregion_ind + next_glue + extracted_texts_merged_un[indt][:-1]
                                     next_glue = ""
                                 else:
