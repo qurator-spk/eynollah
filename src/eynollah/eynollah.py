@@ -23,7 +23,7 @@ import gc
 import copy
 import json
 
-from loky import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
@@ -244,7 +244,7 @@ class Eynollah:
             self.num_col_lower = num_col_lower
         self.logger = logger if logger else getLogger('eynollah')
         # for parallelization of CPU-intensive tasks:
-        self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
+        self.executor = ProcessPoolExecutor(max_workers=cpu_count())
         atexit.register(self.executor.shutdown)
         self.dir_models = dir_models
         self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
