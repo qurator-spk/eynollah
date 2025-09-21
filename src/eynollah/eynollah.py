@@ -4526,7 +4526,7 @@ class Eynollah:
 
         if dir_in:
             self.ls_imgs  = os.listdir(dir_in)
-            self.ls_imgs = [ind_img for ind_img in self.ls_imgs if ind_img.endswith('.jpg') or ind_img.endswith('.jpeg') or ind_img.endswith('.png') or ind_img.endswith('.tif') or ind_img.endswith('.tiff') or ind_img.endswith('.JPG') or ind_img.endswith('.JPEG')]
+            self.ls_imgs = [ind_img for ind_img in self.ls_imgs if ind_img.endswith('.jpg') or ind_img.endswith('.jpeg') or ind_img.endswith('.png') or ind_img.endswith('.tif') or ind_img.endswith('.tiff') or ind_img.endswith('.JPG') or ind_img.endswith('.JPEG') or ind_img.endswith('.TIF') or ind_img.endswith('.TIFF') or ind_img.endswith('.PNG')]
         elif image_filename:
             self.ls_imgs = [image_filename]
         else:
@@ -5266,7 +5266,7 @@ class Eynollah_ocr:
     def run(self, overwrite : bool = False):
         if self.dir_in:
             ls_imgs = os.listdir(self.dir_in)
-            ls_imgs = [ind_img for ind_img in ls_imgs if ind_img.endswith('.jpg') or ind_img.endswith('.jpeg') or ind_img.endswith('.png') or ind_img.endswith('.tif') or ind_img.endswith('.tiff') or ind_img.endswith('.JPG') or ind_img.endswith('.JPEG')]
+            ls_imgs = [ind_img for ind_img in ls_imgs if ind_img.endswith('.jpg') or ind_img.endswith('.jpeg') or ind_img.endswith('.png') or ind_img.endswith('.tif') or ind_img.endswith('.tiff') or ind_img.endswith('.JPG') or ind_img.endswith('.JPEG') or ind_img.endswith('.TIF') or ind_img.endswith('.TIFF') or ind_img.endswith('.PNG')]
         else:
             ls_imgs = [self.image_filename]
         
