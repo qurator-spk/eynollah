@@ -18,7 +18,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     
     
-def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_image, co_marginal,  img):
+def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_image, co_marginal, co_table, img):
     alpha = 0.5
     
     blank_image = np.ones( (img.shape[:]), dtype=np.uint8) * 255
@@ -30,6 +30,7 @@ def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_
     col_image = (0, 100, 0)
     col_sep = (255, 0, 0)
     col_marginal =  (106, 90, 205)
+    col_table =  (0, 90, 205)
     
     if len(co_image)>0:
         cv2.drawContours(blank_image, co_image, -1, col_image, thickness=cv2.FILLED)  # Fill the contour
@@ -51,6 +52,9 @@ def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_
         
     if len(co_marginal)>0:
         cv2.drawContours(blank_image, co_marginal, -1, col_marginal, thickness=cv2.FILLED)  # Fill the contour
+        
+    if len(co_table)>0:
+        cv2.drawContours(blank_image, co_table, -1, col_table, thickness=cv2.FILLED)  # Fill the contour
     
     img_final =cv2.cvtColor(blank_image, cv2.COLOR_BGR2RGB)
     
