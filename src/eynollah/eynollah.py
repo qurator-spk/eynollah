@@ -1746,7 +1746,45 @@ class Eynollah:
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
         return prediction_regions, prediction_regions2
+        
+    def get_textlines_of_a_textregion_sorted(self, textlines_textregion, cx_textline, cy_textline):
+        N = len(cy_textline)
+        if N==0:
+            return []
+        
+        diff_matrix = np.abs(np.subtract.outer(cy_textline, cy_textline))
+        
+        non_zero_diffs = diff_matrix[diff_matrix > 0]
+        if len(non_zero_diffs) == 0:
+            mean_y_diff = 0
+        else:
+            mean_y_diff = np.mean(non_zero_diffs)
+            
+        row_threshold = mean_y_diff / 2 if mean_y_diff > 0 else 10
 
+        indices_sorted_by_y = sorted(range(N), key=lambda i: cy_textline[i])
+        
+        rows = []
+        current_row = [indices_sorted_by_y[0]]
+        for i in range(1, N):
+            current_idx = indices_sorted_by_y[i]
+            prev_idx = current_row[0]
+            if abs(cy_textline[current_idx] - cy_textline[prev_idx]) <= row_threshold:
+                current_row.append(current_idx)
+            else:
+                rows.append(current_row)
+                current_row = [current_idx]
+        rows.append(current_row)
+
+        sorted_textlines = []
+        for row in rows:
+            row_sorted = sorted(row, key=lambda i: cx_textline[i])
+            for idx in row_sorted:
+                sorted_textlines.append(textlines_textregion[idx])
+
+    return sorted_textlines
+
+            
     def get_slopes_and_deskew_new_light2(self, contours, contours_par, textline_mask_tot, image_page_rotated, boxes, slope_deskew):
 
         polygons_of_textlines = return_contours_of_interested_region(textline_mask_tot,1,0.00001)
@@ -1766,8 +1804,12 @@ class Eynollah:
             results = np.array(results)
             indexes_in = args_textlines[results==1]
             textlines_ins = [polygons_of_textlines[ind] for ind in indexes_in]
+            cx_textline_in = [cx_main_tot[ind] for ind in indexes_in]
+            cy_textline_in = [cy_main_tot[ind] for ind in indexes_in]
 
-            all_found_textline_polygons.append(textlines_ins[::-1])
+            textlines_ins = self.get_textlines_of_a_textregion_sorted(textlines_ins, cx_textline_in, cy_textline_in)
+            
+            all_found_textline_polygons.append(textlines_ins)#[::-1])
             slopes.append(slope_deskew)
 
             _, crop_coor = crop_image_inside_box(boxes[index],image_page_rotated)
