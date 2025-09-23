@@ -49,8 +49,7 @@ def machine_based_reading_order(dir_xml, xml_file, dir_out, model):
 @main.command()
 @click.option('--patches/--no-patches', default=True, help='by enabling this parameter you let the model to see the image in patches.')
 @click.option('--model_dir', '-m', type=click.Path(exists=True, file_okay=False), required=True, help='directory containing models for prediction')
-@click.argument('input_image', required=False)
-@click.argument('output_image', required=False)
+@click.option("--input-image", "-i", help="input image", type=click.Path(exists=True, dir_okay=False))
 @click.option(
     "--dir_in",
     "-di",
@@ -58,16 +57,14 @@ def machine_based_reading_order(dir_xml, xml_file, dir_out, model):
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
-    "--dir_out",
-    "-do",
-    help="directory for output images",
-    type=click.Path(exists=True, file_okay=False),
+    "--output",
+    "-o",
+    help="output image (if using -i) or output image directory (if using -di)",
+    type=click.Path(file_okay=True, dir_okay=True),
 )
-def binarization(patches, model_dir, input_image, output_image, dir_in, dir_out):
-    assert (dir_out is None) == (dir_in is None), "Options -di and -do are mutually dependent"
-    assert (input_image is None) == (output_image is None), "INPUT_IMAGE and OUTPUT_IMAGE are mutually dependent"
-    assert (dir_in is None) != (input_image is None), "Specify either -di and -do options, or INPUT_IMAGE and OUTPUT_IMAGE"
-    SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, save=output_image, dir_in=dir_in, dir_out=dir_out)
+def binarization(patches, model_dir, input_image, dir_in, output):
+    assert (dir_in is None) != (input_image is None), "Specify either -di and or -i not both"
+    SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, output=output, dir_in=dir_in)
 
 
 
