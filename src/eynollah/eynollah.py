@@ -1782,7 +1782,7 @@ class Eynollah:
             for idx in row_sorted:
                 sorted_textlines.append(textlines_textregion[idx])
 
-    return sorted_textlines
+        return sorted_textlines
 
             
     def get_slopes_and_deskew_new_light2(self, contours, contours_par, textline_mask_tot, image_page_rotated, boxes, slope_deskew):
