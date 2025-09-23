@@ -1,5 +1,6 @@
 import sys
 import click
+import logging
 from ocrd_utils import initLogging, getLevelName, getLogger
 from eynollah.eynollah import Eynollah, Eynollah_ocr
 from eynollah.sbb_binarize import SbbBinarizer
@@ -335,15 +336,30 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
     is_flag=True,
     help="if this parameter set to true, this tool will ignore layout detection and reading order. It means that textline detection will be done within printspace and contours of textline will be written in xml output file.",
 )
+# TODO move to top-level CLI context
 @click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override log level globally to this",
+    help="Override 'eynollah' log level globally to this",
+)
+# 
+@click.option(
+    "--setup-logging",
+    is_flag=True,
+    help="Setup a basic console logger",
 )
 
-def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, transformer_ocr, batch_size_ocr, num_col_upper, num_col_lower, threshold_art_class_textline, threshold_art_class_layout, skip_layout_and_reading_order, ignore_page_extraction, log_level):
-    initLogging()
+def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, transformer_ocr, batch_size_ocr, num_col_upper, num_col_lower, threshold_art_class_textline, threshold_art_class_layout, skip_layout_and_reading_order, ignore_page_extraction, log_level, setup_logging):
+    if setup_logging:
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(message)s')
+        console_handler.setFormatter(formatter)
+        getLogger('eynollah').addHandler(console_handler)
+        getLogger('eynollah').setLevel(logging.INFO)
+    else:
+        initLogging()
     if log_level:
         getLogger('eynollah').setLevel(getLevelName(log_level))
     assert enable_plotting or not save_layout, "Plotting with -sl also requires -ep"
@@ -367,7 +383,6 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     assert image or dir_in, "Either a single image -i or a dir_in -di is required"
     eynollah = Eynollah(
         model,
-        logger=getLogger('eynollah'),
         dir_out=out,
         dir_of_cropped_images=save_images,
         extract_only_images=extract_only_images,

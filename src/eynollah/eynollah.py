@@ -6,7 +6,6 @@
 document layout analysis (segmentation) with output in PAGE-XML
 """
 
-from logging import Logger
 from difflib import SequenceMatcher as sq
 from PIL import Image, ImageDraw, ImageFont
 import math
@@ -219,8 +218,9 @@ class Eynollah:
         threshold_art_class_layout: Optional[float] = None,
         threshold_art_class_textline: Optional[float] = None,
         skip_layout_and_reading_order : bool = False,
-        logger : Optional[Logger] = None,
     ):
+        self.logger = getLogger('eynollah')
+            
         if skip_layout_and_reading_order:
             textline_light = True
         self.light_version = light_version
@@ -267,10 +267,6 @@ class Eynollah:
         else:
             self.threshold_art_class_textline = 0.1
             
-        self.logger = logger if logger else getLogger('eynollah')
-        # for parallelization of CPU-intensive tasks:
-        self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
-        atexit.register(self.executor.shutdown)
         self.dir_models = dir_models
         self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
         self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425"
@@ -325,7 +321,14 @@ class Eynollah:
                 self.model_table_dir = dir_models + "/modelens_table_0t4_201124"
             else:
                 self.model_table_dir = dir_models + "/eynollah-tables_20210319"
+                
+                
+        t_start = time.time()
 
+        # for parallelization of CPU-intensive tasks:
+        self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
+        atexit.register(self.executor.shutdown)
+        
         # #gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
         # #gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=7.7, allow_growth=True)
         # #session = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
@@ -339,7 +342,9 @@ class Eynollah:
                 tf.config.experimental.set_memory_growth(device, True)
         except:
             self.logger.warning("no GPU device available")
-
+            
+        self.logger.info("Loading models...")
+        
         self.model_page = self.our_load_model(self.model_page_dir)
         self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
         self.model_bin = self.our_load_model(self.model_dir_of_binarization)
@@ -392,6 +397,8 @@ class Eynollah:
                 
             if self.tables:
                 self.model_table = self.our_load_model(self.model_table_dir)
+                
+        self.logger.info(f"Model initialization complete ({time.time() - t_start:.1f}s)")
 
     def cache_images(self, image_filename=None, image_pil=None, dpi=None):
         ret = {}
@@ -4548,19 +4555,48 @@ class Eynollah:
 
             pcgts = self.run_single()
             self.logger.info("Job done in %.1fs", time.time() - t0)
-            #print("Job done in %.1fs" % (time.time() - t0))
             self.writer.write_pagexml(pcgts)
 
         if dir_in:
             self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
-            print("all Job done in %.1fs", time.time() - t0_tot)
 
     def run_single(self):
         t0 = time.time()
-        img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
-        self.logger.info("Enhancing took %.1fs ", time.time() - t0)
+    
+        self.logger.info(f"Processing file: {self.writer.image_filename}")
         
+        # Log enabled features directly
+        enabled_modes = []
+        if self.light_version:
+            enabled_modes.append("Light version")
+        if self.textline_light:
+            enabled_modes.append("Light textline detection")
+        if self.full_layout:
+            enabled_modes.append("Full layout analysis")
+        if self.ocr:
+            enabled_modes.append("OCR")
+        if self.tables:
+            enabled_modes.append("Table detection")
+        
+        if enabled_modes:
+            self.logger.info("Enabled modes: " + ", ".join(enabled_modes))
+                        
+                        
+        self.logger.info("Step 1/5: Image Enhancement")
+        
+        img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
+        
+        self.logger.info(f"Image: {self.image.shape[1]}x{self.image.shape[0]}, {self.dpi} DPI, {num_col_classifier} columns")
+        if is_image_enhanced:
+            self.logger.info("Enhancement applied")
+        
+        self.logger.info(f"Enhancement complete ({time.time() - t0:.1f}s)")
+        
+
+        # Image Extraction Mode
         if self.extract_only_images:
+            self.logger.info("Step 2/5: Image Extraction Mode")
+            
             text_regions_p_1, erosion_hurts, polygons_lines_xml, polygons_of_images, image_page, page_coord, cont_page = \
                 self.get_regions_light_v_extract_only_images(img_res, is_image_enhanced, num_col_classifier)
             pcgts = self.writer.build_pagexml_no_full_layout(
@@ -4569,9 +4605,15 @@ class Eynollah:
                 cont_page, [], [])
             if self.plotter:
                 self.plotter.write_images_into_directory(polygons_of_images, image_page)
+                
+            self.logger.info("Image extraction complete")
             return pcgts
 
+        # Basic Processing Mode
         if self.skip_layout_and_reading_order:
+            self.logger.info("Step 2/5: Basic Processing Mode")
+            self.logger.info("Skipping layout analysis and reading order detection")
+    
             _ ,_, _, textline_mask_tot_ea, img_bin_light, _ = \
                 self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier,
                                          skip_layout_and_reading_order=self.skip_layout_and_reading_order)
@@ -4623,11 +4665,15 @@ class Eynollah:
                 all_found_textline_polygons, page_coord, polygons_of_images, polygons_of_marginals_left, polygons_of_marginals_right,
                 all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_marginals_left, slopes_marginals_right, 
                 cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines=ocr_all_textlines, conf_contours_textregion=conf_contours_textregions, skip_layout_reading_order=self.skip_layout_and_reading_order)
+            self.logger.info("Basic processing complete")
             return pcgts
 
         #print("text region early -1 in %.1fs", time.time() - t0)
         t1 = time.time()
+        self.logger.info("Step 2/5: Layout Analysis")
+        
         if self.light_version:
+            self.logger.info("Using light version processing")
             text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin_light, confidence_matrix = \
                 self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
             #print("text region early -2 in %.1fs", time.time() - t0)
@@ -4658,19 +4704,22 @@ class Eynollah:
             text_regions_p_1 ,erosion_hurts, polygons_lines_xml = \
                 self.get_regions_from_xy_2models(img_res, is_image_enhanced,
                                                  num_col_classifier)
-            self.logger.info("Textregion detection took %.1fs ", time.time() - t1)
+            self.logger.info(f"Textregion detection took {time.time() - t1:.1f}s")
             confidence_matrix = np.zeros((text_regions_p_1.shape[:2]))
 
             t1 = time.time()
             num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, \
                 text_regions_p_1, cont_page, table_prediction = \
                     self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts)
-            self.logger.info("Graphics detection took %.1fs ", time.time() - t1)
+            self.logger.info(f"Graphics detection took {time.time() - t1:.1f}s")
             #self.logger.info('cont_page %s', cont_page)
         #plt.imshow(table_prediction)
         #plt.show()
+        self.logger.info(f"Layout analysis complete ({time.time() - t1:.1f}s)")
+
         if not num_col:
-            self.logger.info("No columns detected, outputting an empty PAGE-XML")
+            self.logger.info("No columns detected - generating empty PAGE-XML")
+    
             pcgts = self.writer.build_pagexml_no_full_layout(
                 [], page_coord, [], [], [], [], [], [], [], [], [], [], [], [], [], [],
                 cont_page, [], [])
@@ -4680,10 +4729,12 @@ class Eynollah:
         t1 = time.time()
         if not self.light_version:
             textline_mask_tot_ea = self.run_textline(image_page)
-            self.logger.info("textline detection took %.1fs", time.time() - t1)
+            self.logger.info(f"Textline detection took {time.time() - t1:.1f}s")
             t1 = time.time()
             slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
-            self.logger.info("deskewing took %.1fs", time.time() - t1)
+            if np.abs(slope_deskew) > 0.01:  # Only log if there is significant skew
+                self.logger.info(f"Applied deskew correction: {slope_deskew:.2f} degrees")
+            self.logger.info(f"Deskewing took {time.time() - t1:.1f}s")
         elif num_col_classifier in (1,2):
             org_h_l_m = textline_mask_tot_ea.shape[0]
             org_w_l_m = textline_mask_tot_ea.shape[1]
@@ -4703,6 +4754,13 @@ class Eynollah:
         textline_mask_tot, text_regions_p, image_page_rotated = \
             self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines,
                                num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
+                               
+        self.logger.info("Step 3/5: Text Line Detection")
+        
+        if self.curved_line:
+            self.logger.info("Mode: Curved line detection")
+        elif self.textline_light:
+            self.logger.info("Mode: Light detection")
 
         if self.light_version and num_col_classifier in (1,2):
             image_page = resize_image(image_page,org_h_l_m, org_w_l_m )
@@ -4713,8 +4771,7 @@ class Eynollah:
             table_prediction = resize_image(table_prediction,org_h_l_m, org_w_l_m )
             image_page_rotated = resize_image(image_page_rotated,org_h_l_m, org_w_l_m )
 
-        self.logger.info("detection of marginals took %.1fs", time.time() - t1)
-        #print("text region early 2 marginal in %.1fs", time.time() - t0)
+        self.logger.info(f"Detection of marginals took {time.time() - t1:.1f}s")
         ## birdan sora chock chakir
         t1 = time.time()
         if not self.full_layout:
@@ -4812,7 +4869,7 @@ class Eynollah:
                         cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
                         cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
                     except Exception as why:
-                        self.logger.error(why)
+                        self.logger.error(str(why))
 
                     (h, w) = text_only.shape[:2]
                     center = (w // 2.0, h // 2.0)
@@ -5034,6 +5091,15 @@ class Eynollah:
         t_order = time.time()
 
         if self.full_layout:
+            self.logger.info(ep 4/5: Reading Order Detection")
+            
+            if self.reading_order_machine_based:
+                self.logger.info("Using machine-based detection")
+            if self.right2left:
+                self.logger.info("Right-to-left mode enabled")
+            if self.headers_off:
+                self.logger.info("Headers ignored in reading order")
+                        
             if self.reading_order_machine_based:
                 tror = time.time()
                 order_text_new, id_of_texts_tot = self.do_order_of_regions_with_model(
@@ -5045,9 +5111,16 @@ class Eynollah:
                 else:
                     order_text_new, id_of_texts_tot = self.do_order_of_regions(
                         contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
-            self.logger.info("detection of reading order took %.1fs", time.time() - t_order)
+            self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
 
             if self.ocr and not self.tr:
+                self.logger.info("Step 4.5/5: OCR Processing")
+                
+                if torch.cuda.is_available():
+                    self.logger.info("Using GPU acceleration")
+                else:
+                    self.logger.info("Using CPU processing")
+                
                 gc.collect()
                 if len(all_found_textline_polygons)>0:
                     ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
@@ -5079,15 +5152,54 @@ class Eynollah:
                 ocr_all_textlines_marginals_right = None
                 ocr_all_textlines_h = None
                 ocr_all_textlines_drop = None
+                
+            self.logger.info("Step 5/5: Output Generation")
+    
+            output_config = []
+            if self.enable_plotting:
+                output_config.append("Saving debug plots")
+            if self.dir_of_cropped_images:
+                output_config.append(f"Saving cropped images to: {self.dir_of_cropped_images}")
+            if self.dir_of_layout:
+                output_config.append(f"Saving layout plots to: {self.dir_of_layout}")
+            if self.dir_of_deskewed:
+                output_config.append(f"Saving deskewed images to: {self.dir_of_deskewed}")
+            
+            if output_config:
+                self.logger.info("Output configuration:\n  * %s", "\n  * ".join(output_config))
+
             pcgts = self.writer.build_pagexml_full_layout(
                 contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot,
                 all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h,
                 polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals_left, polygons_of_marginals_right,
                 all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_h, slopes_marginals_left, slopes_marginals_right,
                 cont_page, polygons_lines_xml, ocr_all_textlines, ocr_all_textlines_h, ocr_all_textlines_marginals_left, ocr_all_textlines_marginals_right, ocr_all_textlines_drop,  conf_contours_textregions, conf_contours_textregions_h)
+            
+            summary = [
+                f"Total processing time: {time.time() - t0:.1f}s",
+                f"Output file: {self.writer.output_filename}"
+            ]
+            
+            if self.ocr:
+                summary.append("OCR processing completed")
+            if self.full_layout:
+                summary.append("Full layout analysis completed")
+            if self.tables:
+                summary.append("Table detection completed")
+            self.logger.info(f"Summary: {summary}")
+                    
             return pcgts
 
         contours_only_text_parent_h = None
+        self.logger.info("Step 4/5: Reading Order Detection")
+
+        if self.reading_order_machine_based:
+            self.logger.info("Using machine-based detection")
+        if self.right2left:
+            self.logger.info("Right-to-left mode enabled")
+        if self.headers_off:
+            self.logger.info("Headers ignored in reading order")
+    
         if self.reading_order_machine_based:
             order_text_new, id_of_texts_tot = self.do_order_of_regions_with_model(
                 contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
@@ -5108,6 +5220,21 @@ class Eynollah:
                     contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
 
         if self.ocr and self.tr:
+            self.logger.info("Step 4.5/5: OCR Processing")
+            
+            if torch.cuda.is_available():
+                self.logger.info("Using GPU acceleration")
+            else:
+                self.logger.info("Using CPU processing")
+            
+            if self.light_version:
+                self.logger.info("Using light version OCR")
+            
+            if self.textline_light:
+                self.logger.info("Using light text line detection for OCR")
+            
+            self.logger.info("Processing text lines...")
+            
             device = cuda.get_current_device()
             device.reset()
             gc.collect()
@@ -5170,13 +5297,32 @@ class Eynollah:
             ocr_all_textlines = None
             ocr_all_textlines_marginals_left = None
             ocr_all_textlines_marginals_right = None
-        self.logger.info("detection of reading order took %.1fs", time.time() - t_order)
+        self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
+
+        self.logger.info("Step 5/5: Output Generation")
+
+        self.logger.info("Generating PAGE-XML output")
+
+        if self.enable_plotting:
+            self.logger.info("Saving debug plots")
+
+        if self.dir_of_cropped_images:
+            self.logger.info(f"Saving cropped images to: {self.dir_of_cropped_images}")
+
+        if self.dir_of_layout:
+            self.logger.info(f"Saving layout plots to: {self.dir_of_layout}")
+
+        if self.dir_of_deskewed:
+            self.logger.info(f"Saving deskewed images to: {self.dir_of_deskewed}")
 
         pcgts = self.writer.build_pagexml_no_full_layout(
             txt_con_org, page_coord, order_text_new, id_of_texts_tot,
             all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals_left, polygons_of_marginals_right,
             all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_marginals_left, slopes_marginals_right, 
             cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, ocr_all_textlines_marginals_left, ocr_all_textlines_marginals_right, conf_contours_textregions)
+        
+        self.logger.info(f"Output file: {self.writer.output_filename}")
+        
         return pcgts
 
 
