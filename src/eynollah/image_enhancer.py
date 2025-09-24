@@ -3,29 +3,23 @@ Image enhancer. The output can be written as same scale of input or in new predi
 """
 
 from logging import Logger
-from difflib import SequenceMatcher as sq
-from PIL import Image, ImageDraw, ImageFont
-import math
 import os
-import sys
 import time
 from typing import Optional
 import atexit
-import warnings
 from functools import partial
 from pathlib import Path
 from multiprocessing import cpu_count
 import gc
-import copy
 from loky import ProcessPoolExecutor
-import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
-from ocrd import OcrdPage
 from ocrd_utils import getLogger, tf_disable_interactive_logs
-import statistics
+import tensorflow as tf
+from skimage.morphology import skeletonize
 from tensorflow.keras.models import load_model
 from .utils.resize import resize_image
+from .utils.pil_cv2 import pil2cv
 from .utils import (
     crop_image_inside_box
 )
@@ -62,9 +56,10 @@ class Enhancer:
         self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
         atexit.register(self.executor.shutdown)
         self.dir_models = dir_models
+        self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425"
         self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
         self.model_dir_of_col_classifier = dir_models + "/eynollah-column-classifier_20210425"
-        self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425"
+        self.model_page_dir = dir_models + "/model_eynollah_page_extraction_20250915"
         
         try:
             for device in tf.config.list_physical_devices('GPU'):
@@ -75,10 +70,10 @@ class Enhancer:
         self.model_page = self.our_load_model(self.model_page_dir)
         self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
         self.model_enhancement = self.our_load_model(self.model_dir_of_enhancement)
+        self.model_bin = self.our_load_model(self.model_dir_of_binarization)
 
     def cache_images(self, image_filename=None, image_pil=None, dpi=None):
         ret = {}
-        t_c0 = time.time()
         if image_filename:
             ret['img'] = cv2.imread(image_filename)
             if self.light_version:
@@ -99,7 +94,6 @@ class Enhancer:
             self.dpi = dpi
 
     def reset_file_name_dir(self, image_filename):
-        t_c = time.time()
         self.cache_images(image_filename=image_filename)
         self.output_filename = os.path.join(self.dir_out, Path(image_filename).stem +'.png')
 
