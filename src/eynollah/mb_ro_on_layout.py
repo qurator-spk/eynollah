@@ -39,7 +39,7 @@ class machine_based_reading_order_on_layout:
     ):
         self.dir_out = dir_out
             
-        self.logger = logger if logger else getLogger('mbro on layout')
+        self.logger = logger if logger else getLogger('mbreorder')
         # for parallelization of CPU-intensive tasks:
         self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
         atexit.register(self.executor.shutdown)
