@@ -37,14 +37,22 @@ def main():
     type=click.Path(exists=True, file_okay=False),
     required=True,
 )
+@click.option(
+    "--log_level",
+    "-l",
+    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
+    help="Override log level globally to this",
+)
 
-def machine_based_reading_order(dir_xml, xml_file, dir_out, model):
-    raedingorder_object = machine_based_reading_order_on_layout(model, dir_out=dir_out, logger=getLogger('enhancement'))
-    
+def machine_based_reading_order(dir_xml, xml_file, dir_out, model, log_level):
+    orderer = machine_based_reading_order_on_layout(model, dir_out=dir_out)
+    if log_level:
+        orderer.logger.setLevel(getLevelName(log_level))
+
     if dir_xml:
-        raedingorder_object.run(dir_in=dir_xml)
+        orderer.run(dir_in=dir_xml)
     else:
-        raedingorder_object.run(xml_filename=xml_file)
+        orderer.run(xml_filename=xml_file)
     
 
 @main.command()
