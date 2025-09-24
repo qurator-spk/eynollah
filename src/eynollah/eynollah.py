@@ -4531,6 +4531,21 @@ class Eynollah:
         self.logger.debug("enter run")
         t0_tot = time.time()
 
+        # Log enabled features directly
+        enabled_modes = []
+        if self.light_version:
+            enabled_modes.append("Light version")
+        if self.textline_light:
+            enabled_modes.append("Light textline detection")
+        if self.full_layout:
+            enabled_modes.append("Full layout analysis")
+        if self.ocr:
+            enabled_modes.append("OCR")
+        if self.tables:
+            enabled_modes.append("Table detection")
+        if enabled_modes:
+            self.logger.info("Enabled modes: " + ", ".join(enabled_modes))
+
         if dir_in:
             self.ls_imgs  = os.listdir(dir_in)
             self.ls_imgs = [ind_img for ind_img in self.ls_imgs if ind_img.endswith('.jpg') or ind_img.endswith('.jpeg') or ind_img.endswith('.png') or ind_img.endswith('.tif') or ind_img.endswith('.tiff') or ind_img.endswith('.JPG') or ind_img.endswith('.JPEG') or ind_img.endswith('.TIF') or ind_img.endswith('.TIFF') or ind_img.endswith('.PNG')]
@@ -4540,7 +4555,6 @@ class Eynollah:
             raise ValueError("run requires either a single image filename or a directory")
 
         for img_filename in self.ls_imgs:
-            print(img_filename, 'img_filename')
             self.logger.info(img_filename)
             t0 = time.time()
 
@@ -4563,25 +4577,7 @@ class Eynollah:
     def run_single(self):
         t0 = time.time()
     
-        self.logger.info(f"Processing file: {self.writer.image_filename}")
-        
-        # Log enabled features directly
-        enabled_modes = []
-        if self.light_version:
-            enabled_modes.append("Light version")
-        if self.textline_light:
-            enabled_modes.append("Light textline detection")
-        if self.full_layout:
-            enabled_modes.append("Full layout analysis")
-        if self.ocr:
-            enabled_modes.append("OCR")
-        if self.tables:
-            enabled_modes.append("Table detection")
-        
-        if enabled_modes:
-            self.logger.info("Enabled modes: " + ", ".join(enabled_modes))
-                        
-                        
+        self.logger.info(f"Processing file: {self.writer.image_filename}")                        
         self.logger.info("Step 1/5: Image Enhancement")
         
         img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
@@ -5091,7 +5087,7 @@ class Eynollah:
         t_order = time.time()
 
         if self.full_layout:
-            self.logger.info(ep 4/5: Reading Order Detection")
+            self.logger.info("Step 4/5: Reading Order Detection")
             
             if self.reading_order_machine_based:
                 self.logger.info("Using machine-based detection")
@@ -5175,19 +5171,6 @@ class Eynollah:
                 all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_h, slopes_marginals_left, slopes_marginals_right,
                 cont_page, polygons_lines_xml, ocr_all_textlines, ocr_all_textlines_h, ocr_all_textlines_marginals_left, ocr_all_textlines_marginals_right, ocr_all_textlines_drop,  conf_contours_textregions, conf_contours_textregions_h)
             
-            summary = [
-                f"Total processing time: {time.time() - t0:.1f}s",
-                f"Output file: {self.writer.output_filename}"
-            ]
-            
-            if self.ocr:
-                summary.append("OCR processing completed")
-            if self.full_layout:
-                summary.append("Full layout analysis completed")
-            if self.tables:
-                summary.append("Table detection completed")
-            self.logger.info(f"Summary: {summary}")
-                    
             return pcgts
 
         contours_only_text_parent_h = None
