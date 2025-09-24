@@ -1752,35 +1752,63 @@ class Eynollah:
         if N==0:
             return []
         
-        diff_matrix = np.abs(np.subtract.outer(cy_textline, cy_textline))
+        diff_cy = np.abs( np.diff(sorted(cy_textline)) )
+        diff_cx = np.abs(np.diff(sorted(cx_textline)) )
+
         
-        non_zero_diffs = diff_matrix[diff_matrix > 0]
-        if len(non_zero_diffs) == 0:
-            mean_y_diff = 0
+        if len(diff_cy)>0:
+            mean_y_diff = np.mean(diff_cy)
+            mean_x_diff = np.mean(diff_cx)
         else:
-            mean_y_diff = np.mean(non_zero_diffs)
+            mean_y_diff = 0
+            mean_x_diff = 0
             
-        row_threshold = mean_y_diff / 2 if mean_y_diff > 0 else 10
 
-        indices_sorted_by_y = sorted(range(N), key=lambda i: cy_textline[i])
+        if np.int(mean_y_diff) >= np.int(mean_x_diff):
+            row_threshold = mean_y_diff / 2 if mean_y_diff > 0 else 10
+
+            indices_sorted_by_y = sorted(range(N), key=lambda i: cy_textline[i])
         
-        rows = []
-        current_row = [indices_sorted_by_y[0]]
-        for i in range(1, N):
-            current_idx = indices_sorted_by_y[i]
-            prev_idx = current_row[0]
-            if abs(cy_textline[current_idx] - cy_textline[prev_idx]) <= row_threshold:
-                current_row.append(current_idx)
-            else:
-                rows.append(current_row)
-                current_row = [current_idx]
-        rows.append(current_row)
+            rows = []
+            current_row = [indices_sorted_by_y[0]]
+            for i in range(1, N):
+                current_idx = indices_sorted_by_y[i]
+                prev_idx = current_row[0]
+                if abs(cy_textline[current_idx] - cy_textline[prev_idx]) <= row_threshold:
+                    current_row.append(current_idx)
+                else:
+                    rows.append(current_row)
+                    current_row = [current_idx]
+            rows.append(current_row)
 
-        sorted_textlines = []
-        for row in rows:
-            row_sorted = sorted(row, key=lambda i: cx_textline[i])
-            for idx in row_sorted:
-                sorted_textlines.append(textlines_textregion[idx])
+            sorted_textlines = []
+            for row in rows:
+                row_sorted = sorted(row, key=lambda i: cx_textline[i])
+                for idx in row_sorted:
+                    sorted_textlines.append(textlines_textregion[idx])
+
+        else:
+            row_threshold = mean_x_diff / 2 if mean_x_diff > 0 else 10
+            indices_sorted_by_x = sorted(range(N), key=lambda i: cx_textline[i])
+
+            rows = []
+            current_row = [indices_sorted_by_x[0]]
+
+            for i in range(1, N):
+                current_idy = indices_sorted_by_x[i]
+                prev_idy = current_row[0]
+                if abs(cx_textline[current_idy] - cx_textline[prev_idy] ) <= row_threshold:
+                    current_row.append(current_idy)
+                else:
+                    rows.append(current_row)
+                    current_row = [current_idy]
+            rows.append(current_row)
+
+            sorted_textlines = []
+            for row in rows:
+                row_sorted = sorted(row , key=lambda i: cy_textline[i])
+                for idy in row_sorted:
+                    sorted_textlines.append(textlines_textregion[idy])
 
         return sorted_textlines
 
