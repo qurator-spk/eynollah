@@ -71,10 +71,18 @@ def machine_based_reading_order(dir_xml, xml_file, dir_out, model, log_level):
     help="output image (if using -i) or output image directory (if using -di)",
     type=click.Path(file_okay=True, dir_okay=True),
 )
-def binarization(patches, model_dir, input_image, dir_in, output):
+@click.option(
+    "--log_level",
+    "-l",
+    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
+    help="Override log level globally to this",
+)
+def binarization(patches, model_dir, input_image, dir_in, output, log_level):
     assert (dir_in is None) != (input_image is None), "Specify either -di and or -i not both"
-    SbbBinarizer(model_dir).run(image_path=input_image, use_patches=patches, output=output, dir_in=dir_in)
-
+    binarizer = SbbBinarizer(model_dir)
+    if log_level:
+        binarizer.log.setLevel(getLevelName(log_level))
+    binarizer.run(image_path=input_image, use_patches=patches, output=output, dir_in=dir_in)
 
 
 @main.command()
