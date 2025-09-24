@@ -4531,6 +4531,21 @@ class Eynollah:
         self.logger.debug("enter run")
         t0_tot = time.time()
 
+        # Log enabled features directly
+        enabled_modes = []
+        if self.light_version:
+            enabled_modes.append("Light version")
+        if self.textline_light:
+            enabled_modes.append("Light textline detection")
+        if self.full_layout:
+            enabled_modes.append("Full layout analysis")
+        if self.ocr:
+            enabled_modes.append("OCR")
+        if self.tables:
+            enabled_modes.append("Table detection")
+        if enabled_modes:
+            self.logger.info("Enabled modes: " + ", ".join(enabled_modes))
+
         if dir_in:
             self.ls_imgs  = os.listdir(dir_in)
             self.ls_imgs = [ind_img for ind_img in self.ls_imgs if ind_img.endswith('.jpg') or ind_img.endswith('.jpeg') or ind_img.endswith('.png') or ind_img.endswith('.tif') or ind_img.endswith('.tiff') or ind_img.endswith('.JPG') or ind_img.endswith('.JPEG') or ind_img.endswith('.TIF') or ind_img.endswith('.TIFF') or ind_img.endswith('.PNG')]
@@ -4563,25 +4578,7 @@ class Eynollah:
     def run_single(self):
         t0 = time.time()
     
-        self.logger.info(f"Processing file: {self.writer.image_filename}")
-        
-        # Log enabled features directly
-        enabled_modes = []
-        if self.light_version:
-            enabled_modes.append("Light version")
-        if self.textline_light:
-            enabled_modes.append("Light textline detection")
-        if self.full_layout:
-            enabled_modes.append("Full layout analysis")
-        if self.ocr:
-            enabled_modes.append("OCR")
-        if self.tables:
-            enabled_modes.append("Table detection")
-        
-        if enabled_modes:
-            self.logger.info("Enabled modes: " + ", ".join(enabled_modes))
-                        
-                        
+        self.logger.info(f"Processing file: {self.writer.image_filename}")                        
         self.logger.info("Step 1/5: Image Enhancement")
         
         img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
