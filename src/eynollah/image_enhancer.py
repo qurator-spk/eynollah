@@ -59,7 +59,7 @@ class Enhancer:
         self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425"
         self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
         self.model_dir_of_col_classifier = dir_models + "/eynollah-column-classifier_20210425"
-        self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425"
+        self.model_page_dir = dir_models + "/model_eynollah_page_extraction_20250915"
         
         try:
             for device in tf.config.list_physical_devices('GPU'):
