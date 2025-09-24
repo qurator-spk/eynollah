@@ -25,6 +25,7 @@ from .utils.contour import (
     return_contours_of_image,
     return_parent_contours,
 )
+from .utils import is_xml_filename
 
 DPI_THRESHOLD = 298
 KERNEL = np.ones((5, 5), np.uint8)
@@ -751,13 +752,13 @@ class machine_based_reading_order_on_layout:
         t0_tot = time.time()
 
         if dir_in:
-            self.ls_xmls  = os.listdir(dir_in)
+            ls_xmls  = list(filter(is_xml_filename, os.listdir(dir_in)))
         elif xml_filename:
-            self.ls_xmls = [xml_filename]
+            ls_xmls = [xml_filename]
         else:
             raise ValueError("run requires either a single image filename or a directory")
 
-        for xml_filename in self.ls_xmls:
+        for xml_filename in ls_xmls:
             self.logger.info(xml_filename)
             t0 = time.time()
             

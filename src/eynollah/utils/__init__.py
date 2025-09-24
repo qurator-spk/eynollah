@@ -2202,3 +2202,6 @@ def is_image_filename(fname: str) -> bool:
                                    '.tif',
                                    '.tiff',
     ))
+
+def is_xml_filename(fname: str) -> bool:
+    return fname.lower().endswith('.xml')
