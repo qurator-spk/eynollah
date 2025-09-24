@@ -4555,7 +4555,6 @@ class Eynollah:
             raise ValueError("run requires either a single image filename or a directory")
 
         for img_filename in self.ls_imgs:
-            print(img_filename, 'img_filename')
             self.logger.info(img_filename)
             t0 = time.time()
 
