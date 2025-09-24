@@ -5172,19 +5172,6 @@ class Eynollah:
                 all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_h, slopes_marginals_left, slopes_marginals_right,
                 cont_page, polygons_lines_xml, ocr_all_textlines, ocr_all_textlines_h, ocr_all_textlines_marginals_left, ocr_all_textlines_marginals_right, ocr_all_textlines_drop,  conf_contours_textregions, conf_contours_textregions_h)
             
-            summary = [
-                f"Total processing time: {time.time() - t0:.1f}s",
-                f"Output file: {self.writer.output_filename}"
-            ]
-            
-            if self.ocr:
-                summary.append("OCR processing completed")
-            if self.full_layout:
-                summary.append("Full layout analysis completed")
-            if self.tables:
-                summary.append("Table detection completed")
-            self.logger.info(f"Summary: {summary}")
-                    
             return pcgts
 
         contours_only_text_parent_h = None
