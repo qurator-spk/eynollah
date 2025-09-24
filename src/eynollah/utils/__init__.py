@@ -2194,3 +2194,11 @@ def return_boxes_of_images_by_order_of_reading_new(
         return boxes, peaks_neg_tot_tables_new
     else:
         return boxes, peaks_neg_tot_tables
+
+def is_image_filename(fname: str) -> bool:
+    return fname.lower().endswith(('.jpg',
+                                   '.jpeg',
+                                   '.png',
+                                   '.tif',
+                                   '.tiff',
+    ))

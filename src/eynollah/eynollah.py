@@ -107,6 +107,7 @@ from .utils.drop_capitals import (
 from .utils.marginals import get_marginals
 from .utils.resize import resize_image
 from .utils import (
+    is_image_filename,
     boosting_headers_by_longshot_region_segmentation,
     crop_image_inside_box,
     find_num_col,
@@ -4547,14 +4548,13 @@ class Eynollah:
             self.logger.info("Enabled modes: " + ", ".join(enabled_modes))
 
         if dir_in:
-            self.ls_imgs  = os.listdir(dir_in)
-            self.ls_imgs = [ind_img for ind_img in self.ls_imgs if ind_img.endswith('.jpg') or ind_img.endswith('.jpeg') or ind_img.endswith('.png') or ind_img.endswith('.tif') or ind_img.endswith('.tiff') or ind_img.endswith('.JPG') or ind_img.endswith('.JPEG') or ind_img.endswith('.TIF') or ind_img.endswith('.TIFF') or ind_img.endswith('.PNG')]
+            ls_imgs = list(filter(is_image_filename, os.listdir(self.dir_in)))
         elif image_filename:
-            self.ls_imgs = [image_filename]
+            ls_imgs = [image_filename]
         else:
             raise ValueError("run requires either a single image filename or a directory")
 
-        for img_filename in self.ls_imgs:
+        for img_filename in ls_imgs:
             self.logger.info(img_filename)
             t0 = time.time()
 
@@ -5394,8 +5394,7 @@ class Eynollah_ocr:
 
     def run(self, overwrite : bool = False):
         if self.dir_in:
-            ls_imgs = os.listdir(self.dir_in)
-            ls_imgs = [ind_img for ind_img in ls_imgs if ind_img.endswith('.jpg') or ind_img.endswith('.jpeg') or ind_img.endswith('.png') or ind_img.endswith('.tif') or ind_img.endswith('.tiff') or ind_img.endswith('.JPG') or ind_img.endswith('.JPEG') or ind_img.endswith('.TIF') or ind_img.endswith('.TIFF') or ind_img.endswith('.PNG')]
+            ls_imgs = list(filter(is_image_filename, os.listdir(self.dir_in)))
         else:
             ls_imgs = [self.image_filename]
         
