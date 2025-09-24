@@ -137,21 +137,20 @@ def binarization(patches, model_dir, input_image, dir_in, output):
 
 def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_lower, save_org_scale,  log_level):
     initLogging()
-    if log_level:
-        getLogger('enhancement').setLevel(getLevelName(log_level))
     assert image or dir_in, "Either a single image -i or a dir_in -di is required"
-    enhancer_object = Enhancer(
+    enhancer = Enhancer(
         model,
-        logger=getLogger('enhancement'),
         dir_out=out,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
         save_org_scale=save_org_scale,
     )
+    if log_level:
+        enhancer.logger.setLevel(getLevelName(log_level))
     if dir_in:
-        enhancer_object.run(dir_in=dir_in, overwrite=overwrite)
+        enhancer.run(dir_in=dir_in, overwrite=overwrite)
     else:
-        enhancer_object.run(image_filename=image, overwrite=overwrite)
+        enhancer.run(image_filename=image, overwrite=overwrite)
 
 @main.command()
 @click.option(
@@ -368,8 +367,6 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
         getLogger('eynollah').setLevel(logging.INFO)
     else:
         initLogging()
-    if log_level:
-        getLogger('eynollah').setLevel(getLevelName(log_level))
     assert enable_plotting or not save_layout, "Plotting with -sl also requires -ep"
     assert enable_plotting or not save_deskewed, "Plotting with -sd also requires -ep"
     assert enable_plotting or not save_all, "Plotting with -sa also requires -ep"
@@ -420,6 +417,8 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
         threshold_art_class_textline=threshold_art_class_textline,
         threshold_art_class_layout=threshold_art_class_layout,
     )
+    if log_level:
+        eynollah.logger.setLevel(getLevelName(log_level))
     if dir_in:
         eynollah.run(dir_in=dir_in, overwrite=overwrite)
     else:
@@ -529,8 +528,6 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
 
 def ocr(image, overwrite, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text, model, model_name, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, prediction_with_both_of_rgb_and_bin, batch_size, dataset_abbrevation, min_conf_value_of_textline_text, log_level):
     initLogging()
-    if log_level:
-        getLogger('eynollah').setLevel(getLevelName(log_level))
         
     assert not model or not model_name, "model directory  -m can not be set alongside specific model name --model_name"
     assert not export_textline_images_and_text or not tr_ocr, "Exporting textline and text  -etit can not be set alongside transformer ocr -tr_ocr"
@@ -557,6 +554,8 @@ def ocr(image, overwrite, dir_in, dir_in_bin, out, dir_xmls, dir_out_image_text,
         pref_of_dataset=dataset_abbrevation,
         min_conf_value_of_textline_text=min_conf_value_of_textline_text,
     )
+    if log_level:
+        eynollah_ocr.logger.setLevel(getLevelName(log_level))
     eynollah_ocr.run(overwrite=overwrite)
 
 if __name__ == "__main__":
