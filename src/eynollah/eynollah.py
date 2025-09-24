@@ -1765,7 +1765,7 @@ class Eynollah:
             
 
         if np.int(mean_y_diff) >= np.int(mean_x_diff):
-            row_threshold = mean_y_diff / 2 if mean_y_diff > 0 else 10
+            row_threshold = mean_y_diff / 1.5  if mean_y_diff > 0 else 10
 
             indices_sorted_by_y = sorted(range(N), key=lambda i: cy_textline[i])
         
@@ -1788,7 +1788,7 @@ class Eynollah:
                     sorted_textlines.append(textlines_textregion[idx])
 
         else:
-            row_threshold = mean_x_diff / 2 if mean_x_diff > 0 else 10
+            row_threshold = mean_x_diff / 1.5 if mean_x_diff > 0 else 10
             indices_sorted_by_x = sorted(range(N), key=lambda i: cx_textline[i])
 
             rows = []
@@ -4655,7 +4655,12 @@ class Eynollah:
             all_found_textline_polygons = filter_contours_area_of_image(
                 textline_mask_tot_ea, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
             
-            all_found_textline_polygons = all_found_textline_polygons[::-1]
+            M_main_tot = [cv2.moments(all_found_textline_polygons[j])
+                        for j in range(len(all_found_textline_polygons))]
+            cx_main_tot = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
+            cy_main_tot = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
+            
+            all_found_textline_polygons = self.get_textlines_of_a_textregion_sorted(all_found_textline_polygons, cx_main_tot, cy_main_tot)#all_found_textline_polygons[::-1]
 
             all_found_textline_polygons=[ all_found_textline_polygons ]
 
