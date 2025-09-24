@@ -13,20 +13,20 @@ def main():
 
 @main.command()
 @click.option(
-    "--dir_xml",
-    "-dx",
-    help="directory of page-xml files",
+    "--dir_in",
+    "-di",
+    help="directory of PAGE-XML input files",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
-    "--xml_file",
-    "-xml",
-    help="xml filename",
+    "--input",
+    "-i",
+    help="PAGE-XML input filename",
     type=click.Path(exists=True, dir_okay=False),
 )
 @click.option(
-    "--dir_out",
-    "-do",
+    "--out",
+    "-o",
     help="directory for output images",
     type=click.Path(exists=True, file_okay=False),
 )
@@ -44,21 +44,26 @@ def main():
     help="Override log level globally to this",
 )
 
-def machine_based_reading_order(dir_xml, xml_file, dir_out, model, log_level):
-    orderer = machine_based_reading_order_on_layout(model, dir_out=dir_out)
+def machine_based_reading_order(dir_in, input, out, model, log_level):
+    orderer = machine_based_reading_order_on_layout(model, dir_out=out)
     if log_level:
         orderer.logger.setLevel(getLevelName(log_level))
 
-    if dir_xml:
-        orderer.run(dir_in=dir_xml)
+    if dir_in:
+        orderer.run(dir_in=dir_in)
     else:
-        orderer.run(xml_filename=xml_file)
+        orderer.run(xml_filename=input)
     
 
 @main.command()
 @click.option('--patches/--no-patches', default=True, help='by enabling this parameter you let the model to see the image in patches.')
 @click.option('--model_dir', '-m', type=click.Path(exists=True, file_okay=False), required=True, help='directory containing models for prediction')
-@click.option("--input-image", "-i", help="input image", type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    "--input-image", "--image",
+    "-i",
+    help="input image filename",
+    type=click.Path(exists=True, dir_okay=False)
+)
 @click.option(
     "--dir_in",
     "-di",
@@ -89,14 +94,14 @@ def binarization(patches, model_dir, input_image, dir_in, output, log_level):
 @click.option(
     "--image",
     "-i",
-    help="image filename",
+    help="input image filename",
     type=click.Path(exists=True, dir_okay=False),
 )
 
 @click.option(
     "--out",
     "-o",
-    help="directory to write output xml data",
+    help="directory for output PAGE-XML files",
     type=click.Path(exists=True, file_okay=False),
     required=True,
 )
@@ -109,7 +114,7 @@ def binarization(patches, model_dir, input_image, dir_in, output, log_level):
 @click.option(
     "--dir_in",
     "-di",
-    help="directory of images",
+    help="directory of input images",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
@@ -164,14 +169,14 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
 @click.option(
     "--image",
     "-i",
-    help="image filename",
+    help="input image filename",
     type=click.Path(exists=True, dir_okay=False),
 )
 
 @click.option(
     "--out",
     "-o",
-    help="directory to write output xml data",
+    help="directory for output PAGE-XML files",
     type=click.Path(exists=True, file_okay=False),
     required=True,
 )
@@ -184,7 +189,7 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
 @click.option(
     "--dir_in",
     "-di",
-    help="directory of images",
+    help="directory of input images",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
@@ -437,7 +442,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
 @click.option(
     "--image",
     "-i",
-    help="image filename",
+    help="input image filename",
     type=click.Path(exists=True, dir_okay=False),
 )
 @click.option(
@@ -449,7 +454,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
 @click.option(
     "--dir_in",
     "-di",
-    help="directory of images",
+    help="directory of input images",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
