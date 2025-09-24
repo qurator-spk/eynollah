@@ -5091,7 +5091,7 @@ class Eynollah:
         t_order = time.time()
 
         if self.full_layout:
-            self.logger.info(ep 4/5: Reading Order Detection")
+            self.logger.info("Step 4/5: Reading Order Detection")
             
             if self.reading_order_machine_based:
                 self.logger.info("Using machine-based detection")
