@@ -5442,7 +5442,7 @@ class Eynollah_ocr:
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
                                     img_crop[mask_poly==0] = 255
                                     
-                                    
+                                    self.logger.debug("processing %d lines for '%s'", len(cropped_lines), nn.attrib['id'])
                                     if h2w_ratio > 0.1:
                                         cropped_lines.append(resize_image(img_crop, tr_ocr_input_height_and_width, tr_ocr_input_height_and_width)  )
                                         cropped_lines_meging_indexing.append(0)
@@ -5961,6 +5961,7 @@ class Eynollah_ocr:
                                     imgs_bin_ver_flipped = None
                             
 
+                        self.logger.debug("processing next %d lines", len(imgs))
                         preds = self.prediction_model.predict(imgs, verbose=0)
                         
                         if len(indices_ver)>0:
