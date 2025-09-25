@@ -16,6 +16,7 @@ import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.python.keras import backend as tensorflow_backend
 
+from .utils import is_image_filename
 
 def resize_image(img_in, input_height, input_width):
     return cv2.resize(img_in, (input_width, input_height), interpolation=cv2.INTER_NEAREST)
@@ -347,7 +348,7 @@ class SbbBinarizer:
                 cv2.imwrite(output, img_last)
             return img_last
         else:
-            ls_imgs  = os.listdir(dir_in)
+            ls_imgs = list(filter(is_image_filename, os.listdir(dir_in)))
             for image_name in ls_imgs:
                 image_stem = image_name.split('.')[0]
                 print(image_name,'image_name')

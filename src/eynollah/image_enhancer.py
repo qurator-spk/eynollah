@@ -21,6 +21,7 @@ from tensorflow.keras.models import load_model
 from .utils.resize import resize_image
 from .utils.pil_cv2 import pil2cv
 from .utils import (
+    is_image_filename,
     crop_image_inside_box
 )
 
@@ -701,13 +702,13 @@ class Enhancer:
         t0_tot = time.time()
 
         if dir_in:
-            self.ls_imgs  = os.listdir(dir_in)
+            ls_imgs = list(filter(is_image_filename, os.listdir(dir_in)))
         elif image_filename:
-            self.ls_imgs = [image_filename]
+            ls_imgs = [image_filename]
         else:
             raise ValueError("run requires either a single image filename or a directory")
 
-        for img_filename in self.ls_imgs:
+        for img_filename in ls_imgs:
             self.logger.info(img_filename)
             t0 = time.time()
 
