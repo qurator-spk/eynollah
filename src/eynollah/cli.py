@@ -495,7 +495,6 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     "--model_name",
     help="Specific model file path to use for OCR",
     type=click.Path(exists=True, file_okay=False),
-    required=True,
 )
 @click.option(
     "--tr_ocr",
@@ -540,7 +539,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
 def ocr(image, dir_in, dir_in_bin, dir_xmls, out, dir_out_image_text, overwrite, model, model_name, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, batch_size, dataset_abbrevation, min_conf_value_of_textline_text, log_level):
     initLogging()
         
-    assert not model or not model_name, "model directory  -m can not be set alongside specific model name --model_name"
+    assert bool(model) != bool(model_name), "Either -m (model directory) or --model_name (specific model name) must be provided."
     assert not export_textline_images_and_text or not tr_ocr, "Exporting textline and text  -etit can not be set alongside transformer ocr -tr_ocr"
     assert not export_textline_images_and_text or not model, "Exporting textline and text  -etit can not be set alongside model -m"
     assert not export_textline_images_and_text or not batch_size, "Exporting textline and text  -etit can not be set alongside batch size -bs"
