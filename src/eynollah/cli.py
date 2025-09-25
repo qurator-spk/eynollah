@@ -29,6 +29,7 @@ def main():
     "-o",
     help="directory for output images",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
 @click.option(
     "--model",
@@ -75,6 +76,7 @@ def machine_based_reading_order(dir_in, input, out, model, log_level):
     "-o",
     help="output image (if using -i) or output image directory (if using -di)",
     type=click.Path(file_okay=True, dir_okay=True),
+    required=True,
 )
 @click.option(
     "--log_level",
@@ -475,6 +477,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     "-dx",
     help="directory of xmls",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
 @click.option(
     "--dir_out_image_text",
@@ -492,6 +495,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     "--model_name",
     help="Specific model file path to use for OCR",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
 @click.option(
     "--tr_ocr",
