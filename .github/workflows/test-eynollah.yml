@@ -30,12 +30,17 @@ jobs:
         path: models_layout_v0_5_0
         key: ${{ runner.os }}-models
     - uses: actions/cache@v4
+      id: ocr_model_cache
+      with:
+        path: models_ocr_v0_5_0
+        key: ${{ runner.os }}-models
+    - uses: actions/cache@v4
       id: bin_model_cache
       with:
         path: default-2021-03-09
         key: ${{ runner.os }}-modelbin
     - name: Download models
-      if: steps.seg_model_cache.outputs.cache-hit != 'true' || steps.bin_model_cache.outputs.cache-hit != 'true'
+      if: steps.seg_model_cache.outputs.cache-hit != 'true' || steps.bin_model_cache.outputs.cache-hit != 'true' || steps.ocr_model_cache.outputs.cache-hit != true
       run: make models
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
