@@ -109,13 +109,13 @@ def fit_text_single_line(draw, text, font_path, max_width, max_height):
 
     return ImageFont.truetype(font_path, 10)  # Smallest font fallback
 
-def return_textlines_split_if_needed(textline_image, textline_image_bin, prediction_with_both_of_rgb_and_bin=False):
+def return_textlines_split_if_needed(textline_image, textline_image_bin=None):
 
     split_point = return_start_and_end_of_common_text_of_textline_ocr_without_common_section(textline_image)
     if split_point:
         image1 = textline_image[:, :split_point,:]# image.crop((0, 0, width2, height))
         image2 = textline_image[:, split_point:,:]#image.crop((width1, 0, width, height))
-        if prediction_with_both_of_rgb_and_bin:
+        if textline_image_bin is not None:
             image1_bin = textline_image_bin[:, :split_point,:]# image.crop((0, 0, width2, height))
             image2_bin = textline_image_bin[:, split_point:,:]#image.crop((width1, 0, width, height))
             return [image1, image2], [image1_bin, image2_bin]

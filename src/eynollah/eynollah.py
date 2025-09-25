@@ -191,13 +191,7 @@ class Eynollah:
     def __init__(
         self,
         dir_models : str,
-        dir_out : Optional[str] = None,
-        dir_of_cropped_images : Optional[str] = None,
         extract_only_images : bool =False,
-        dir_of_layout : Optional[str] = None,
-        dir_of_deskewed : Optional[str] = None,
-        dir_of_all : Optional[str] = None,
-        dir_save_page : Optional[str] = None,
         enable_plotting : bool = False,
         allow_enhancement : bool = False,
         curved_line : bool = False,
@@ -221,18 +215,12 @@ class Eynollah:
         skip_layout_and_reading_order : bool = False,
     ):
         self.logger = getLogger('eynollah')
-            
+        self.plotter = None
+
         if skip_layout_and_reading_order:
             textline_light = True
         self.light_version = light_version
-        self.dir_out = dir_out
-        self.dir_of_all = dir_of_all
-        self.dir_save_page = dir_save_page
         self.reading_order_machine_based = reading_order_machine_based
-        self.dir_of_deskewed = dir_of_deskewed
-        self.dir_of_deskewed =  dir_of_deskewed
-        self.dir_of_cropped_images=dir_of_cropped_images
-        self.dir_of_layout=dir_of_layout
         self.enable_plotting = enable_plotting
         self.allow_enhancement = allow_enhancement
         self.curved_line = curved_line
@@ -423,21 +411,11 @@ class Eynollah:
         if dpi is not None:
             self.dpi = dpi
 
-    def reset_file_name_dir(self, image_filename):
+    def reset_file_name_dir(self, image_filename, dir_out):
         t_c = time.time()
         self.cache_images(image_filename=image_filename)
-
-        self.plotter = None if not self.enable_plotting else EynollahPlotter(
-            dir_out=self.dir_out,
-            dir_of_all=self.dir_of_all,
-            dir_save_page=self.dir_save_page,
-            dir_of_deskewed=self.dir_of_deskewed,
-            dir_of_cropped_images=self.dir_of_cropped_images,
-            dir_of_layout=self.dir_of_layout,
-            image_filename_stem=Path(Path(image_filename).name).stem)
-
         self.writer = EynollahXmlWriter(
-            dir_out=self.dir_out,
+            dir_out=dir_out,
             image_filename=image_filename,
             curved_line=self.curved_line,
             textline_light = self.textline_light)
@@ -4525,7 +4503,17 @@ class Eynollah:
         return ordered_left_marginals, ordered_right_marginals, ordered_left_marginals_textline, ordered_right_marginals_textline, ordered_left_marginals_bbox, ordered_right_marginals_bbox, ordered_left_slopes_marginals, ordered_right_slopes_marginals
 
 
-    def run(self, image_filename : Optional[str] = None, dir_in : Optional[str] = None, overwrite : bool = False):
+    def run(self,
+            overwrite: bool = False,
+            image_filename: Optional[str] = None,
+            dir_in: Optional[str] = None,
+            dir_out: Optional[str] = None,
+            dir_of_cropped_images: Optional[str] = None,
+            dir_of_layout: Optional[str] = None,
+            dir_of_deskewed: Optional[str] = None,
+            dir_of_all: Optional[str] = None,
+            dir_save_page: Optional[str] = None,
+    ):
         """
         Get image and scales, then extract the page of scanned image
         """
@@ -4546,9 +4534,19 @@ class Eynollah:
             enabled_modes.append("Table detection")
         if enabled_modes:
             self.logger.info("Enabled modes: " + ", ".join(enabled_modes))
+        if self.enable_plotting:
+            self.logger.info("Saving debug plots")
+            if dir_of_cropped_images:
+                self.logger.info(f"Saving cropped images to: {dir_of_cropped_images}")
+            if dir_of_layout:
+                self.logger.info(f"Saving layout plots to: {dir_of_layout}")
+            if dir_of_deskewed:
+                self.logger.info(f"Saving deskewed images to: {dir_of_deskewed}")
 
         if dir_in:
-            ls_imgs = list(filter(is_image_filename, os.listdir(self.dir_in)))
+            ls_imgs = [os.path.join(dir_in, image_filename)
+                       for image_filename in filter(is_image_filename,
+                                                    os.listdir(dir_in))]
         elif image_filename:
             ls_imgs = [image_filename]
         else:
@@ -4558,7 +4556,15 @@ class Eynollah:
             self.logger.info(img_filename)
             t0 = time.time()
 
-            self.reset_file_name_dir(os.path.join(dir_in or "", img_filename))
+            self.reset_file_name_dir(img_filename, dir_out)
+            if self.enable_plotting:
+                self.plotter = EynollahPlotter(dir_out=dir_out,
+                                               dir_of_all=dir_of_all,
+                                               dir_save_page=dir_save_page,
+                                               dir_of_deskewed=dir_of_deskewed,
+                                               dir_of_cropped_images=dir_of_cropped_images,
+                                               dir_of_layout=dir_of_layout,
+                                               image_filename_stem=Path(image_filename).stem)
             #print("text region early -11 in %.1fs", time.time() - t0)
             if os.path.exists(self.writer.output_filename):
                 if overwrite:
@@ -5151,19 +5157,6 @@ class Eynollah:
                 
             self.logger.info("Step 5/5: Output Generation")
     
-            output_config = []
-            if self.enable_plotting:
-                output_config.append("Saving debug plots")
-            if self.dir_of_cropped_images:
-                output_config.append(f"Saving cropped images to: {self.dir_of_cropped_images}")
-            if self.dir_of_layout:
-                output_config.append(f"Saving layout plots to: {self.dir_of_layout}")
-            if self.dir_of_deskewed:
-                output_config.append(f"Saving deskewed images to: {self.dir_of_deskewed}")
-            
-            if output_config:
-                self.logger.info("Output configuration:\n  * %s", "\n  * ".join(output_config))
-
             pcgts = self.writer.build_pagexml_full_layout(
                 contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot,
                 all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h,
@@ -5283,20 +5276,7 @@ class Eynollah:
         self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
 
         self.logger.info("Step 5/5: Output Generation")
-
         self.logger.info("Generating PAGE-XML output")
-
-        if self.enable_plotting:
-            self.logger.info("Saving debug plots")
-
-        if self.dir_of_cropped_images:
-            self.logger.info(f"Saving cropped images to: {self.dir_of_cropped_images}")
-
-        if self.dir_of_layout:
-            self.logger.info(f"Saving layout plots to: {self.dir_of_layout}")
-
-        if self.dir_of_deskewed:
-            self.logger.info(f"Saving deskewed images to: {self.dir_of_deskewed}")
 
         pcgts = self.writer.build_pagexml_no_full_layout(
             txt_con_org, page_coord, order_text_new, id_of_texts_tot,
@@ -5315,32 +5295,19 @@ class Eynollah_ocr:
         dir_models,
         model_name=None,
         dir_xmls=None,
-        dir_in=None,
-        image_filename=None,
-        dir_in_bin=None,
-        dir_out=None,
-        dir_out_image_text=None,
         tr_ocr=False,
         batch_size=None,
         export_textline_images_and_text=False,
         do_not_mask_with_textline_contour=False,
-        prediction_with_both_of_rgb_and_bin=False,
         pref_of_dataset=None,
         min_conf_value_of_textline_text : Optional[float]=None,
         logger=None,
     ):
-        self.dir_in = dir_in
-        self.image_filename = image_filename
-        self.dir_in_bin = dir_in_bin
-        self.dir_out = dir_out
-        self.dir_xmls = dir_xmls
         self.dir_models = dir_models
         self.model_name = model_name
         self.tr_ocr = tr_ocr
         self.export_textline_images_and_text = export_textline_images_and_text
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
-        self.dir_out_image_text = dir_out_image_text
-        self.prediction_with_both_of_rgb_and_bin = prediction_with_both_of_rgb_and_bin
         self.pref_of_dataset = pref_of_dataset
         self.logger = logger if logger else getLogger('eynollah')
         
@@ -5392,23 +5359,27 @@ class Eynollah_ocr:
                 )
                 self.end_character = len(characters) + 2
 
-    def run(self, overwrite : bool = False):
-        if self.dir_in:
-            ls_imgs = list(filter(is_image_filename, os.listdir(self.dir_in)))
+    def run(self, overwrite: bool = False,
+            dir_in: Optional[str] = None,
+            dir_in_bin: Optional[str] = None,
+            image_filename: Optional[str] = None,
+            dir_xmls: Optional[str] = None,
+            dir_out_image_text: Optional[str] = None,
+            dir_out: Optional[str] = None,
+    ):
+        if dir_in:
+            ls_imgs = [os.path.join(dir_in, image_filename)
+                       for image_filename in filter(is_image_filename,
+                                                    os.listdir(dir_in))]
         else:
-            ls_imgs = [self.image_filename]
-        
+            ls_imgs = [image_filename]
+
         if self.tr_ocr:
             tr_ocr_input_height_and_width = 384
-            for ind_img in ls_imgs:
-                if self.dir_in:
-                    file_name = Path(ind_img).stem
-                    dir_img = os.path.join(self.dir_in, ind_img)
-                else:
-                    file_name = Path(self.image_filename).stem
-                    dir_img = self.image_filename
-                dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
-                out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
+            for dir_img in ls_imgs:
+                file_name = Path(dir_img).stem
+                dir_xml = os.path.join(dir_xmls, file_name+'.xml')
+                out_file_ocr = os.path.join(dir_out, file_name+'.xml')
                 
                 if os.path.exists(out_file_ocr):
                     if overwrite:
@@ -5419,8 +5390,8 @@ class Eynollah_ocr:
                     
                 img = cv2.imread(dir_img)
                 
-                if self.dir_out_image_text:
-                    out_image_with_text = os.path.join(self.dir_out_image_text, file_name+'.png')
+                if dir_out_image_text:
+                    out_image_with_text = os.path.join(dir_out_image_text, file_name+'.png')
                     image_text = Image.new("RGB", (img.shape[1], img.shape[0]), "white")
                     draw = ImageDraw.Draw(image_text)
                     total_bb_coordinates = []
@@ -5458,7 +5429,7 @@ class Eynollah_ocr:
                                     textline_coords =  np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] )
                                     x,y,w,h = cv2.boundingRect(textline_coords)
                                     
-                                    if self.dir_out_image_text:
+                                    if dir_out_image_text:
                                         total_bb_coordinates.append([x,y,w,h])
                                     
                                     h2w_ratio = h/float(w)
@@ -5580,7 +5551,7 @@ class Eynollah_ocr:
 
                 unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
                 
-                if self.dir_out_image_text:
+                if dir_out_image_text:
                     
                     font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
                     font = ImageFont.truetype(font_path, 40)
@@ -5708,18 +5679,10 @@ class Eynollah_ocr:
 
             img_size=(image_width, image_height)
             
-            for ind_img in ls_imgs:
-                if self.dir_in:
-                    file_name = Path(ind_img).stem
-                    dir_img = os.path.join(self.dir_in, ind_img)
-                else:
-                    file_name = Path(self.image_filename).stem
-                    dir_img = self.image_filename
-                    
-                #file_name = Path(ind_img).stem
-                #dir_img = os.path.join(self.dir_in, ind_img)
-                dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
-                out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
+            for dir_img in ls_imgs:
+                file_name = Path(dir_img).stem
+                dir_xml = os.path.join(dir_xmls, file_name+'.xml')
+                out_file_ocr = os.path.join(dir_out, file_name+'.xml')
                 
                 if os.path.exists(out_file_ocr):
                     if overwrite:
@@ -5729,13 +5692,13 @@ class Eynollah_ocr:
                         continue
                 
                 img = cv2.imread(dir_img)
-                if self.prediction_with_both_of_rgb_and_bin:
+                if dir_in_bin is not None:
                     cropped_lines_bin = []
-                    dir_img_bin = os.path.join(self.dir_in_bin, file_name+'.png')
+                    dir_img_bin = os.path.join(dir_in_bin, file_name+'.png')
                     img_bin = cv2.imread(dir_img_bin)
                 
-                if self.dir_out_image_text:
-                    out_image_with_text = os.path.join(self.dir_out_image_text, file_name+'.png')
+                if dir_out_image_text:
+                    out_image_with_text = os.path.join(dir_out_image_text, file_name+'.png')
                     image_text = Image.new("RGB", (img.shape[1], img.shape[0]), "white")
                     draw = ImageDraw.Draw(image_text)
                     total_bb_coordinates = []
@@ -5779,13 +5742,13 @@ class Eynollah_ocr:
                                     if type_textregion=='drop-capital':
                                         angle_degrees = 0
                                         
-                                    if self.dir_out_image_text:
+                                    if dir_out_image_text:
                                         total_bb_coordinates.append([x,y,w,h])
                                        
                                     w_scaled = w *  image_height/float(h)
                                     
                                     img_poly_on_img = np.copy(img)
-                                    if self.prediction_with_both_of_rgb_and_bin:
+                                    if dir_in_bin is not None:
                                         img_poly_on_img_bin = np.copy(img_bin)
                                         img_crop_bin = img_poly_on_img_bin[y:y+h, x:x+w, :]
                                     
@@ -5808,7 +5771,7 @@ class Eynollah_ocr:
                                             
                                             img_crop = rotate_image_with_padding(img_crop, better_des_slope )
                                             
-                                            if self.prediction_with_both_of_rgb_and_bin:
+                                            if dir_in_bin is not None:
                                                 img_crop_bin = rotate_image_with_padding(img_crop_bin, better_des_slope )
                                                 
                                             mask_poly = rotate_image_with_padding(mask_poly, better_des_slope )
@@ -5823,13 +5786,13 @@ class Eynollah_ocr:
                                             if not self.do_not_mask_with_textline_contour:
                                                 img_crop[mask_poly==0] = 255
                                             
-                                            if self.prediction_with_both_of_rgb_and_bin:
+                                            if dir_in_bin is not None:
                                                 img_crop_bin = img_crop_bin[y_n:y_n+h_n, x_n:x_n+w_n, :]
                                                 if not self.do_not_mask_with_textline_contour:
                                                     img_crop_bin[mask_poly==0] = 255
                                             
                                             if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.50 and w_scaled > 90:
-                                                if self.prediction_with_both_of_rgb_and_bin:
+                                                if dir_in_bin is not None:
                                                     img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
                                                 else:
                                                     img_crop, _ = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
@@ -5839,14 +5802,14 @@ class Eynollah_ocr:
                                             better_des_slope = 0
                                             if not self.do_not_mask_with_textline_contour:
                                                 img_crop[mask_poly==0] = 255
-                                            if self.prediction_with_both_of_rgb_and_bin:
+                                            if dir_in_bin is not None:
                                                 if not self.do_not_mask_with_textline_contour:
                                                     img_crop_bin[mask_poly==0] = 255
                                             if type_textregion=='drop-capital':
                                                 pass
                                             else:
                                                 if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 90:
-                                                    if self.prediction_with_both_of_rgb_and_bin:
+                                                    if dir_in_bin is not None:
                                                         img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
                                                     else:
                                                         img_crop, _ = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
@@ -5861,14 +5824,12 @@ class Eynollah_ocr:
                                                 cropped_lines_ver_index.append(0)
                                                 
                                             cropped_lines_meging_indexing.append(0)
-                                            if self.prediction_with_both_of_rgb_and_bin:
+                                            if dir_in_bin is not None:
                                                 img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
                                                 cropped_lines_bin.append(img_fin)
                                         else:
-                                            if self.prediction_with_both_of_rgb_and_bin:
-                                                splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, img_crop_bin, prediction_with_both_of_rgb_and_bin=self.prediction_with_both_of_rgb_and_bin)
-                                            else:
-                                                splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, None)
+                                            splited_images, splited_images_bin = return_textlines_split_if_needed(
+                                                img_crop, img_crop_bin if dir_in_bin is not None else None)
                                             if splited_images:
                                                 img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
                                                 cropped_lines.append(img_fin)
@@ -5889,7 +5850,7 @@ class Eynollah_ocr:
                                                 else:
                                                     cropped_lines_ver_index.append(0)
                                                 
-                                                if self.prediction_with_both_of_rgb_and_bin:
+                                                if dir_in_bin is not None:
                                                     img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[0], image_height, image_width)
                                                     cropped_lines_bin.append(img_fin)
                                                     img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[1], image_height, image_width)
@@ -5905,7 +5866,7 @@ class Eynollah_ocr:
                                                 else:
                                                     cropped_lines_ver_index.append(0)
                                                 
-                                                if self.prediction_with_both_of_rgb_and_bin:
+                                                if dir_in_bin is not None:
                                                     img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
                                                     cropped_lines_bin.append(img_fin)
                                         
@@ -5918,29 +5879,15 @@ class Eynollah_ocr:
                                                 if cheild_text.tag.endswith("Unicode"):
                                                     textline_text = cheild_text.text
                                                     if textline_text:
-                                                        if self.do_not_mask_with_textline_contour:
-                                                            if self.pref_of_dataset:
-                                                                with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'.txt'), 'w') as text_file:
-                                                                    text_file.write(textline_text)
-
-                                                                cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'.png'), img_crop )
-                                                            else:
-                                                                with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.txt'), 'w') as text_file:
-                                                                    text_file.write(textline_text)
-
-                                                                cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.png'), img_crop )
-                                                        else:
-                                                            if self.pref_of_dataset:
-                                                                with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'_masked.txt'), 'w') as text_file:
-                                                                    text_file.write(textline_text)
-
-                                                                cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_'+self.pref_of_dataset+'_masked.png'), img_crop )
-                                                            else:
-                                                                with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_masked.txt'), 'w') as text_file:
-                                                                    text_file.write(textline_text)
-
-                                                                cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'_masked.png'), img_crop )
+                                                        base_name = os.path.join(dir_out, file_name + '_line_' + str(indexer_textlines))
+                                                        if self.pref_of_dataset:
+                                                            base_name += '_' + self.pref_of_dataset
+                                                        if not self.do_not_mask_with_textline_contour:
+                                                            base_name += '_masked'
                                                             
+                                                        with open(base_name + '.txt', 'w') as text_file:
+                                                            text_file.write(textline_text)
+                                                        cv2.imwrite(base_name + '.png', img_crop)
                                                     indexer_textlines+=1
 
                     if not self.export_textline_images_and_text:
@@ -5971,7 +5918,7 @@ class Eynollah_ocr:
                             else:
                                 imgs_ver_flipped = None
                             
-                            if self.prediction_with_both_of_rgb_and_bin:
+                            if dir_in_bin is not None:
                                 imgs_bin = cropped_lines_bin[n_start:]
                                 imgs_bin = np.array(imgs_bin)
                                 imgs_bin = imgs_bin.reshape(imgs_bin.shape[0], image_height, image_width, 3)
@@ -6001,7 +5948,7 @@ class Eynollah_ocr:
                                 imgs_ver_flipped = None
 
                             
-                            if self.prediction_with_both_of_rgb_and_bin:
+                            if dir_in_bin is not None:
                                 imgs_bin = cropped_lines_bin[n_start:n_end]
                                 imgs_bin = np.array(imgs_bin).reshape(self.b_s, image_height, image_width, 3)
                                 
@@ -6040,7 +5987,7 @@ class Eynollah_ocr:
                             if len(indices_where_flipped_conf_value_is_higher)>0:
                                 indices_to_be_replaced = indices_ver[indices_where_flipped_conf_value_is_higher]
                                 preds[indices_to_be_replaced,:,:] = preds_flipped[indices_where_flipped_conf_value_is_higher, :, :]
-                        if self.prediction_with_both_of_rgb_and_bin:
+                        if dir_in_bin is not None:
                             preds_bin = self.prediction_model.predict(imgs_bin, verbose=0)
                             
                             if len(indices_ver)>0:
@@ -6087,7 +6034,7 @@ class Eynollah_ocr:
                                 extracted_texts.append("")
                                 extracted_conf_value.append(0)
                     del cropped_lines
-                    if self.prediction_with_both_of_rgb_and_bin:
+                    if dir_in_bin is not None:
                         del cropped_lines_bin
                     gc.collect()
                     
@@ -6100,7 +6047,7 @@ class Eynollah_ocr:
                     unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
                     
                     
-                    if self.dir_out_image_text:
+                    if dir_out_image_text:
                         
                         font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
                         font = ImageFont.truetype(font_path, 40)

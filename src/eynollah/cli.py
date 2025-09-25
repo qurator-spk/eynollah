@@ -404,13 +404,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     eynollah = Eynollah(
         model,
-        dir_out=out,
-        dir_of_cropped_images=save_images,
         extract_only_images=extract_only_images,
-        dir_of_layout=save_layout,
-        dir_of_deskewed=save_deskewed,
-        dir_of_all=save_all,
-        dir_save_page=save_page,
         enable_plotting=enable_plotting,
         allow_enhancement=allow_enhancement,
         curved_line=curved_line,
@@ -435,11 +429,16 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     )
     if log_level:
         eynollah.logger.setLevel(getLevelName(log_level))
-    if dir_in:
-        eynollah.run(dir_in=dir_in, overwrite=overwrite)
-    else:
-        eynollah.run(image_filename=image, overwrite=overwrite)
-
+    eynollah.run(overwrite=overwrite,
+                 image_filename=image,
+                 dir_in=dir_in,
+                 dir_out=out,
+                 dir_of_cropped_images=save_images,
+                 dir_of_layout=save_layout,
+                 dir_of_deskewed=save_deskewed,
+                 dir_of_all=save_all,
+                 dir_save_page=save_page,
+    )
 
 @main.command()
 @click.option(
@@ -549,25 +548,25 @@ def ocr(image, dir_in, dir_in_bin, dir_xmls, out, dir_out_image_text, overwrite,
     assert not export_textline_images_and_text or not dir_out_image_text, "Exporting textline and text  -etit can not be set alongside directory of images with predicted text -doit"
     assert bool(image) != bool(dir_in), "Either -i (single image) or -di (directory) must be provided, but not both."
     eynollah_ocr = Eynollah_ocr(
-        image_filename=image,
-        dir_xmls=dir_xmls,
-        dir_out_image_text=dir_out_image_text,
-        dir_in=dir_in,
-        dir_in_bin=dir_in_bin,
-        dir_out=out,
         dir_models=model,
         model_name=model_name,
         tr_ocr=tr_ocr,
         export_textline_images_and_text=export_textline_images_and_text,
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
-        prediction_with_both_of_rgb_and_bin=prediction_with_both_of_rgb_and_bin,
         batch_size=batch_size,
         pref_of_dataset=dataset_abbrevation,
         min_conf_value_of_textline_text=min_conf_value_of_textline_text,
     )
     if log_level:
         eynollah_ocr.logger.setLevel(getLevelName(log_level))
-    eynollah_ocr.run(overwrite=overwrite)
+    eynollah_ocr.run(overwrite=overwrite,
+                     dir_in=dir_in,
+                     dir_in_bin=dir_in_bin,
+                     image_filename=image,
+                     dir_xmls=dir_xmls,
+                     dir_out_image_text=dir_out_image_text,
+                     dir_out=out,
+    )
 
 if __name__ == "__main__":
     main()
