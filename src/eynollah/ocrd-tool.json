@@ -83,12 +83,22 @@
       },
       "resources": [
         {
+          "url": "https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1",
+          "name": "eynollah_layout_v0_5_0",
+          "type": "archive",
+          "path_in_archive": "eynollah_layout_v0_5_0",
+          "size": 3525684179,
+          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization, image enhancement",
+          "version_range": ">= v0.5.0"
+        },
+        {
           "description": "models for eynollah (TensorFlow SavedModel format)",
           "url": "https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz",
           "name": "default",
           "size": 1894627041,
           "type": "archive",
-          "path_in_archive": "models_eynollah"
+          "path_in_archive": "models_eynollah",
+          "version_range": ">= v0.3.0, < v0.5.0"
         }
       ]
     },
