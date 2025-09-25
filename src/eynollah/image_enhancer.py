@@ -11,7 +11,6 @@ from functools import partial
 from pathlib import Path
 from multiprocessing import cpu_count
 import gc
-from loky import ProcessPoolExecutor
 import cv2
 import numpy as np
 from ocrd_utils import getLogger, tf_disable_interactive_logs
@@ -33,13 +32,11 @@ class Enhancer:
     def __init__(
         self,
         dir_models : str,
-        dir_out : Optional[str] = None,
         num_col_upper : Optional[int] = None,
         num_col_lower : Optional[int] = None,
         save_org_scale : bool = False,
         logger : Optional[Logger] = None,
     ):
-        self.dir_out = dir_out
         self.input_binary = False
         self.light_version = False
         self.save_org_scale = save_org_scale
@@ -53,9 +50,6 @@ class Enhancer:
             self.num_col_lower = num_col_lower
             
         self.logger = logger if logger else getLogger('enhancement')
-        # for parallelization of CPU-intensive tasks:
-        self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
-        atexit.register(self.executor.shutdown)
         self.dir_models = dir_models
         self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425"
         self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
@@ -94,9 +88,9 @@ class Enhancer:
         if dpi is not None:
             self.dpi = dpi
 
-    def reset_file_name_dir(self, image_filename):
+    def reset_file_name_dir(self, image_filename, dir_out):
         self.cache_images(image_filename=image_filename)
-        self.output_filename = os.path.join(self.dir_out, Path(image_filename).stem +'.png')
+        self.output_filename = os.path.join(dir_out, Path(image_filename).stem +'.png')
 
     def imread(self, grayscale=False, uint8=True):
         key = 'img'
@@ -694,7 +688,12 @@ class Enhancer:
         return img_res
         
         
-    def run(self, image_filename : Optional[str] = None, dir_in : Optional[str] = None, overwrite : bool = False):
+    def run(self,
+            overwrite: bool = False,
+            image_filename: Optional[str] = None,
+            dir_in: Optional[str] = None,
+            dir_out: Optional[str] = None,
+    ):
         """
         Get image and scales, then extract the page of scanned image
         """
@@ -702,7 +701,9 @@ class Enhancer:
         t0_tot = time.time()
 
         if dir_in:
-            ls_imgs = list(filter(is_image_filename, os.listdir(dir_in)))
+            ls_imgs = [os.path.join(dir_in, image_filename)
+                       for image_filename in filter(is_image_filename,
+                                                    os.listdir(dir_in))]
         elif image_filename:
             ls_imgs = [image_filename]
         else:
@@ -712,7 +713,7 @@ class Enhancer:
             self.logger.info(img_filename)
             t0 = time.time()
 
-            self.reset_file_name_dir(os.path.join(dir_in or "", img_filename))
+            self.reset_file_name_dir(img_filename, dir_out)
             #print("text region early -11 in %.1fs", time.time() - t0)
             
             if os.path.exists(self.output_filename):

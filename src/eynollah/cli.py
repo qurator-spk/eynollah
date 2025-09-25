@@ -47,14 +47,14 @@ def main():
 
 def machine_based_reading_order(input, dir_in, out, model, log_level):
     assert bool(input) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    orderer = machine_based_reading_order_on_layout(model, dir_out=out)
+    orderer = machine_based_reading_order_on_layout(model)
     if log_level:
         orderer.logger.setLevel(getLevelName(log_level))
 
-    if dir_in:
-        orderer.run(dir_in=dir_in)
-    else:
-        orderer.run(xml_filename=input)
+    orderer.run(xml_filename=input,
+                dir_in=dir_in,
+                dir_out=out,
+    )
     
 
 @main.command()
@@ -156,17 +156,17 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
     initLogging()
     enhancer = Enhancer(
         model,
-        dir_out=out,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
         save_org_scale=save_org_scale,
     )
     if log_level:
         enhancer.logger.setLevel(getLevelName(log_level))
-    if dir_in:
-        enhancer.run(dir_in=dir_in, overwrite=overwrite)
-    else:
-        enhancer.run(image_filename=image, overwrite=overwrite)
+    enhancer.run(overwrite=overwrite,
+                 dir_in=dir_in,
+                 image_filename=image,
+                 dir_out=out,
+    )
 
 @main.command()
 @click.option(
