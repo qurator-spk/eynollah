@@ -9,9 +9,10 @@ DOCKER ?= docker
 
 #SEG_MODEL := https://qurator-data.de/eynollah/2021-04-25/models_eynollah.tar.gz
 #SEG_MODEL := https://qurator-data.de/eynollah/2022-04-05/models_eynollah_renamed.tar.gz
-SEG_MODEL := https://qurator-data.de/eynollah/2022-04-05/models_eynollah.tar.gz
+# SEG_MODEL := https://qurator-data.de/eynollah/2022-04-05/models_eynollah.tar.gz
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz
+SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1
 
 BIN_MODEL := https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2021_03_09.zip
 
@@ -28,7 +29,7 @@ help:
 	@echo "    install      Install package with pip"
 	@echo "    install-dev  Install editable with pip"
 	@echo "    deps-test    Install test dependencies with pip"
-	@echo "    models       Download and extract models to $(CURDIR)/models_eynollah"
+	@echo "    models       Download and extract models to $(CURDIR)/models_layout_v0_5_0"
 	@echo "    smoke-test   Run simple CLI check"
 	@echo "    ocrd-test    Run OCR-D CLI check"
 	@echo "    test         Run unit tests"
@@ -44,13 +45,13 @@ help:
 # END-EVAL
 
 
-# Download and extract models to $(PWD)/models_eynollah
-models: models_eynollah default-2021-03-09
+# Download and extract models to $(PWD)/models_layout_v0_5_0
+models: models_layout_v0_5_0 default-2021-03-09
 
-models_eynollah: models_eynollah.tar.gz
-	tar zxf models_eynollah.tar.gz
+models_layout_v0_5_0: models_layout_v0_5_0.tar.gz
+	tar zxf models_layout_v0_5_0.tar.gz
 
-models_eynollah.tar.gz:
+models_layout_v0_5_0.tar.gz:
 	wget $(SEG_MODEL)
 
 default-2021-03-09: $(notdir $(BIN_MODEL))
@@ -73,20 +74,20 @@ install:
 install-dev:
 	$(PIP) install -e .$(and $(EXTRAS),[$(EXTRAS)])
 
-deps-test: models_eynollah
+deps-test: models_layout_v0_5_0
 	$(PIP) install -r requirements-test.txt
 
 smoke-test: TMPDIR != mktemp -d
 smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	# layout analysis:
-	eynollah layout -i $< -o $(TMPDIR) -m $(CURDIR)/models_eynollah
+	eynollah layout -i $< -o $(TMPDIR) -m $(CURDIR)/models_layout_v0_5_0
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$(basename $(<F)).xml
 	fgrep -c -e TextRegion -e ImageRegion -e SeparatorRegion $(TMPDIR)/$(basename $(<F)).xml
 	# layout, directory mode (skip one, add one):
-	eynollah layout -di $(<D) -o $(TMPDIR) -m $(CURDIR)/models_eynollah
+	eynollah layout -di $(<D) -o $(TMPDIR) -m $(CURDIR)/models_layout_v0_5_0
 	test -s $(TMPDIR)/euler_rechenkunst01_1738_0025.xml
 	# mbreorder, directory mode (overwrite):
-	eynollah machine-based-reading-order -di $(<D) -o $(TMPDIR) -m $(CURDIR)/models_eynollah
+	eynollah machine-based-reading-order -di $(<D) -o $(TMPDIR) -m $(CURDIR)/models_layout_v0_5_0
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$(basename $(<F)).xml
 	fgrep -c -e RegionRefIndexed $(TMPDIR)/$(basename $(<F)).xml
 	# binarize:
@@ -94,7 +95,7 @@ smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	test -s $(TMPDIR)/$(<F)
 	@set -x; test "$$(identify -format '%w %h' $<)" = "$$(identify -format '%w %h' $(TMPDIR)/$(<F))"
 	# enhance:
-	eynollah enhancement -m $(CURDIR)/models_eynollah -sos -i $< -o $(TMPDIR) -O
+	eynollah enhancement -m $(CURDIR)/models_layout_v0_5_0 -sos -i $< -o $(TMPDIR) -O
 	test -s $(TMPDIR)/$(<F)
 	@set -x; test "$$(identify -format '%w %h' $<)" = "$$(identify -format '%w %h' $(TMPDIR)/$(<F))"
 	$(RM) -r $(TMPDIR)
@@ -105,7 +106,7 @@ ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	cp $< $(TMPDIR)
 	ocrd workspace -d $(TMPDIR) init
 	ocrd workspace -d $(TMPDIR) add -G OCR-D-IMG -g PHYS_0020 -i OCR-D-IMG_0020 $(<F)
-	ocrd-eynollah-segment -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-SEG -P models $(CURDIR)/models_eynollah
+	ocrd-eynollah-segment -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-SEG -P models $(CURDIR)/models_layout_v0_5_0
 	result=$$(ocrd workspace -d $(TMPDIR) find -G OCR-D-SEG); \
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$$result && \
 	fgrep -c -e TextRegion -e ImageRegion -e SeparatorRegion $(TMPDIR)/$$result
@@ -114,7 +115,7 @@ ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	$(RM) -r $(TMPDIR)
 
 # Run unit tests
-test: export EYNOLLAH_MODELS=$(CURDIR)/models_eynollah
+test: export EYNOLLAH_MODELS=$(CURDIR)/models_layout_v0_5_0
 test: export SBBBIN_MODELS=$(CURDIR)/default-2021-03-09
 test:
 	$(PYTHON) -m pytest tests --durations=0 --continue-on-collection-errors $(PYTEST_ARGS)
