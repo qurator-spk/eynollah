@@ -15,14 +15,15 @@ from ocrd_models.constants import NAMESPACES as NS
 
 testdir = Path(__file__).parent.resolve()
 
-EYNOLLAH_MODELS = environ.get('EYNOLLAH_MODELS', str(testdir.joinpath('..', 'models_eynollah').resolve()))
-SBBBIN_MODELS = environ.get('SBBBIN_MODELS', str(testdir.joinpath('..', 'default-2021-03-09').resolve()))
+MODELS_LAYOUT = environ.get('MODELS_LAYOUT', str(testdir.joinpath('..', 'models_layout_v0_5_0').resolve()))
+MODELS_OCR = environ.get('MODELS_OCR', str(testdir.joinpath('..', 'models_ocr_v0_5_0').resolve()))
+MODELS_BIN = environ.get('MODELS_BIN', str(testdir.joinpath('..', 'default-2021-03-09').resolve()))
 
 def test_run_eynollah_layout_filename(tmp_path, subtests, pytestconfig, caplog):
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path / 'kant_aufklaerung_1784_0020.xml'
     args = [
-        '-m', EYNOLLAH_MODELS,
+        '-m', MODELS_LAYOUT,
         '-i', str(infile),
         '-o', str(outfile.parent),
         # subtests write to same location
@@ -66,7 +67,7 @@ def test_run_eynollah_layout_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
-        '-m', EYNOLLAH_MODELS,
+        '-m', MODELS_LAYOUT,
         '-di', str(indir),
         '-o', str(outdir),
     ]
@@ -88,7 +89,7 @@ def test_run_eynollah_binarization_filename(tmp_path, subtests, pytestconfig, ca
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     args = [
-        '-m', SBBBIN_MODELS,
+        '-m', MODELS_BIN,
         '-i', str(infile),
         '-o', str(outfile),
     ]
@@ -120,7 +121,7 @@ def test_run_eynollah_binarization_directory(tmp_path, subtests, pytestconfig, c
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
-        '-m', SBBBIN_MODELS,
+        '-m', MODELS_BIN,
         '-di', str(indir),
         '-o', str(outdir),
     ]
@@ -141,7 +142,7 @@ def test_run_eynollah_enhancement_filename(tmp_path, subtests, pytestconfig, cap
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     args = [
-        '-m', EYNOLLAH_MODELS,
+        '-m', MODELS_LAYOUT,
         '-i', str(infile),
         '-o', str(outfile.parent),
         # subtests write to same location
@@ -175,7 +176,7 @@ def test_run_eynollah_enhancement_directory(tmp_path, subtests, pytestconfig, ca
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
-        '-m', EYNOLLAH_MODELS,
+        '-m', MODELS_LAYOUT,
         '-di', str(indir),
         '-o', str(outdir),
     ]
@@ -196,7 +197,7 @@ def test_run_eynollah_mbreorder_filename(tmp_path, subtests, pytestconfig, caplo
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.xml')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.xml')
     args = [
-        '-m', EYNOLLAH_MODELS,
+        '-m', MODELS_LAYOUT,
         '-i', str(infile),
         '-o', str(outfile.parent),
     ]
@@ -225,7 +226,7 @@ def test_run_eynollah_mbreorder_directory(tmp_path, subtests, pytestconfig, capl
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
-        '-m', EYNOLLAH_MODELS,
+        '-m', MODELS_LAYOUT,
         '-di', str(indir),
         '-o', str(outdir),
     ]
@@ -249,7 +250,7 @@ def test_run_eynollah_ocr_filename(tmp_path, subtests, pytestconfig, caplog):
     outrenderfile = tmp_path.joinpath('render').joinpath('kant_aufklaerung_1784_0020.xml')
     outrenderfile.parent.mkdir()
     args = [
-        '-m', EYNOLLAH_MODELS,
+        '-m', MODELS_OCR,
         '-i', str(infile),
         '-dx', str(infile.parent),
         '-o', str(outfile.parent),
@@ -289,7 +290,7 @@ def test_run_eynollah_ocr_directory(tmp_path, subtests, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
-        '-m', EYNOLLAH_MODELS,
+        '-m', MODELS_OCR,
         '-di', str(indir),
         '-dx', str(indir),
         '-o', str(outdir),
