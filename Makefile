@@ -16,6 +16,8 @@ SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.
 
 BIN_MODEL := https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2021_03_09.zip
 
+OCR_MODEL := https://zenodo.org/records/17194824/files/models_ocr_v0_5_0.tar.gz?download=1
+
 PYTEST_ARGS ?= -vv
 
 # BEGIN-EVAL makefile-parser --make-help Makefile
@@ -46,13 +48,19 @@ help:
 
 
 # Download and extract models to $(PWD)/models_layout_v0_5_0
-models: models_layout_v0_5_0 default-2021-03-09
+models: models_layout_v0_5_0 models_ocr_v0_5_0 default-2021-03-09
 
 models_layout_v0_5_0: models_layout_v0_5_0.tar.gz
 	tar zxf models_layout_v0_5_0.tar.gz
 
 models_layout_v0_5_0.tar.gz:
 	wget -O $@ $(SEG_MODEL)
+
+models_ocr_v0_5_0: models_ocr_v0_5_0.tar.gz
+	tar zxf models_ocr_v0_5_0.tar.gz
+
+models_ocr_v0_5_0.tar.gz:
+	wget -O $@ $(OCR_MODEL)
 
 default-2021-03-09: $(notdir $(BIN_MODEL))
 	unzip $(notdir $(BIN_MODEL))
