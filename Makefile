@@ -115,8 +115,9 @@ ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	$(RM) -r $(TMPDIR)
 
 # Run unit tests
-test: export EYNOLLAH_MODELS=$(CURDIR)/models_layout_v0_5_0
-test: export SBBBIN_MODELS=$(CURDIR)/default-2021-03-09
+test: export MODELS_LAYOUT=$(CURDIR)/models_layout_v0_5_0
+test: export MODELS_OCR=$(CURDIR)/models_ocr_v0_5_0
+test: export MODELS_BIN=$(CURDIR)/default-2021-03-09
 test:
 	$(PYTHON) -m pytest tests --durations=0 --continue-on-collection-errors $(PYTEST_ARGS)
 
