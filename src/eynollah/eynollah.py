@@ -6,6 +6,13 @@
 document layout analysis (segmentation) with output in PAGE-XML
 """
 
+# cannot use importlib.resources until we move to 3.9+ forimportlib.resources.files
+import sys
+if sys.version_info < (3, 10):
+    import importlib_resources
+else:
+    import importlib.resources as importlib_resources
+
 from difflib import SequenceMatcher as sq
 from PIL import Image, ImageDraw, ImageFont
 import math
@@ -5638,8 +5645,10 @@ class Eynollah_ocr:
                 
                 if dir_out_image_text:
                     
-                    font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
-                    font = ImageFont.truetype(font_path, 40)
+                    #font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
+                    font = importlib_resources.files(__package__) / "Charis-Regular.ttf"
+                    with importlib_resources.as_file(font) as font:
+                        font = ImageFont.truetype(font=font, size=40)
                     
                     for indexer_text, bb_ind in enumerate(total_bb_coordinates):
                         
@@ -5649,7 +5658,7 @@ class Eynollah_ocr:
                         w_bb = bb_ind[2]
                         h_bb = bb_ind[3]
                         
-                        font = fit_text_single_line(draw, extracted_texts_merged[indexer_text], font_path, w_bb, int(h_bb*0.4) )
+                        font = fit_text_single_line(draw, extracted_texts_merged[indexer_text], font.path, w_bb, int(h_bb*0.4) )
                         
                         ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
                         
@@ -6135,8 +6144,10 @@ class Eynollah_ocr:
                     
                     if dir_out_image_text:
                         
-                        font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
-                        font = ImageFont.truetype(font_path, 40)
+                        #font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
+                        font = importlib_resources.files(__package__) / "Charis-Regular.ttf"
+                        with importlib_resources.as_file(font) as font:
+                            font = ImageFont.truetype(font=font, size=40)
                         
                         for indexer_text, bb_ind in enumerate(total_bb_coordinates):
                             
@@ -6146,7 +6157,7 @@ class Eynollah_ocr:
                             w_bb = bb_ind[2]
                             h_bb = bb_ind[3]
                             
-                            font = fit_text_single_line(draw, extracted_texts_merged[indexer_text], font_path, w_bb, int(h_bb*0.4) )
+                            font = fit_text_single_line(draw, extracted_texts_merged[indexer_text], font.path, w_bb, int(h_bb*0.4) )
                             
                             ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
                             

@@ -247,7 +247,7 @@ def test_run_eynollah_mbreorder_directory(tmp_path, subtests, pytestconfig, capl
 def test_run_eynollah_ocr_filename(tmp_path, subtests, pytestconfig, caplog):
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.xml')
-    outrenderfile = tmp_path.joinpath('render').joinpath('kant_aufklaerung_1784_0020.xml')
+    outrenderfile = tmp_path.joinpath('render').joinpath('kant_aufklaerung_1784_0020.png')
     outrenderfile.parent.mkdir()
     args = [
         '-m', MODELS_OCR,
