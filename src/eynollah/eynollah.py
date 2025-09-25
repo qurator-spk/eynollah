@@ -1754,7 +1754,7 @@ class Eynollah:
         self.logger.debug("exit extract_text_regions")
         return prediction_regions, prediction_regions2
         
-    def get_textlines_of_a_textregion_sorted(self, textlines_textregion, cx_textline, cy_textline):
+    def get_textlines_of_a_textregion_sorted(self, textlines_textregion, cx_textline, cy_textline, w_h_textline):
         N = len(cy_textline)
         if N==0:
             return []
@@ -1766,12 +1766,17 @@ class Eynollah:
         if len(diff_cy)>0:
             mean_y_diff = np.mean(diff_cy)
             mean_x_diff = np.mean(diff_cx)
+            count_hor = np.count_nonzero(np.array(w_h_textline) > 1)
+            count_ver = len(w_h_textline) - count_hor
+
         else:
             mean_y_diff = 0
             mean_x_diff = 0
+            count_hor = 1
+            count_ver = 0
             
 
-        if np.int(mean_y_diff) >= np.int(mean_x_diff):
+        if count_hor >= count_ver:
             row_threshold = mean_y_diff / 1.5  if mean_y_diff > 0 else 10
 
             indices_sorted_by_y = sorted(range(N), key=lambda i: cy_textline[i])
@@ -1825,6 +1830,8 @@ class Eynollah:
         polygons_of_textlines = return_contours_of_interested_region(textline_mask_tot,1,0.00001)
         M_main_tot = [cv2.moments(polygons_of_textlines[j])
                       for j in range(len(polygons_of_textlines))]
+
+        w_h_textlines = [cv2.boundingRect(polygons_of_textlines[i])[2:] for i in range(len(polygons_of_textlines))]
         cx_main_tot = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
         cy_main_tot = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
 
@@ -1841,8 +1848,9 @@ class Eynollah:
             textlines_ins = [polygons_of_textlines[ind] for ind in indexes_in]
             cx_textline_in = [cx_main_tot[ind] for ind in indexes_in]
             cy_textline_in = [cy_main_tot[ind] for ind in indexes_in]
+            w_h_textlines_in = [w_h_textlines[ind][0] / float(w_h_textlines[ind][1])  for ind in indexes_in]
 
-            textlines_ins = self.get_textlines_of_a_textregion_sorted(textlines_ins, cx_textline_in, cy_textline_in)
+            textlines_ins = self.get_textlines_of_a_textregion_sorted(textlines_ins, cx_textline_in, cy_textline_in, w_h_textlines_in)
             
             all_found_textline_polygons.append(textlines_ins)#[::-1])
             slopes.append(slope_deskew)
@@ -4695,10 +4703,12 @@ class Eynollah:
             
             M_main_tot = [cv2.moments(all_found_textline_polygons[j])
                         for j in range(len(all_found_textline_polygons))]
+            w_h_textlines = [cv2.boundingRect(all_found_textline_polygons[j])[2:] for j in range(len(all_found_textline_polygons))]
+            w_h_textlines = [w_h_textlines[j][0] / float(w_h_textlines[j][1]) for j in range(len(w_h_textlines))]
             cx_main_tot = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
             cy_main_tot = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
             
-            all_found_textline_polygons = self.get_textlines_of_a_textregion_sorted(all_found_textline_polygons, cx_main_tot, cy_main_tot)#all_found_textline_polygons[::-1]
+            all_found_textline_polygons = self.get_textlines_of_a_textregion_sorted(all_found_textline_polygons, cx_main_tot, cy_main_tot, w_h_textlines)#all_found_textline_polygons[::-1]
 
             all_found_textline_polygons=[ all_found_textline_polygons ]
 
