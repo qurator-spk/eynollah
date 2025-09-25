@@ -52,7 +52,7 @@ models_layout_v0_5_0: models_layout_v0_5_0.tar.gz
 	tar zxf models_layout_v0_5_0.tar.gz
 
 models_layout_v0_5_0.tar.gz:
-	wget $(SEG_MODEL)
+	wget -O $@ $(SEG_MODEL)
 
 default-2021-03-09: $(notdir $(BIN_MODEL))
 	unzip $(notdir $(BIN_MODEL))
