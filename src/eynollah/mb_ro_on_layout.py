@@ -10,7 +10,6 @@ import atexit
 from functools import partial
 from pathlib import Path
 from multiprocessing import cpu_count
-from loky import ProcessPoolExecutor
 import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
@@ -35,15 +34,9 @@ class machine_based_reading_order_on_layout:
     def __init__(
         self,
         dir_models : str,
-        dir_out : Optional[str] = None,
         logger : Optional[Logger] = None,
     ):
-        self.dir_out = dir_out
-            
         self.logger = logger if logger else getLogger('mbreorder')
-        # for parallelization of CPU-intensive tasks:
-        self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
-        atexit.register(self.executor.shutdown)
         self.dir_models = dir_models
         self.model_reading_order_dir = dir_models + "/model_eynollah_reading_order_20250824"
         
@@ -56,9 +49,6 @@ class machine_based_reading_order_on_layout:
         self.model_reading_order = self.our_load_model(self.model_reading_order_dir)
         self.light_version = True
 
-
-
-
     @staticmethod
     def our_load_model(model_file):
         if model_file.endswith('.h5') and Path(model_file[:-3]).exists():
@@ -70,10 +60,8 @@ class machine_based_reading_order_on_layout:
             model = load_model(model_file, compile=False, custom_objects={
                 "PatchEncoder": PatchEncoder, "Patches": Patches})
         return model
-    
-    
+
     def read_xml(self, xml_file):
-        file_name = Path(xml_file).stem
         tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding='utf-8'))
         root1=tree1.getroot()
         alltags=[elem.tag for elem in root1.iter()]
@@ -495,7 +483,7 @@ class machine_based_reading_order_on_layout:
         img_poly=cv2.fillPoly(img, pts =co_img, color=(4,4,4))
         img_poly=cv2.fillPoly(img, pts =co_sep, color=(5,5,5))
 
-        return tree1, root1, bb_coord_printspace, file_name, id_paragraph, id_header+id_heading, co_text_paragraph, co_text_header+co_text_heading,\
+        return tree1, root1, bb_coord_printspace, id_paragraph, id_header+id_heading, co_text_paragraph, co_text_header+co_text_heading,\
     tot_region_ref,x_len, y_len,index_tot_regions, img_poly
 
     def return_indexes_of_contours_loctaed_inside_another_list_of_contours(self, contours, contours_loc, cx_main_loc, cy_main_loc, indexes_loc):
@@ -744,7 +732,12 @@ class machine_based_reading_order_on_layout:
 
         
         
-    def run(self, xml_filename : Optional[str] = None, dir_in : Optional[str] = None, overwrite : bool = False):
+    def run(self,
+            overwrite: bool = False,
+            xml_filename: Optional[str] = None,
+            dir_in: Optional[str] = None,
+            dir_out: Optional[str] = None,
+    ):
         """
         Get image and scales, then extract the page of scanned image
         """
@@ -752,7 +745,9 @@ class machine_based_reading_order_on_layout:
         t0_tot = time.time()
 
         if dir_in:
-            ls_xmls  = list(filter(is_xml_filename, os.listdir(dir_in)))
+            ls_xmls  = [os.path.join(dir_in, xml_filename)
+                        for xml_filename in filter(is_xml_filename,
+                                                   os.listdir(dir_in))]
         elif xml_filename:
             ls_xmls = [xml_filename]
         else:
@@ -761,13 +756,11 @@ class machine_based_reading_order_on_layout:
         for xml_filename in ls_xmls:
             self.logger.info(xml_filename)
             t0 = time.time()
-            
-            if dir_in:
-                xml_file = os.path.join(dir_in, xml_filename)
-            else:
-                xml_file = xml_filename
-            
-            tree_xml, root_xml, bb_coord_printspace, file_name, id_paragraph, id_header, co_text_paragraph, co_text_header, tot_region_ref, x_len, y_len, index_tot_regions, img_poly = self.read_xml(xml_file)
+
+            file_name = Path(xml_filename).stem
+            (tree_xml, root_xml, bb_coord_printspace, id_paragraph, id_header,
+             co_text_paragraph, co_text_header, tot_region_ref,
+             x_len, y_len, index_tot_regions, img_poly) = self.read_xml(xml_filename)
             
             id_all_text = id_paragraph + id_header
             
@@ -810,7 +803,11 @@ class machine_based_reading_order_on_layout:
             alltags=[elem.tag for elem in root_xml.iter()]
             
             ET.register_namespace("",name_space)
-            tree_xml.write(os.path.join(self.dir_out, file_name+'.xml'),xml_declaration=True,method='xml',encoding="utf8",default_namespace=None)
+            tree_xml.write(os.path.join(dir_out, file_name+'.xml'),
+                           xml_declaration=True,
+                           method='xml',
+                           encoding="utf8",
+                           default_namespace=None)
             
             #sys.exit()
             
