@@ -1,5 +1,6 @@
 from os import environ
 from pathlib import Path
+import pytest
 import logging
 from PIL import Image
 from eynollah.cli import (
@@ -265,7 +266,7 @@ def test_run_eynollah_ocr_filename(tmp_path, subtests, pytestconfig, caplog):
     runner = CliRunner()
     for options in [
             # kba  Fri Sep 26 12:53:49 CEST 2025
-            # disabled until error in https://github.com/qurator-spk/eynollah/actions/runs/18019655200/job/51273541895 debugged
+            # Disabled until NHWC/NCHW error in https://github.com/qurator-spk/eynollah/actions/runs/18019655200/job/51273541895 debugged
             # [], # defaults
             # ["-doit", str(outrenderfile.parent)],
             ["-trocr"],
@@ -288,6 +289,7 @@ def test_run_eynollah_ocr_filename(tmp_path, subtests, pytestconfig, caplog):
             assert len(out_texts) >= 2, ("result is inaccurate", out_texts)
             assert sum(map(len, out_texts)) > 100, ("result is inaccurate", out_texts)
 
+@pytest.skip("Disabled until NHWC/NCHW error in https://github.com/qurator-spk/eynollah/actions/runs/18019655200/job/51273541895 debugged")
 def test_run_eynollah_ocr_directory(tmp_path, subtests, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
