@@ -5,6 +5,8 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.5.0] - 2025-09-26
+
 Fixed:
 
   * restoring the contour in the original image caused an error due to an empty tuple, #154
@@ -193,6 +195,8 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.5.0]: ../../compare/v0.5.0...v0.4.0
+[0.4.0]: ../../compare/v0.4.0...v0.3.1
 [0.3.1]: ../../compare/v0.3.1...v0.3.0
 [0.3.0]: ../../compare/v0.3.0...v0.2.0
 [0.2.0]: ../../compare/v0.2.0...v0.1.0
