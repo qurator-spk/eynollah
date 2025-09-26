@@ -1,6 +1,7 @@
+from functools import cached_property
 from typing import Optional
 from ocrd_models import OcrdPage
-from ocrd import Processor, OcrdPageResult
+from ocrd import OcrdPageResultImage, Processor, OcrdPageResult
 
 from .eynollah import Eynollah, EynollahXmlWriter
 
@@ -9,8 +10,8 @@ class EynollahProcessor(Processor):
     # already employs GPU (without singleton process atm)
     max_workers = 1
 
-    @property
-    def executable(self):
+    @cached_property
+    def executable(self) -> str:
         return 'ocrd-eynollah-segment'
 
     def setup(self) -> None:
@@ -20,7 +21,6 @@ class EynollahProcessor(Processor):
                              "and parameter 'light_version' (faster+simpler method for main region detection and deskewing)")
         self.eynollah = Eynollah(
             self.resolve_resource(self.parameter['models']),
-            logger=self.logger,
             allow_enhancement=self.parameter['allow_enhancement'],
             curved_line=self.parameter['curved_line'],
             right2left=self.parameter['right_to_left'],
@@ -33,6 +33,7 @@ class EynollahProcessor(Processor):
             headers_off=self.parameter['headers_off'],
             tables=self.parameter['tables'],
         )
+        self.eynollah.logger = self.logger
         self.eynollah.plotter = None
 
     def shutdown(self):

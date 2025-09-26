@@ -6,7 +6,13 @@
 document layout analysis (segmentation) with output in PAGE-XML
 """
 
-from logging import Logger
+# cannot use importlib.resources until we move to 3.9+ forimportlib.resources.files
+import sys
+if sys.version_info < (3, 10):
+    import importlib_resources
+else:
+    import importlib.resources as importlib_resources
+
 from difflib import SequenceMatcher as sq
 from PIL import Image, ImageDraw, ImageFont
 import math
@@ -22,7 +28,6 @@ from multiprocessing import cpu_count
 import gc
 import copy
 import json
-
 from loky import ProcessPoolExecutor
 import xml.etree.ElementTree as ET
 import cv2
@@ -30,9 +35,10 @@ import numpy as np
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from numba import cuda
-
+from skimage.morphology import skeletonize
 from ocrd import OcrdPage
 from ocrd_utils import getLogger, tf_disable_interactive_logs
+import statistics
 
 try:
     import torch
@@ -77,12 +83,26 @@ from .utils.contour import (
 from .utils.rotate import (
     rotate_image,
     rotation_not_90_func,
-    rotation_not_90_func_full_layout
+    rotation_not_90_func_full_layout,
+    rotation_image_new
+)
+from .utils.utils_ocr import (
+    return_textline_contour_with_added_box_coordinate,
+    preprocess_and_resize_image_for_ocrcnn_model,
+    return_textlines_split_if_needed,
+    decode_batch_predictions,
+    return_rnn_cnn_ocr_of_given_textlines,
+    fit_text_single_line,
+    break_curved_line_into_small_pieces_and_then_merge,
+    get_orientation_moments,
+    rotate_image_with_padding,
+    get_contours_and_bounding_boxes
 )
 from .utils.separate_lines import (
     textline_contours_postprocessing,
     separate_lines_new2,
     return_deskew_slop,
+    return_deskew_slop_old_mp,
     do_work_of_slopes_new,
     do_work_of_slopes_new_curved,
     do_work_of_slopes_new_light,
@@ -94,6 +114,7 @@ from .utils.drop_capitals import (
 from .utils.marginals import get_marginals
 from .utils.resize import resize_image
 from .utils import (
+    is_image_filename,
     boosting_headers_by_longshot_region_segmentation,
     crop_image_inside_box,
     find_num_col,
@@ -177,13 +198,7 @@ class Eynollah:
     def __init__(
         self,
         dir_models : str,
-        dir_out : Optional[str] = None,
-        dir_of_cropped_images : Optional[str] = None,
         extract_only_images : bool =False,
-        dir_of_layout : Optional[str] = None,
-        dir_of_deskewed : Optional[str] = None,
-        dir_of_all : Optional[str] = None,
-        dir_save_page : Optional[str] = None,
         enable_plotting : bool = False,
         allow_enhancement : bool = False,
         curved_line : bool = False,
@@ -198,22 +213,21 @@ class Eynollah:
         ignore_page_extraction : bool = False,
         reading_order_machine_based : bool = False,
         do_ocr : bool = False,
+        transformer_ocr: bool = False,
+        batch_size_ocr: Optional[int] = None,
         num_col_upper : Optional[int] = None,
         num_col_lower : Optional[int] = None,
+        threshold_art_class_layout: Optional[float] = None,
+        threshold_art_class_textline: Optional[float] = None,
         skip_layout_and_reading_order : bool = False,
-        logger : Optional[Logger] = None,
     ):
+        self.logger = getLogger('eynollah')
+        self.plotter = None
+
         if skip_layout_and_reading_order:
             textline_light = True
         self.light_version = light_version
-        self.dir_out = dir_out
-        self.dir_of_all = dir_of_all
-        self.dir_save_page = dir_save_page
         self.reading_order_machine_based = reading_order_machine_based
-        self.dir_of_deskewed = dir_of_deskewed
-        self.dir_of_deskewed =  dir_of_deskewed
-        self.dir_of_cropped_images=dir_of_cropped_images
-        self.dir_of_layout=dir_of_layout
         self.enable_plotting = enable_plotting
         self.allow_enhancement = allow_enhancement
         self.curved_line = curved_line
@@ -229,6 +243,7 @@ class Eynollah:
         self.ignore_page_extraction = ignore_page_extraction
         self.skip_layout_and_reading_order = skip_layout_and_reading_order
         self.ocr = do_ocr
+        self.tr = transformer_ocr
         if num_col_upper:
             self.num_col_upper = int(num_col_upper)
         else:
@@ -237,10 +252,17 @@ class Eynollah:
             self.num_col_lower = int(num_col_lower)
         else:
             self.num_col_lower = num_col_lower
-        self.logger = logger if logger else getLogger('eynollah')
-        # for parallelization of CPU-intensive tasks:
-        self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
-        atexit.register(self.executor.shutdown)
+            
+        if threshold_art_class_layout:
+            self.threshold_art_class_layout = float(threshold_art_class_layout)
+        else:
+            self.threshold_art_class_layout = 0.1
+            
+        if threshold_art_class_textline:
+            self.threshold_art_class_textline = float(threshold_art_class_textline)
+        else:
+            self.threshold_art_class_textline = 0.1
+            
         self.dir_models = dir_models
         self.model_dir_of_enhancement = dir_models + "/eynollah-enhancement_20210425"
         self.model_dir_of_binarization = dir_models + "/eynollah-binarization_20210425"
@@ -255,11 +277,11 @@ class Eynollah:
         #"/eynollah-full-regions-1column_20210425"
         self.model_region_dir_fully_np = dir_models + "/modelens_full_lay_1__4_3_091124"
         #self.model_region_dir_fully = dir_models + "/eynollah-full-regions-3+column_20210425"
-        self.model_page_dir = dir_models + "/eynollah-page-extraction_20210425"
+        self.model_page_dir = dir_models + "/model_eynollah_page_extraction_20250915"
         self.model_region_dir_p_ens = dir_models + "/eynollah-main-regions-ensembled_20210425"
         self.model_region_dir_p_ens_light = dir_models + "/eynollah-main-regions_20220314"
         self.model_region_dir_p_ens_light_only_images_extraction = dir_models + "/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18"
-        self.model_reading_order_dir = dir_models + "/model_ens_reading_order_machine_based"
+        self.model_reading_order_dir = dir_models + "/model_eynollah_reading_order_20250824"#"/model_mb_ro_aug_ens_11"#"/model_step_3200000_mb_ro"#"/model_ens_reading_order_machine_based"#"/model_mb_ro_aug_ens_8"#"/model_ens_reading_order_machine_based"
         #"/modelens_12sp_elay_0_3_4__3_6_n"
         #"/modelens_earlylayout_12spaltige_2_3_5_6_7_8"
         #"/modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"
@@ -286,14 +308,23 @@ class Eynollah:
         else:
             #"/eynollah-textline_20210425"
             self.model_textline_dir = dir_models + "/modelens_textline_0_1__2_4_16092024"
-        if self.ocr:
-            self.model_ocr_dir = dir_models + "/trocr_model_ens_of_3_checkpoints_201124"
+        if self.ocr and self.tr:
+            self.model_ocr_dir = dir_models + "/model_eynollah_ocr_trocr_20250919"
+        elif self.ocr and not self.tr:
+            self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250904"
         if self.tables:
             if self.light_version:
                 self.model_table_dir = dir_models + "/modelens_table_0t4_201124"
             else:
                 self.model_table_dir = dir_models + "/eynollah-tables_20210319"
+                
+                
+        t_start = time.time()
 
+        # for parallelization of CPU-intensive tasks:
+        self.executor = ProcessPoolExecutor(max_workers=cpu_count(), timeout=1200)
+        atexit.register(self.executor.shutdown)
+        
         # #gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
         # #gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=7.7, allow_growth=True)
         # #session = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
@@ -307,7 +338,9 @@ class Eynollah:
                 tf.config.experimental.set_memory_growth(device, True)
         except:
             self.logger.warning("no GPU device available")
-
+            
+        self.logger.info("Loading models...")
+        
         self.model_page = self.our_load_model(self.model_page_dir)
         self.model_classifier = self.our_load_model(self.model_dir_of_col_classifier)
         self.model_bin = self.our_load_model(self.model_dir_of_binarization)
@@ -327,13 +360,41 @@ class Eynollah:
             self.model_region_fl = self.our_load_model(self.model_region_dir_fully)
             if self.reading_order_machine_based:
                 self.model_reading_order = self.our_load_model(self.model_reading_order_dir)
-            if self.ocr:
+            if self.ocr and self.tr:
                 self.model_ocr = VisionEncoderDecoderModel.from_pretrained(self.model_ocr_dir)
                 self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                 #("microsoft/trocr-base-printed")#("microsoft/trocr-base-handwritten")
                 self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
+            elif self.ocr and not self.tr:
+                model_ocr = load_model(self.model_ocr_dir , compile=False)
+                
+                self.prediction_model = tf.keras.models.Model(
+                                model_ocr.get_layer(name = "image").input, 
+                                model_ocr.get_layer(name = "dense2").output)
+                if not batch_size_ocr:
+                    self.b_s_ocr = 8
+                else:
+                    self.b_s_ocr = int(batch_size_ocr)
+
+                    
+                with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
+                    characters = json.load(config_file)
+
+                    
+                AUTOTUNE = tf.data.AUTOTUNE
+
+                # Mapping characters to integers.
+                char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
+
+                # Mapping integers back to original characters.
+                self.num_to_char = StringLookup(
+                    vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
+                )
+                
             if self.tables:
                 self.model_table = self.our_load_model(self.model_table_dir)
+                
+        self.logger.info(f"Model initialization complete ({time.time() - t_start:.1f}s)")
 
     def cache_images(self, image_filename=None, image_pil=None, dpi=None):
         ret = {}
@@ -357,21 +418,11 @@ class Eynollah:
         if dpi is not None:
             self.dpi = dpi
 
-    def reset_file_name_dir(self, image_filename):
+    def reset_file_name_dir(self, image_filename, dir_out):
         t_c = time.time()
         self.cache_images(image_filename=image_filename)
-
-        self.plotter = None if not self.enable_plotting else EynollahPlotter(
-            dir_out=self.dir_out,
-            dir_of_all=self.dir_of_all,
-            dir_save_page=self.dir_save_page,
-            dir_of_deskewed=self.dir_of_deskewed,
-            dir_of_cropped_images=self.dir_of_cropped_images,
-            dir_of_layout=self.dir_of_layout,
-            image_filename_stem=Path(Path(image_filename).name).stem)
-
         self.writer = EynollahXmlWriter(
-            dir_out=self.dir_out,
+            dir_out=dir_out,
             image_filename=image_filename,
             curved_line=self.curved_line,
             textline_light = self.textline_light)
@@ -667,6 +718,7 @@ class Eynollah:
 
             label_p_pred = self.model_classifier.predict(img_in, verbose=0)
             num_col = np.argmax(label_p_pred[0]) + 1
+            
         elif (self.num_col_upper and self.num_col_lower) and (self.num_col_upper!=self.num_col_lower):
             if self.input_binary:
                 img_in = np.copy(img)
@@ -784,7 +836,7 @@ class Eynollah:
             self, patches, img, model,
             n_batch_inference=1, marginal_of_patch_percent=0.1,
             thresholding_for_some_classes_in_light_version=False,
-            thresholding_for_artificial_class_in_light_version=False):
+            thresholding_for_artificial_class_in_light_version=False, thresholding_for_fl_light_version=False, threshold_art_class_textline=0.1):
 
         self.logger.debug("enter do_prediction")
         img_height_model = model.layers[-1].output_shape[1]
@@ -802,10 +854,22 @@ class Eynollah:
             if thresholding_for_artificial_class_in_light_version:
                 seg_art = label_p_pred[0,:,:,2]
 
-                seg_art[seg_art<0.2] = 0
+                seg_art[seg_art<threshold_art_class_textline] = 0
                 seg_art[seg_art>0] =1
+                
+                skeleton_art = skeletonize(seg_art)
+                skeleton_art = skeleton_art*1
 
-                seg[seg_art==1]=2
+                seg[skeleton_art==1]=2
+                
+            if thresholding_for_fl_light_version:
+                seg_header = label_p_pred[0,:,:,2]
+
+                seg_header[seg_header<0.2] = 0
+                seg_header[seg_header>0] =1
+
+                seg[seg_header==1]=2
+                
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
             prediction_true = resize_image(seg_color, img_h_page, img_w_page).astype(np.uint8)
             return prediction_true
@@ -896,14 +960,17 @@ class Eynollah:
                     if thresholding_for_artificial_class_in_light_version:
                         seg_art = label_p_pred[:,:,:,2]
 
-                        seg_art[seg_art<0.2] = 0
+                        seg_art[seg_art<threshold_art_class_textline] = 0
                         seg_art[seg_art>0] =1
 
-                        seg[seg_art==1]=2
+                        ##seg[seg_art==1]=2
 
                     indexer_inside_batch = 0
                     for i_batch, j_batch in zip(list_i_s, list_j_s):
                         seg_in = seg[indexer_inside_batch]
+                        
+                        if thresholding_for_artificial_class_in_light_version:
+                            seg_in_art = seg_art[indexer_inside_batch]
 
                         index_y_u_in = list_y_u[indexer_inside_batch]
                         index_y_d_in = list_y_d[indexer_inside_batch]
@@ -917,54 +984,107 @@ class Eynollah:
                                                 seg_in[0:-margin or None,
                                                        0:-margin or None,
                                                        np.newaxis]
+                            if thresholding_for_artificial_class_in_light_version:
+                                prediction_true[index_y_d_in + 0:index_y_u_in - margin,
+                                                index_x_d_in + 0:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[0:-margin or None,
+                                                        0:-margin or None]
+                                
                         elif i_batch == nxf - 1 and j_batch == nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - 0,
                                             index_x_d_in + margin:index_x_u_in - 0] = \
                                                 seg_in[margin:,
                                                        margin:,
                                                        np.newaxis]
+                            if thresholding_for_artificial_class_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - 0,
+                                                index_x_d_in + margin:index_x_u_in - 0, 1] = \
+                                                    seg_in_art[margin:,
+                                                        margin:]
+                                
                         elif i_batch == 0 and j_batch == nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - 0,
                                             index_x_d_in + 0:index_x_u_in - margin] = \
                                                 seg_in[margin:,
                                                        0:-margin or None,
                                                        np.newaxis]
+                            if thresholding_for_artificial_class_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - 0,
+                                                index_x_d_in + 0:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[margin:,
+                                                        0:-margin or None]
+                                
                         elif i_batch == nxf - 1 and j_batch == 0:
                             prediction_true[index_y_d_in + 0:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - 0] = \
                                                 seg_in[0:-margin or None,
                                                        margin:,
                                                        np.newaxis]
+                            if thresholding_for_artificial_class_in_light_version:
+                                prediction_true[index_y_d_in + 0:index_y_u_in - margin,
+                                                index_x_d_in + margin:index_x_u_in - 0, 1] = \
+                                                    seg_in_art[0:-margin or None,
+                                                        margin:]
+                                
                         elif i_batch == 0 and j_batch != 0 and j_batch != nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - margin,
                                             index_x_d_in + 0:index_x_u_in - margin] = \
                                                 seg_in[margin:-margin or None,
                                                        0:-margin or None,
                                                        np.newaxis]
+                            if thresholding_for_artificial_class_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - margin,
+                                                index_x_d_in + 0:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[margin:-margin or None,
+                                                        0:-margin or None]
+                                
                         elif i_batch == nxf - 1 and j_batch != 0 and j_batch != nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - 0] = \
                                                 seg_in[margin:-margin or None,
                                                        margin:,
                                                        np.newaxis]
+                            if thresholding_for_artificial_class_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - margin,
+                                                index_x_d_in + margin:index_x_u_in - 0, 1] = \
+                                                    seg_in_art[margin:-margin or None,
+                                                        margin:]
+                                
                         elif i_batch != 0 and i_batch != nxf - 1 and j_batch == 0:
                             prediction_true[index_y_d_in + 0:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - margin] = \
                                                 seg_in[0:-margin or None,
                                                        margin:-margin or None,
                                                        np.newaxis]
+                            if thresholding_for_artificial_class_in_light_version:
+                                prediction_true[index_y_d_in + 0:index_y_u_in - margin,
+                                                index_x_d_in + margin:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[0:-margin or None,
+                                                        margin:-margin or None]
+                                
                         elif i_batch != 0 and i_batch != nxf - 1 and j_batch == nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - 0,
                                             index_x_d_in + margin:index_x_u_in - margin] = \
                                                 seg_in[margin:,
                                                        margin:-margin or None,
                                                        np.newaxis]
+                            if thresholding_for_artificial_class_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - 0,
+                                                index_x_d_in + margin:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[margin:,
+                                                        margin:-margin or None]
+                                
                         else:
                             prediction_true[index_y_d_in + margin:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - margin] = \
                                                 seg_in[margin:-margin or None,
                                                        margin:-margin or None,
                                                        np.newaxis]
+                            if thresholding_for_artificial_class_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - margin,
+                                                index_x_d_in + margin:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[margin:-margin or None,
+                                                        margin:-margin or None]
                         indexer_inside_batch += 1
 
 
@@ -979,6 +1099,19 @@ class Eynollah:
                     img_patch[:] = 0
 
         prediction_true = prediction_true.astype(np.uint8)
+        
+        if thresholding_for_artificial_class_in_light_version:
+            kernel_min = np.ones((3, 3), np.uint8)
+            prediction_true[:,:,0][prediction_true[:,:,0]==2] = 0
+            
+            skeleton_art = skeletonize(prediction_true[:,:,1])
+            skeleton_art = skeleton_art*1
+            
+            skeleton_art = skeleton_art.astype('uint8')
+            
+            skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
+
+            prediction_true[:,:,0][skeleton_art==1]=2
         #del model
         gc.collect()
         return prediction_true
@@ -1117,7 +1250,7 @@ class Eynollah:
             self, patches, img, model,
             n_batch_inference=1, marginal_of_patch_percent=0.1,
             thresholding_for_some_classes_in_light_version=False,
-            thresholding_for_artificial_class_in_light_version=False):
+            thresholding_for_artificial_class_in_light_version=False, threshold_art_class_textline=0.1, threshold_art_class_layout=0.1):
 
         self.logger.debug("enter do_prediction_new_concept")
         img_height_model = model.layers[-1].output_shape[1]
@@ -1132,19 +1265,28 @@ class Eynollah:
             label_p_pred = model.predict(img[np.newaxis], verbose=0)
             seg = np.argmax(label_p_pred, axis=3)[0]
 
-            if thresholding_for_artificial_class_in_light_version:
-                #seg_text = label_p_pred[0,:,:,1]
-                #seg_text[seg_text<0.2] =0
-                #seg_text[seg_text>0] =1
-                #seg[seg_text==1]=1
-
-                seg_art = label_p_pred[0,:,:,4]
-                seg_art[seg_art<0.2] =0
-                seg_art[seg_art>0] =1
-                seg[seg_art==1]=4
-
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
             prediction_true = resize_image(seg_color, img_h_page, img_w_page).astype(np.uint8)
+            
+            if thresholding_for_artificial_class_in_light_version:
+                kernel_min = np.ones((3, 3), np.uint8)
+                seg_art = label_p_pred[0,:,:,4]
+                seg_art[seg_art<threshold_art_class_layout] =0
+                seg_art[seg_art>0] =1
+                #seg[seg_art==1]=4
+                seg_art = resize_image(seg_art, img_h_page, img_w_page).astype(np.uint8)
+                
+                prediction_true[:,:,0][prediction_true[:,:,0]==4] = 0
+                
+                skeleton_art = skeletonize(seg_art)
+                skeleton_art = skeleton_art*1
+                
+                skeleton_art = skeleton_art.astype('uint8')
+                
+                skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
+                
+                prediction_true[:,:,0][skeleton_art==1] = 4
+                
             return prediction_true , resize_image(label_p_pred[0, :, :, 1] , img_h_page, img_w_page)
 
         if img.shape[0] < img_height_model:
@@ -1217,26 +1359,29 @@ class Eynollah:
 
                     if thresholding_for_some_classes_in_light_version:
                         seg_art = label_p_pred[:,:,:,4]
-                        seg_art[seg_art<0.2] =0
+                        seg_art[seg_art<threshold_art_class_layout] =0
                         seg_art[seg_art>0] =1
 
                         seg_line = label_p_pred[:,:,:,3]
-                        seg_line[seg_line>0.1] =1
+                        seg_line[seg_line>0.4] =1#seg_line[seg_line>0.5] =1#seg_line[seg_line>0.1] =1
                         seg_line[seg_line<1] =0
 
-                        seg[seg_art==1]=4
-                        seg[(seg_line==1) & (seg==0)]=3
+                        ##seg[seg_art==1]=4
+                        #seg[(seg_line==1) & (seg==0)]=3
                     if thresholding_for_artificial_class_in_light_version:
                         seg_art = label_p_pred[:,:,:,2]
 
-                        seg_art[seg_art<0.2] = 0
+                        seg_art[seg_art<threshold_art_class_textline] = 0
                         seg_art[seg_art>0] =1
 
-                        seg[seg_art==1]=2
+                        ##seg[seg_art==1]=2
 
                     indexer_inside_batch = 0
                     for i_batch, j_batch in zip(list_i_s, list_j_s):
                         seg_in = seg[indexer_inside_batch]
+                        
+                        if thresholding_for_artificial_class_in_light_version or thresholding_for_some_classes_in_light_version:
+                            seg_in_art = seg_art[indexer_inside_batch]
 
                         index_y_u_in = list_y_u[indexer_inside_batch]
                         index_y_d_in = list_y_d[indexer_inside_batch]
@@ -1255,6 +1400,12 @@ class Eynollah:
                                                 label_p_pred[0, 0:-margin or None,
                                                        0:-margin or None,
                                                        1]
+                            if thresholding_for_artificial_class_in_light_version or thresholding_for_some_classes_in_light_version:
+                                prediction_true[index_y_d_in + 0:index_y_u_in - margin,
+                                                index_x_d_in + 0:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[0:-margin or None,
+                                                        0:-margin or None]
+                            
                         elif i_batch == nxf - 1 and j_batch == nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - 0,
                                             index_x_d_in + margin:index_x_u_in - 0] = \
@@ -1266,6 +1417,12 @@ class Eynollah:
                                                 label_p_pred[0, margin:,
                                                        margin:,
                                                        1]
+                            if thresholding_for_artificial_class_in_light_version or thresholding_for_some_classes_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - 0,
+                                                index_x_d_in + margin:index_x_u_in - 0, 1] = \
+                                                    seg_in_art[margin:,
+                                                        margin:]
+                            
                         elif i_batch == 0 and j_batch == nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - 0,
                                             index_x_d_in + 0:index_x_u_in - margin] = \
@@ -1277,6 +1434,13 @@ class Eynollah:
                                                 label_p_pred[0, margin:,
                                                        0:-margin or None,
                                                        1]
+                                            
+                            if thresholding_for_artificial_class_in_light_version or thresholding_for_some_classes_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - 0,
+                                                index_x_d_in + 0:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[margin:,
+                                                        0:-margin or None]
+                            
                         elif i_batch == nxf - 1 and j_batch == 0:
                             prediction_true[index_y_d_in + 0:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - 0] = \
@@ -1288,6 +1452,12 @@ class Eynollah:
                                                 label_p_pred[0, 0:-margin or None,
                                                        margin:,
                                                        1]
+                            if thresholding_for_artificial_class_in_light_version or thresholding_for_some_classes_in_light_version:
+                                prediction_true[index_y_d_in + 0:index_y_u_in - margin,
+                                                index_x_d_in + margin:index_x_u_in - 0, 1] = \
+                                                    seg_in_art[0:-margin or None,
+                                                        margin:]
+                            
                         elif i_batch == 0 and j_batch != 0 and j_batch != nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - margin,
                                             index_x_d_in + 0:index_x_u_in - margin] = \
@@ -1299,6 +1469,11 @@ class Eynollah:
                                                 label_p_pred[0, margin:-margin or None,
                                                        0:-margin or None,
                                                        1]
+                            if thresholding_for_artificial_class_in_light_version or thresholding_for_some_classes_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - margin,
+                                                index_x_d_in + 0:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[margin:-margin or None,
+                                                        0:-margin or None]
                         elif i_batch == nxf - 1 and j_batch != 0 and j_batch != nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - 0] = \
@@ -1310,6 +1485,11 @@ class Eynollah:
                                                 label_p_pred[0, margin:-margin or None,
                                                        margin:,
                                                        1]
+                            if thresholding_for_artificial_class_in_light_version or thresholding_for_some_classes_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - margin,
+                                                index_x_d_in + margin:index_x_u_in - 0, 1] = \
+                                                    seg_in_art[margin:-margin or None,
+                                                        margin:]
                         elif i_batch != 0 and i_batch != nxf - 1 and j_batch == 0:
                             prediction_true[index_y_d_in + 0:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - margin] = \
@@ -1321,6 +1501,11 @@ class Eynollah:
                                                 label_p_pred[0, 0:-margin or None,
                                                        margin:-margin or None,
                                                        1]
+                            if thresholding_for_artificial_class_in_light_version or thresholding_for_some_classes_in_light_version:
+                                prediction_true[index_y_d_in + 0:index_y_u_in - margin,
+                                                index_x_d_in + margin:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[0:-margin or None,
+                                                        margin:-margin or None]
                         elif i_batch != 0 and i_batch != nxf - 1 and j_batch == nyf - 1:
                             prediction_true[index_y_d_in + margin:index_y_u_in - 0,
                                             index_x_d_in + margin:index_x_u_in - margin] = \
@@ -1332,6 +1517,11 @@ class Eynollah:
                                                 label_p_pred[0, margin:,
                                                        margin:-margin or None,
                                                        1]
+                            if thresholding_for_artificial_class_in_light_version or thresholding_for_some_classes_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - 0,
+                                                index_x_d_in + margin:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[margin:,
+                                                        margin:-margin or None]
                         else:
                             prediction_true[index_y_d_in + margin:index_y_u_in - margin,
                                             index_x_d_in + margin:index_x_u_in - margin] = \
@@ -1343,6 +1533,11 @@ class Eynollah:
                                                 label_p_pred[0, margin:-margin or None,
                                                        margin:-margin or None,
                                                        1]
+                            if thresholding_for_artificial_class_in_light_version or thresholding_for_some_classes_in_light_version:
+                                prediction_true[index_y_d_in + margin:index_y_u_in - margin,
+                                                index_x_d_in + margin:index_x_u_in - margin, 1] = \
+                                                    seg_in_art[margin:-margin or None,
+                                                        margin:-margin or None]
                         indexer_inside_batch += 1
 
                     list_i_s = []
@@ -1356,6 +1551,32 @@ class Eynollah:
                     img_patch[:] = 0
 
         prediction_true = prediction_true.astype(np.uint8)
+        
+        if thresholding_for_artificial_class_in_light_version:
+            kernel_min = np.ones((3, 3), np.uint8)
+            prediction_true[:,:,0][prediction_true[:,:,0]==2] = 0
+            
+            skeleton_art = skeletonize(prediction_true[:,:,1])
+            skeleton_art = skeleton_art*1
+            
+            skeleton_art = skeleton_art.astype('uint8')
+            
+            skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
+
+            prediction_true[:,:,0][skeleton_art==1]=2
+            
+        if thresholding_for_some_classes_in_light_version:
+            kernel_min = np.ones((3, 3), np.uint8)
+            prediction_true[:,:,0][prediction_true[:,:,0]==4] = 0
+            
+            skeleton_art = skeletonize(prediction_true[:,:,1])
+            skeleton_art = skeleton_art*1
+            
+            skeleton_art = skeleton_art.astype('uint8')
+            
+            skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
+
+            prediction_true[:,:,0][skeleton_art==1]=4
         gc.collect()
         return prediction_true, confidence_matrix
 
@@ -1363,11 +1584,11 @@ class Eynollah:
         self.logger.debug("enter extract_page")
         cont_page = []
         if not self.ignore_page_extraction:
-            img = cv2.GaussianBlur(self.image, (5, 5), 0)
+            img = np.copy(self.image)#cv2.GaussianBlur(self.image, (5, 5), 0)
             img_page_prediction = self.do_prediction(False, img, self.model_page)
             imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
             _, thresh = cv2.threshold(imgray, 0, 255, 0)
-            thresh = cv2.dilate(thresh, KERNEL, iterations=3)
+            ##thresh = cv2.dilate(thresh, KERNEL, iterations=3)
             contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
             if len(contours)>0:
@@ -1375,24 +1596,25 @@ class Eynollah:
                                      for j in range(len(contours))])
                 cnt = contours[np.argmax(cnt_size)]
                 x, y, w, h = cv2.boundingRect(cnt)
-                if x <= 30:
-                    w += x
-                    x = 0
-                if (self.image.shape[1] - (x + w)) <= 30:
-                    w = w + (self.image.shape[1] - (x + w))
-                if y <= 30:
-                    h = h + y
-                    y = 0
-                if (self.image.shape[0] - (y + h)) <= 30:
-                    h = h + (self.image.shape[0] - (y + h))
+                #if x <= 30:
+                    #w += x
+                    #x = 0
+                #if (self.image.shape[1] - (x + w)) <= 30:
+                    #w = w + (self.image.shape[1] - (x + w))
+                #if y <= 30:
+                    #h = h + y
+                    #y = 0
+                #if (self.image.shape[0] - (y + h)) <= 30:
+                    #h = h + (self.image.shape[0] - (y + h))
                 box = [x, y, w, h]
             else:
                 box = [0, 0, img.shape[1], img.shape[0]]
             cropped_page, page_coord = crop_image_inside_box(box, self.image)
-            cont_page.append(np.array([[page_coord[2], page_coord[0]],
-                                       [page_coord[3], page_coord[0]],
-                                       [page_coord[3], page_coord[1]],
-                                       [page_coord[2], page_coord[1]]]))
+            cont_page = [cnt]
+            #cont_page.append(np.array([[page_coord[2], page_coord[0]],
+                                       #[page_coord[3], page_coord[0]],
+                                       #[page_coord[3], page_coord[1]],
+                                       #[page_coord[2], page_coord[1]]]))
             self.logger.debug("exit extract_page")
         else:
             box = [0, 0, self.image.shape[1], self.image.shape[0]]
@@ -1440,10 +1662,11 @@ class Eynollah:
         model_region = self.model_region_fl if patches else self.model_region_fl_np
 
         if self.light_version:
-            pass
+            thresholding_for_fl_light_version = True
         elif not patches:
             img = otsu_copy_binary(img).astype(np.uint8)
             prediction_regions = None
+            thresholding_for_fl_light_version = False
         elif cols:
             img = otsu_copy_binary(img).astype(np.uint8)
             if cols == 1:
@@ -1459,7 +1682,7 @@ class Eynollah:
             else:
                 img = resize_image(img, int(img_height_h * 2500 / float(img_width_h)), 2500).astype(np.uint8)
 
-        prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=0.1, n_batch_inference=3)
+        prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=0.1, n_batch_inference=3, thresholding_for_fl_light_version=thresholding_for_fl_light_version)
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
         return prediction_regions, prediction_regions
@@ -1516,12 +1739,85 @@ class Eynollah:
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
         return prediction_regions, prediction_regions2
+        
+    def get_textlines_of_a_textregion_sorted(self, textlines_textregion, cx_textline, cy_textline, w_h_textline):
+        N = len(cy_textline)
+        if N==0:
+            return []
+        
+        diff_cy = np.abs( np.diff(sorted(cy_textline)) )
+        diff_cx = np.abs(np.diff(sorted(cx_textline)) )
 
+        
+        if len(diff_cy)>0:
+            mean_y_diff = np.mean(diff_cy)
+            mean_x_diff = np.mean(diff_cx)
+            count_hor = np.count_nonzero(np.array(w_h_textline) > 1)
+            count_ver = len(w_h_textline) - count_hor
+
+        else:
+            mean_y_diff = 0
+            mean_x_diff = 0
+            count_hor = 1
+            count_ver = 0
+            
+
+        if count_hor >= count_ver:
+            row_threshold = mean_y_diff / 1.5  if mean_y_diff > 0 else 10
+
+            indices_sorted_by_y = sorted(range(N), key=lambda i: cy_textline[i])
+        
+            rows = []
+            current_row = [indices_sorted_by_y[0]]
+            for i in range(1, N):
+                current_idx = indices_sorted_by_y[i]
+                prev_idx = current_row[0]
+                if abs(cy_textline[current_idx] - cy_textline[prev_idx]) <= row_threshold:
+                    current_row.append(current_idx)
+                else:
+                    rows.append(current_row)
+                    current_row = [current_idx]
+            rows.append(current_row)
+
+            sorted_textlines = []
+            for row in rows:
+                row_sorted = sorted(row, key=lambda i: cx_textline[i])
+                for idx in row_sorted:
+                    sorted_textlines.append(textlines_textregion[idx])
+
+        else:
+            row_threshold = mean_x_diff / 1.5 if mean_x_diff > 0 else 10
+            indices_sorted_by_x = sorted(range(N), key=lambda i: cx_textline[i])
+
+            rows = []
+            current_row = [indices_sorted_by_x[0]]
+
+            for i in range(1, N):
+                current_idy = indices_sorted_by_x[i]
+                prev_idy = current_row[0]
+                if abs(cx_textline[current_idy] - cx_textline[prev_idy] ) <= row_threshold:
+                    current_row.append(current_idy)
+                else:
+                    rows.append(current_row)
+                    current_row = [current_idy]
+            rows.append(current_row)
+
+            sorted_textlines = []
+            for row in rows:
+                row_sorted = sorted(row , key=lambda i: cy_textline[i])
+                for idy in row_sorted:
+                    sorted_textlines.append(textlines_textregion[idy])
+
+        return sorted_textlines
+
+            
     def get_slopes_and_deskew_new_light2(self, contours, contours_par, textline_mask_tot, image_page_rotated, boxes, slope_deskew):
 
         polygons_of_textlines = return_contours_of_interested_region(textline_mask_tot,1,0.00001)
         M_main_tot = [cv2.moments(polygons_of_textlines[j])
                       for j in range(len(polygons_of_textlines))]
+
+        w_h_textlines = [cv2.boundingRect(polygons_of_textlines[i])[2:] for i in range(len(polygons_of_textlines))]
         cx_main_tot = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
         cy_main_tot = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
 
@@ -1536,8 +1832,13 @@ class Eynollah:
             results = np.array(results)
             indexes_in = args_textlines[results==1]
             textlines_ins = [polygons_of_textlines[ind] for ind in indexes_in]
+            cx_textline_in = [cx_main_tot[ind] for ind in indexes_in]
+            cy_textline_in = [cy_main_tot[ind] for ind in indexes_in]
+            w_h_textlines_in = [w_h_textlines[ind][0] / float(w_h_textlines[ind][1])  for ind in indexes_in]
 
-            all_found_textline_polygons.append(textlines_ins[::-1])
+            textlines_ins = self.get_textlines_of_a_textregion_sorted(textlines_ins, cx_textline_in, cy_textline_in, w_h_textlines_in)
+            
+            all_found_textline_polygons.append(textlines_ins)#[::-1])
             slopes.append(slope_deskew)
 
             _, crop_coor = crop_image_inside_box(boxes[index],image_page_rotated)
@@ -1608,7 +1909,7 @@ class Eynollah:
         prediction_textline = self.do_prediction(
             use_patches, img, self.model_textline,
             marginal_of_patch_percent=0.15, n_batch_inference=3,
-            thresholding_for_artificial_class_in_light_version=self.textline_light)
+            thresholding_for_artificial_class_in_light_version=self.textline_light, threshold_art_class_textline=self.threshold_art_class_textline)
         #if not self.textline_light:
             #if num_col_classifier==1:
                 #prediction_textline_nopatch = self.do_prediction(False, img, self.model_textline)
@@ -1622,7 +1923,55 @@ class Eynollah:
             textline_mask_tot_ea_art = textline_mask_tot_ea_art.astype('uint8')
             #textline_mask_tot_ea_art = cv2.dilate(textline_mask_tot_ea_art, KERNEL, iterations=1)
             prediction_textline[:,:][textline_mask_tot_ea_art[:,:]==1]=2
+        """
+        else:
+            textline_mask_tot_ea_art = textline_mask_tot_ea_art.astype('uint8')
+            hor_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 1))
+            
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            ##cv2.imwrite('textline_mask_tot_ea_art.png', textline_mask_tot_ea_art)
+            textline_mask_tot_ea_art = cv2.dilate(textline_mask_tot_ea_art, hor_kernel, iterations=1)
+            
+            ###cv2.imwrite('dil_textline_mask_tot_ea_art.png', dil_textline_mask_tot_ea_art)
+            
+            textline_mask_tot_ea_art = textline_mask_tot_ea_art.astype('uint8')
+            
+            #print(np.shape(dil_textline_mask_tot_ea_art), np.unique(dil_textline_mask_tot_ea_art), 'dil_textline_mask_tot_ea_art')
+            tsk = time.time()
+            skeleton_art_textline = skeletonize(textline_mask_tot_ea_art[:,:,0])
+            
+            skeleton_art_textline =  skeleton_art_textline*1
+            
+            skeleton_art_textline = skeleton_art_textline.astype('uint8')
+            
+            skeleton_art_textline = cv2.dilate(skeleton_art_textline, kernel, iterations=1)
+            
+            #print(np.unique(skeleton_art_textline), np.shape(skeleton_art_textline))
+            
+            #print(skeleton_art_textline, np.unique(skeleton_art_textline))
+            
+            #cv2.imwrite('skeleton_art_textline.png', skeleton_art_textline)
 
+            
+            prediction_textline[:,:,0][skeleton_art_textline[:,:]==1]=2
+            
+            #cv2.imwrite('prediction_textline1.png', prediction_textline[:,:,0])
+            
+            ##hor_kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 1))
+            ##ver_kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 3))
+            ##textline_mask_tot_ea_main = (prediction_textline[:,:]==1)*1
+            ##textline_mask_tot_ea_main = textline_mask_tot_ea_main.astype('uint8')
+            
+            ##dil_textline_mask_tot_ea_main = cv2.erode(textline_mask_tot_ea_main, ver_kernel2, iterations=1)
+            
+            ##dil_textline_mask_tot_ea_main = cv2.dilate(textline_mask_tot_ea_main, hor_kernel2, iterations=1)
+            
+            ##dil_textline_mask_tot_ea_main = cv2.dilate(textline_mask_tot_ea_main, ver_kernel2, iterations=1)
+            
+            ##prediction_textline[:,:][dil_textline_mask_tot_ea_main[:,:]==1]=1
+            
+        """
+        
         textline_mask_tot_ea_lines = (prediction_textline[:,:]==1)*1
         textline_mask_tot_ea_lines = textline_mask_tot_ea_lines.astype('uint8')
         if not self.textline_light:
@@ -1631,10 +1980,15 @@ class Eynollah:
         prediction_textline[:,:][textline_mask_tot_ea_lines[:,:]==1]=1
         if not self.textline_light:
             prediction_textline[:,:][old_art[:,:]==1]=2
+            
+        #cv2.imwrite('prediction_textline2.png', prediction_textline[:,:,0])
 
         prediction_textline_longshot = self.do_prediction(False, img, self.model_textline)
         prediction_textline_longshot_true_size = resize_image(prediction_textline_longshot, img_h, img_w)
-
+        
+        
+        #cv2.imwrite('prediction_textline.png', prediction_textline[:,:,0])
+        #sys.exit()
         self.logger.debug('exit textline_contours')
         return ((prediction_textline[:, :, 0]==1).astype(np.uint8),
                 (prediction_textline_longshot_true_size[:, :, 0]==1).astype(np.uint8))
@@ -1656,8 +2010,8 @@ class Eynollah:
                 y_diff_mean = find_contours_mean_y_diff(textline_con_fil)
                 sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
                 crop_img[crop_img > 0] = 1
-                slope_corresponding_textregion = return_deskew_slop(crop_img, sigma_des,
-                                                                    map=self.executor.map, logger=self.logger, plotter=self.plotter)
+                slope_corresponding_textregion = return_deskew_slop_old_mp(crop_img, sigma_des,
+                                                                    logger=self.logger, plotter=self.plotter)
             except Exception as why:
                 self.logger.error(why)
                 slope_corresponding_textregion = MAX_SLOPE
@@ -1823,7 +2177,7 @@ class Eynollah:
             ###img_bin = np.copy(prediction_bin)
         ###else:
             ###img_bin = np.copy(img_resized)
-        if self.ocr and not self.input_binary:
+        if (self.ocr and self.tr) and not self.input_binary:
             prediction_bin = self.do_prediction(True, img_resized, self.model_bin, n_batch_inference=5)
             prediction_bin = 255 * (prediction_bin[:,:,0] == 0)
             prediction_bin = np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
@@ -1840,7 +2194,7 @@ class Eynollah:
         textline_mask_tot_ea = resize_image(textline_mask_tot_ea,img_height_h, img_width_h )
 
         #print(self.image_org.shape)
-        #cv2.imwrite('out_13.png', self.image_page_org_size)
+        #cv2.imwrite('textline.png', textline_mask_tot_ea)
 
         #plt.imshwo(self.image_page_org_size)
         #plt.show()
@@ -1852,13 +2206,13 @@ class Eynollah:
                                       img_resized.shape[1], img_resized.shape[0], num_col_classifier)
                     prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
                         True, img_resized, self.model_region_1_2, n_batch_inference=1,
-                        thresholding_for_some_classes_in_light_version=True)
+                        thresholding_for_some_classes_in_light_version=True, threshold_art_class_layout=self.threshold_art_class_layout)
                 else:
                     prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
                     confidence_matrix = np.zeros((self.image_org.shape[0], self.image_org.shape[1]))
                     prediction_regions_page, confidence_matrix_page = self.do_prediction_new_concept(
                         False, self.image_page_org_size, self.model_region_1_2, n_batch_inference=1,
-                        thresholding_for_artificial_class_in_light_version=True)
+                        thresholding_for_artificial_class_in_light_version=True, threshold_art_class_layout=self.threshold_art_class_layout)
                     ys = slice(*self.page_coord[0:2])
                     xs = slice(*self.page_coord[2:4])
                     prediction_regions_org[ys, xs] = prediction_regions_page
@@ -1871,7 +2225,7 @@ class Eynollah:
                                   img_resized.shape[1], img_resized.shape[0], new_h, num_col_classifier)
                 prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
                     True, img_resized, self.model_region_1_2, n_batch_inference=2,
-                    thresholding_for_some_classes_in_light_version=True)
+                    thresholding_for_some_classes_in_light_version=True, threshold_art_class_layout=self.threshold_art_class_layout)
             ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_region, n_batch_inference=3, thresholding_for_some_classes_in_light_version=True)
             #print("inside 3 ", time.time()-t_in)
             #plt.imshow(prediction_regions_org[:,:,0])
@@ -2781,10 +3135,21 @@ class Eynollah:
 
         if self.plotter:
             self.plotter.save_page_image(image_page)
-
+        
+        if not self.ignore_page_extraction:
+            mask_page = np.zeros((text_regions_p_1.shape[0], text_regions_p_1.shape[1])).astype(np.int8)
+            mask_page = cv2.fillPoly(mask_page, pts=[cont_page[0]], color=(1,))
+            
+            text_regions_p_1[mask_page==0] = 0
+            textline_mask_tot_ea[mask_page==0] = 0
+        
         text_regions_p_1 = text_regions_p_1[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
         textline_mask_tot_ea = textline_mask_tot_ea[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
         img_bin_light = img_bin_light[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
+        
+        ###text_regions_p_1 = text_regions_p_1[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
+        ###textline_mask_tot_ea = textline_mask_tot_ea[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
+        ###img_bin_light = img_bin_light[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
 
         mask_images = (text_regions_p_1[:, :] == 2) * 1
         mask_images = mask_images.astype(np.uint8)
@@ -2809,6 +3174,26 @@ class Eynollah:
             num_col = num_col + 1
             if not num_column_is_classified:
                 num_col_classifier = num_col + 1
+            if self.num_col_upper and self.num_col_lower:
+                if self.num_col_upper == self.num_col_lower:
+                    num_col_classifier = self.num_col_upper
+                else:
+                    if num_col_classifier < self.num_col_lower:
+                        num_col_classifier = self.num_col_lower
+                    if num_col_classifier > self.num_col_upper:
+                        num_col_classifier = self.num_col_upper
+                        
+            elif self.num_col_lower and not self.num_col_upper:
+                if num_col_classifier < self.num_col_lower:
+                    num_col_classifier = self.num_col_lower
+                    
+            elif self.num_col_upper and not self.num_col_lower:
+                if num_col_classifier > self.num_col_upper:
+                    num_col_classifier = self.num_col_upper
+                    
+            else:
+                pass
+                
         except Exception as why:
             self.logger.error(why)
             num_col = None
@@ -2923,8 +3308,8 @@ class Eynollah:
 
     def run_deskew(self, textline_mask_tot_ea):
         #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
-        slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), 2, 30, True,
-                                          map=self.executor.map, logger=self.logger, plotter=self.plotter)
+        slope_deskew = return_deskew_slop_old_mp(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), 2, 30, True,
+                                          logger=self.logger, plotter=self.plotter)
         slope_first = 0
 
         if self.plotter:
@@ -2942,7 +3327,6 @@ class Eynollah:
         text_regions_p_1[mask_lines[:, :] == 1] = 3
         text_regions_p = text_regions_p_1[:, :]
         text_regions_p = np.array(text_regions_p)
-
         if num_col_classifier in (1, 2):
             try:
                 regions_without_separators = (text_regions_p[:, :] == 1) * 1
@@ -3248,8 +3632,10 @@ class Eynollah:
         # 6 is the separators lable in old full layout model
         # 4 is the drop capital class in old full layout model
         # in the new full layout drop capital is 3 and separators are 5
-
-        text_regions_p[:,:][regions_fully[:,:,0]==5]=6
+        
+        # the separators in full layout will not be written on layout
+        if not self.reading_order_machine_based:
+            text_regions_p[:,:][regions_fully[:,:,0]==5]=6
         ###regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 3] = 4
 
         #text_regions_p[:,:][regions_fully[:,:,0]==6]=6
@@ -3318,9 +3704,100 @@ class Eynollah:
         return model
 
     def do_order_of_regions_with_model(self, contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
+        
+        height1 =672#448
+        width1 = 448#224
+
+        height2 =672#448
+        width2= 448#224
+
+        height3 =672#448
+        width3 = 448#224
+        
+        inference_bs = 3
+        
+        ver_kernel = np.ones((5, 1), dtype=np.uint8)
+        hor_kernel = np.ones((1, 5), dtype=np.uint8)
+        
+        
+        min_cont_size_to_be_dilated = 10
+        if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+            cx_conts, cy_conts, x_min_conts, x_max_conts, y_min_conts, y_max_conts, _ = find_new_features_of_contours(contours_only_text_parent)
+            args_cont_located = np.array(range(len(contours_only_text_parent)))
+            
+            diff_y_conts = np.abs(y_max_conts[:]-y_min_conts)
+            diff_x_conts = np.abs(x_max_conts[:]-x_min_conts)
+            
+            mean_x = statistics.mean(diff_x_conts)
+            median_x = statistics.median(diff_x_conts)
+            
+            
+            diff_x_ratio= diff_x_conts/mean_x
+            
+            args_cont_located_excluded = args_cont_located[diff_x_ratio>=1.3]
+            args_cont_located_included = args_cont_located[diff_x_ratio<1.3]
+            
+            contours_only_text_parent_excluded = [contours_only_text_parent[ind] for ind in range(len(contours_only_text_parent)) if diff_x_ratio[ind]>=1.3]#contours_only_text_parent[diff_x_ratio>=1.3]
+            contours_only_text_parent_included = [contours_only_text_parent[ind] for ind in range(len(contours_only_text_parent)) if diff_x_ratio[ind]<1.3]#contours_only_text_parent[diff_x_ratio<1.3]
+            
+            
+            cx_conts_excluded = [cx_conts[ind] for ind in range(len(cx_conts)) if diff_x_ratio[ind]>=1.3]#cx_conts[diff_x_ratio>=1.3]
+            cx_conts_included = [cx_conts[ind] for ind in range(len(cx_conts)) if diff_x_ratio[ind]<1.3]#cx_conts[diff_x_ratio<1.3]
+            
+            cy_conts_excluded = [cy_conts[ind] for ind in range(len(cy_conts)) if diff_x_ratio[ind]>=1.3]#cy_conts[diff_x_ratio>=1.3]
+            cy_conts_included = [cy_conts[ind] for ind in range(len(cy_conts)) if diff_x_ratio[ind]<1.3]#cy_conts[diff_x_ratio<1.3]
+            
+            #print(diff_x_ratio, 'ratio')
+            text_regions_p = text_regions_p.astype('uint8')
+            
+            if len(contours_only_text_parent_excluded)>0:
+                textregion_par = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1])).astype('uint8')
+                textregion_par = cv2.fillPoly(textregion_par, pts=contours_only_text_parent_included, color=(1,1))
+            else:
+                textregion_par = (text_regions_p[:,:]==1)*1
+                textregion_par = textregion_par.astype('uint8')
+                
+            text_regions_p_textregions_dilated = cv2.erode(textregion_par , hor_kernel, iterations=2)
+            text_regions_p_textregions_dilated = cv2.dilate(text_regions_p_textregions_dilated , ver_kernel, iterations=4)
+            text_regions_p_textregions_dilated = cv2.erode(text_regions_p_textregions_dilated , hor_kernel, iterations=1)
+            text_regions_p_textregions_dilated = cv2.dilate(text_regions_p_textregions_dilated , ver_kernel, iterations=5)
+            text_regions_p_textregions_dilated[text_regions_p[:,:]>1] = 0
+            
+            
+            contours_only_dilated, hir_on_text_dilated = return_contours_of_image(text_regions_p_textregions_dilated)
+            contours_only_dilated = return_parent_contours(contours_only_dilated, hir_on_text_dilated)
+            
+            indexes_of_located_cont, center_x_coordinates_of_located, center_y_coordinates_of_located = self.return_indexes_of_contours_loctaed_inside_another_list_of_contours(contours_only_dilated, contours_only_text_parent_included, cx_conts_included, cy_conts_included, args_cont_located_included)
+            
+            
+            if len(args_cont_located_excluded)>0:
+                for ind in args_cont_located_excluded:
+                    indexes_of_located_cont.append(np.array([ind]))
+                    contours_only_dilated.append(contours_only_text_parent[ind])
+                    center_y_coordinates_of_located.append(0)
+            
+            array_list = [np.array([elem]) if isinstance(elem, int) else elem for elem in indexes_of_located_cont]
+            flattened_array = np.concatenate([arr.ravel() for arr in array_list])
+            #print(len( np.unique(flattened_array)), 'indexes_of_located_cont uniques')
+            
+            missing_textregions = list( set(np.array(range(len(contours_only_text_parent))) ) - set(np.unique(flattened_array)) )
+            #print(missing_textregions, 'missing_textregions')
+
+            for ind in missing_textregions:
+                indexes_of_located_cont.append(np.array([ind]))
+                contours_only_dilated.append(contours_only_text_parent[ind])
+                center_y_coordinates_of_located.append(0)
+                
+                
+            if contours_only_text_parent_h:
+                for vi in range(len(contours_only_text_parent_h)):
+                    indexes_of_located_cont.append(int(vi+len(contours_only_text_parent)))
+                    
+            array_list = [np.array([elem]) if isinstance(elem, int) else elem for elem in indexes_of_located_cont]
+            flattened_array = np.concatenate([arr.ravel() for arr in array_list])
+        
         y_len = text_regions_p.shape[0]
         x_len = text_regions_p.shape[1]
-        
 
         img_poly = np.zeros((y_len,x_len), dtype='uint8')
         img_poly[text_regions_p[:,:]==1] = 1
@@ -3328,25 +3805,24 @@ class Eynollah:
         img_poly[text_regions_p[:,:]==3] = 4
         img_poly[text_regions_p[:,:]==6] = 5
         
-        
-        #temp
-        sep_mask = (img_poly==5)*1
-        sep_mask = sep_mask.astype('uint8')
-        sep_mask = cv2.erode(sep_mask, kernel=KERNEL, iterations=2)
-        img_poly[img_poly==5] = 0
-        img_poly[sep_mask==1] = 5
-        #
-
         img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
         if contours_only_text_parent_h:
             _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(
                 contours_only_text_parent_h)
             for j in range(len(cy_main)):
                 img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,
-                                   int(x_min_main[j]):int(x_max_main[j])] = 1 
-            co_text_all = contours_only_text_parent + contours_only_text_parent_h
+                                   int(x_min_main[j]):int(x_max_main[j])] = 1
+            co_text_all_org = contours_only_text_parent + contours_only_text_parent_h
+            if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+                co_text_all = contours_only_dilated + contours_only_text_parent_h
+            else:
+                co_text_all = contours_only_text_parent + contours_only_text_parent_h
         else:
-            co_text_all = contours_only_text_parent
+            co_text_all_org = contours_only_text_parent
+            if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+                co_text_all = contours_only_dilated
+            else:
+                co_text_all = contours_only_text_parent
 
         if not len(co_text_all):
             return [], []
@@ -3361,21 +3837,13 @@ class Eynollah:
             cv2.fillPoly(img, pts=[co_text_all[i]], color=(1,))
             labels_con[:,:,i] = img
 
-        height1 =672#448
-        width1 = 448#224
-
-        height2 =672#448
-        width2= 448#224
-
-        height3 =672#448
-        width3 = 448#224
 
         labels_con = resize_image(labels_con.astype(np.uint8), height1, width1).astype(bool)
         img_header_and_sep = resize_image(img_header_and_sep, height1, width1)
         img_poly = resize_image(img_poly, height3, width3)
         
 
-        inference_bs = 3
+        
         input_1 = np.zeros((inference_bs, height1, width1, 3))
         ordered = [list(range(len(co_text_all)))]
         index_update = 0
@@ -3425,221 +3893,25 @@ class Eynollah:
                     break
 
         ordered = [i[0] for i in ordered]
-        region_ids = ['region_%04d' % i for i in range(len(co_text_all))]
-        return ordered, region_ids
-
-    def return_start_and_end_of_common_text_of_textline_ocr(self, textline_image, ind_tot):
-        width = np.shape(textline_image)[1]
-        height = np.shape(textline_image)[0]
-        common_window = int(0.2*width)
-
-        width1 = int ( width/2. - common_window )
-        width2 = int ( width/2. + common_window )
-
-        img_sum = np.sum(textline_image[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 3)
-
-        peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        if len(peaks_real)>70:
-            print(len(peaks_real), 'len(peaks_real)')
-
-            peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
-
-            arg_sort = np.argsort(sum_smoothed[peaks_real])
-            arg_sort4 =arg_sort[::-1][:4]
-            peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
-            argsort_sorted = np.argsort(peaks_sort_4)
-
-            first_4_sorted = peaks_sort_4[argsort_sorted]
-            y_4_sorted = sum_smoothed[peaks_real][arg_sort4[argsort_sorted]]
-            #print(first_4_sorted,'first_4_sorted')
-
-            arg_sortnew = np.argsort(y_4_sorted)
-            peaks_final =np.sort( first_4_sorted[arg_sortnew][2:] )
-
-            #plt.figure(ind_tot)
-            #plt.imshow(textline_image)
-            #plt.plot([peaks_final[0], peaks_final[0]], [0, height-1])
-            #plt.plot([peaks_final[1], peaks_final[1]], [0, height-1])
-            #plt.savefig('./'+str(ind_tot)+'.png')
-
-            return peaks_final[0], peaks_final[1]
+        
+        if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+            org_contours_indexes = []
+            for ind in range(len(ordered)):
+                region_with_curr_order = ordered[ind]
+                if region_with_curr_order < len(contours_only_dilated):
+                    if np.isscalar(indexes_of_located_cont[region_with_curr_order]):
+                        org_contours_indexes = org_contours_indexes + [indexes_of_located_cont[region_with_curr_order]]
+                    else:
+                        arg_sort_located_cont = np.argsort(center_y_coordinates_of_located[region_with_curr_order])
+                        org_contours_indexes = org_contours_indexes + list(np.array(indexes_of_located_cont[region_with_curr_order])[arg_sort_located_cont]) ##org_contours_indexes + list ( 
+                else:
+                    org_contours_indexes = org_contours_indexes + [indexes_of_located_cont[region_with_curr_order]]
+            
+            region_ids = ['region_%04d' % i for i in range(len(co_text_all_org))]
+            return org_contours_indexes, region_ids
         else:
-            pass
-
-    def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(self, textline_image, ind_tot):
-        width = np.shape(textline_image)[1]
-        height = np.shape(textline_image)[0]
-        common_window = int(0.06*width)
-
-        width1 = int ( width/2. - common_window )
-        width2 = int ( width/2. + common_window )
-
-        img_sum = np.sum(textline_image[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 3)
-
-        peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        if len(peaks_real)>70:
-            #print(len(peaks_real), 'len(peaks_real)')
-
-            peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
-
-            arg_max = np.argmax(sum_smoothed[peaks_real])
-            peaks_final = peaks_real[arg_max]
-
-            #plt.figure(ind_tot)
-            #plt.imshow(textline_image)
-            #plt.plot([peaks_final, peaks_final], [0, height-1])
-            ##plt.plot([peaks_final[1], peaks_final[1]], [0, height-1])
-            #plt.savefig('./'+str(ind_tot)+'.png')
-
-            return peaks_final
-        else:
-            return None
-
-    def return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
-            self, peaks_real, sum_smoothed, start_split, end_split):
-
-        peaks_real = peaks_real[(peaks_real<end_split) & (peaks_real>start_split)]
-
-        arg_sort = np.argsort(sum_smoothed[peaks_real])
-        arg_sort4 =arg_sort[::-1][:4]
-        peaks_sort_4 = peaks_real[arg_sort][::-1][:4]
-        argsort_sorted = np.argsort(peaks_sort_4)
-
-        first_4_sorted = peaks_sort_4[argsort_sorted]
-        y_4_sorted = sum_smoothed[peaks_real][arg_sort4[argsort_sorted]]
-        #print(first_4_sorted,'first_4_sorted')
-
-        arg_sortnew = np.argsort(y_4_sorted)
-        peaks_final =np.sort( first_4_sorted[arg_sortnew][3:] )
-        return peaks_final[0]
-
-    def return_start_and_end_of_common_text_of_textline_ocr_new(self, textline_image, ind_tot):
-        width = np.shape(textline_image)[1]
-        height = np.shape(textline_image)[0]
-        common_window = int(0.15*width)
-
-        width1 = int ( width/2. - common_window )
-        width2 = int ( width/2. + common_window )
-        mid = int(width/2.)
-
-        img_sum = np.sum(textline_image[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 3)
-
-        peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        if len(peaks_real)>70:
-            peak_start = self.return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
-                peaks_real, sum_smoothed, width1, mid+2)
-            peak_end = self.return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
-                peaks_real, sum_smoothed, mid-2, width2)
-
-            #plt.figure(ind_tot)
-            #plt.imshow(textline_image)
-            #plt.plot([peak_start, peak_start], [0, height-1])
-            #plt.plot([peak_end, peak_end], [0, height-1])
-            #plt.savefig('./'+str(ind_tot)+'.png')
-
-            return peak_start, peak_end
-        else:
-            pass
-
-    def return_ocr_of_textline_without_common_section(
-            self, textline_image, model_ocr, processor, device, width_textline, h2w_ratio,ind_tot):
-
-        if h2w_ratio > 0.05:
-            pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-            generated_ids = model_ocr.generate(pixel_values.to(device))
-            generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        else:
-            #width = np.shape(textline_image)[1]
-            #height = np.shape(textline_image)[0]
-            #common_window = int(0.3*width)
-            #width1 = int ( width/2. - common_window )
-            #width2 = int ( width/2. + common_window )
-
-            split_point = self.return_start_and_end_of_common_text_of_textline_ocr_without_common_section(
-                textline_image, ind_tot)
-            if split_point:
-                image1 = textline_image[:, :split_point,:]# image.crop((0, 0, width2, height))
-                image2 = textline_image[:, split_point:,:]#image.crop((width1, 0, width, height))
-
-                #pixel_values1 = processor(image1, return_tensors="pt").pixel_values
-                #pixel_values2 = processor(image2, return_tensors="pt").pixel_values
-
-                pixel_values_merged = processor([image1,image2], return_tensors="pt").pixel_values
-                generated_ids_merged = model_ocr.generate(pixel_values_merged.to(device))
-                generated_text_merged = processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
-
-                #print(generated_text_merged,'generated_text_merged')
-
-                #generated_ids1 = model_ocr.generate(pixel_values1.to(device))
-                #generated_ids2 = model_ocr.generate(pixel_values2.to(device))
-
-                #generated_text1 = processor.batch_decode(generated_ids1, skip_special_tokens=True)[0]
-                #generated_text2 = processor.batch_decode(generated_ids2, skip_special_tokens=True)[0]
-
-                #generated_text = generated_text1 + ' ' + generated_text2
-                generated_text = generated_text_merged[0] + ' ' + generated_text_merged[1]
-
-                #print(generated_text1,'generated_text1')
-                #print(generated_text2, 'generated_text2')
-                #print('########################################')
-            else:
-                pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-                generated_ids = model_ocr.generate(pixel_values.to(device))
-                generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-
-        #print(generated_text,'generated_text')
-        #print('########################################')
-        return generated_text
-
-    def return_ocr_of_textline(
-            self, textline_image, model_ocr, processor, device, width_textline, h2w_ratio,ind_tot):
-
-        if h2w_ratio > 0.05:
-            pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-            generated_ids = model_ocr.generate(pixel_values.to(device))
-            generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        else:
-            #width = np.shape(textline_image)[1]
-            #height = np.shape(textline_image)[0]
-            #common_window = int(0.3*width)
-            #width1 = int ( width/2. - common_window )
-            #width2 = int ( width/2. + common_window )
-
-            try:
-                width1, width2 = self.return_start_and_end_of_common_text_of_textline_ocr_new(textline_image, ind_tot)
-
-                image1 = textline_image[:, :width2,:]# image.crop((0, 0, width2, height))
-                image2 = textline_image[:, width1:,:]#image.crop((width1, 0, width, height))
-
-                pixel_values1 = processor(image1, return_tensors="pt").pixel_values
-                pixel_values2 = processor(image2, return_tensors="pt").pixel_values
-
-                generated_ids1 = model_ocr.generate(pixel_values1.to(device))
-                generated_ids2 = model_ocr.generate(pixel_values2.to(device))
-
-                generated_text1 = processor.batch_decode(generated_ids1, skip_special_tokens=True)[0]
-                generated_text2 = processor.batch_decode(generated_ids2, skip_special_tokens=True)[0]
-                #print(generated_text1,'generated_text1')
-                #print(generated_text2, 'generated_text2')
-                #print('########################################')
-
-                match = sq(None, generated_text1, generated_text2).find_longest_match(
-                    0, len(generated_text1), 0, len(generated_text2))
-                generated_text = generated_text1 + generated_text2[match.b+match.size:]
-            except:
-                pixel_values = processor(textline_image, return_tensors="pt").pixel_values
-                generated_ids = model_ocr.generate(pixel_values.to(device))
-                generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-
-        return generated_text
-
-    def return_textline_contour_with_added_box_coordinate(self, textline_contour,  box_ind):
-        textline_contour[:,0] = textline_contour[:,0] + box_ind[2]
-        textline_contour[:,1] = textline_contour[:,1] + box_ind[0]
-        return textline_contour
+            region_ids = ['region_%04d' % i for i in range(len(co_text_all_org))]
+            return ordered, region_ids
 
     def return_list_of_contours_with_desired_order(self, ls_cons, sorted_indexes):
         return [ls_cons[sorted_indexes[index]] for index in range(len(sorted_indexes))]
@@ -3811,7 +4083,7 @@ class Eynollah:
             if dilation_m1<6:
                 dilation_m1 = 6
             #print(dilation_m1, 'dilation_m1')
-            dilation_m1 = 6
+            dilation_m1 = 4#6
             dilation_m2 = int(dilation_m1/2.) +1 
 
             for i in range(len(x_differential)):
@@ -4068,6 +4340,29 @@ class Eynollah:
                     contours[ind_u_a_trs].pop(ittrd)
 
             return contours
+        
+    def return_indexes_of_contours_loctaed_inside_another_list_of_contours(self, contours, contours_loc, cx_main_loc, cy_main_loc, indexes_loc):
+        indexes_of_located_cont = []
+        center_x_coordinates_of_located = []
+        center_y_coordinates_of_located = []
+        #M_main_tot = [cv2.moments(contours_loc[j])
+                        #for j in range(len(contours_loc))]
+        #cx_main_loc = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
+        #cy_main_loc = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
+        
+        for ij in range(len(contours)):
+            results = [cv2.pointPolygonTest(contours[ij], (cx_main_loc[ind], cy_main_loc[ind]), False)
+                        for ind in range(len(cy_main_loc)) ]
+            results = np.array(results)
+            indexes_in = np.where((results == 0) | (results == 1))
+            indexes = indexes_loc[indexes_in]# [(results == 0) | (results == 1)]#np.where((results == 0) | (results == 1))
+
+            indexes_of_located_cont.append(indexes)
+            center_x_coordinates_of_located.append(np.array(cx_main_loc)[indexes_in] )
+            center_y_coordinates_of_located.append(np.array(cy_main_loc)[indexes_in] )
+            
+        return indexes_of_located_cont, center_x_coordinates_of_located, center_y_coordinates_of_located
+        
 
     def filter_contours_without_textline_inside(
             self, contours,text_con_org,  contours_textline, contours_only_text_parent_d_ordered, conf_contours_textregions):
@@ -4255,26 +4550,106 @@ class Eynollah:
 
         return (slopes_rem, all_found_textline_polygons_rem, boxes_text_rem, txt_con_org_rem,
                 contours_only_text_parent_rem, index_by_text_par_con_rem_sort)
+    
+    def separate_marginals_to_left_and_right_and_order_from_top_to_down(self, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes_marginals, mid_point_of_page_width):
+        cx_marg, cy_marg, _, _, _, _, _ = find_new_features_of_contours(
+            polygons_of_marginals)
+        
+        cx_marg = np.array(cx_marg)
+        cy_marg = np.array(cy_marg)
+        
+        poly_marg_left = list( np.array(polygons_of_marginals)[cx_marg < mid_point_of_page_width] )
+        poly_marg_right = list( np.array(polygons_of_marginals)[cx_marg >= mid_point_of_page_width] )
+        
+        all_found_textline_polygons_marginals_left = list( np.array(all_found_textline_polygons_marginals)[cx_marg < mid_point_of_page_width] )
+        all_found_textline_polygons_marginals_right = list( np.array(all_found_textline_polygons_marginals)[cx_marg >= mid_point_of_page_width] )
+        
+        all_box_coord_marginals_left = list( np.array(all_box_coord_marginals)[cx_marg < mid_point_of_page_width] )
+        all_box_coord_marginals_right = list( np.array(all_box_coord_marginals)[cx_marg >= mid_point_of_page_width] )
+        
+        slopes_marg_left = list( np.array(slopes_marginals)[cx_marg < mid_point_of_page_width] )
+        slopes_marg_right = list( np.array(slopes_marginals)[cx_marg >= mid_point_of_page_width] )
+        
+        cy_marg_left = cy_marg[cx_marg < mid_point_of_page_width]
+        cy_marg_right = cy_marg[cx_marg >= mid_point_of_page_width]
+        
+        ordered_left_marginals = [poly for _, poly in sorted(zip(cy_marg_left, poly_marg_left), key=lambda x: x[0])]
+        ordered_right_marginals = [poly for _, poly in sorted(zip(cy_marg_right, poly_marg_right), key=lambda x: x[0])]
+        
+        ordered_left_marginals_textline = [poly for _, poly in sorted(zip(cy_marg_left, all_found_textline_polygons_marginals_left), key=lambda x: x[0])]
+        ordered_right_marginals_textline = [poly for _, poly in sorted(zip(cy_marg_right, all_found_textline_polygons_marginals_right), key=lambda x: x[0])]
+        
+        ordered_left_marginals_bbox = [poly for _, poly in sorted(zip(cy_marg_left, all_box_coord_marginals_left), key=lambda x: x[0])]
+        ordered_right_marginals_bbox = [poly for _, poly in sorted(zip(cy_marg_right, all_box_coord_marginals_right), key=lambda x: x[0])]
+        
+        ordered_left_slopes_marginals = [poly for _, poly in sorted(zip(cy_marg_left, slopes_marg_left), key=lambda x: x[0])]
+        ordered_right_slopes_marginals = [poly for _, poly in sorted(zip(cy_marg_right, slopes_marg_right), key=lambda x: x[0])]
+        
+        return ordered_left_marginals, ordered_right_marginals, ordered_left_marginals_textline, ordered_right_marginals_textline, ordered_left_marginals_bbox, ordered_right_marginals_bbox, ordered_left_slopes_marginals, ordered_right_slopes_marginals
 
-    def run(self, image_filename : Optional[str] = None, dir_in : Optional[str] = None, overwrite : bool = False):
+
+    def run(self,
+            overwrite: bool = False,
+            image_filename: Optional[str] = None,
+            dir_in: Optional[str] = None,
+            dir_out: Optional[str] = None,
+            dir_of_cropped_images: Optional[str] = None,
+            dir_of_layout: Optional[str] = None,
+            dir_of_deskewed: Optional[str] = None,
+            dir_of_all: Optional[str] = None,
+            dir_save_page: Optional[str] = None,
+    ):
         """
         Get image and scales, then extract the page of scanned image
         """
         self.logger.debug("enter run")
         t0_tot = time.time()
 
+        # Log enabled features directly
+        enabled_modes = []
+        if self.light_version:
+            enabled_modes.append("Light version")
+        if self.textline_light:
+            enabled_modes.append("Light textline detection")
+        if self.full_layout:
+            enabled_modes.append("Full layout analysis")
+        if self.ocr:
+            enabled_modes.append("OCR")
+        if self.tables:
+            enabled_modes.append("Table detection")
+        if enabled_modes:
+            self.logger.info("Enabled modes: " + ", ".join(enabled_modes))
+        if self.enable_plotting:
+            self.logger.info("Saving debug plots")
+            if dir_of_cropped_images:
+                self.logger.info(f"Saving cropped images to: {dir_of_cropped_images}")
+            if dir_of_layout:
+                self.logger.info(f"Saving layout plots to: {dir_of_layout}")
+            if dir_of_deskewed:
+                self.logger.info(f"Saving deskewed images to: {dir_of_deskewed}")
+
         if dir_in:
-            self.ls_imgs  = os.listdir(dir_in)
+            ls_imgs = [os.path.join(dir_in, image_filename)
+                       for image_filename in filter(is_image_filename,
+                                                    os.listdir(dir_in))]
         elif image_filename:
-            self.ls_imgs = [image_filename]
+            ls_imgs = [image_filename]
         else:
             raise ValueError("run requires either a single image filename or a directory")
 
-        for img_filename in self.ls_imgs:
+        for img_filename in ls_imgs:
             self.logger.info(img_filename)
             t0 = time.time()
 
-            self.reset_file_name_dir(os.path.join(dir_in or "", img_filename))
+            self.reset_file_name_dir(img_filename, dir_out)
+            if self.enable_plotting:
+                self.plotter = EynollahPlotter(dir_out=dir_out,
+                                               dir_of_all=dir_of_all,
+                                               dir_save_page=dir_save_page,
+                                               dir_of_deskewed=dir_of_deskewed,
+                                               dir_of_cropped_images=dir_of_cropped_images,
+                                               dir_of_layout=dir_of_layout,
+                                               image_filename_stem=Path(image_filename).stem)
             #print("text region early -11 in %.1fs", time.time() - t0)
             if os.path.exists(self.writer.output_filename):
                 if overwrite:
@@ -4285,30 +4660,47 @@ class Eynollah:
 
             pcgts = self.run_single()
             self.logger.info("Job done in %.1fs", time.time() - t0)
-            #print("Job done in %.1fs" % (time.time() - t0))
             self.writer.write_pagexml(pcgts)
 
         if dir_in:
             self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
-            print("all Job done in %.1fs", time.time() - t0_tot)
 
     def run_single(self):
         t0 = time.time()
+    
+        self.logger.info(f"Processing file: {self.writer.image_filename}")                        
+        self.logger.info("Step 1/5: Image Enhancement")
+        
         img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(self.light_version)
-        self.logger.info("Enhancing took %.1fs ", time.time() - t0)
+        
+        self.logger.info(f"Image: {self.image.shape[1]}x{self.image.shape[0]}, {self.dpi} DPI, {num_col_classifier} columns")
+        if is_image_enhanced:
+            self.logger.info("Enhancement applied")
+        
+        self.logger.info(f"Enhancement complete ({time.time() - t0:.1f}s)")
+        
+
+        # Image Extraction Mode
         if self.extract_only_images:
+            self.logger.info("Step 2/5: Image Extraction Mode")
+            
             text_regions_p_1, erosion_hurts, polygons_lines_xml, polygons_of_images, image_page, page_coord, cont_page = \
                 self.get_regions_light_v_extract_only_images(img_res, is_image_enhanced, num_col_classifier)
-            ocr_all_textlines = None
             pcgts = self.writer.build_pagexml_no_full_layout(
                 [], page_coord, [], [], [], [],
-                polygons_of_images, [], [], [], [], [],
-                cont_page, [], [], ocr_all_textlines, [])
+                polygons_of_images, [], [], [], [], [], [], [], [], [],
+                cont_page, [], [])
             if self.plotter:
                 self.plotter.write_images_into_directory(polygons_of_images, image_page)
+                
+            self.logger.info("Image extraction complete")
             return pcgts
 
+        # Basic Processing Mode
         if self.skip_layout_and_reading_order:
+            self.logger.info("Step 2/5: Basic Processing Mode")
+            self.logger.info("Skipping layout analysis and reading order detection")
+    
             _ ,_, _, textline_mask_tot_ea, img_bin_light, _ = \
                 self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier,
                                          skip_layout_and_reading_order=self.skip_layout_and_reading_order)
@@ -4316,12 +4708,20 @@ class Eynollah:
             page_coord, image_page, textline_mask_tot_ea, img_bin_light, cont_page = \
                 self.run_graphics_and_columns_without_layout(textline_mask_tot_ea, img_bin_light)
 
-
             ##all_found_textline_polygons =self.scale_contours_new(textline_mask_tot_ea)
 
             cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(textline_mask_tot_ea)
             all_found_textline_polygons = filter_contours_area_of_image(
                 textline_mask_tot_ea, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
+            
+            M_main_tot = [cv2.moments(all_found_textline_polygons[j])
+                        for j in range(len(all_found_textline_polygons))]
+            w_h_textlines = [cv2.boundingRect(all_found_textline_polygons[j])[2:] for j in range(len(all_found_textline_polygons))]
+            w_h_textlines = [w_h_textlines[j][0] / float(w_h_textlines[j][1]) for j in range(len(w_h_textlines))]
+            cx_main_tot = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
+            cy_main_tot = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
+            
+            all_found_textline_polygons = self.get_textlines_of_a_textregion_sorted(all_found_textline_polygons, cx_main_tot, cy_main_tot, w_h_textlines)#all_found_textline_polygons[::-1]
 
             all_found_textline_polygons=[ all_found_textline_polygons ]
 
@@ -4329,31 +4729,45 @@ class Eynollah:
                 all_found_textline_polygons)
             all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(
                 all_found_textline_polygons, None, textline_mask_tot_ea, type_contour="textline")
-
-
+            
+            
             order_text_new = [0]
             slopes =[0]
             id_of_texts_tot =['region_0001']
 
             polygons_of_images = []
-            slopes_marginals = []
-            polygons_of_marginals = []
-            all_found_textline_polygons_marginals = []
-            all_box_coord_marginals = []
+            slopes_marginals_left = []
+            slopes_marginals_right = []
+            polygons_of_marginals_left = []
+            polygons_of_marginals_right = []
+            all_found_textline_polygons_marginals_left = []
+            all_found_textline_polygons_marginals_right = []
+            all_box_coord_marginals_left = []
+            all_box_coord_marginals_right = []
             polygons_lines_xml = []
             contours_tables = []
-            ocr_all_textlines = None
-            conf_contours_textregions =None
+            conf_contours_textregions =[0]
+            
+            if self.ocr and not self.tr:
+                gc.collect()
+                ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons, self.prediction_model, self.b_s_ocr, self.num_to_char, textline_light=True)
+            else:
+                ocr_all_textlines = None
+            
             pcgts = self.writer.build_pagexml_no_full_layout(
                 cont_page, page_coord, order_text_new, id_of_texts_tot,
-                all_found_textline_polygons, page_coord, polygons_of_images, polygons_of_marginals,
-                all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
-                cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, conf_contours_textregions)
+                all_found_textline_polygons, page_coord, polygons_of_images, polygons_of_marginals_left, polygons_of_marginals_right,
+                all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_marginals_left, slopes_marginals_right, 
+                cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines=ocr_all_textlines, conf_contours_textregion=conf_contours_textregions, skip_layout_reading_order=self.skip_layout_and_reading_order)
+            self.logger.info("Basic processing complete")
             return pcgts
 
         #print("text region early -1 in %.1fs", time.time() - t0)
         t1 = time.time()
+        self.logger.info("Step 2/5: Layout Analysis")
+        
         if self.light_version:
+            self.logger.info("Using light version processing")
             text_regions_p_1 ,erosion_hurts, polygons_lines_xml, textline_mask_tot_ea, img_bin_light, confidence_matrix = \
                 self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
             #print("text region early -2 in %.1fs", time.time() - t0)
@@ -4384,34 +4798,37 @@ class Eynollah:
             text_regions_p_1 ,erosion_hurts, polygons_lines_xml = \
                 self.get_regions_from_xy_2models(img_res, is_image_enhanced,
                                                  num_col_classifier)
-            self.logger.info("Textregion detection took %.1fs ", time.time() - t1)
+            self.logger.info(f"Textregion detection took {time.time() - t1:.1f}s")
             confidence_matrix = np.zeros((text_regions_p_1.shape[:2]))
 
             t1 = time.time()
             num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines, \
                 text_regions_p_1, cont_page, table_prediction = \
                     self.run_graphics_and_columns(text_regions_p_1, num_col_classifier, num_column_is_classified, erosion_hurts)
-            self.logger.info("Graphics detection took %.1fs ", time.time() - t1)
+            self.logger.info(f"Graphics detection took {time.time() - t1:.1f}s")
             #self.logger.info('cont_page %s', cont_page)
         #plt.imshow(table_prediction)
         #plt.show()
+        self.logger.info(f"Layout analysis complete ({time.time() - t1:.1f}s)")
 
         if not num_col:
-            self.logger.info("No columns detected, outputting an empty PAGE-XML")
-            ocr_all_textlines = None
+            self.logger.info("No columns detected - generating empty PAGE-XML")
+    
             pcgts = self.writer.build_pagexml_no_full_layout(
-                [], page_coord, [], [], [], [], [], [], [], [], [], [],
-                cont_page, [], [], ocr_all_textlines, [])
+                [], page_coord, [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+                cont_page, [], [])
             return pcgts
 
         #print("text region early in %.1fs", time.time() - t0)
         t1 = time.time()
         if not self.light_version:
             textline_mask_tot_ea = self.run_textline(image_page)
-            self.logger.info("textline detection took %.1fs", time.time() - t1)
+            self.logger.info(f"Textline detection took {time.time() - t1:.1f}s")
             t1 = time.time()
             slope_deskew, slope_first = self.run_deskew(textline_mask_tot_ea)
-            self.logger.info("deskewing took %.1fs", time.time() - t1)
+            if np.abs(slope_deskew) > 0.01:  # Only log if there is significant skew
+                self.logger.info(f"Applied deskew correction: {slope_deskew:.2f} degrees")
+            self.logger.info(f"Deskewing took {time.time() - t1:.1f}s")
         elif num_col_classifier in (1,2):
             org_h_l_m = textline_mask_tot_ea.shape[0]
             org_w_l_m = textline_mask_tot_ea.shape[1]
@@ -4431,6 +4848,13 @@ class Eynollah:
         textline_mask_tot, text_regions_p, image_page_rotated = \
             self.run_marginals(image_page, textline_mask_tot_ea, mask_images, mask_lines,
                                num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
+                               
+        self.logger.info("Step 3/5: Text Line Detection")
+        
+        if self.curved_line:
+            self.logger.info("Mode: Curved line detection")
+        elif self.textline_light:
+            self.logger.info("Mode: Light detection")
 
         if self.light_version and num_col_classifier in (1,2):
             image_page = resize_image(image_page,org_h_l_m, org_w_l_m )
@@ -4441,8 +4865,7 @@ class Eynollah:
             table_prediction = resize_image(table_prediction,org_h_l_m, org_w_l_m )
             image_page_rotated = resize_image(image_page_rotated,org_h_l_m, org_w_l_m )
 
-        self.logger.info("detection of marginals took %.1fs", time.time() - t1)
-        #print("text region early 2 marginal in %.1fs", time.time() - t0)
+        self.logger.info(f"Detection of marginals took {time.time() - t1:.1f}s")
         ## birdan sora chock chakir
         t1 = time.time()
         if not self.full_layout:
@@ -4540,7 +4963,7 @@ class Eynollah:
                         cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
                         cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
                     except Exception as why:
-                        self.logger.error(why)
+                        self.logger.error(str(why))
 
                     (h, w) = text_only.shape[:2]
                     center = (w // 2.0, h // 2.0)
@@ -4572,6 +4995,7 @@ class Eynollah:
                 contours_only_text_parent_d_ordered = []
                 contours_only_text_parent_d = []
                 #contours_only_text_parent = []
+
         if not len(contours_only_text_parent):
             # stop early
             empty_marginals = [[]] * len(polygons_of_marginals)
@@ -4579,14 +5003,14 @@ class Eynollah:
                 pcgts = self.writer.build_pagexml_full_layout(
                     [], [], page_coord, [], [], [], [], [], [],
                     polygons_of_images, contours_tables, [],
-                    polygons_of_marginals, empty_marginals, empty_marginals, [], [], [],
-                    cont_page, polygons_lines_xml, [], [], [])
+                    polygons_of_marginals, polygons_of_marginals, empty_marginals, empty_marginals, empty_marginals, empty_marginals, [], [], [], [],
+                    cont_page, polygons_lines_xml)
             else:
                 pcgts = self.writer.build_pagexml_no_full_layout(
                     [], page_coord, [], [], [], [],
                     polygons_of_images,
-                    polygons_of_marginals, empty_marginals, empty_marginals, [], [],
-                    cont_page, polygons_lines_xml, contours_tables, [], [])
+                    polygons_of_marginals, polygons_of_marginals,  empty_marginals, empty_marginals, empty_marginals, empty_marginals,  [], [], [], 
+                    cont_page, polygons_lines_xml, contours_tables)
             return pcgts
 
 
@@ -4678,8 +5102,11 @@ class Eynollah:
                     num_col_classifier, scale_param, slope_deskew)
             all_found_textline_polygons_marginals = small_textlines_to_parent_adherence2(
                 all_found_textline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
-
-        #print("text region early 6 in %.1fs", time.time() - t0)
+        
+        mid_point_of_page_width = text_regions_p.shape[1] / 2.
+        polygons_of_marginals_left, polygons_of_marginals_right, all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes_marginals_left, slopes_marginals_right = self.separate_marginals_to_left_and_right_and_order_from_top_to_down(polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals, slopes_marginals, mid_point_of_page_width)
+        
+        #print(len(polygons_of_marginals), len(ordered_left_marginals), len(ordered_right_marginals), 'marginals ordred')
         if self.full_layout:
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 contours_only_text_parent_d_ordered = self.return_list_of_contours_with_desired_order(
@@ -4710,10 +5137,10 @@ class Eynollah:
 
             pixel_img = 4
             polygons_of_drop_capitals = return_contours_of_interested_region_by_min_size(text_regions_p, pixel_img)
-            all_found_textline_polygons = adhere_drop_capital_region_into_corresponding_textline(
-                text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h,
-                all_box_coord, all_box_coord_h, all_found_textline_polygons, all_found_textline_polygons_h,
-                kernel=KERNEL, curved_line=self.curved_line, textline_light=self.textline_light)
+            ##all_found_textline_polygons = adhere_drop_capital_region_into_corresponding_textline(
+                ##text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h,
+                ##all_box_coord, all_box_coord_h, all_found_textline_polygons, all_found_textline_polygons_h,
+                ##kernel=KERNEL, curved_line=self.curved_line, textline_light=self.textline_light)
 
             if not self.reading_order_machine_based:
                 pixel_seps = 6
@@ -4758,7 +5185,17 @@ class Eynollah:
         t_order = time.time()
 
         if self.full_layout:
+            self.logger.info("Step 4/5: Reading Order Detection")
+            
             if self.reading_order_machine_based:
+                self.logger.info("Using machine-based detection")
+            if self.right2left:
+                self.logger.info("Right-to-left mode enabled")
+            if self.headers_off:
+                self.logger.info("Headers ignored in reading order")
+                        
+            if self.reading_order_machine_based:
+                tror = time.time()
                 order_text_new, id_of_texts_tot = self.do_order_of_regions_with_model(
                     contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
             else:
@@ -4768,21 +5205,69 @@ class Eynollah:
                 else:
                     order_text_new, id_of_texts_tot = self.do_order_of_regions(
                         contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, boxes_d, textline_mask_tot_d)
-            self.logger.info("detection of reading order took %.1fs", time.time() - t_order)
+            self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
 
-            if self.ocr:
-                ocr_all_textlines = []
+            if self.ocr and not self.tr:
+                self.logger.info("Step 4.5/5: OCR Processing")
+                
+                if torch.cuda.is_available():
+                    self.logger.info("Using GPU acceleration")
+                else:
+                    self.logger.info("Using CPU processing")
+                
+                gc.collect()
+                if len(all_found_textline_polygons)>0:
+                    ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                else:
+                    ocr_all_textlines = None
+                    
+                if all_found_textline_polygons_marginals_left and len(all_found_textline_polygons_marginals_left)>0:
+                    ocr_all_textlines_marginals_left = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_marginals_left, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                else:
+                    ocr_all_textlines_marginals_left = None
+                    
+                if all_found_textline_polygons_marginals_right and len(all_found_textline_polygons_marginals_right)>0:
+                    ocr_all_textlines_marginals_right = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_marginals_right, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                else:
+                    ocr_all_textlines_marginals_right = None
+                
+                if all_found_textline_polygons_h and len(all_found_textline_polygons)>0:
+                    ocr_all_textlines_h = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_h, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                else:
+                    ocr_all_textlines_h = None
+                    
+                if polygons_of_drop_capitals and len(polygons_of_drop_capitals)>0:
+                    ocr_all_textlines_drop = return_rnn_cnn_ocr_of_given_textlines(image_page, polygons_of_drop_capitals, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                else:
+                    ocr_all_textlines_drop = None
             else:
                 ocr_all_textlines = None
+                ocr_all_textlines_marginals_left = None
+                ocr_all_textlines_marginals_right = None
+                ocr_all_textlines_h = None
+                ocr_all_textlines_drop = None
+                
+            self.logger.info("Step 5/5: Output Generation")
+    
             pcgts = self.writer.build_pagexml_full_layout(
                 contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot,
                 all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h,
-                polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals,
-                all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_h, slopes_marginals,
-                cont_page, polygons_lines_xml, ocr_all_textlines, conf_contours_textregions, conf_contours_textregions_h)
+                polygons_of_images, contours_tables, polygons_of_drop_capitals, polygons_of_marginals_left, polygons_of_marginals_right,
+                all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_h, slopes_marginals_left, slopes_marginals_right,
+                cont_page, polygons_lines_xml, ocr_all_textlines, ocr_all_textlines_h, ocr_all_textlines_marginals_left, ocr_all_textlines_marginals_right, ocr_all_textlines_drop,  conf_contours_textregions, conf_contours_textregions_h)
+            
             return pcgts
 
         contours_only_text_parent_h = None
+        self.logger.info("Step 4/5: Reading Order Detection")
+
+        if self.reading_order_machine_based:
+            self.logger.info("Using machine-based detection")
+        if self.right2left:
+            self.logger.info("Right-to-left mode enabled")
+        if self.headers_off:
+            self.logger.info("Headers ignored in reading order")
+    
         if self.reading_order_machine_based:
             order_text_new, id_of_texts_tot = self.do_order_of_regions_with_model(
                 contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
@@ -4802,7 +5287,22 @@ class Eynollah:
                 order_text_new, id_of_texts_tot = self.do_order_of_regions(
                     contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
 
-        if self.ocr:
+        if self.ocr and self.tr:
+            self.logger.info("Step 4.5/5: OCR Processing")
+            
+            if torch.cuda.is_available():
+                self.logger.info("Using GPU acceleration")
+            else:
+                self.logger.info("Using CPU processing")
+            
+            if self.light_version:
+                self.logger.info("Using light version OCR")
+            
+            if self.textline_light:
+                self.logger.info("Using light text line detection for OCR")
+            
+            self.logger.info("Processing text lines...")
+            
             device = cuda.get_current_device()
             device.reset()
             gc.collect()
@@ -4849,16 +5349,35 @@ class Eynollah:
                     ocr_textline_in_textregion.append(text_ocr)
                     ind_tot = ind_tot +1
                 ocr_all_textlines.append(ocr_textline_in_textregion)
+                
+        elif self.ocr and not self.tr:
+            gc.collect()
+            if len(all_found_textline_polygons)>0:
+                ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                
+            if all_found_textline_polygons_marginals_left and len(all_found_textline_polygons_marginals_left)>0:
+                ocr_all_textlines_marginals_left = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_marginals_left, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                
+            if all_found_textline_polygons_marginals_right and len(all_found_textline_polygons_marginals_right)>0:
+                ocr_all_textlines_marginals_right = return_rnn_cnn_ocr_of_given_textlines(image_page, all_found_textline_polygons_marginals_right, self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
 
         else:
             ocr_all_textlines = None
-            #print(ocr_all_textlines)
-        self.logger.info("detection of reading order took %.1fs", time.time() - t_order)
+            ocr_all_textlines_marginals_left = None
+            ocr_all_textlines_marginals_right = None
+        self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
+
+        self.logger.info("Step 5/5: Output Generation")
+        self.logger.info("Generating PAGE-XML output")
+
         pcgts = self.writer.build_pagexml_no_full_layout(
             txt_con_org, page_coord, order_text_new, id_of_texts_tot,
-            all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals,
-            all_found_textline_polygons_marginals, all_box_coord_marginals, slopes, slopes_marginals,
-            cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, conf_contours_textregions)
+            all_found_textline_polygons, all_box_coord, polygons_of_images, polygons_of_marginals_left, polygons_of_marginals_right,
+            all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right, all_box_coord_marginals_left, all_box_coord_marginals_right, slopes, slopes_marginals_left, slopes_marginals_right, 
+            cont_page, polygons_lines_xml, contours_tables, ocr_all_textlines, ocr_all_textlines_marginals_left, ocr_all_textlines_marginals_right, conf_contours_textregions)
+        
+        self.logger.info(f"Output file: {self.writer.output_filename}")
+        
         return pcgts
 
 
@@ -4866,221 +5385,108 @@ class Eynollah_ocr:
     def __init__(
         self,
         dir_models,
+        model_name=None,
         dir_xmls=None,
-        dir_in=None,
-        dir_in_bin=None,
-        dir_out=None,
-        dir_out_image_text=None,
         tr_ocr=False,
+        batch_size=None,
         export_textline_images_and_text=False,
         do_not_mask_with_textline_contour=False,
-        draw_texts_on_image=False,
-        prediction_with_both_of_rgb_and_bin=False,
+        pref_of_dataset=None,
+        min_conf_value_of_textline_text : Optional[float]=None,
         logger=None,
     ):
-        self.dir_in = dir_in
-        self.dir_in_bin = dir_in_bin
-        self.dir_out = dir_out
-        self.dir_xmls = dir_xmls
         self.dir_models = dir_models
+        self.model_name = model_name
         self.tr_ocr = tr_ocr
         self.export_textline_images_and_text = export_textline_images_and_text
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
-        self.draw_texts_on_image = draw_texts_on_image
-        self.dir_out_image_text = dir_out_image_text
-        self.prediction_with_both_of_rgb_and_bin = prediction_with_both_of_rgb_and_bin
-        if tr_ocr:
-            self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
-            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-            self.model_ocr_dir = dir_models + "/trocr_model_ens_of_3_checkpoints_201124"
-            self.model_ocr = VisionEncoderDecoderModel.from_pretrained(self.model_ocr_dir)
-            self.model_ocr.to(self.device)
-
-        else:
-            self.model_ocr_dir = dir_models + "/model_step_1050000_ocr"#"/model_0_ocr_cnnrnn"#"/model_23_ocr_cnnrnn"
-            model_ocr = load_model(self.model_ocr_dir , compile=False)
-            
-            self.prediction_model = tf.keras.models.Model(
-                            model_ocr.get_layer(name = "image").input, 
-                            model_ocr.get_layer(name = "dense2").output)
-
-                
-            with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
-                characters = json.load(config_file)
-
-                
-            AUTOTUNE = tf.data.AUTOTUNE
-
-            # Mapping characters to integers.
-            char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
-
-            # Mapping integers back to original characters.
-            self.num_to_char = StringLookup(
-                vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
-            )
+        self.pref_of_dataset = pref_of_dataset
+        self.logger = logger if logger else getLogger('eynollah')
         
-    def decode_batch_predictions(self, pred, max_len = 128):
-        # input_len is the product of the batch size and the
-        # number of time steps.
-        input_len = np.ones(pred.shape[0]) * pred.shape[1]
-        
-        # Decode CTC predictions using greedy search.
-        # decoded is a tuple with 2 elements.
-        decoded = tf.keras.backend.ctc_decode(pred, 
-                        input_length = input_len, 
-                                    beam_width = 100)
-        # The outputs are in the first element of the tuple.
-        # Additionally, the first element is actually a list,
-        # therefore we take the first element of that list as well.
-        #print(decoded,'decoded')
-        decoded = decoded[0][0][:, :max_len]
-        
-        #print(decoded, decoded.shape,'decoded')
-
-        output = []
-        for d in decoded:
-            # Convert the predicted indices to the corresponding chars.
-            d = tf.strings.reduce_join(self.num_to_char(d))
-            d = d.numpy().decode("utf-8")
-            output.append(d)
-        return output
-        
-        
-    def distortion_free_resize(self, image, img_size):
-        w, h = img_size
-        image = tf.image.resize(image, size=(h, w), preserve_aspect_ratio=True)
-
-        # Check tha amount of padding needed to be done.
-        pad_height = h - tf.shape(image)[0]
-        pad_width = w - tf.shape(image)[1]
-
-        # Only necessary if you want to do same amount of padding on both sides.
-        if pad_height % 2 != 0:
-            height = pad_height // 2
-            pad_height_top = height + 1
-            pad_height_bottom = height
-        else:
-            pad_height_top = pad_height_bottom = pad_height // 2
-
-        if pad_width % 2 != 0:
-            width = pad_width // 2
-            pad_width_left = width + 1
-            pad_width_right = width
-        else:
-            pad_width_left = pad_width_right = pad_width // 2
-
-        image = tf.pad(
-            image,
-            paddings=[
-                [pad_height_top, pad_height_bottom],
-                [pad_width_left, pad_width_right],
-                [0, 0],
-            ],
-        )
-
-        image = tf.transpose(image, (1, 0, 2))
-        image = tf.image.flip_left_right(image)
-        return image
-    
-    def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(self, textline_image):
-        width = np.shape(textline_image)[1]
-        height = np.shape(textline_image)[0]
-        common_window = int(0.22*width)
-
-        width1 = int ( width/2. - common_window )
-        width2 = int ( width/2. + common_window )
-        
-        img_sum = np.sum(textline_image[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 3)
-        
-        peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        
-        if len(peaks_real)>35:
-
-            #peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
-            argsort = np.argsort(sum_smoothed[peaks_real])[::-1]
-            peaks_real_top_six = peaks_real[argsort[:6]]
-            midpoint = textline_image.shape[1] / 2.
-            arg_closest = np.argmin(np.abs(peaks_real_top_six - midpoint))
-
-            #arg_max = np.argmax(sum_smoothed[peaks_real])
-
-            peaks_final = peaks_real_top_six[arg_closest]#peaks_real[arg_max]
-            
-            return peaks_final
-        else:
-            return None
-        
-    # Function to fit text inside the given area
-    def fit_text_single_line(self, draw, text, font_path, max_width, max_height):
-        initial_font_size = 50
-        font_size = initial_font_size
-        while font_size > 10:  # Minimum font size
-            font = ImageFont.truetype(font_path, font_size)
-            text_bbox = draw.textbbox((0, 0), text, font=font)  # Get text bounding box
-            text_width = text_bbox[2] - text_bbox[0]
-            text_height = text_bbox[3] - text_bbox[1]
-
-            if text_width <= max_width and text_height <= max_height:
-                return font  # Return the best-fitting font
-
-            font_size -= 2  # Reduce font size and retry
-
-        return ImageFont.truetype(font_path, 10)  # Smallest font fallback
-    
-    def return_textlines_split_if_needed(self, textline_image, textline_image_bin):
-
-        split_point = self.return_start_and_end_of_common_text_of_textline_ocr_without_common_section(textline_image)
-        if split_point:
-            image1 = textline_image[:, :split_point,:]# image.crop((0, 0, width2, height))
-            image2 = textline_image[:, split_point:,:]#image.crop((width1, 0, width, height))
-            if self.prediction_with_both_of_rgb_and_bin:
-                image1_bin = textline_image_bin[:, :split_point,:]# image.crop((0, 0, width2, height))
-                image2_bin = textline_image_bin[:, split_point:,:]#image.crop((width1, 0, width, height))
-                return [image1, image2], [image1_bin, image2_bin]
+        if not export_textline_images_and_text:
+            if min_conf_value_of_textline_text:
+                self.min_conf_value_of_textline_text = float(min_conf_value_of_textline_text)
             else:
-                return [image1, image2], None
+                self.min_conf_value_of_textline_text = 0.3
+            if tr_ocr:
+                self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
+                self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+                if self.model_name:
+                    self.model_ocr_dir = self.model_name
+                else:
+                    self.model_ocr_dir = dir_models + "/model_eynollah_ocr_trocr_20250919"
+                self.model_ocr = VisionEncoderDecoderModel.from_pretrained(self.model_ocr_dir)
+                self.model_ocr.to(self.device)
+                if not batch_size:
+                    self.b_s = 2
+                else:
+                    self.b_s = int(batch_size)
+
+            else:
+                if self.model_name:
+                    self.model_ocr_dir = self.model_name
+                else:
+                    self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250904"
+                model_ocr = load_model(self.model_ocr_dir , compile=False)
+                
+                self.prediction_model = tf.keras.models.Model(
+                                model_ocr.get_layer(name = "image").input, 
+                                model_ocr.get_layer(name = "dense2").output)
+                if not batch_size:
+                    self.b_s = 8
+                else:
+                    self.b_s = int(batch_size)
+                    
+                with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
+                    characters = json.load(config_file)
+                    
+                AUTOTUNE = tf.data.AUTOTUNE
+
+                # Mapping characters to integers.
+                char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
+
+                # Mapping integers back to original characters.
+                self.num_to_char = StringLookup(
+                    vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
+                )
+                self.end_character = len(characters) + 2
+
+    def run(self, overwrite: bool = False,
+            dir_in: Optional[str] = None,
+            dir_in_bin: Optional[str] = None,
+            image_filename: Optional[str] = None,
+            dir_xmls: Optional[str] = None,
+            dir_out_image_text: Optional[str] = None,
+            dir_out: Optional[str] = None,
+    ):
+        if dir_in:
+            ls_imgs = [os.path.join(dir_in, image_filename)
+                       for image_filename in filter(is_image_filename,
+                                                    os.listdir(dir_in))]
         else:
-            return None, None
-    def preprocess_and_resize_image_for_ocrcnn_model(self, img, image_height, image_width):
-        ratio = image_height /float(img.shape[0])
-        w_ratio = int(ratio * img.shape[1])
-        
-        if w_ratio <= image_width:
-            width_new = w_ratio
-        else:
-            width_new = image_width
-            
-        if width_new == 0:
-            width_new = img.shape[1]
-            
-        ##if width_new+32 >= image_width:
-            ##width_new = width_new - 32
-            
-        ###patch_zero = np.zeros((32, 32, 3))#+255
-        ###patch_zero[9:19,8:18,:] = 0
-            
-        
-        img = resize_image(img, image_height, width_new)
-        img_fin = np.ones((image_height, image_width, 3))*255
-        ###img_fin[:,:32,:] = patch_zero[:,:,:]
-        ###img_fin[:,32:32+width_new,:] = img[:,:,:]
-        img_fin[:,:width_new,:] = img[:,:,:]
-        img_fin = img_fin / 255.
-        return img_fin
-    
-    def run(self):
-        ls_imgs = os.listdir(self.dir_in)
-        
+            ls_imgs = [image_filename]
+
         if self.tr_ocr:
-            b_s = 2
-            for ind_img in ls_imgs:
-                t0 = time.time()
-                file_name = ind_img.split('.')[0]
-                dir_img = os.path.join(self.dir_in, ind_img)
-                dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
-                out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
+            tr_ocr_input_height_and_width = 384
+            for dir_img in ls_imgs:
+                file_name = Path(dir_img).stem
+                dir_xml = os.path.join(dir_xmls, file_name+'.xml')
+                out_file_ocr = os.path.join(dir_out, file_name+'.xml')
+                
+                if os.path.exists(out_file_ocr):
+                    if overwrite:
+                        self.logger.warning("will overwrite existing output file '%s'", out_file_ocr)
+                    else:
+                        self.logger.warning("will skip input for existing output file '%s'", out_file_ocr)
+                        continue
+                    
                 img = cv2.imread(dir_img)
+                
+                if dir_out_image_text:
+                    out_image_with_text = os.path.join(dir_out_image_text, file_name+'.png')
+                    image_text = Image.new("RGB", (img.shape[1], img.shape[0]), "white")
+                    draw = ImageDraw.Draw(image_text)
+                    total_bb_coordinates = []
 
                 ##file_name = Path(dir_xmls).stem
                 tree1 = ET.parse(dir_xml, parser = ET.XMLParser(encoding="utf-8"))
@@ -5098,8 +5504,12 @@ class Eynollah_ocr:
                 cropped_lines = []
                 cropped_lines_region_indexer = []
                 cropped_lines_meging_indexing = []
+                
+                extracted_texts = []
 
                 indexer_text_region = 0
+                indexer_b_s = 0
+                
                 for nn in root1.iter(region_tags):
                     for child_textregion in nn:
                         if child_textregion.tag.endswith("TextLine"):
@@ -5111,6 +5521,9 @@ class Eynollah_ocr:
                                     textline_coords =  np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] )
                                     x,y,w,h = cv2.boundingRect(textline_coords)
                                     
+                                    if dir_out_image_text:
+                                        total_bb_coordinates.append([x,y,w,h])
+                                    
                                     h2w_ratio = h/float(w)
                                     
                                     img_poly_on_img = np.copy(img)
@@ -5121,108 +5534,265 @@ class Eynollah_ocr:
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
                                     img_crop[mask_poly==0] = 255
                                     
+                                    self.logger.debug("processing %d lines for '%s'", len(cropped_lines), nn.attrib['id'])
                                     if h2w_ratio > 0.1:
-                                        cropped_lines.append(img_crop)
+                                        cropped_lines.append(resize_image(img_crop, tr_ocr_input_height_and_width, tr_ocr_input_height_and_width)  )
                                         cropped_lines_meging_indexing.append(0)
+                                        indexer_b_s+=1
+                                        if indexer_b_s==self.b_s:
+                                            imgs = cropped_lines[:]
+                                            cropped_lines = []
+                                            indexer_b_s = 0
+                                            
+                                            pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                                            generated_ids_merged = self.model_ocr.generate(pixel_values_merged.to(self.device))
+                                            generated_text_merged = self.processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
+                                            
+                                            extracted_texts = extracted_texts + generated_text_merged
+                                            
                                     else:
-                                        splited_images, _ = self.return_textlines_split_if_needed(img_crop, None)
+                                        splited_images, _ = return_textlines_split_if_needed(img_crop, None)
                                         #print(splited_images)
                                         if splited_images:
-                                            cropped_lines.append(splited_images[0])
+                                            cropped_lines.append(resize_image(splited_images[0], tr_ocr_input_height_and_width, tr_ocr_input_height_and_width))
                                             cropped_lines_meging_indexing.append(1)
-                                            cropped_lines.append(splited_images[1])
+                                            indexer_b_s+=1
+                                            
+                                            if indexer_b_s==self.b_s:
+                                                imgs = cropped_lines[:]
+                                                cropped_lines = []
+                                                indexer_b_s = 0
+                                                
+                                                pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                                                generated_ids_merged = self.model_ocr.generate(pixel_values_merged.to(self.device))
+                                                generated_text_merged = self.processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
+                                                
+                                                extracted_texts = extracted_texts + generated_text_merged
+                                            
+                                            
+                                            cropped_lines.append(resize_image(splited_images[1], tr_ocr_input_height_and_width, tr_ocr_input_height_and_width))
                                             cropped_lines_meging_indexing.append(-1)
+                                            indexer_b_s+=1
+                                            
+                                            if indexer_b_s==self.b_s:
+                                                imgs = cropped_lines[:]
+                                                cropped_lines = []
+                                                indexer_b_s = 0
+                                                
+                                                pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                                                generated_ids_merged = self.model_ocr.generate(pixel_values_merged.to(self.device))
+                                                generated_text_merged = self.processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
+                                                
+                                                extracted_texts = extracted_texts + generated_text_merged
+                                                
                                         else:
                                             cropped_lines.append(img_crop)
                                             cropped_lines_meging_indexing.append(0)
+                                            indexer_b_s+=1
+                                            
+                                            if indexer_b_s==self.b_s:
+                                                imgs = cropped_lines[:]
+                                                cropped_lines = []
+                                                indexer_b_s = 0
+                                                
+                                                pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                                                generated_ids_merged = self.model_ocr.generate(pixel_values_merged.to(self.device))
+                                                generated_text_merged = self.processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
+                                                
+                                                extracted_texts = extracted_texts + generated_text_merged
+                                                
+                    
+                                            
                     indexer_text_region = indexer_text_region +1
         
-        
-                extracted_texts = []
-                n_iterations  = math.ceil(len(cropped_lines) / b_s) 
-
-                for i in range(n_iterations):
-                    if i==(n_iterations-1):
-                        n_start = i*b_s
-                        imgs = cropped_lines[n_start:]
-                    else:
-                        n_start = i*b_s
-                        n_end = (i+1)*b_s
-                        imgs = cropped_lines[n_start:n_end]
+                if indexer_b_s!=0:
+                    imgs = cropped_lines[:]
+                    cropped_lines = []
+                    indexer_b_s = 0
+                    
                     pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
                     generated_ids_merged = self.model_ocr.generate(pixel_values_merged.to(self.device))
                     generated_text_merged = self.processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
                     
                     extracted_texts = extracted_texts + generated_text_merged
+                    
+                ####extracted_texts = []
+                ####n_iterations  = math.ceil(len(cropped_lines) / self.b_s) 
 
-                extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
+                ####for i in range(n_iterations):
+                    ####if i==(n_iterations-1):
+                        ####n_start = i*self.b_s
+                        ####imgs = cropped_lines[n_start:]
+                    ####else:
+                        ####n_start = i*self.b_s
+                        ####n_end = (i+1)*self.b_s
+                        ####imgs = cropped_lines[n_start:n_end]
+                    ####pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                    ####generated_ids_merged = self.model_ocr.generate(pixel_values_merged.to(self.device))
+                    ####generated_text_merged = self.processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
+                    
+                    ####extracted_texts = extracted_texts + generated_text_merged
+                    
+                del cropped_lines
+                gc.collect()
+
+                extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+" "+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
 
                 extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
                 #print(extracted_texts_merged, len(extracted_texts_merged))
 
                 unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
+                
+                if dir_out_image_text:
+                    
+                    #font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
+                    font = importlib_resources.files(__package__) / "Charis-Regular.ttf"
+                    with importlib_resources.as_file(font) as font:
+                        font = ImageFont.truetype(font=font, size=40)
+                    
+                    for indexer_text, bb_ind in enumerate(total_bb_coordinates):
+                        
+                        
+                        x_bb = bb_ind[0]
+                        y_bb = bb_ind[1]
+                        w_bb = bb_ind[2]
+                        h_bb = bb_ind[3]
+                        
+                        font = fit_text_single_line(draw, extracted_texts_merged[indexer_text], font.path, w_bb, int(h_bb*0.4) )
+                        
+                        ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
+                        
+                        text_bbox = draw.textbbox((0, 0), extracted_texts_merged[indexer_text], font=font)
+                        text_width = text_bbox[2] - text_bbox[0]
+                        text_height = text_bbox[3] - text_bbox[1]
+
+                        text_x = x_bb + (w_bb - text_width) // 2  # Center horizontally
+                        text_y = y_bb + (h_bb - text_height) // 2  # Center vertically
+
+                        # Draw the text
+                        draw.text((text_x, text_y), extracted_texts_merged[indexer_text], fill="black", font=font)
+                    image_text.save(out_image_with_text)
 
                 #print(len(unique_cropped_lines_region_indexer), 'unique_cropped_lines_region_indexer')
+                #######text_by_textregion = []
+                #######for ind in unique_cropped_lines_region_indexer:
+                    #######extracted_texts_merged_un = np.array(extracted_texts_merged)[np.array(cropped_lines_region_indexer)==ind]
+                    
+                    #######text_by_textregion.append(" ".join(extracted_texts_merged_un))
+                    
                 text_by_textregion = []
                 for ind in unique_cropped_lines_region_indexer:
                     extracted_texts_merged_un = np.array(extracted_texts_merged)[np.array(cropped_lines_region_indexer)==ind]
-                    
-                    text_by_textregion.append(" ".join(extracted_texts_merged_un))
-                    
-                #print(len(text_by_textregion) , indexer_text_region, "text_by_textregion")
-
-
-                #print(time.time() - t0 ,'elapsed time')
-
-
+                    if len(extracted_texts_merged_un)>1:
+                        text_by_textregion_ind = ""
+                        next_glue = ""
+                        for indt in range(len(extracted_texts_merged_un)):
+                            if extracted_texts_merged_un[indt].endswith('⸗') or extracted_texts_merged_un[indt].endswith('-') or extracted_texts_merged_un[indt].endswith('¬'):
+                                text_by_textregion_ind = text_by_textregion_ind + next_glue + extracted_texts_merged_un[indt][:-1]
+                                next_glue = ""
+                            else:
+                                text_by_textregion_ind = text_by_textregion_ind + next_glue + extracted_texts_merged_un[indt]
+                                next_glue = " "
+                        text_by_textregion.append(text_by_textregion_ind)
+                            
+                    else:
+                        text_by_textregion.append(" ".join(extracted_texts_merged_un))
+                        
+                        
                 indexer = 0
                 indexer_textregion = 0
                 for nn in root1.iter(region_tags):
-                    text_subelement_textregion = ET.SubElement(nn, 'TextEquiv')
-                    unicode_textregion = ET.SubElement(text_subelement_textregion, 'Unicode')
+                    #id_textregion = nn.attrib['id']
+                    #id_textregions.append(id_textregion)
+                    #textregions_by_existing_ids.append(text_by_textregion[indexer_textregion])
+                    
+                    is_textregion_text = False
+                    for childtest in nn:
+                        if childtest.tag.endswith("TextEquiv"):
+                            is_textregion_text = True
+                    
+                    if not is_textregion_text:
+                        text_subelement_textregion = ET.SubElement(nn, 'TextEquiv')
+                        unicode_textregion = ET.SubElement(text_subelement_textregion, 'Unicode')
 
                     
                     has_textline = False
                     for child_textregion in nn:
                         if child_textregion.tag.endswith("TextLine"):
-                            text_subelement = ET.SubElement(child_textregion, 'TextEquiv')
-                            unicode_textline = ET.SubElement(text_subelement, 'Unicode')
-                            unicode_textline.text = extracted_texts_merged[indexer]
+                            
+                            is_textline_text = False
+                            for childtest2 in child_textregion:
+                                if childtest2.tag.endswith("TextEquiv"):
+                                    is_textline_text = True
+                            
+                            
+                            if not is_textline_text:
+                                text_subelement = ET.SubElement(child_textregion, 'TextEquiv')
+                                ##text_subelement.set('conf', f"{extracted_conf_value_merged[indexer]:.2f}")
+                                unicode_textline = ET.SubElement(text_subelement, 'Unicode')
+                                unicode_textline.text = extracted_texts_merged[indexer]
+                            else:
+                                for childtest3 in child_textregion:
+                                    if childtest3.tag.endswith("TextEquiv"):
+                                        for child_uc in childtest3:
+                                            if child_uc.tag.endswith("Unicode"):
+                                                ##childtest3.set('conf', f"{extracted_conf_value_merged[indexer]:.2f}")
+                                                child_uc.text = extracted_texts_merged[indexer]
+                                    
                             indexer = indexer + 1
                             has_textline = True
                     if has_textline:
-                        unicode_textregion.text = text_by_textregion[indexer_textregion]
+                        if is_textregion_text:
+                            for child4 in nn:
+                                if child4.tag.endswith("TextEquiv"):
+                                    for childtr_uc in child4:
+                                        if childtr_uc.tag.endswith("Unicode"):
+                                            childtr_uc.text = text_by_textregion[indexer_textregion]
+                        else:
+                            unicode_textregion.text = text_by_textregion[indexer_textregion]
                         indexer_textregion = indexer_textregion + 1
                         
-
-
+                ###sample_order  = [(id_to_order[tid], text) for tid, text in zip(id_textregions, textregions_by_existing_ids) if tid in id_to_order]
+                
+                ##ordered_texts_sample = [text for _, text in sorted(sample_order)]
+                ##tot_page_text = ' '.join(ordered_texts_sample)
+                
+                ##for page_element in root1.iter(link+'Page'):
+                    ##text_page = ET.SubElement(page_element, 'TextEquiv')
+                    ##unicode_textpage = ET.SubElement(text_page, 'Unicode')
+                    ##unicode_textpage.text = tot_page_text
+                
                 ET.register_namespace("",name_space)
                 tree1.write(out_file_ocr,xml_declaration=True,method='xml',encoding="utf8",default_namespace=None)
-                #print("Job done in %.1fs", time.time() - t0)
         else:
-            max_len = 512
-            padding_token = 299
+            ###max_len = 280#512#280#512
+            ###padding_token = 1500#299#1500#299
             image_width = 512#max_len * 4
             image_height = 32
-            b_s = 8
 
 
             img_size=(image_width, image_height)
             
-            for ind_img in ls_imgs:
-                t0 = time.time()
-                file_name = ind_img.split('.')[0]
-                dir_img = os.path.join(self.dir_in, ind_img)
-                dir_xml = os.path.join(self.dir_xmls, file_name+'.xml')
-                out_file_ocr = os.path.join(self.dir_out, file_name+'.xml')
+            for dir_img in ls_imgs:
+                file_name = Path(dir_img).stem
+                dir_xml = os.path.join(dir_xmls, file_name+'.xml')
+                out_file_ocr = os.path.join(dir_out, file_name+'.xml')
+                
+                if os.path.exists(out_file_ocr):
+                    if overwrite:
+                        self.logger.warning("will overwrite existing output file '%s'", out_file_ocr)
+                    else:
+                        self.logger.warning("will skip input for existing output file '%s'", out_file_ocr)
+                        continue
+                
                 img = cv2.imread(dir_img)
-                if self.prediction_with_both_of_rgb_and_bin:
+                if dir_in_bin is not None:
                     cropped_lines_bin = []
-                    dir_img_bin = os.path.join(self.dir_in_bin, file_name+'.png')
+                    dir_img_bin = os.path.join(dir_in_bin, file_name+'.png')
                     img_bin = cv2.imread(dir_img_bin)
                 
-                if self.draw_texts_on_image:
-                    out_image_with_text = os.path.join(self.dir_out_image_text, file_name+'.png')
+                if dir_out_image_text:
+                    out_image_with_text = os.path.join(dir_out_image_text, file_name+'.png')
                     image_text = Image.new("RGB", (img.shape[1], img.shape[0]), "white")
                     draw = ImageDraw.Draw(image_text)
                     total_bb_coordinates = []
@@ -5238,6 +5808,7 @@ class Eynollah_ocr:
                 region_tags=np.unique([x for x in alltags if x.endswith('TextRegion')]) 
                     
                 cropped_lines = []
+                cropped_lines_ver_index = []
                 cropped_lines_region_indexer = []
                 cropped_lines_meging_indexing = []
                 
@@ -5245,6 +5816,10 @@ class Eynollah_ocr:
                 indexer_text_region = 0
                 indexer_textlines = 0
                 for nn in root1.iter(region_tags):
+                    try:
+                        type_textregion = nn.attrib['type']
+                    except:
+                        type_textregion = 'paragraph'
                     for child_textregion in nn:
                         if child_textregion.tag.endswith("TextLine"):
                             for child_textlines in child_textregion:
@@ -5255,126 +5830,324 @@ class Eynollah_ocr:
                                     
                                     x,y,w,h = cv2.boundingRect(textline_coords)
                                     
-                                    if self.draw_texts_on_image:
-                                        total_bb_coordinates.append([x,y,w,h])
+                                    angle_radians = math.atan2(h, w)
+                                    # Convert to degrees
+                                    angle_degrees = math.degrees(angle_radians)
+                                    if type_textregion=='drop-capital':
+                                        angle_degrees = 0
                                         
+                                    if dir_out_image_text:
+                                        total_bb_coordinates.append([x,y,w,h])
+                                       
                                     w_scaled = w *  image_height/float(h)
                                     
                                     img_poly_on_img = np.copy(img)
-                                    if self.prediction_with_both_of_rgb_and_bin:
+                                    if dir_in_bin is not None:
                                         img_poly_on_img_bin = np.copy(img_bin)
                                         img_crop_bin = img_poly_on_img_bin[y:y+h, x:x+w, :]
                                     
                                     mask_poly = np.zeros(img.shape)
                                     mask_poly = cv2.fillPoly(mask_poly, pts=[textline_coords], color=(1, 1, 1))
                                     
+                                    
                                     mask_poly = mask_poly[y:y+h, x:x+w, :]
                                     img_crop = img_poly_on_img[y:y+h, x:x+w, :]
-                                    if not self.do_not_mask_with_textline_contour:
-                                        img_crop[mask_poly==0] = 255
-                                        if self.prediction_with_both_of_rgb_and_bin:
-                                            img_crop_bin[mask_poly==0] = 255
+                                    
+                                    if self.export_textline_images_and_text:
+                                        if not self.do_not_mask_with_textline_contour:
+                                            img_crop[mask_poly==0] = 255
+                                        
+                                    else:
+                                        #print(file_name, angle_degrees,w*h , mask_poly[:,:,0].sum(),  mask_poly[:,:,0].sum() /float(w*h) , 'didi')
+                                        
+                                        if angle_degrees > 3:
+                                            better_des_slope = get_orientation_moments(textline_coords)
+                                            
+                                            img_crop = rotate_image_with_padding(img_crop, better_des_slope )
+                                            
+                                            if dir_in_bin is not None:
+                                                img_crop_bin = rotate_image_with_padding(img_crop_bin, better_des_slope )
+                                                
+                                            mask_poly = rotate_image_with_padding(mask_poly, better_des_slope )
+                                            mask_poly = mask_poly.astype('uint8')
+                                            
+                                            #new bounding box
+                                            x_n, y_n, w_n, h_n = get_contours_and_bounding_boxes(mask_poly[:,:,0])
+                                            
+                                            mask_poly = mask_poly[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                                            img_crop = img_crop[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                                                
+                                            if not self.do_not_mask_with_textline_contour:
+                                                img_crop[mask_poly==0] = 255
+                                            
+                                            if dir_in_bin is not None:
+                                                img_crop_bin = img_crop_bin[y_n:y_n+h_n, x_n:x_n+w_n, :]
+                                                if not self.do_not_mask_with_textline_contour:
+                                                    img_crop_bin[mask_poly==0] = 255
+                                            
+                                            if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.50 and w_scaled > 90:
+                                                if dir_in_bin is not None:
+                                                    img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
+                                                else:
+                                                    img_crop, _ = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
+        
+                                                
+                                        else:
+                                            better_des_slope = 0
+                                            if not self.do_not_mask_with_textline_contour:
+                                                img_crop[mask_poly==0] = 255
+                                            if dir_in_bin is not None:
+                                                if not self.do_not_mask_with_textline_contour:
+                                                    img_crop_bin[mask_poly==0] = 255
+                                            if type_textregion=='drop-capital':
+                                                pass
+                                            else:
+                                                if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 90:
+                                                    if dir_in_bin is not None:
+                                                        img_crop, img_crop_bin = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly, img_crop_bin)
+                                                    else:
+                                                        img_crop, _ = break_curved_line_into_small_pieces_and_then_merge(img_crop, mask_poly)
                                     
                                     if not self.export_textline_images_and_text:
-                                        if w_scaled < 1.5*image_width:
-                                            img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
+                                        if w_scaled < 750:#1.5*image_width:
+                                            img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                             cropped_lines.append(img_fin)
+                                            if abs(better_des_slope) > 45:
+                                                cropped_lines_ver_index.append(1)
+                                            else:
+                                                cropped_lines_ver_index.append(0)
+                                                
                                             cropped_lines_meging_indexing.append(0)
-                                            if self.prediction_with_both_of_rgb_and_bin:
-                                                img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
+                                            if dir_in_bin is not None:
+                                                img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
                                                 cropped_lines_bin.append(img_fin)
                                         else:
-                                            if self.prediction_with_both_of_rgb_and_bin:
-                                                splited_images, splited_images_bin = self.return_textlines_split_if_needed(img_crop, img_crop_bin)
-                                            else:
-                                                splited_images, splited_images_bin = self.return_textlines_split_if_needed(img_crop, None)
+                                            splited_images, splited_images_bin = return_textlines_split_if_needed(
+                                                img_crop, img_crop_bin if dir_in_bin is not None else None)
                                             if splited_images:
-                                                img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
+                                                img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(1)
-                                                img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images[1], image_height, image_width)
+                                                
+                                                if abs(better_des_slope) > 45:
+                                                    cropped_lines_ver_index.append(1)
+                                                else:
+                                                    cropped_lines_ver_index.append(0)
+                                                
+                                                img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[1], image_height, image_width)
                                                 
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(-1)
                                                 
-                                                if self.prediction_with_both_of_rgb_and_bin:
-                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[0], image_height, image_width)
+                                                if abs(better_des_slope) > 45:
+                                                    cropped_lines_ver_index.append(1)
+                                                else:
+                                                    cropped_lines_ver_index.append(0)
+                                                
+                                                if dir_in_bin is not None:
+                                                    img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[0], image_height, image_width)
                                                     cropped_lines_bin.append(img_fin)
-                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[1], image_height, image_width)
+                                                    img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images_bin[1], image_height, image_width)
                                                     cropped_lines_bin.append(img_fin)
                                                     
                                             else:
-                                                img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
+                                                img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
                                                 cropped_lines.append(img_fin)
                                                 cropped_lines_meging_indexing.append(0)
                                                 
-                                                if self.prediction_with_both_of_rgb_and_bin:
-                                                    img_fin = self.preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
+                                                if abs(better_des_slope) > 45:
+                                                    cropped_lines_ver_index.append(1)
+                                                else:
+                                                    cropped_lines_ver_index.append(0)
+                                                
+                                                if dir_in_bin is not None:
+                                                    img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop_bin, image_height, image_width)
                                                     cropped_lines_bin.append(img_fin)
                                         
                                 if self.export_textline_images_and_text:
-                                    if child_textlines.tag.endswith("TextEquiv"):
-                                        for cheild_text in child_textlines:
-                                            if cheild_text.tag.endswith("Unicode"):
-                                                textline_text = cheild_text.text
-                                                if textline_text:
-                                                    with open(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.txt'), 'w') as text_file:
-                                                        text_file.write(textline_text)
-
-                                                    cv2.imwrite(os.path.join(self.dir_out, file_name+'_line_'+str(indexer_textlines)+'.png'), img_crop )
-                                                        
-                                                indexer_textlines+=1
+                                    if img_crop.shape[0]==0 or img_crop.shape[1]==0:
+                                        pass
+                                    else:
+                                        if child_textlines.tag.endswith("TextEquiv"):
+                                            for cheild_text in child_textlines:
+                                                if cheild_text.tag.endswith("Unicode"):
+                                                    textline_text = cheild_text.text
+                                                    if textline_text:
+                                                        base_name = os.path.join(dir_out, file_name + '_line_' + str(indexer_textlines))
+                                                        if self.pref_of_dataset:
+                                                            base_name += '_' + self.pref_of_dataset
+                                                        if not self.do_not_mask_with_textline_contour:
+                                                            base_name += '_masked'
+                                                            
+                                                        with open(base_name + '.txt', 'w') as text_file:
+                                                            text_file.write(textline_text)
+                                                        cv2.imwrite(base_name + '.png', img_crop)
+                                                    indexer_textlines+=1
 
                     if not self.export_textline_images_and_text:
                         indexer_text_region = indexer_text_region +1
                     
                 if not self.export_textline_images_and_text:
                     extracted_texts = []
+                    extracted_conf_value = []
 
-                    n_iterations  = math.ceil(len(cropped_lines) / b_s) 
+                    n_iterations  = math.ceil(len(cropped_lines) / self.b_s) 
 
                     for i in range(n_iterations):
                         if i==(n_iterations-1):
-                            n_start = i*b_s
+                            n_start = i*self.b_s
                             imgs = cropped_lines[n_start:]
                             imgs = np.array(imgs)
                             imgs = imgs.reshape(imgs.shape[0], image_height, image_width, 3)
-                            if self.prediction_with_both_of_rgb_and_bin:
+                            
+                            ver_imgs = np.array( cropped_lines_ver_index[n_start:] )
+                            indices_ver = np.where(ver_imgs == 1)[0]
+                            
+                            #print(indices_ver, 'indices_ver')
+                            if len(indices_ver)>0:
+                                imgs_ver_flipped = imgs[indices_ver, : ,: ,:]
+                                imgs_ver_flipped = imgs_ver_flipped[:,::-1,::-1,:]
+                                #print(imgs_ver_flipped, 'imgs_ver_flipped')
+                                
+                            else:
+                                imgs_ver_flipped = None
+                            
+                            if dir_in_bin is not None:
                                 imgs_bin = cropped_lines_bin[n_start:]
                                 imgs_bin = np.array(imgs_bin)
                                 imgs_bin = imgs_bin.reshape(imgs_bin.shape[0], image_height, image_width, 3)
+                                
+                                if len(indices_ver)>0:
+                                    imgs_bin_ver_flipped = imgs_bin[indices_ver, : ,: ,:]
+                                    imgs_bin_ver_flipped = imgs_bin_ver_flipped[:,::-1,::-1,:]
+                                    #print(imgs_ver_flipped, 'imgs_ver_flipped')
+                                    
+                                else:
+                                    imgs_bin_ver_flipped = None
                         else:
-                            n_start = i*b_s
-                            n_end = (i+1)*b_s
+                            n_start = i*self.b_s
+                            n_end = (i+1)*self.b_s
                             imgs = cropped_lines[n_start:n_end]
-                            imgs = np.array(imgs).reshape(b_s, image_height, image_width, 3)
+                            imgs = np.array(imgs).reshape(self.b_s, image_height, image_width, 3)
                             
-                            if self.prediction_with_both_of_rgb_and_bin:
+                            ver_imgs = np.array( cropped_lines_ver_index[n_start:n_end] )
+                            indices_ver = np.where(ver_imgs == 1)[0]
+                            #print(indices_ver, 'indices_ver')
+                            
+                            if len(indices_ver)>0:
+                                imgs_ver_flipped = imgs[indices_ver, : ,: ,:]
+                                imgs_ver_flipped = imgs_ver_flipped[:,::-1,::-1,:]
+                                #print(imgs_ver_flipped, 'imgs_ver_flipped')
+                            else:
+                                imgs_ver_flipped = None
+
+                            
+                            if dir_in_bin is not None:
                                 imgs_bin = cropped_lines_bin[n_start:n_end]
-                                imgs_bin = np.array(imgs_bin).reshape(b_s, image_height, image_width, 3)
+                                imgs_bin = np.array(imgs_bin).reshape(self.b_s, image_height, image_width, 3)
+                                
+                                
+                                if len(indices_ver)>0:
+                                    imgs_bin_ver_flipped = imgs_bin[indices_ver, : ,: ,:]
+                                    imgs_bin_ver_flipped = imgs_bin_ver_flipped[:,::-1,::-1,:]
+                                    #print(imgs_ver_flipped, 'imgs_ver_flipped')
+                                else:
+                                    imgs_bin_ver_flipped = None
                             
 
+                        self.logger.debug("processing next %d lines", len(imgs))
                         preds = self.prediction_model.predict(imgs, verbose=0)
-                        if self.prediction_with_both_of_rgb_and_bin:
+                        
+                        if len(indices_ver)>0:
+                            preds_flipped = self.prediction_model.predict(imgs_ver_flipped, verbose=0)
+                            preds_max_fliped = np.max(preds_flipped, axis=2 )
+                            preds_max_args_flipped = np.argmax(preds_flipped, axis=2 )
+                            pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=self.end_character
+                            masked_means_flipped = np.sum(preds_max_fliped * pred_max_not_unk_mask_bool_flipped, axis=1) / np.sum(pred_max_not_unk_mask_bool_flipped, axis=1)
+                            masked_means_flipped[np.isnan(masked_means_flipped)] = 0
+                            
+                            preds_max = np.max(preds, axis=2 )
+                            preds_max_args = np.argmax(preds, axis=2 )
+                            pred_max_not_unk_mask_bool = preds_max_args[:,:]!=self.end_character
+                            
+                            masked_means = np.sum(preds_max * pred_max_not_unk_mask_bool, axis=1) / np.sum(pred_max_not_unk_mask_bool, axis=1)
+                            masked_means[np.isnan(masked_means)] = 0
+                            
+                            masked_means_ver = masked_means[indices_ver]
+                            #print(masked_means_ver, 'pred_max_not_unk')
+                            
+                            indices_where_flipped_conf_value_is_higher = np.where(masked_means_flipped > masked_means_ver)[0]
+                            
+                            #print(indices_where_flipped_conf_value_is_higher, 'indices_where_flipped_conf_value_is_higher')
+                            if len(indices_where_flipped_conf_value_is_higher)>0:
+                                indices_to_be_replaced = indices_ver[indices_where_flipped_conf_value_is_higher]
+                                preds[indices_to_be_replaced,:,:] = preds_flipped[indices_where_flipped_conf_value_is_higher, :, :]
+                        if dir_in_bin is not None:
                             preds_bin = self.prediction_model.predict(imgs_bin, verbose=0)
+                            
+                            if len(indices_ver)>0:
+                                preds_flipped = self.prediction_model.predict(imgs_bin_ver_flipped, verbose=0)
+                                preds_max_fliped = np.max(preds_flipped, axis=2 )
+                                preds_max_args_flipped = np.argmax(preds_flipped, axis=2 )
+                                pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=self.end_character
+                                masked_means_flipped = np.sum(preds_max_fliped * pred_max_not_unk_mask_bool_flipped, axis=1) / np.sum(pred_max_not_unk_mask_bool_flipped, axis=1)
+                                masked_means_flipped[np.isnan(masked_means_flipped)] = 0
+                                
+                                preds_max = np.max(preds, axis=2 )
+                                preds_max_args = np.argmax(preds, axis=2 )
+                                pred_max_not_unk_mask_bool = preds_max_args[:,:]!=self.end_character
+                                
+                                masked_means = np.sum(preds_max * pred_max_not_unk_mask_bool, axis=1) / np.sum(pred_max_not_unk_mask_bool, axis=1)
+                                masked_means[np.isnan(masked_means)] = 0
+                                
+                                masked_means_ver = masked_means[indices_ver]
+                                #print(masked_means_ver, 'pred_max_not_unk')
+                                
+                                indices_where_flipped_conf_value_is_higher = np.where(masked_means_flipped > masked_means_ver)[0]
+                                
+                                #print(indices_where_flipped_conf_value_is_higher, 'indices_where_flipped_conf_value_is_higher')
+                                if len(indices_where_flipped_conf_value_is_higher)>0:
+                                    indices_to_be_replaced = indices_ver[indices_where_flipped_conf_value_is_higher]
+                                    preds_bin[indices_to_be_replaced,:,:] = preds_flipped[indices_where_flipped_conf_value_is_higher, :, :]
+                            
                             preds = (preds + preds_bin) / 2.
+                            
 
-                        pred_texts = self.decode_batch_predictions(preds)
+                        pred_texts = decode_batch_predictions(preds, self.num_to_char)
+                        
+                        preds_max = np.max(preds, axis=2 )
+                        preds_max_args = np.argmax(preds, axis=2 )
+                        pred_max_not_unk_mask_bool = preds_max_args[:,:]!=self.end_character
+                        masked_means = np.sum(preds_max * pred_max_not_unk_mask_bool, axis=1) / np.sum(pred_max_not_unk_mask_bool, axis=1)
 
                         for ib in range(imgs.shape[0]):
                             pred_texts_ib = pred_texts[ib].replace("[UNK]", "")
-                            extracted_texts.append(pred_texts_ib)
-                            
+                            if masked_means[ib] >= self.min_conf_value_of_textline_text:
+                                extracted_texts.append(pred_texts_ib)
+                                extracted_conf_value.append(masked_means[ib])
+                            else:
+                                extracted_texts.append("")
+                                extracted_conf_value.append(0)
+                    del cropped_lines
+                    if dir_in_bin is not None:
+                        del cropped_lines_bin
+                    gc.collect()
+                    
                     extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+" "+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
+                    
+                    extracted_conf_value_merged = [extracted_conf_value[ind]  if cropped_lines_meging_indexing[ind]==0 else (extracted_conf_value[ind]+extracted_conf_value[ind+1])/2. if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
 
+                    extracted_conf_value_merged = [extracted_conf_value_merged[ind_cfm] for ind_cfm in range(len(extracted_texts_merged)) if extracted_texts_merged[ind_cfm] is not None]
                     extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
                     unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
                     
                     
-                    if self.draw_texts_on_image:
+                    if dir_out_image_text:
                         
-                        font_path = "NotoSans-Regular.ttf"  # Make sure this file exists!
-                        font = ImageFont.truetype(font_path, 40)
+                        #font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
+                        font = importlib_resources.files(__package__) / "Charis-Regular.ttf"
+                        with importlib_resources.as_file(font) as font:
+                            font = ImageFont.truetype(font=font, size=40)
                         
                         for indexer_text, bb_ind in enumerate(total_bb_coordinates):
                             
@@ -5384,7 +6157,7 @@ class Eynollah_ocr:
                             w_bb = bb_ind[2]
                             h_bb = bb_ind[3]
                             
-                            font = self.fit_text_single_line(draw, extracted_texts_merged[indexer_text], font_path, w_bb, int(h_bb*0.4) )
+                            font = fit_text_single_line(draw, extracted_texts_merged[indexer_text], font.path, w_bb, int(h_bb*0.4) )
                             
                             ##draw.rectangle([x_bb, y_bb, x_bb + w_bb, y_bb + h_bb], outline="red", width=2)
                             
@@ -5402,11 +6175,40 @@ class Eynollah_ocr:
                     text_by_textregion = []
                     for ind in unique_cropped_lines_region_indexer:
                         extracted_texts_merged_un = np.array(extracted_texts_merged)[np.array(cropped_lines_region_indexer)==ind]
-                        text_by_textregion.append("".join(extracted_texts_merged_un))
+                        if len(extracted_texts_merged_un)>1:
+                            text_by_textregion_ind = ""
+                            next_glue = ""
+                            for indt in range(len(extracted_texts_merged_un)):
+                                if extracted_texts_merged_un[indt].endswith('⸗') or extracted_texts_merged_un[indt].endswith('-') or extracted_texts_merged_un[indt].endswith('¬'):
+                                    text_by_textregion_ind = text_by_textregion_ind + next_glue + extracted_texts_merged_un[indt][:-1]
+                                    next_glue = ""
+                                else:
+                                    text_by_textregion_ind = text_by_textregion_ind + next_glue + extracted_texts_merged_un[indt]
+                                    next_glue = " "
+                            text_by_textregion.append(text_by_textregion_ind)
+                                
+                        else:
+                            text_by_textregion.append(" ".join(extracted_texts_merged_un))
+                        #print(text_by_textregion, 'text_by_textregiontext_by_textregiontext_by_textregiontext_by_textregiontext_by_textregion')
                         
+                        
+                    ###index_tot_regions = []
+                    ###tot_region_ref = []
+
+                    ###for jj in root1.iter(link+'RegionRefIndexed'):
+                        ###index_tot_regions.append(jj.attrib['index'])
+                        ###tot_region_ref.append(jj.attrib['regionRef'])
+                        
+                    ###id_to_order = {tid: ro for tid, ro in zip(tot_region_ref, index_tot_regions)}
+        
+                    #id_textregions = []
+                    #textregions_by_existing_ids = []
                     indexer = 0
                     indexer_textregion = 0
                     for nn in root1.iter(region_tags):
+                        #id_textregion = nn.attrib['id']
+                        #id_textregions.append(id_textregion)
+                        #textregions_by_existing_ids.append(text_by_textregion[indexer_textregion])
                         
                         is_textregion_text = False
                         for childtest in nn:
@@ -5430,6 +6232,7 @@ class Eynollah_ocr:
                                 
                                 if not is_textline_text:
                                     text_subelement = ET.SubElement(child_textregion, 'TextEquiv')
+                                    text_subelement.set('conf', f"{extracted_conf_value_merged[indexer]:.2f}")
                                     unicode_textline = ET.SubElement(text_subelement, 'Unicode')
                                     unicode_textline.text = extracted_texts_merged[indexer]
                                 else:
@@ -5437,6 +6240,7 @@ class Eynollah_ocr:
                                         if childtest3.tag.endswith("TextEquiv"):
                                             for child_uc in childtest3:
                                                 if child_uc.tag.endswith("Unicode"):
+                                                    childtest3.set('conf', f"{extracted_conf_value_merged[indexer]:.2f}")
                                                     child_uc.text = extracted_texts_merged[indexer]
                                         
                                 indexer = indexer + 1
@@ -5451,7 +6255,17 @@ class Eynollah_ocr:
                             else:
                                 unicode_textregion.text = text_by_textregion[indexer_textregion]
                             indexer_textregion = indexer_textregion + 1
-
+                            
+                    ###sample_order  = [(id_to_order[tid], text) for tid, text in zip(id_textregions, textregions_by_existing_ids) if tid in id_to_order]
+                    
+                    ##ordered_texts_sample = [text for _, text in sorted(sample_order)]
+                    ##tot_page_text = ' '.join(ordered_texts_sample)
+                    
+                    ##for page_element in root1.iter(link+'Page'):
+                        ##text_page = ET.SubElement(page_element, 'TextEquiv')
+                        ##unicode_textpage = ET.SubElement(text_page, 'Unicode')
+                        ##unicode_textpage.text = tot_page_text
+                    
                     ET.register_namespace("",name_space)
                     tree1.write(out_file_ocr,xml_declaration=True,method='xml',encoding="utf8",default_namespace=None)
                     #print("Job done in %.1fs", time.time() - t0)

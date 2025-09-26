@@ -46,7 +46,7 @@ optional-dependencies.test = {file = ["requirements-test.txt"]}
 where = ["src"]
 
 [tool.setuptools.package-data]
-"*" = ["*.json", '*.yml', '*.xml', '*.xsd']
+"*" = ["*.json", '*.yml', '*.xml', '*.xsd', '*.ttf']
 
 [tool.coverage.run]
 branch = true

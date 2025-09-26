@@ -7,7 +7,13 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 Fixed:
 
-  * restoring the contour in the original image caused an error due to an empty tuple
+  * restoring the contour in the original image caused an error due to an empty tuple, #154
+
+Added:
+
+  * `eynollah machine-based-reading-order` CLI to run reading order detection, #175
+  * `eynollah enhancement` CLI to run image enhancement, #175
+  * Improved models for page extraction and reading order detection, #175
 
 ## [0.4.0] - 2025-04-07
 
