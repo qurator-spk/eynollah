@@ -1,5 +1,6 @@
 # Eynollah
-> Document Layout Analysis with Deep Learning and Heuristics
+
+> Document Layout Analysis, Binarization and OCR with Deep Learning and Heuristics
 
 [![PyPI Version](https://img.shields.io/pypi/v/eynollah)](https://pypi.org/project/eynollah/)
 [![GH Actions Test](https://github.com/qurator-spk/eynollah/actions/workflows/test-eynollah.yml/badge.svg)](https://github.com/qurator-spk/eynollah/actions/workflows/test-eynollah.yml)
@@ -23,6 +24,7 @@
 historical documents and therefore processing can be very slow. We aim to improve this, but contributions are welcome.
 
 ## Installation
+
 Python `3.8-3.11` with Tensorflow `<2.13` on Linux are currently supported.
 
 For (limited) GPU support the CUDA toolkit needs to be installed.
@@ -42,19 +44,30 @@ cd eynollah; pip install -e .
 
 Alternatively, you can run `make install` or `make install-dev` for editable installation.
 
+To also install the dependencies for the OCR engines:
+
+```
+pip install "eynollah[OCR]"
+# or
+make install EXTRAS=OCR
+```
+
 ## Models
-Pretrained models can be downloaded from [qurator-data.de](https://qurator-data.de/eynollah/) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
+Pretrained models can be downloaded from [zenodo](https://zenodo.org/records/17194824) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
 
 For documentation on methods and models, have a look at [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
 
 ## Train
+
 In case you want to train your own model with Eynollah, have a look at [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md).
 
 ## Usage
-Eynollah supports four use cases: layout analysis (segmentation), binarization, text recognition (OCR), 
-and (trainable) reading order detection.
+
+Eynollah supports five use cases: layout analysis (segmentation), binarization,
+image enhancement, text recognition (OCR), and (trainable) reading order detection.
 
 ### Layout Analysis
+
 The layout analysis module is responsible for detecting layouts, identifying text lines, and determining reading order 
 using both heuristic methods or a machine-based reading order detection model. 
 
@@ -97,58 +110,54 @@ and marginals).
 The best output quality is produced when RGB images are used as input rather than greyscale or binarized images.
 
 ### Binarization
+
 The binarization module performs document image binarization using pretrained pixelwise segmentation models. 
 
 The command-line interface for binarization of single image can be called like this:
 
 ```sh
 eynollah binarization \
+  -i <single image file> | -di <directory containing image files> \
+  -o <output directory> \
   -m <directory containing model files> \
-  <single image file> \
-  <output image>
-```
-
-and for flowing from a directory like this:
-
-```sh
-eynollah binarization \
-  -m <path to directory containing model files> \
-  -di <directory containing image files> \
-  -do <output directory>
 ```
 
 ### OCR
+
 The OCR module performs text recognition from images using two main families of pretrained models: CNN-RNN–based OCR and Transformer-based OCR.
 
 The command-line interface for ocr can be called like this:
 
 ```sh
 eynollah ocr \
-  -m <path to directory containing model files> | --model_name <path to specific model> \
   -i <single image file> | -di <directory containing image files> \
   -dx <directory of xmls> \
-  -o <output directory> 
+  -o <output directory> \
+  -m <path to directory containing model files> | --model_name <path to specific model> \
 ```
 
 ### Machine-based-reading-order
+
 The machine-based reading-order module employs a pretrained model to identify the reading order from layouts represented in PAGE-XML files.
 
 The command-line interface for machine based reading order can be called like this:
 
 ```sh
 eynollah machine-based-reading-order \
-  -m <path to directory containing model files> \
+  -i <single image file> | -di <directory containing image files> \
   -xml <xml file name> | -dx <directory containing xml files> \
+  -m <path to directory containing model files> \
   -o <output directory> 
 ```
 
 #### Use as OCR-D processor
+
 Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) [processor](https://ocr-d.de/en/spec/cli),
 formally described in [`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json).
 
 In this case, the source image file group with (preferably) RGB images should be used as input like this:
 
-    ocrd-eynollah-segment -I OCR-D-IMG -O OCR-D-SEG -P models 2022-04-05
+    ocrd-eynollah-segment -I OCR-D-IMG -O OCR-D-SEG -P models eynollah_layout_v0_5_0
 
 If the input file group is PAGE-XML (from a previous OCR-D workflow step), Eynollah behaves as follows:
 - existing regions are kept and ignored (i.e. in effect they might overlap segments from Eynollah results)
@@ -160,14 +169,20 @@ If the input file group is PAGE-XML (from a previous OCR-D workflow step), Eynol
   (because some other preprocessing step was in effect like `denoised`), then
   the output PAGE-XML will be based on that as new top-level (`@imageFilename`)
 
-    ocrd-eynollah-segment -I OCR-D-XYZ -O OCR-D-SEG -P models 2022-04-05
+    ocrd-eynollah-segment -I OCR-D-XYZ -O OCR-D-SEG -P models eynollah_layout_v0_5_0
 
 Still, in general, it makes more sense to add other workflow steps **after** Eynollah.
 
+There is also an OCR-D processor for the binarization:
+
+    ocrd-sbb-binarize -I OCR-D-IMG -O OCR-D-BIN -P models default-2021-03-09
+
 #### Additional documentation
+
 Please check the [wiki](https://github.com/qurator-spk/eynollah/wiki).
 
 ## How to cite
+
 If you find this tool useful in your work, please consider citing our paper:
 
 ```bibtex
