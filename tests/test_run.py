@@ -289,26 +289,27 @@ def test_run_eynollah_ocr_filename(tmp_path, subtests, pytestconfig, caplog):
             assert len(out_texts) >= 2, ("result is inaccurate", out_texts)
             assert sum(map(len, out_texts)) > 100, ("result is inaccurate", out_texts)
 
-@pytest.skip("Disabled until NHWC/NCHW error in https://github.com/qurator-spk/eynollah/actions/runs/18019655200/job/51273541895 debugged")
-def test_run_eynollah_ocr_directory(tmp_path, subtests, pytestconfig, caplog):
-    indir = testdir.joinpath('resources')
-    outdir = tmp_path
-    args = [
-        '-m', MODELS_OCR,
-        '-di', str(indir),
-        '-dx', str(indir),
-        '-o', str(outdir),
-    ]
-    if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
-    caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'eynollah'
-    runner = CliRunner()
-    with caplog.filtering(only_eynollah):
-        result = runner.invoke(ocr_cli, args, catch_exceptions=False)
-    assert result.exit_code == 0, result.stdout
-    logmsgs = [logrec.message for logrec in caplog.records]
-    # FIXME: ocr has no logging!
-    #assert any(True for logmsg in logmsgs if logmsg.startswith('???')), logmsgs
-    assert len(list(outdir.iterdir())) == 2
+# kba  Fri Sep 26 12:53:49 CEST 2025
+# Disabled until NHWC/NCHW error in https://github.com/qurator-spk/eynollah/actions/runs/18019655200/job/51273541895 debugged
+# def test_run_eynollah_ocr_directory(tmp_path, subtests, pytestconfig, caplog):
+#     indir = testdir.joinpath('resources')
+#     outdir = tmp_path
+#     args = [
+#         '-m', MODELS_OCR,
+#         '-di', str(indir),
+#         '-dx', str(indir),
+#         '-o', str(outdir),
+#     ]
+#     if pytestconfig.getoption('verbose') > 0:
+#         args.extend(['-l', 'DEBUG'])
+#     caplog.set_level(logging.INFO)
+#     def only_eynollah(logrec):
+#         return logrec.name == 'eynollah'
+#     runner = CliRunner()
+#     with caplog.filtering(only_eynollah):
+#         result = runner.invoke(ocr_cli, args, catch_exceptions=False)
+#     assert result.exit_code == 0, result.stdout
+#     logmsgs = [logrec.message for logrec in caplog.records]
+#     # FIXME: ocr has no logging!
+#     #assert any(True for logmsg in logmsgs if logmsg.startswith('???')), logmsgs
+#     assert len(list(outdir.iterdir())) == 2
