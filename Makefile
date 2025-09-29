@@ -77,6 +77,7 @@ build:
 # Install with pip
 install:
 	$(PIP) install .$(and $(EXTRAS),[$(EXTRAS)])
+	pip install nvidia-cudnn-cu11==8.6.0.163
 
 # Install editable with pip
 install-dev:

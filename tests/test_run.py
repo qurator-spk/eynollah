@@ -265,10 +265,8 @@ def test_run_eynollah_ocr_filename(tmp_path, subtests, pytestconfig, caplog):
         return logrec.name == 'eynollah'
     runner = CliRunner()
     for options in [
-            # kba  Fri Sep 26 12:53:49 CEST 2025
-            # Disabled until NHWC/NCHW error in https://github.com/qurator-spk/eynollah/actions/runs/18019655200/job/51273541895 debugged
-            # [], # defaults
-            # ["-doit", str(outrenderfile.parent)],
+            [], # defaults
+            ["-doit", str(outrenderfile.parent)],
             ["-trocr"],
     ]:
         with subtests.test(#msg="test CLI",
@@ -289,7 +287,6 @@ def test_run_eynollah_ocr_filename(tmp_path, subtests, pytestconfig, caplog):
             assert len(out_texts) >= 2, ("result is inaccurate", out_texts)
             assert sum(map(len, out_texts)) > 100, ("result is inaccurate", out_texts)
 
-@pytest.mark.skip("Disabled until NHWC/NCHW error in https://github.com/qurator-spk/eynollah/actions/runs/18019655200/job/51273541895 debugged")
 def test_run_eynollah_ocr_directory(tmp_path, subtests, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
