@@ -11,11 +11,36 @@ Fixed:
 
   * restoring the contour in the original image caused an error due to an empty tuple, #154
 
+Changed
+
+  * CLIs: read only allowed filename suffixes (image or XML) with `--dir_in`
+  * CLIs: make all output option required, and `-i` / `-di` required but mutually exclusive
+  * ocr CLI: drop redundant `-brb` in favour of just `-dib`
+  * APIs: move all input/output path options from class (kwarg and attribute) ro `run` kwarg
+  * layout textlines: polygonal also without `-cl`
+
 Added:
 
   * `eynollah machine-based-reading-order` CLI to run reading order detection, #175
   * `eynollah enhancement` CLI to run image enhancement, #175
   * Improved models for page extraction and reading order detection, #175
+
+Merged PRs:
+
+  * better machine based reading order + layout and textline + ocr by @vahidrezanezhad in https://github.com/qurator-spk/eynollah/pull/175
+  * CI: pypi by @kba in https://github.com/qurator-spk/eynollah/pull/154
+  * CI: Use most recent actions/setup-python@v5 by @kba in https://github.com/qurator-spk/eynollah/pull/157
+  * update docker by @bertsky in https://github.com/qurator-spk/eynollah/pull/159
+  * Ocrd fixes by @kba in https://github.com/qurator-spk/eynollah/pull/167
+  * Updating readme for eynollah use cases cli by @kba in https://github.com/qurator-spk/eynollah/pull/166
+  * OCR-D processor: expose reading_order_machine_based by @bertsky in https://github.com/qurator-spk/eynollah/pull/171
+  * prepare release v0.5.0: fix logging by @bertsky in https://github.com/qurator-spk/eynollah/pull/180
+  * mb_ro_on_layout: remove copy-pasta code not actually used by @kba in https://github.com/qurator-spk/eynollah/pull/181
+  * prepare release v0.5.0: improve CLI docstring, refactor I/O path options from class to run kwargs, increase test coverage @bertsky in #182
+  * prepare release v0.5.0: fix for OCR doit subtest by @bertsky in https://github.com/qurator-spk/eynollah/pull/183
+  * Prepare release v0.5.0 by @kba in https://github.com/qurator-spk/eynollah/pull/178
+  * updating eynollah README, how to use it for use cases by @vahidrezanezhad in https://github.com/qurator-spk/eynollah/pull/156
+  * add feedback to command line interface by @michalbubula in https://github.com/qurator-spk/eynollah/pull/170
 
 ## [0.4.0] - 2025-04-07
 
