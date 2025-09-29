@@ -4,7 +4,7 @@ This repository assists users in preparing training datasets, training models, a
 models. We cover various use cases including pixel-wise segmentation, image classification, image enhancement, and
 machine-based reading order. For each use case, we provide guidance on how to generate the corresponding training
 dataset.
-All these use cases are now utilized in the Eynollah workflow. 
+All these use cases are now utilized in the Eynollah workflow.
 As mentioned, the following three tasks can be accomplished using this repository:
 
 * Generate training dataset
@@ -61,6 +61,7 @@ to the image area, with a default value of zero. To run the dataset generator, u
 
 pagexml2label is designed to generate labels from GT page XML files for various pixel-wise segmentation use cases,
 including 'layout,' 'textline,' 'printspace,' 'glyph,' and 'word' segmentation.
+
 To train a pixel-wise segmentation model, we require images along with their corresponding labels. Our training script
 expects a PNG image where each pixel corresponds to a label, represented by an integer. The background is always labeled
 as zero, while other elements are assigned different integers. For instance, if we have ground truth data with four
@@ -102,6 +103,7 @@ A possible custom config json file  for layout segmentation where the "printspac
 "printspace_as_class_in_layout" : 8
 }
 ```
+
 For the layout use case, it is beneficial to first understand the structure of the page XML file and its elements. In a
 given image, the annotations of elements are recorded in a page XML file, including their contours and classes. For an
 image document, the known regions are 'textregion', 'separatorregion', 'imageregion', 'graphicregion', 'noiseregion',
@@ -199,7 +201,7 @@ For the classification use case, we haven't provided a ground truth generator, a
 
 The "dir_train" should be like this:
 
-``` 
+```
 .
 └── train             # train directory
    ├── apple          # directory of images for apple class
@@ -208,7 +210,7 @@ The "dir_train" should be like this:
 
 And the "dir_eval" the same structure as train directory:
 
-``` 
+```
 .
 └── eval              # evaluation directory
    ├── apple          # directory of images for apple class
@@ -277,11 +279,11 @@ classification and machine-based reading order, as you can see in their example 
 
 * backbone_type: For segmentation tasks (such as text line, binarization, and layout detection) and enhancement, we
   offer two backbone options: a "nontransformer" and a "transformer" backbone. For the "transformer" backbone, we first
-apply a CNN followed by a transformer. In contrast, the "nontransformer" backbone utilizes only a CNN ResNet-50.
+  apply a CNN followed by a transformer. In contrast, the "nontransformer" backbone utilizes only a CNN ResNet-50.
 * task : The task parameter can have values such as "segmentation", "enhancement", "classification", and "reading_order".
 * patches: If you want to break input images into smaller patches (input size of the model) you need to set this
   parameter to ``true``. In the case that the model should see the image once, like page extraction, patches should be
-set to ``false``.
+  set to ``false``.
 * n_batch: Number of batches at each iteration.
 * n_classes: Number of classes. In the case of binary classification this should be 2. In the case of reading_order it should set to 1. And for the case of layout detection just the unique number of classes should be given.
 * n_epochs: Number of epochs.
@@ -311,11 +313,11 @@ set to ``false``.
 * continue_training: If ``true``, it means that you have already trained a model and you would like to continue the
   training. So it is needed to provide the dir of trained model with "dir_of_start_model" and index for naming the
   models. For example if you have already trained for 3 epochs then your last index is 2 and if you want to continue from
-  model_1.h5, you can set ``index_start`` to 3 to start naming model with index 3. 
+  model_1.h5, you can set ``index_start`` to 3 to start naming model with index 3.
 * weighted_loss: If ``true``, this means that you want to apply weighted categorical_crossentropy as loss fucntion. Be carefull if you set to ``true``the parameter "is_loss_soft_dice" should be ``false``
 * data_is_provided: If you have already provided the input data you can set this to ``true``. Be sure that the train
   and eval data are in "dir_output". Since when once we provide training data we resize and augment them and then we
-  write them in sub-directories train and eval in "dir_output". 
+  write them in sub-directories train and eval in "dir_output".
 * dir_train: This is the directory of "images" and "labels" (dir_train should include two subdirectories with names of images and labels ) for raw images and labels. Namely they are not prepared (not resized and not augmented) yet for training the model. When we run this tool these raw data will be transformed to suitable size needed for the model and they will be written in "dir_output" in train and eval directories. Each of train and eval include "images" and "labels" sub-directories.
 * index_start: Starting index for saved models in the case that "continue_training"  is ``true``.
 * dir_of_start_model: Directory containing pretrained model to continue training the model in the case that "continue_training"  is ``true``.
@@ -536,7 +538,7 @@ image.
     "thetha" : [10, -10],
     "continue_training": false,
     "index_start" : 0,
-    "dir_of_start_model" : " ", 
+    "dir_of_start_model" : " ",
     "weighted_loss": false,
     "is_loss_soft_dice": false,
     "data_is_provided": false,
