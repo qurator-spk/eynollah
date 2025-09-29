@@ -53,13 +53,16 @@ make install EXTRAS=OCR
 ```
 
 ## Models
+
 Pretrained models can be downloaded from [zenodo](https://zenodo.org/records/17194824) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
 
 For documentation on methods and models, have a look at [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
 
-## Train
+## Training
 
-In case you want to train your own model with Eynollah, have a look at [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md).
+In case you want to train your own model with Eynollah, have see the
+documentation in [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md) and use the
+tools in the [`train` folder](https://github.com/qurator-spk/eynollah/tree/main/train).
 
 ## Usage
 
