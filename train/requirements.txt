@@ -1,0 +1,11 @@
+tensorflow == 2.12.1
+sacred
+opencv-python-headless
+seaborn
+tqdm
+imutils
+numpy
+scipy
+scikit-learn
+shapely
+click
