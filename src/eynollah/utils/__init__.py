@@ -1211,7 +1211,7 @@ def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
 
     ##plt.plot(z)
     ##plt.show()
-    if contours_main != None:
+    if contours_main is not None:
         areas_main = np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
         M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
         cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
@@ -1222,7 +1222,7 @@ def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
         y_min_main = np.array([np.min(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
         y_max_main = np.array([np.max(contours_main[j][:, 0, 1]) for j in range(len(contours_main))])
 
-    if len(contours_header) != None:
+    if len(contours_header) is not None:
         areas_header = np.array([cv2.contourArea(contours_header[j]) for j in range(len(contours_header))])
         M_header = [cv2.moments(contours_header[j]) for j in range(len(contours_header))]
         cx_header = [(M_header[j]["m10"] / (M_header[j]["m00"] + 1e-32)) for j in range(len(M_header))]
@@ -1243,9 +1243,9 @@ def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
 
     if len(cy_main) > 0 and np.max(cy_main) > np.max(peaks_neg_new):
         cy_main = np.array(cy_main) * (np.max(peaks_neg_new) / np.max(cy_main)) - 10
-    if contours_main != None:
+    if contours_main is not None:
         indexer_main = np.arange(len(contours_main))
-    if contours_main != None:
+    if contours_main is not None:
         len_main = len(contours_main)
     else:
         len_main = 0
