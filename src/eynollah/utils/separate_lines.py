@@ -1174,8 +1174,7 @@ def separate_lines_new_inside_tiles(img_path, thetha):
             if diff_peaks[i] > cut_off:
                 if not np.isnan(forest[np.argmin(z[forest])]):
                     peaks_neg_true.append(forest[np.argmin(z[forest])])
-                forest = []
-                forest.append(peaks_neg[i + 1])
+                forest = [peaks_neg[i + 1]]
         if i == (len(peaks_neg) - 1):
             if not np.isnan(forest[np.argmin(z[forest])]):
                 peaks_neg_true.append(forest[np.argmin(z[forest])])
@@ -1195,8 +1194,7 @@ def separate_lines_new_inside_tiles(img_path, thetha):
             if diff_peaks_pos[i] > cut_off:
                 if not np.isnan(forest[np.argmax(z[forest])]):
                     peaks_pos_true.append(forest[np.argmax(z[forest])])
-                forest = []
-                forest.append(peaks[i + 1])
+                forest = [peaks[i + 1]]
         if i == (len(peaks) - 1):
             if not np.isnan(forest[np.argmax(z[forest])]):
                 peaks_pos_true.append(forest[np.argmax(z[forest])])

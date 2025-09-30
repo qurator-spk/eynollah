@@ -365,8 +365,7 @@ def run(_config, n_classes, n_epochs, input_height,
 
         y_tot=np.zeros((testX.shape[0],n_classes))
 
-        score_best=[]
-        score_best.append(0)
+        score_best= [0]
 
         num_rows = return_number_of_total_training_data(dir_train)
         weights=[]

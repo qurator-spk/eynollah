@@ -305,8 +305,7 @@ class sbb_predict:
             input_1= np.zeros( (inference_bs, img_height, img_width,3))
 
 
-            starting_list_of_regions = []
-            starting_list_of_regions.append( list(range(labels_con.shape[2])) )
+            starting_list_of_regions = [list(range(labels_con.shape[2]))]
 
             index_update = 0
             index_selected = starting_list_of_regions[0]
