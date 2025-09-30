@@ -1,4 +1,5 @@
 # Training documentation
+
 This aims to assist users in preparing training datasets, training models, and performing inference with trained models. 
 We cover various use cases including pixel-wise segmentation, image classification, image enhancement, and machine-based 
 reading order detection. For each use case, we provide guidance on how to generate the corresponding training dataset.
@@ -11,6 +12,7 @@ The following three tasks can all be accomplished using the code in the
 * inference with the trained model
 
 ## Generate training dataset
+
 The script `generate_gt_for_training.py` is used for generating training datasets. As the results of the following 
 command demonstrates, the dataset generator provides three different commands:
 
@@ -23,14 +25,19 @@ These three commands are:
 * pagexml2label
 
 ### image-enhancement
+
 Generating a training dataset for image enhancement is quite straightforward. All that is needed is a set of 
 high-resolution images. The training dataset can then be generated using the following command:
 
-`python generate_gt_for_training.py image-enhancement -dis "dir of high resolution images" -dois "dir where degraded 
-images will be written" -dols "dir where the corresponding high resolution image will be written as label" -scs 
-"degrading scales json file"`
+```sh
+python generate_gt_for_training.py image-enhancement \
+  -dis "dir of high resolution images" \
+  -dois "dir where degraded images will be written" \
+  -dols "dir where the corresponding high resolution image will be written as label" \
+  -scs "degrading scales json file"
+```
 
-The scales JSON file is a dictionary with a key named 'scales' and values representing scales smaller than 1. Images are 
+The scales JSON file is a dictionary with a key named `scales` and values representing scales smaller than 1. Images are 
 downscaled based on these scales and then upscaled again to their original size. This process causes the images to lose 
 resolution at different scales. The degraded images are used as input images, and the original high-resolution images 
 serve as labels. The enhancement model can be trained with this generated dataset. The scales JSON file looks like this:
@@ -42,6 +49,7 @@ serve as labels. The enhancement model can be trained with this generated datase
 ```
 
 ### machine-based-reading-order
+
 For machine-based reading order, we aim to determine the reading priority between two sets of text regions. The model's 
 input is a three-channel image: the first and last channels contain information about each of the two text regions, 
 while the middle channel encodes prominent layout elements necessary for reading order, such as separators and headers. 
@@ -52,10 +60,18 @@ For output images, it is necessary to specify the width and height. Additionally
 to filter out regions smaller than this minimum size. This minimum size is defined as the ratio of the text region area 
 to the image area, with a default value of zero. To run the dataset generator, use the following command:
 
-`python generate_gt_for_training.py machine-based-reading-order -dx "dir of GT xml files" -domi "dir where output images 
-will be written" -docl "dir where the labels will be written" -ih "height" -iw "width" -min "min area ratio"`
+```shell
+python generate_gt_for_training.py machine-based-reading-order \
+  -dx "dir of GT xml files" \
+  -domi "dir where output images will be written" \
+  -docl "dir where the labels will be written" \
+  -ih "height" \
+  -iw "width" \
+  -min "min area ratio"
+```
 
 ### pagexml2label
+
 pagexml2label is designed to generate labels from GT page XML files for various pixel-wise segmentation use cases,
 including 'layout,' 'textline,' 'printspace,' 'glyph,' and 'word' segmentation.
 To train a pixel-wise segmentation model, we require images along with their corresponding labels. Our training script 
@@ -119,9 +135,13 @@ graphic region, "stamp" has its own class, while all other types are classified 
 region" are also present in the label. However, other regions like "noise region" and "table region" will not be 
 included in the label PNG file, even if they have information in the page XML files, as we chose not to include them.
 
-`python generate_gt_for_training.py pagexml2label -dx "dir of GT xml files" -do "dir where output label png files will 
-be written" -cfg "custom config json file" -to "output type which has 2d and 3d. 2d is used for training and 3d is just 
-to visualise the labels" "`
+```sh
+python generate_gt_for_training.py pagexml2label \
+  -dx "dir of GT xml files" \
+  -do "dir where output label png files will be written" \
+  -cfg "custom config json file" \
+  -to "output type which has 2d and 3d. 2d is used for training and 3d is just to visualise the labels"
+```
 
 We have also defined an artificial class that can be added to the boundary of text region types or text lines. This key 
 is called "artificial_class_on_boundary." If users want to apply this to certain text regions in the layout use case, 
@@ -169,12 +189,19 @@ in this scenario, since cropping will be applied to the label files, the directo
 provided to ensure that they are cropped in sync with the labels. This ensures that the correct images and labels 
 required for training are obtained. The command should resemble the following:
 
-`python generate_gt_for_training.py pagexml2label -dx "dir of GT xml files" -do "dir where output label png files will 
-be written" -cfg "custom config json file" -to "output type which has 2d and 3d. 2d is used for training and 3d is just 
-to visualise the labels" -ps -di "dir where the org images are located" -doi "dir where the cropped output images will 
-be written" `
+```sh
+python generate_gt_for_training.py pagexml2label \
+  -dx "dir of GT xml files" \
+  -do "dir where output label png files will be written" \
+  -cfg "custom config json file" \
+  -to "output type which has 2d and 3d. 2d is used for training and 3d is just to visualise the labels" \
+  -ps \
+  -di "dir where the org images are located" \
+  -doi "dir where the cropped output images will be written"
+```
 
 ## Train a model
+
 ### classification
 
 For the classification use case, we haven't provided a ground truth generator, as it's unnecessary. For classification, 
@@ -225,7 +252,9 @@ And the "dir_eval" the same structure as train directory:
 
 The classification model can be trained using the following command line:
 
-`python train.py with config_classification.json`
+```sh
+python train.py with config_classification.json
+```
 
 As evident in the example JSON file above, for classification, we utilize a "f1_threshold_classification" parameter. 
 This parameter is employed to gather all models with an evaluation f1 score surpassing this threshold. Subsequently, 
@@ -276,6 +305,7 @@ The classification model can be trained like the classification case command lin
 ### Segmentation (Textline, Binarization, Page extraction and layout) and enhancement
 
 #### Parameter configuration for segmentation or enhancement usecases
+
 The following parameter configuration can be applied to all segmentation use cases and enhancements. The augmentation, 
 its sub-parameters, and continued training are defined only for segmentation use cases and enhancements, not for 
 classification and machine-based reading order, as you can see in their example config files.
@@ -355,6 +385,7 @@ command, similar to the process for classification and reading order:
 `python train.py with config_classification.json`
 
 #### Binarization
+
 An example config json file for binarization can be like this:
 
 ```yaml
@@ -550,6 +581,7 @@ For page segmentation (or printspace or border segmentation), the model needs to
 hence the patches parameter should be set to false.
 
 #### layout segmentation
+
 An example config json file for layout segmentation with 5 classes (including background) can be like this:
 
 ```yaml
@@ -605,26 +637,41 @@ An example config json file for layout segmentation with 5 classes (including ba
 ## Inference with the trained model
 
 ### classification
+
 For conducting inference with a trained model, you simply need to execute the following command line, specifying the 
 directory of the model and the image on which to perform inference:
 
-`python inference.py -m "model dir" -i "image" `
+```sh
+python inference.py -m "model dir" -i "image"
+```
 
 This will straightforwardly return the class of the image.
 
 ### machine based reading order
+
 To infer the reading order using a reading order model, we need a page XML file containing layout information but 
 without the reading order. We simply need to provide the model directory, the XML file, and the output directory. 
 The new XML file with the added reading order will be written to the output directory with the same name. 
 We need to run:
 
-`python inference.py -m "model dir" -xml "page xml file" -o "output dir to write new xml with reading order" `
+```sh
+python inference.py \
+  -m "model dir" \
+  -xml "page xml file" \
+  -o "output dir to write new xml with reading order"
+```
 
 ### Segmentation (Textline, Binarization, Page extraction and layout) and enhancement
 For conducting inference with a trained model for segmentation and enhancement you need to run the following command 
 line:
 
-`python inference.py -m "model dir" -i "image" -p -s "output image" `
+```sh
+python inference.py \
+  -m "model dir" \
+  -i "image" \
+  -p \
+  -s "output image"
+```
 
 Note that in the case of page extraction the -p flag is not needed.
 

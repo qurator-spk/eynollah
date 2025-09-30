@@ -1012,7 +1012,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
                        (regions_model_full[:,:,0]==2)).sum()
         pixels_main = all_pixels - pixels_header
 
-        if (pixels_header/float(pixels_main)>=0.3) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ):
+        if ( (pixels_header/float(pixels_main)>=0.6) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ) and ( (length_con[ii]/float(height_con[ii]) )<=3 )) or ( (pixels_header/float(pixels_main)>=0.3) and ( (length_con[ii]/float(height_con[ii]) )>=3 ) ):
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=2
             contours_only_text_parent_head.append(contours_only_text_parent[ii])
             conf_contours_head.append(None) # why not conf_contours[ii], too?
@@ -2017,7 +2017,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                                     x_ending_all_between_nm_wc = np.append(x_ending_all_between_nm_wc, np.array(columns_not_covered, int) + 1)
 
                                     ind_args_between=np.arange(len(x_ending_all_between_nm_wc))
-                                    for column in range(i_s_nc, x_end_biggest_column):
+                                    for column in range(int(i_s_nc), int(x_end_biggest_column)):
                                         ind_args_in_col=ind_args_between[x_starting_all_between_nm_wc==column]
                                         #print('babali2')
                                         #print(ind_args_in_col,'ind_args_in_col')
@@ -2069,7 +2069,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                         x_end_itself=x_end_copy.pop(il)
 
                         #print(y_copy,'y_copy2')
-                        for column in range(x_start_itself, x_end_itself+1):
+                        for column in range(int(x_start_itself), int(x_end_itself)+1):
                             #print(column,'cols')
                             y_in_cols=[]
                             for yic in range(len(y_copy)):
@@ -2198,3 +2198,14 @@ def return_boxes_of_images_by_order_of_reading_new(
 
     logger.debug('exit return_boxes_of_images_by_order_of_reading_new')
     return boxes, peaks_neg_tot_tables
+
+def is_image_filename(fname: str) -> bool:
+    return fname.lower().endswith(('.jpg',
+                                   '.jpeg',
+                                   '.png',
+                                   '.tif',
+                                   '.tiff',
+    ))
+
+def is_xml_filename(fname: str) -> bool:
+    return fname.lower().endswith('.xml')

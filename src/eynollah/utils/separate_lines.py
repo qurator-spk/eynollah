@@ -5,6 +5,8 @@ import numpy as np
 import cv2
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
+from multiprocessing import Process, Queue, cpu_count
+from multiprocessing import Pool
 from .rotate import rotate_image
 from .resize import resize_image
 from .contour import (
@@ -1472,7 +1474,7 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
                        main_page=False, logger=None, plotter=None, map=None):
     if main_page and plotter:
         plotter.save_plot_of_textline_density(img_patch_org)
-
+    
     img_int=np.zeros((img_patch_org.shape[0],img_patch_org.shape[1]))
     img_int[:,:]=img_patch_org[:,:]#img_patch_org[:,:,0]
 
@@ -1493,7 +1495,10 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
         angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
         angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
     elif main_page:
-        angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
+        #angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
+        angles = np.concatenate((np.linspace(-12, -7, n_tot_angles // 4),
+                                 np.linspace(-6, 6, n_tot_angles // 2),
+                                 np.linspace(7, 12, n_tot_angles // 4)))
         angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         early_slope_edge=11
