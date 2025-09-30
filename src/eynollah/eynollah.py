@@ -4886,9 +4886,9 @@ class Eynollah:
                 textline_mask_tot_ea_org[img_revised_tab==drop_label_in_full_layout] = 0
 
 
-        text_only = ((img_revised_tab[:, :] == 1)) * 1
+        text_only = (img_revised_tab[:, :] == 1) * 1
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            text_only_d = ((text_regions_p_1_n[:, :] == 1)) * 1
+            text_only_d = (text_regions_p_1_n[:, :] == 1) * 1
 
         #print("text region early 2 in %.1fs", time.time() - t0)
         ###min_con_area = 0.000005

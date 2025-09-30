@@ -1267,11 +1267,11 @@ def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
         top = peaks_neg_new[i]
         down = peaks_neg_new[i + 1]
         indexes_in = matrix_of_orders[:, 0][(matrix_of_orders[:, 3] >= top) &
-                                            ((matrix_of_orders[:, 3] < down))]
+                                            (matrix_of_orders[:, 3] < down)]
         cxs_in = matrix_of_orders[:, 2][(matrix_of_orders[:, 3] >= top) &
-                                        ((matrix_of_orders[:, 3] < down))]
+                                        (matrix_of_orders[:, 3] < down)]
         cys_in = matrix_of_orders[:, 3][(matrix_of_orders[:, 3] >= top) &
-                                        ((matrix_of_orders[:, 3] < down))]
+                                        (matrix_of_orders[:, 3] < down)]
         types_of_text = matrix_of_orders[:, 1][(matrix_of_orders[:, 3] >= top) &
                                                (matrix_of_orders[:, 3] < down)]
         index_types_of_text = matrix_of_orders[:, 4][(matrix_of_orders[:, 3] >= top) &
@@ -1408,7 +1408,7 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
 
 def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, pixel_lines, contours_h=None):
     t_ins_c0 = time.time()
-    separators_closeup=( (region_pre_p[:,:,:]==pixel_lines))*1
+    separators_closeup= (region_pre_p[:, :, :] == pixel_lines) * 1
     separators_closeup[0:110,:,:]=0
     separators_closeup[separators_closeup.shape[0]-150:,:,:]=0
 

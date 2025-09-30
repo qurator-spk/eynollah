@@ -173,7 +173,7 @@ class sbb_predict:
         ##if self.weights_dir!=None:
             ##self.model.load_weights(self.weights_dir)
             
-        if (self.task != 'classification' and self.task != 'reading_order'):
+        if self.task != 'classification' and self.task != 'reading_order':
             self.img_height=self.model.layers[len(self.model.layers)-1].output_shape[1]
             self.img_width=self.model.layers[len(self.model.layers)-1].output_shape[2]
             self.n_classes=self.model.layers[len(self.model.layers)-1].output_shape[3]
@@ -560,7 +560,7 @@ class sbb_predict:
         if self.image:
             res=self.predict(image_dir = self.image)
             
-            if (self.task == 'classification' or self.task == 'reading_order'):
+            if self.task == 'classification' or self.task == 'reading_order':
                 pass
             elif self.task == 'enhancement':
                 if self.save:
@@ -583,7 +583,7 @@ class sbb_predict:
                 image_dir = os.path.join(self.dir_in, ind_image)
                 res=self.predict(image_dir)
                 
-                if (self.task == 'classification' or self.task == 'reading_order'):
+                if self.task == 'classification' or self.task == 'reading_order':
                     pass
                 elif self.task == 'enhancement':
                     self.save = os.path.join(self.out, f_name+'.png')
@@ -664,7 +664,7 @@ def main(image, dir_in, model, patches, save, save_layout, ground_truth, xml_fil
     with open(os.path.join(model,'config.json')) as f:
         config_params_model = json.load(f)
     task = config_params_model['task']
-    if (task != 'classification' and task != 'reading_order'):
+    if task != 'classification' and task != 'reading_order':
         if image and not save:
             print("Error: You used one of segmentation or binarization task with image input but not set -s, you need a filename to save visualized output with -s")
             sys.exit(1)

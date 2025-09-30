@@ -260,7 +260,7 @@ def generate_data_from_folder_training(path_classes, batchsize, height, width, n
             
             if batchcount>=batchsize:
                 ret_x = ret_x/255.
-                yield (ret_x, ret_y)
+                yield ret_x, ret_y
                 ret_x= np.zeros((batchsize, height,width, 3)).astype(np.int16)
                 ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
                 batchcount = 0
@@ -446,7 +446,7 @@ def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batch
             ret_y[batchcount, :] =  label_class
             batchcount+=1
             if batchcount>=batchsize:
-                yield (ret_x, ret_y)
+                yield ret_x, ret_y
                 ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
                 ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
                 batchcount = 0
@@ -464,7 +464,7 @@ def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batch
                     ret_y[batchcount, :] =  label_class
                     batchcount+=1
                     if batchcount>=batchsize:
-                        yield (ret_x, ret_y)
+                        yield ret_x, ret_y
                         ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
                         ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
                         batchcount = 0
