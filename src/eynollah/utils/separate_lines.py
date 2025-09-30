@@ -67,7 +67,8 @@ def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
             peaks_neg_e, _ = find_peaks(y_padded_up_to_down_padded_e, height=0)
             neg_peaks_max = np.max(y_padded_up_to_down_padded_e[peaks_neg_e])
 
-            arg_neg_must_be_deleted = np.arange(len(peaks_neg_e))[y_padded_up_to_down_padded_e[peaks_neg_e] / float(neg_peaks_max) < 0.3]
+            arg_neg_must_be_deleted = np.arange(len(peaks_neg_e))[
+                y_padded_up_to_down_padded_e[peaks_neg_e] / float(neg_peaks_max) < 0.3]
             diff_arg_neg_must_be_deleted = np.diff(arg_neg_must_be_deleted)
 
             arg_diff = np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -78,11 +79,14 @@ def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
 
             clusters_to_be_deleted = []
             if len(arg_diff_cluster) > 0:
-                clusters_to_be_deleted.append(arg_neg_must_be_deleted[0 : arg_diff_cluster[0] + 1])
+                clusters_to_be_deleted.append(
+                    arg_neg_must_be_deleted[0 : arg_diff_cluster[0] + 1])
                 for i in range(len(arg_diff_cluster) - 1):
-                    clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[i] + 1 :
-                                                                          arg_diff_cluster[i + 1] + 1])
-                clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster) - 1] + 1 :])
+                    clusters_to_be_deleted.append(
+                        arg_neg_must_be_deleted[arg_diff_cluster[i] + 1 :
+                                                arg_diff_cluster[i + 1] + 1])
+                clusters_to_be_deleted.append(
+                    arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster) - 1] + 1 :])
             if len(clusters_to_be_deleted) > 0:
                 peaks_new_extra = []
                 for m in range(len(clusters_to_be_deleted)):
@@ -179,7 +183,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
         peaks_neg_e, _ = find_peaks(y_padded_up_to_down_padded_e, height=0)
         neg_peaks_max=np.max(y_padded_up_to_down_padded_e[peaks_neg_e])
 
-        arg_neg_must_be_deleted= np.arange(len(peaks_neg_e))[y_padded_up_to_down_padded_e[peaks_neg_e]/float(neg_peaks_max)<0.3]
+        arg_neg_must_be_deleted = np.arange(len(peaks_neg_e))[
+            y_padded_up_to_down_padded_e[peaks_neg_e]/float(neg_peaks_max)<0.3]
         diff_arg_neg_must_be_deleted=np.diff(arg_neg_must_be_deleted)
         
         arg_diff=np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -239,7 +244,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
         
     try:
         neg_peaks_max=np.max(y_padded_smoothed[peaks])
-        arg_neg_must_be_deleted= np.arange(len(peaks_neg))[y_padded_up_to_down_padded[peaks_neg]/float(neg_peaks_max)<0.42]
+        arg_neg_must_be_deleted = np.arange(len(peaks_neg))[
+            y_padded_up_to_down_padded[peaks_neg]/float(neg_peaks_max)<0.42]
         diff_arg_neg_must_be_deleted=np.diff(arg_neg_must_be_deleted)
         
         arg_diff=np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -316,23 +322,36 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
                 
                 if peaks_values[jj]>mean_value_of_peaks-std_value_of_peaks/2.:
                     point_up = peaks[jj] + first_nonzero - int(1.3 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down =y_max_cont-1##peaks[jj] + first_nonzero + int(1.3 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_down =y_max_cont-1
+                    ##peaks[jj] + first_nonzero + int(1.3 * dis_to_next_down)
+                    #point_up
+                    # np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
                 else:
                     point_up = peaks[jj] + first_nonzero - int(1.4 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down =y_max_cont-1##peaks[jj] + first_nonzero + int(1.6 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_down =y_max_cont-1
+                    ##peaks[jj] + first_nonzero + int(1.6 * dis_to_next_down)
+                    #point_up
+                    # np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
 
                 point_down_narrow = peaks[jj] + first_nonzero + int(
-                    1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
+                    1.4 * dis_to_next_down)
+                ###-int(dis_to_next_down*1./2)
             else:
                 dis_to_next_up = abs(peaks[jj] - peaks_neg[jj])
                 dis_to_next_down = abs(peaks[jj] - peaks_neg[jj + 1])
                 
                 if peaks_values[jj]>mean_value_of_peaks-std_value_of_peaks/2.:
-                    point_up = peaks[jj] + first_nonzero - int(1.1 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.1 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
                 else:
-                    point_up = peaks[jj] + first_nonzero - int(1.23 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = peaks[jj] + first_nonzero + int(1.33 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.23 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = peaks[jj] + first_nonzero + int(1.33 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
 
                 point_down_narrow = peaks[jj] + first_nonzero + int(
                     1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
@@ -341,7 +360,9 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
                 point_down_narrow = img_patch.shape[0] - 2
             
 
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy,
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
                             for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -468,7 +489,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
                     point_up =peaks[jj] + first_nonzero - int(1. / 1.8 * dis_to_next)
                     
             distances = [cv2.pointPolygonTest(contour_text_interest_copy,
-                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
                          for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -543,7 +565,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
                 point_down = peaks[jj] + first_nonzero + int(1. / 1.9 * dis_to_next_down)
                 
             distances = [cv2.pointPolygonTest(contour_text_interest_copy,
-                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
                          for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -613,7 +636,8 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
 
     neg_peaks_max = np.max(y_padded_up_to_down_padded[peaks_neg])
 
-    arg_neg_must_be_deleted = np.arange(len(peaks_neg))[y_padded_up_to_down_padded[peaks_neg] / float(neg_peaks_max) < 0.42]
+    arg_neg_must_be_deleted = np.arange(len(peaks_neg))[
+        y_padded_up_to_down_padded[peaks_neg] / float(neg_peaks_max) < 0.42]
     diff_arg_neg_must_be_deleted = np.diff(arg_neg_must_be_deleted)
 
     arg_diff = np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -689,30 +713,50 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
                 dis_to_next_down = abs(peaks[jj] - peaks_neg[jj + 1])
 
                 if peaks_values[jj] > mean_value_of_peaks - std_value_of_peaks / 2.0:
-                    point_up = peaks[jj] + first_nonzero - int(1.3 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = x_max_cont - 1  ##peaks[jj] + first_nonzero + int(1.3 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.3 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = x_max_cont - 1
+                    ##peaks[jj] + first_nonzero + int(1.3 * dis_to_next_down)
+                    #point_up
+                    # np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
                 else:
-                    point_up = peaks[jj] + first_nonzero - int(1.4 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = x_max_cont - 1  ##peaks[jj] + first_nonzero + int(1.6 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.4 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = x_max_cont - 1
+                    ##peaks[jj] + first_nonzero + int(1.6 * dis_to_next_down)
+                    #point_up
+                    # np.max(y_cont)
+                    #peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
 
-                point_down_narrow = peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
+                point_down_narrow = peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)
+                ###-int(dis_to_next_down*1./2)
             else:
                 dis_to_next_up = abs(peaks[jj] - peaks_neg[jj])
                 dis_to_next_down = abs(peaks[jj] - peaks_neg[jj + 1])
 
                 if peaks_values[jj] > mean_value_of_peaks - std_value_of_peaks / 2.0:
-                    point_up = peaks[jj] + first_nonzero - int(1.1 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.1 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
                 else:
-                    point_up = peaks[jj] + first_nonzero - int(1.23 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = peaks[jj] + first_nonzero + int(1.33 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.23 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = peaks[jj] + first_nonzero + int(1.33 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
 
-                point_down_narrow = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
+                point_down_narrow = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)
+                ###-int(dis_to_next_down*1./2)
 
             if point_down_narrow >= img_patch.shape[0]:
                 point_down_narrow = img_patch.shape[0] - 2
             
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True) for mj in range(len(xv))]
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy,
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
+                         for mj in range(len(xv))]
             distances = np.array(distances)
 
             xvinside = xv[distances >= 0]
@@ -801,7 +845,8 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
                 point_up = peaks[jj] + first_nonzero - int(1.0 / 1.8 * dis_to_next)
             
             distances = [cv2.pointPolygonTest(contour_text_interest_copy,
-                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
                          for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -866,7 +911,8 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
                 point_down = peaks[jj] + first_nonzero + int(1.0 / 1.9 * dis_to_next_down)
             
             distances = [cv2.pointPolygonTest(contour_text_interest_copy,
-                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
                          for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -950,7 +996,8 @@ def separate_lines_new_inside_tiles2(img_patch, thetha):
             peaks_neg_e, _ = find_peaks(y_padded_up_to_down_padded_e, height=0)
             neg_peaks_max = np.max(y_padded_up_to_down_padded_e[peaks_neg_e])
 
-            arg_neg_must_be_deleted = np.arange(len(peaks_neg_e))[y_padded_up_to_down_padded_e[peaks_neg_e] / float(neg_peaks_max) < 0.3]
+            arg_neg_must_be_deleted = np.arange(len(peaks_neg_e))[
+                y_padded_up_to_down_padded_e[peaks_neg_e] / float(neg_peaks_max) < 0.3]
             diff_arg_neg_must_be_deleted = np.diff(arg_neg_must_be_deleted)
 
             arg_diff = np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -963,8 +1010,11 @@ def separate_lines_new_inside_tiles2(img_patch, thetha):
             if len(arg_diff_cluster) > 0:
                 clusters_to_be_deleted.append(arg_neg_must_be_deleted[0 : arg_diff_cluster[0] + 1])
                 for i in range(len(arg_diff_cluster) - 1):
-                    clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[i] + 1 : arg_diff_cluster[i + 1] + 1])
-                clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster) - 1] + 1 :])
+                    clusters_to_be_deleted.append(
+                        arg_neg_must_be_deleted[arg_diff_cluster[i] + 1:
+                                                arg_diff_cluster[i + 1] + 1])
+                clusters_to_be_deleted.append(
+                    arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster) - 1] + 1 :])
             if len(clusters_to_be_deleted) > 0:
                 peaks_new_extra = []
                 for m in range(len(clusters_to_be_deleted)):
@@ -1014,7 +1064,8 @@ def separate_lines_new_inside_tiles2(img_patch, thetha):
     try:
         neg_peaks_max = np.max(y_padded_smoothed[peaks])
 
-        arg_neg_must_be_deleted = np.arange(len(peaks_neg))[y_padded_up_to_down_padded[peaks_neg] / float(neg_peaks_max) < 0.24]
+        arg_neg_must_be_deleted = np.arange(len(peaks_neg))[
+            y_padded_up_to_down_padded[peaks_neg] / float(neg_peaks_max) < 0.24]
         diff_arg_neg_must_be_deleted = np.diff(arg_neg_must_be_deleted)
 
         arg_diff = np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -1290,7 +1341,9 @@ def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
 
     return None, cont_final
 
-def textline_contours_postprocessing(textline_mask, slope, contour_text_interest, box_ind, add_boxes_coor_into_textlines=False):
+def textline_contours_postprocessing(textline_mask, slope,
+                                     contour_text_interest, box_ind,
+                                     add_boxes_coor_into_textlines=False):
     textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2) * 255
     textline_mask = textline_mask.astype(np.uint8)
     kernel = np.ones((5, 5), np.uint8)
@@ -1485,7 +1538,8 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
     onset_y=int((img_resized.shape[0]-img_int.shape[0])/2.)
 
     #img_resized=np.zeros((int( img_int.shape[0]*(1.8) ) , int( img_int.shape[1]*(2.6) ) ))
-    #img_resized[ int( img_int.shape[0]*(.4)):int( img_int.shape[0]*(.4))+img_int.shape[0] , int( img_int.shape[1]*(.8)):int( img_int.shape[1]*(.8))+img_int.shape[1] ]=img_int[:,:]
+    #img_resized[ int( img_int.shape[0]*(.4)):int( img_int.shape[0]*(.4))+img_int.shape[0],
+    #             int( img_int.shape[1]*(.8)):int( img_int.shape[1]*(.8))+img_int.shape[1] ]=img_int[:,:]
     img_resized[ onset_y:onset_y+img_int.shape[0] , onset_x:onset_x+img_int.shape[1] ]=img_int[:,:]
 
     if main_page and img_patch_org.shape[1] > img_patch_org.shape[0]:
@@ -1689,14 +1743,18 @@ def do_work_of_slopes_new_curved(
                 mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=4)
 
             pixel_img = 1
-            mask_biggest2 = resize_image(mask_biggest2, int(mask_biggest2.shape[0] * scale_par), int(mask_biggest2.shape[1] * scale_par))
+            mask_biggest2 = resize_image(mask_biggest2,
+                                         int(mask_biggest2.shape[0] * scale_par),
+                                         int(mask_biggest2.shape[1] * scale_par))
             cnt_textlines_in_image_ind = return_contours_of_interested_textline(mask_biggest2, pixel_img)
             try:
                 textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0])
             except Exception as why:
                 logger.error(why)
     else:
-        textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contour_par, box_text, True)
+        textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw,
+                                                                    slope_for_all, contour_par,
+                                                                    box_text, True)
 
     return textlines_cnt_per_region[::-1], box_text, contour, contour_par, crop_coor, index_r_con, slope
 

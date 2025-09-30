@@ -370,7 +370,11 @@ def return_textline_contour_with_added_box_coordinate(textline_contour,  box_ind
     return textline_contour
 
 
-def return_rnn_cnn_ocr_of_given_textlines(image, all_found_textline_polygons, prediction_model, b_s_ocr, num_to_char, textline_light=False, curved_line=False):
+def return_rnn_cnn_ocr_of_given_textlines(image, all_found_textline_polygons,
+                                          prediction_model,
+                                          b_s_ocr, num_to_char,
+                                          textline_light=False,
+                                          curved_line=False):
     max_len = 512
     padding_token = 299
     image_width = 512#max_len * 4
@@ -426,17 +430,23 @@ def return_rnn_cnn_ocr_of_given_textlines(image, all_found_textline_polygons, pr
                     splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, None)
                     
                     if splited_images:
-                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[0], image_height, image_width)
+                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[0],
+                                                                               image_height,
+                                                                               image_width)
                         cropped_lines.append(img_fin)
                         cropped_lines_meging_indexing.append(1)
                         
-                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[1], image_height, image_width)
+                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[1],
+                                                                               image_height,
+                                                                               image_width)
                         
                         cropped_lines.append(img_fin)
                         cropped_lines_meging_indexing.append(-1)
                         
                     else:
-                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
+                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop,
+                                                                               image_height,
+                                                                               image_width)
                         cropped_lines.append(img_fin)
                         cropped_lines_meging_indexing.append(0)
             
@@ -469,7 +479,12 @@ def return_rnn_cnn_ocr_of_given_textlines(image, all_found_textline_polygons, pr
             pred_texts_ib = pred_texts[ib].replace("[UNK]", "")
             extracted_texts.append(pred_texts_ib)
             
-    extracted_texts_merged = [extracted_texts[ind]  if cropped_lines_meging_indexing[ind]==0 else extracted_texts[ind]+" "+extracted_texts[ind+1] if cropped_lines_meging_indexing[ind]==1 else None for ind in range(len(cropped_lines_meging_indexing))]
+    extracted_texts_merged = [extracted_texts[ind]
+                              if cropped_lines_meging_indexing[ind]==0
+                              else extracted_texts[ind]+" "+extracted_texts[ind+1]
+                              if cropped_lines_meging_indexing[ind]==1
+                              else None
+                              for ind in range(len(cropped_lines_meging_indexing))]
 
     extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
     unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)

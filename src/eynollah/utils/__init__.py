@@ -1012,8 +1012,13 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
                        (regions_model_full[:,:,0]==2)).sum()
         pixels_main = all_pixels - pixels_header
 
-        if ( (pixels_header/float(pixels_main)>=0.6) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ) and ( (length_con[ii]/float(height_con[ii]) )<=3 )) or ( (pixels_header/float(pixels_main)>=0.3) and ( (length_con[ii]/float(height_con[ii]) )>=3 ) ):
-            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=2
+        if (( pixels_header / float(pixels_main) >= 0.6 and
+              length_con[ii] / float(height_con[ii]) >= 1.3 and
+              length_con[ii] / float(height_con[ii]) <= 3 ) or
+            ( pixels_header / float(pixels_main) >= 0.3 and
+              length_con[ii] / float(height_con[ii]) >=3 )):
+
+            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ] = 2
             contours_only_text_parent_head.append(contours_only_text_parent[ii])
             conf_contours_head.append(None) # why not conf_contours[ii], too?
             if contours_only_text_parent_d_ordered is not None:
@@ -1021,8 +1026,9 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
             all_box_coord_head.append(all_box_coord[ii])
             slopes_head.append(slopes[ii])
             all_found_textline_polygons_head.append(all_found_textline_polygons[ii])
+
         else:
-            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=1
+            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ] = 1
             contours_only_text_parent_main.append(contours_only_text_parent[ii])
             conf_contours_main.append(conf_contours[ii])
             if contours_only_text_parent_d_ordered is not None:
@@ -1883,7 +1889,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                                     range(x_start_without_mother[dj],
                                           x_end_without_mother[dj]))
                             columns_not_covered = list(all_columns - columns_covered_by_mothers)
-                            y_type_2 = np.append(y_type_2, np.ones(len(columns_not_covered) + len(x_start_without_mother),
+                            y_type_2 = np.append(y_type_2, np.ones(len(columns_not_covered) +
+                                                                   len(x_start_without_mother),
                                                                    dtype=int) * splitter_y_new[i])
                             ##y_lines_by_order = np.append(y_lines_by_order, [splitter_y_new[i]] * len(columns_not_covered))
                             ##x_start_by_order = np.append(x_start_by_order, [0] * len(columns_not_covered))
@@ -1938,7 +1945,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                             columns_covered_by_with_child_no_mothers.update(
                                 range(x_start_with_child_without_mother[dj],
                                       x_end_with_child_without_mother[dj]))
-                        columns_not_covered_child_no_mother = list(all_columns - columns_covered_by_with_child_no_mothers)
+                        columns_not_covered_child_no_mother = list(
+                            all_columns - columns_covered_by_with_child_no_mothers)
                         #indexes_to_be_spanned=[]
                         for i_s in range(len(x_end_with_child_without_mother)):
                             columns_not_covered_child_no_mother.append(x_start_with_child_without_mother[i_s])
@@ -1948,7 +1956,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                         x_start_with_child_without_mother = np.array(x_start_with_child_without_mother, int)
                         for i_s_nc in columns_not_covered_child_no_mother:
                             if i_s_nc in x_start_with_child_without_mother:
-                                x_end_biggest_column = x_end_with_child_without_mother[x_start_with_child_without_mother==i_s_nc][0]
+                                x_end_biggest_column = \
+                                    x_end_with_child_without_mother[x_start_with_child_without_mother==i_s_nc][0]
                                 args_all_biggest_lines = ind_args[(x_starting==i_s_nc) &
                                                                   (x_ending==x_end_biggest_column)]
                                 y_column_nc = y_type_2[args_all_biggest_lines]
@@ -1996,9 +2005,12 @@ def return_boxes_of_images_by_order_of_reading_new(
                                                 np.array(list(set(list(range(len(y_all_between_nm_wc)))) -
                                                               set(list(index_lines_so_close_to_top_separator))))
                                             if len(indexes_remained_after_deleting_closed_lines) > 0:
-                                                y_all_between_nm_wc = y_all_between_nm_wc[indexes_remained_after_deleting_closed_lines]
-                                                x_starting_all_between_nm_wc = x_starting_all_between_nm_wc[indexes_remained_after_deleting_closed_lines]
-                                                x_ending_all_between_nm_wc = x_ending_all_between_nm_wc[indexes_remained_after_deleting_closed_lines]
+                                                y_all_between_nm_wc = \
+                                                    y_all_between_nm_wc[indexes_remained_after_deleting_closed_lines]
+                                                x_starting_all_between_nm_wc = \
+                                                    x_starting_all_between_nm_wc[indexes_remained_after_deleting_closed_lines]
+                                                x_ending_all_between_nm_wc = \
+                                                    x_ending_all_between_nm_wc[indexes_remained_after_deleting_closed_lines]
 
                                         y_all_between_nm_wc = np.append(y_all_between_nm_wc, y_column_nc[i_c])
                                         x_starting_all_between_nm_wc = np.append(x_starting_all_between_nm_wc, i_s_nc)
