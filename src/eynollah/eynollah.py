@@ -260,7 +260,6 @@ class Eynollah:
 
         # for parallelization of CPU-intensive tasks:
         self.executor = ProcessPoolExecutor(max_workers=cpu_count())
-        atexit.register(self.executor.shutdown)
             
         if threshold_art_class_layout:
             self.threshold_art_class_layout = float(threshold_art_class_layout)
@@ -405,6 +404,26 @@ class Eynollah:
                 self.model_table = self.our_load_model(self.model_table_dir)
                 
         self.logger.info(f"Model initialization complete ({time.time() - t_start:.1f}s)")
+
+    def __del__(self):
+        if hasattr(self, 'executor') and getattr(self, 'executor'):
+            self.executor.shutdown()
+        for model_name in ['model_page',
+                           'model_classifier',
+                           'model_bin',
+                           'model_enhancement',
+                           'model_region',
+                           'model_region_1_2',
+                           'model_region_p2',
+                           'model_region_fl_np',
+                           'model_region_fl',
+                           'model_textline',
+                           'model_reading_order',
+                           'model_table',
+                           'model_ocr',
+                           'processor']:
+            if hasattr(self, model_name) and getattr(self, model_name):
+                delattr(self, model_name)
 
     def cache_images(self, image_filename=None, image_pil=None, dpi=None):
         ret = {}
