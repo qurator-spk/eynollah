@@ -5,6 +5,33 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Fixed:
+
+ * :fire: polygons: avoid invalid paths (use `Polygon.buffer()` instead of dilation etc.)
+ * `return_boxes_of_images_by_order_of_reading_new`: avoid Numpy.dtype mismatch, simplify
+ * `return_boxes_of_images_by_order_of_reading_new`: log any exceptions instead of ignoring
+ * `filter_contours_without_textline_inside`: avoid removing from duplicate lists twice
+ * `get_marginals`: exit early if no peaks found to avoid spurious overlap mask
+ * `get_smallest_skew`: after shifting search range of rotation angle, use overall best result
+ * Dockerfile: fix CUDA installation (cuDNN contested between Torch and TF due to extra OCR)
+ * OCR: re-instate missing methods and fix `utils_ocr` function calls
+ * :fire: writer: `SeparatorRegion` needs `SeparatorRegionType` (not `ImageRegionType`)
+f458e3e
+ * tests: switch from `pytest-subtests` to `parametrize` so we can use `pytest-isolate`
+   (so CUDA memory gets freed between tests if running on GPU)
+
+Changed:
+ 
+ * polygons: slightly widen for regions and lines, increase for separators
+ * various refactorings, some code style and identifier improvements
+ * deskewing/multiprocessing: switch back to ProcessPoolExecutor (faster), 
+   but use shared memory if necessary, and switch back from `loky` to stdlib,
+   and shutdown in `del()` instead of `atexit`
+ * :fire: OCR: switch CNN-RNN model to `20250930` version compatible with TF 2.12 on CPU, too
+ * :fire: writer: use `@type='heading'` instead of `'header'` for headings
+ * CI: update+improve model caching
+
+
 ## [0.5.0] - 2025-09-26
 
 Fixed:
