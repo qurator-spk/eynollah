@@ -3917,34 +3917,6 @@ class Eynollah:
             region_ids = ['region_%04d' % i for i in range(len(co_text_all_org))]
             return ordered, region_ids
 
-    def return_list_of_contours_with_desired_order(self, ls_cons, sorted_indexes):
-        return [ls_cons[sorted_indexes[index]] for index in range(len(sorted_indexes))]
-
-    def return_it_in_two_groups(self, x_differential):
-        split = [ind if x_differential[ind]!=x_differential[ind+1] else -1
-                 for ind in range(len(x_differential)-1)]
-        split_masked = list( np.array(split[:])[np.array(split[:])!=-1] )
-        if 0 not in split_masked:
-            split_masked.insert(0, -1)
-        split_masked.append(len(x_differential)-1)
-
-        split_masked = np.array(split_masked) +1
-
-        sums = [np.sum(x_differential[split_masked[ind]:split_masked[ind+1]])
-                for ind in range(len(split_masked)-1)]
-
-        indexes_to_bec_changed = [ind if (np.abs(sums[ind-1]) > np.abs(sums[ind]) and
-                                          np.abs(sums[ind+1]) > np.abs(sums[ind])) else -1
-                                  for ind in range(1,len(sums)-1)]
-        indexes_to_bec_changed_filtered = np.array(indexes_to_bec_changed)[np.array(indexes_to_bec_changed)!=-1]
-
-        x_differential_new = np.copy(x_differential)
-        for i in indexes_to_bec_changed_filtered:
-            i_slice = slice(split_masked[i], split_masked[i+1])
-            x_differential_new[i_slice] = -1 * np.array(x_differential)[i_slice]
-
-        return x_differential_new
-
     def return_start_and_end_of_common_text_of_textline_ocr(self,textline_image, ind_tot):
         width = np.shape(textline_image)[1]
         height = np.shape(textline_image)[0]
@@ -3987,36 +3959,6 @@ class Eynollah:
             return peaks_final[0], peaks_final[1]
         else:
             pass
-
-    def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(self, textline_image, ind_tot):
-        width = np.shape(textline_image)[1]
-        height = np.shape(textline_image)[0]
-        common_window = int(0.06*width)
-
-        width1 = int ( width/2. - common_window )
-        width2 = int ( width/2. + common_window )
-
-        img_sum = np.sum(textline_image[:,:,0], axis=0)
-        sum_smoothed = gaussian_filter1d(img_sum, 3)
-
-        peaks_real, _ = find_peaks(sum_smoothed, height=0)
-        if len(peaks_real)>70:
-            #print(len(peaks_real), 'len(peaks_real)')
-
-            peaks_real = peaks_real[(peaks_real<width2) & (peaks_real>width1)]
-
-            arg_max = np.argmax(sum_smoothed[peaks_real])
-            peaks_final = peaks_real[arg_max]
-
-            #plt.figure(ind_tot)
-            #plt.imshow(textline_image)
-            #plt.plot([peaks_final, peaks_final], [0, height-1])
-            ##plt.plot([peaks_final[1], peaks_final[1]], [0, height-1])
-            #plt.savefig('./'+str(ind_tot)+'.png')
-
-            return peaks_final
-        else:
-            return None
 
     def return_start_and_end_of_common_text_of_textline_ocr_new_splitted(
             self, peaks_real, sum_smoothed, start_split, end_split):
@@ -4079,8 +4021,7 @@ class Eynollah:
             #width1 = int ( width/2. - common_window )
             #width2 = int ( width/2. + common_window )
 
-            split_point = self.return_start_and_end_of_common_text_of_textline_ocr_without_common_section(
-                textline_image, ind_tot)
+            split_point = return_start_and_end_of_common_text_of_textline_ocr_without_common_section(textline_image)
             if split_point:
                 image1 = textline_image[:, :split_point,:]# image.crop((0, 0, width2, height))
                 image2 = textline_image[:, split_point:,:]#image.crop((width1, 0, width, height))
@@ -5144,7 +5085,7 @@ class Eynollah:
                         box_ind = all_box_coord[indexing]
                         #print(ind_poly,np.shape(ind_poly), 'ind_poly')
                         #print(box_ind)
-                        ind_poly = self.return_textline_contour_with_added_box_coordinate(ind_poly, box_ind)
+                        ind_poly = return_textline_contour_with_added_box_coordinate(ind_poly, box_ind)
                         #print(ind_poly_copy)
                         ind_poly[ind_poly<0] = 0
                     x, y, w, h = cv2.boundingRect(ind_poly)

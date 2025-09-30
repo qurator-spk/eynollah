@@ -92,6 +92,7 @@ def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(t
         return peaks_final
     else:
         return None
+
 # Function to fit text inside the given area
 def fit_text_single_line(draw, text, font_path, max_width, max_height):
     initial_font_size = 50
