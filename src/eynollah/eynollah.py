@@ -327,7 +327,7 @@ class Eynollah:
         if self.ocr and self.tr:
             self.model_ocr_dir = dir_models + "/model_eynollah_ocr_trocr_20250919"
         elif self.ocr and not self.tr:
-            self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250904"
+            self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250930"
         if self.tables:
             if self.light_version:
                 self.model_table_dir = dir_models + "/modelens_table_0t4_201124"
@@ -5392,7 +5392,7 @@ class Eynollah_ocr:
                 if self.model_name:
                     self.model_ocr_dir = self.model_name
                 else:
-                    self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250904"
+                    self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250930"
                 model_ocr = load_model(self.model_ocr_dir , compile=False)
                 
                 self.prediction_model = tf.keras.models.Model(
