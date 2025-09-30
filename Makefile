@@ -18,7 +18,7 @@ BIN_MODEL := https://github.com/qurator-spk/sbb_binarization/releases/download/v
 
 OCR_MODEL := https://zenodo.org/records/17194824/files/models_ocr_v0_5_0.tar.gz?download=1
 
-PYTEST_ARGS ?= -vv
+PYTEST_ARGS ?= -vv --isolate
 
 # BEGIN-EVAL makefile-parser --make-help Makefile
 
