@@ -20,23 +20,9 @@ MODELS_LAYOUT = environ.get('MODELS_LAYOUT', str(testdir.joinpath('..', 'models_
 MODELS_OCR = environ.get('MODELS_OCR', str(testdir.joinpath('..', 'models_ocr_v0_5_0').resolve()))
 MODELS_BIN = environ.get('MODELS_BIN', str(testdir.joinpath('..', 'default-2021-03-09').resolve()))
 
-def test_run_eynollah_layout_filename(tmp_path, subtests, pytestconfig, caplog):
-    infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
-    outfile = tmp_path / 'kant_aufklaerung_1784_0020.xml'
-    args = [
-        '-m', MODELS_LAYOUT,
-        '-i', str(infile),
-        '-o', str(outfile.parent),
-        # subtests write to same location
-        '--overwrite',
-    ]
-    if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
-    caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'eynollah'
-    runner = CliRunner()
-    for options in [
+@pytest.mark.parametrize(
+    "options",
+    [
             [], # defaults
             ["--allow_scaling", "--curved-line"],
             ["--allow_scaling", "--curved-line", "--full-layout"],
@@ -47,22 +33,34 @@ def test_run_eynollah_layout_filename(tmp_path, subtests, pytestconfig, caplog):
             # -eoi ...
             # --do_ocr
             # --skip_layout_and_reading_order
-    ]:
-        with subtests.test(#msg="test CLI",
-                           options=options):
-            with caplog.filtering(only_eynollah):
-                result = runner.invoke(layout_cli, args + options, catch_exceptions=False)
-            assert result.exit_code == 0, result.stdout
-            logmsgs = [logrec.message for logrec in caplog.records]
-            assert str(infile) in logmsgs
-            assert outfile.exists()
-            tree = page_from_file(str(outfile)).etree
-            regions = tree.xpath("//page:TextRegion", namespaces=NS)
-            assert len(regions) >= 2, "result is inaccurate"
-            regions = tree.xpath("//page:SeparatorRegion", namespaces=NS)
-            assert len(regions) >= 2, "result is inaccurate"
-            lines = tree.xpath("//page:TextLine", namespaces=NS)
-            assert len(lines) == 31, "result is inaccurate" # 29 paragraph lines, 1 page and 1 catch-word line
+    ], ids=str)
+def test_run_eynollah_layout_filename(tmp_path, pytestconfig, caplog, options):
+    infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
+    outfile = tmp_path / 'kant_aufklaerung_1784_0020.xml'
+    args = [
+        '-m', MODELS_LAYOUT,
+        '-i', str(infile),
+        '-o', str(outfile.parent),
+    ]
+    if pytestconfig.getoption('verbose') > 0:
+        args.extend(['-l', 'DEBUG'])
+    caplog.set_level(logging.INFO)
+    def only_eynollah(logrec):
+        return logrec.name == 'eynollah'
+    runner = CliRunner()
+    with caplog.filtering(only_eynollah):
+        result = runner.invoke(layout_cli, args + options, catch_exceptions=False)
+    assert result.exit_code == 0, result.stdout
+    logmsgs = [logrec.message for logrec in caplog.records]
+    assert str(infile) in logmsgs
+    assert outfile.exists()
+    tree = page_from_file(str(outfile)).etree
+    regions = tree.xpath("//page:TextRegion", namespaces=NS)
+    assert len(regions) >= 2, "result is inaccurate"
+    regions = tree.xpath("//page:SeparatorRegion", namespaces=NS)
+    assert len(regions) >= 2, "result is inaccurate"
+    lines = tree.xpath("//page:TextLine", namespaces=NS)
+    assert len(lines) == 31, "result is inaccurate" # 29 paragraph lines, 1 page and 1 catch-word line
 
 def test_run_eynollah_layout_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
@@ -86,7 +84,13 @@ def test_run_eynollah_layout_directory(tmp_path, pytestconfig, caplog):
     assert any(logmsg for logmsg in logmsgs if logmsg.startswith('All jobs done in'))
     assert len(list(outdir.iterdir())) == 2
 
-def test_run_eynollah_binarization_filename(tmp_path, subtests, pytestconfig, caplog):
+@pytest.mark.parametrize(
+    "options",
+    [
+            [], # defaults
+            ["--no-patches"],
+    ], ids=str)
+def test_run_eynollah_binarization_filename(tmp_path, pytestconfig, caplog, options):
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     args = [
@@ -100,25 +104,19 @@ def test_run_eynollah_binarization_filename(tmp_path, subtests, pytestconfig, ca
     def only_eynollah(logrec):
         return logrec.name == 'SbbBinarizer'
     runner = CliRunner()
-    for options in [
-            [], # defaults
-            ["--no-patches"],
-    ]:
-        with subtests.test(#msg="test CLI",
-                           options=options):
-            with caplog.filtering(only_eynollah):
-                result = runner.invoke(binarization_cli, args + options, catch_exceptions=False)
-            assert result.exit_code == 0, result.stdout
-            logmsgs = [logrec.message for logrec in caplog.records]
-            assert any(True for logmsg in logmsgs if logmsg.startswith('Predicting'))
-            assert outfile.exists()
-            with Image.open(infile) as original_img:
-                original_size = original_img.size
-            with Image.open(outfile) as binarized_img:
-                binarized_size = binarized_img.size
-            assert original_size == binarized_size
+    with caplog.filtering(only_eynollah):
+        result = runner.invoke(binarization_cli, args + options, catch_exceptions=False)
+    assert result.exit_code == 0, result.stdout
+    logmsgs = [logrec.message for logrec in caplog.records]
+    assert any(True for logmsg in logmsgs if logmsg.startswith('Predicting'))
+    assert outfile.exists()
+    with Image.open(infile) as original_img:
+        original_size = original_img.size
+    with Image.open(outfile) as binarized_img:
+        binarized_size = binarized_img.size
+    assert original_size == binarized_size
 
-def test_run_eynollah_binarization_directory(tmp_path, subtests, pytestconfig, caplog):
+def test_run_eynollah_binarization_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
@@ -139,15 +137,19 @@ def test_run_eynollah_binarization_directory(tmp_path, subtests, pytestconfig, c
     assert len([logmsg for logmsg in logmsgs if logmsg.startswith('Predicting')]) == 2
     assert len(list(outdir.iterdir())) == 2
 
-def test_run_eynollah_enhancement_filename(tmp_path, subtests, pytestconfig, caplog):
+@pytest.mark.parametrize(
+    "options",
+    [
+            [], # defaults
+            ["-sos"],
+    ], ids=str)
+def test_run_eynollah_enhancement_filename(tmp_path, pytestconfig, caplog, options):
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     args = [
         '-m', MODELS_LAYOUT,
         '-i', str(infile),
         '-o', str(outfile.parent),
-        # subtests write to same location
-        '--overwrite',
     ]
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
@@ -155,25 +157,19 @@ def test_run_eynollah_enhancement_filename(tmp_path, subtests, pytestconfig, cap
     def only_eynollah(logrec):
         return logrec.name == 'enhancement'
     runner = CliRunner()
-    for options in [
-            [], # defaults
-            ["-sos"],
-    ]:
-        with subtests.test(#msg="test CLI",
-                           options=options):
-            with caplog.filtering(only_eynollah):
-                result = runner.invoke(enhancement_cli, args + options, catch_exceptions=False)
-            assert result.exit_code == 0, result.stdout
-            logmsgs = [logrec.message for logrec in caplog.records]
-            assert any(True for logmsg in logmsgs if logmsg.startswith('Image was enhanced')), logmsgs
-            assert outfile.exists()
-            with Image.open(infile) as original_img:
-                original_size = original_img.size
-            with Image.open(outfile) as enhanced_img:
-                enhanced_size = enhanced_img.size
-            assert (original_size == enhanced_size) == ("-sos" in options)
+    with caplog.filtering(only_eynollah):
+        result = runner.invoke(enhancement_cli, args + options, catch_exceptions=False)
+    assert result.exit_code == 0, result.stdout
+    logmsgs = [logrec.message for logrec in caplog.records]
+    assert any(True for logmsg in logmsgs if logmsg.startswith('Image was enhanced')), logmsgs
+    assert outfile.exists()
+    with Image.open(infile) as original_img:
+        original_size = original_img.size
+    with Image.open(outfile) as enhanced_img:
+        enhanced_size = enhanced_img.size
+    assert (original_size == enhanced_size) == ("-sos" in options)
 
-def test_run_eynollah_enhancement_directory(tmp_path, subtests, pytestconfig, caplog):
+def test_run_eynollah_enhancement_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
@@ -194,7 +190,7 @@ def test_run_eynollah_enhancement_directory(tmp_path, subtests, pytestconfig, ca
     assert len([logmsg for logmsg in logmsgs if logmsg.startswith('Image was enhanced')]) == 2
     assert len(list(outdir.iterdir())) == 2
 
-def test_run_eynollah_mbreorder_filename(tmp_path, subtests, pytestconfig, caplog):
+def test_run_eynollah_mbreorder_filename(tmp_path, pytestconfig, caplog):
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.xml')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.xml')
     args = [
@@ -223,7 +219,7 @@ def test_run_eynollah_mbreorder_filename(tmp_path, subtests, pytestconfig, caplo
     #assert in_order != out_order
     assert out_order == ['r_1_1', 'r_2_1', 'r_2_2', 'r_2_3']
 
-def test_run_eynollah_mbreorder_directory(tmp_path, subtests, pytestconfig, caplog):
+def test_run_eynollah_mbreorder_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
@@ -245,7 +241,15 @@ def test_run_eynollah_mbreorder_directory(tmp_path, subtests, pytestconfig, capl
     #assert len([logmsg for logmsg in logmsgs if logmsg.startswith('???')]) == 2
     assert len(list(outdir.iterdir())) == 2
 
-def test_run_eynollah_ocr_filename(tmp_path, subtests, pytestconfig, caplog):
+@pytest.mark.parametrize(
+    "options",
+    [
+        [], # defaults
+        ["-doit", #str(outrenderfile.parent)],
+         ],
+        ["-trocr"],
+    ], ids=str)
+def test_run_eynollah_ocr_filename(tmp_path, pytestconfig, caplog, options):
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.xml')
     outrenderfile = tmp_path.joinpath('render').joinpath('kant_aufklaerung_1784_0020.png')
@@ -255,8 +259,6 @@ def test_run_eynollah_ocr_filename(tmp_path, subtests, pytestconfig, caplog):
         '-i', str(infile),
         '-dx', str(infile.parent),
         '-o', str(outfile.parent),
-        # subtests write to same location
-        '--overwrite',
     ]
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
@@ -264,33 +266,25 @@ def test_run_eynollah_ocr_filename(tmp_path, subtests, pytestconfig, caplog):
     def only_eynollah(logrec):
         return logrec.name == 'eynollah'
     runner = CliRunner()
-    for options in [
-            # kba  Fri Sep 26 12:53:49 CEST 2025
-            # Disabled until NHWC/NCHW error in https://github.com/qurator-spk/eynollah/actions/runs/18019655200/job/51273541895 debugged
-            # [], # defaults
-            # ["-doit", str(outrenderfile.parent)],
-            ["-trocr"],
-    ]:
-        with subtests.test(#msg="test CLI",
-                           options=options):
-            with caplog.filtering(only_eynollah):
-                result = runner.invoke(ocr_cli, args + options, catch_exceptions=False)
-            assert result.exit_code == 0, result.stdout
-            logmsgs = [logrec.message for logrec in caplog.records]
-            # FIXME: ocr has no logging!
-            #assert any(True for logmsg in logmsgs if logmsg.startswith('???')), logmsgs
-            assert outfile.exists()
-            if "-doit" in options:
-                assert outrenderfile.exists()
-            #in_tree = page_from_file(str(infile)).etree
-            #in_order = in_tree.xpath("//page:OrderedGroup//@regionRef", namespaces=NS)
-            out_tree = page_from_file(str(outfile)).etree
-            out_texts = out_tree.xpath("//page:TextLine/page:TextEquiv[last()]/page:Unicode/text()", namespaces=NS)
-            assert len(out_texts) >= 2, ("result is inaccurate", out_texts)
-            assert sum(map(len, out_texts)) > 100, ("result is inaccurate", out_texts)
+    if "-doit" in options:
+        options.insert(options.index("-doit") + 1, str(outrenderfile.parent))
+    with caplog.filtering(only_eynollah):
+        result = runner.invoke(ocr_cli, args + options, catch_exceptions=False)
+    assert result.exit_code == 0, result.stdout
+    logmsgs = [logrec.message for logrec in caplog.records]
+    # FIXME: ocr has no logging!
+    #assert any(True for logmsg in logmsgs if logmsg.startswith('???')), logmsgs
+    assert outfile.exists()
+    if "-doit" in options:
+        assert outrenderfile.exists()
+    #in_tree = page_from_file(str(infile)).etree
+    #in_order = in_tree.xpath("//page:OrderedGroup//@regionRef", namespaces=NS)
+    out_tree = page_from_file(str(outfile)).etree
+    out_texts = out_tree.xpath("//page:TextLine/page:TextEquiv[last()]/page:Unicode/text()", namespaces=NS)
+    assert len(out_texts) >= 2, ("result is inaccurate", out_texts)
+    assert sum(map(len, out_texts)) > 100, ("result is inaccurate", out_texts)
 
-@pytest.mark.skip("Disabled until NHWC/NCHW error in https://github.com/qurator-spk/eynollah/actions/runs/18019655200/job/51273541895 debugged")
-def test_run_eynollah_ocr_directory(tmp_path, subtests, pytestconfig, caplog):
+def test_run_eynollah_ocr_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
