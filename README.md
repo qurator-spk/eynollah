@@ -57,7 +57,7 @@ make install EXTRAS=OCR
 
 Pretrained models can be downloaded from [zenodo](https://zenodo.org/records/17194824) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
 
-For documentation on methods and models, have a look at [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md). 
+For documentation on models, have a look at [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md). 
 Model cards are also provided for our trained models.
 
 ## Training
@@ -74,7 +74,7 @@ image enhancement, text recognition (OCR), and reading order detection.
 ### Layout Analysis
 
 The layout analysis module is responsible for detecting layout elements, identifying text lines, and determining reading 
-order using either heuristic methods or a reading order detection model. 
+order using either heuristic methods or a [pretrained reading order detection model](https://github.com/qurator-spk/eynollah#machine-based-reading-order). 
 
 Reading order detection can be performed either as part of layout analysis based on image input, or, currently under 
 development, based on pre-existing layout analysis results in PAGE-XML format as input.
@@ -173,6 +173,7 @@ If the input file group is PAGE-XML (from a previous OCR-D workflow step), Eynol
 - if the page-level image nevertheless deviates from the original (`@imageFilename`)
   (because some other preprocessing step was in effect like `denoised`), then
   the output PAGE-XML will be based on that as new top-level (`@imageFilename`)
+
 
     ocrd-eynollah-segment -I OCR-D-XYZ -O OCR-D-SEG -P models eynollah_layout_v0_5_0
 
