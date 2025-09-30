@@ -28,17 +28,17 @@ jobs:
       id: seg_model_cache
       with:
         path: models_layout_v0_5_0
-        key: ${{ runner.os }}-seg-models
+        key: seg-models
     - uses: actions/cache/restore@v4
       id: ocr_model_cache
       with:
         path: models_ocr_v0_5_1
-        key: ${{ runner.os }}-ocr-models
+        key: ocr-models
     - uses: actions/cache/restore@v4
       id: bin_model_cache
       with:
         path: default-2021-03-09
-        key: ${{ runner.os }}-modelbin
+        key: bin-models
     - name: Download models
       if: steps.seg_model_cache.outputs.cache-hit != 'true' || steps.bin_model_cache.outputs.cache-hit != 'true' || steps.ocr_model_cache.outputs.cache-hit != true
       run: make models
@@ -46,17 +46,17 @@ jobs:
       if: steps.seg_model_cache.outputs.cache-hit != 'true'
       with:
         path: models_layout_v0_5_0
-        key: ${{ runner.os }}-seg-models
+        key: seg-models
     - uses: actions/cache/save@v4
       if: steps.ocr_model_cache.outputs.cache-hit != 'true'
       with:
         path: models_ocr_v0_5_1
-        key: ${{ runner.os }}-ocr-models
+        key: ocr-models
     - uses: actions/cache/save@v4
       if: steps.bin_model_cache.outputs.cache-hit != 'true'
       with:
         path: default-2021-03-09
-        key: ${{ runner.os }}-modelbin
+        key: bin-models
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
