@@ -3,12 +3,9 @@ import os
 import numpy as np
 import warnings
 import cv2
-import seaborn as sns
 from tensorflow.keras.models import load_model
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras import layers
-import tensorflow.keras.losses
 from tensorflow.keras.layers import *
 from models import *
 from gt_gen_utils import *
@@ -16,7 +13,6 @@ import click
 import json
 from tensorflow.python.keras import backend as tensorflow_backend
 import xml.etree.ElementTree as ET
-import matplotlib.pyplot as plt
 
 
 with warnings.catch_warnings():
@@ -55,11 +51,9 @@ class sbb_predict:
             seg=seg[:,:,0]
             
         seg_img=np.zeros((np.shape(seg)[0],np.shape(seg)[1],3)).astype(np.uint8)
-        colors=sns.color_palette("hls", self.n_classes)
         
         for c in ann_u:
             c=int(c)
-            segl=(seg==c)
             seg_img[:,:,0][seg==c]=c
             seg_img[:,:,1][seg==c]=c
             seg_img[:,:,2][seg==c]=c
