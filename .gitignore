@@ -2,7 +2,11 @@
 __pycache__
 sbb_newspapers_org_image/pylint.log
 models_eynollah*
+models_ocr*
+models_layout*
+default-2021-03-09
 output.html
 /build
 /dist
 *.tif
+TAGS
