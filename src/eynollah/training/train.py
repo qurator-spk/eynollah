@@ -1,19 +1,21 @@
 import os
 import sys
+import json
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
 from tensorflow.compat.v1.keras.backend import set_session
 import warnings
 from tensorflow.keras.optimizers import *
 from sacred import Experiment
-from models import *
-from utils import *
-from metrics import *
 from tensorflow.keras.models import load_model
 from tqdm import tqdm
-import json
 from sklearn.metrics import f1_score
 from tensorflow.keras.callbacks import Callback
+
+from .models import *
+from .utils import *
+from .metrics import *
 
 class SaveWeightsAfterSteps(Callback):
     def __init__(self, save_interval, save_path, _config):

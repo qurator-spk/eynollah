@@ -6,7 +6,6 @@ from tqdm import tqdm
 import cv2
 from shapely import geometry
 from pathlib import Path
-import matplotlib.pyplot as plt
 from PIL import ImageFont
 
 

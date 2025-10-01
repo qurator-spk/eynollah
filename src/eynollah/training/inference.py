@@ -1,18 +1,20 @@
 import sys
 import os
-import numpy as np
 import warnings
+import json
+
+import numpy as np
 import cv2
 from tensorflow.keras.models import load_model
 import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import *
-from models import *
-from gt_gen_utils import *
 import click
-import json
 from tensorflow.python.keras import backend as tensorflow_backend
 import xml.etree.ElementTree as ET
+
+from .models import *
+from .gt_gen_utils import *
 
 
 with warnings.catch_warnings():

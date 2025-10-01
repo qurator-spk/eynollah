@@ -1,9 +1,10 @@
 import click
 import json
-from gt_gen_utils import *
 from tqdm import tqdm
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
+
+from .gt_gen_utils import *
 
 @click.group()
 def main():
