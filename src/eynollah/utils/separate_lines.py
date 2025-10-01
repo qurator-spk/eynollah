@@ -17,9 +17,12 @@ from .contour import (
     return_contours_of_interested_textline,
     find_contours_mean_y_diff,
 )
+from .shm import share_ndarray, wrap_ndarray_shared
 from . import (
     find_num_col_deskew,
     crop_image_inside_box,
+    box2rect,
+    box2slice,
 )
 
 def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
@@ -64,7 +67,8 @@ def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
             peaks_neg_e, _ = find_peaks(y_padded_up_to_down_padded_e, height=0)
             neg_peaks_max = np.max(y_padded_up_to_down_padded_e[peaks_neg_e])
 
-            arg_neg_must_be_deleted = np.arange(len(peaks_neg_e))[y_padded_up_to_down_padded_e[peaks_neg_e] / float(neg_peaks_max) < 0.3]
+            arg_neg_must_be_deleted = np.arange(len(peaks_neg_e))[
+                y_padded_up_to_down_padded_e[peaks_neg_e] / float(neg_peaks_max) < 0.3]
             diff_arg_neg_must_be_deleted = np.diff(arg_neg_must_be_deleted)
 
             arg_diff = np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -75,11 +79,14 @@ def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
 
             clusters_to_be_deleted = []
             if len(arg_diff_cluster) > 0:
-                clusters_to_be_deleted.append(arg_neg_must_be_deleted[0 : arg_diff_cluster[0] + 1])
+                clusters_to_be_deleted.append(
+                    arg_neg_must_be_deleted[0 : arg_diff_cluster[0] + 1])
                 for i in range(len(arg_diff_cluster) - 1):
-                    clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[i] + 1 :
-                                                                          arg_diff_cluster[i + 1] + 1])
-                clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster) - 1] + 1 :])
+                    clusters_to_be_deleted.append(
+                        arg_neg_must_be_deleted[arg_diff_cluster[i] + 1 :
+                                                arg_diff_cluster[i + 1] + 1])
+                clusters_to_be_deleted.append(
+                    arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster) - 1] + 1 :])
             if len(clusters_to_be_deleted) > 0:
                 peaks_new_extra = []
                 for m in range(len(clusters_to_be_deleted)):
@@ -176,7 +183,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
         peaks_neg_e, _ = find_peaks(y_padded_up_to_down_padded_e, height=0)
         neg_peaks_max=np.max(y_padded_up_to_down_padded_e[peaks_neg_e])
 
-        arg_neg_must_be_deleted= np.arange(len(peaks_neg_e))[y_padded_up_to_down_padded_e[peaks_neg_e]/float(neg_peaks_max)<0.3]
+        arg_neg_must_be_deleted = np.arange(len(peaks_neg_e))[
+            y_padded_up_to_down_padded_e[peaks_neg_e]/float(neg_peaks_max)<0.3]
         diff_arg_neg_must_be_deleted=np.diff(arg_neg_must_be_deleted)
         
         arg_diff=np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -236,7 +244,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
         
     try:
         neg_peaks_max=np.max(y_padded_smoothed[peaks])
-        arg_neg_must_be_deleted= np.arange(len(peaks_neg))[y_padded_up_to_down_padded[peaks_neg]/float(neg_peaks_max)<0.42]
+        arg_neg_must_be_deleted = np.arange(len(peaks_neg))[
+            y_padded_up_to_down_padded[peaks_neg]/float(neg_peaks_max)<0.42]
         diff_arg_neg_must_be_deleted=np.diff(arg_neg_must_be_deleted)
         
         arg_diff=np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -313,23 +322,36 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
                 
                 if peaks_values[jj]>mean_value_of_peaks-std_value_of_peaks/2.:
                     point_up = peaks[jj] + first_nonzero - int(1.3 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down =y_max_cont-1##peaks[jj] + first_nonzero + int(1.3 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_down =y_max_cont-1
+                    ##peaks[jj] + first_nonzero + int(1.3 * dis_to_next_down)
+                    #point_up
+                    # np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
                 else:
                     point_up = peaks[jj] + first_nonzero - int(1.4 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down =y_max_cont-1##peaks[jj] + first_nonzero + int(1.6 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_down =y_max_cont-1
+                    ##peaks[jj] + first_nonzero + int(1.6 * dis_to_next_down)
+                    #point_up
+                    # np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
 
                 point_down_narrow = peaks[jj] + first_nonzero + int(
-                    1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
+                    1.4 * dis_to_next_down)
+                ###-int(dis_to_next_down*1./2)
             else:
                 dis_to_next_up = abs(peaks[jj] - peaks_neg[jj])
                 dis_to_next_down = abs(peaks[jj] - peaks_neg[jj + 1])
                 
                 if peaks_values[jj]>mean_value_of_peaks-std_value_of_peaks/2.:
-                    point_up = peaks[jj] + first_nonzero - int(1.1 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.1 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
                 else:
-                    point_up = peaks[jj] + first_nonzero - int(1.23 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = peaks[jj] + first_nonzero + int(1.33 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.23 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = peaks[jj] + first_nonzero + int(1.33 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
 
                 point_down_narrow = peaks[jj] + first_nonzero + int(
                     1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
@@ -338,7 +360,9 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
                 point_down_narrow = img_patch.shape[0] - 2
             
 
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy,
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
                             for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -465,7 +489,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
                     point_up =peaks[jj] + first_nonzero - int(1. / 1.8 * dis_to_next)
                     
             distances = [cv2.pointPolygonTest(contour_text_interest_copy,
-                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
                          for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -540,7 +565,8 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
                 point_down = peaks[jj] + first_nonzero + int(1. / 1.9 * dis_to_next_down)
                 
             distances = [cv2.pointPolygonTest(contour_text_interest_copy,
-                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
                          for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -610,7 +636,8 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
 
     neg_peaks_max = np.max(y_padded_up_to_down_padded[peaks_neg])
 
-    arg_neg_must_be_deleted = np.arange(len(peaks_neg))[y_padded_up_to_down_padded[peaks_neg] / float(neg_peaks_max) < 0.42]
+    arg_neg_must_be_deleted = np.arange(len(peaks_neg))[
+        y_padded_up_to_down_padded[peaks_neg] / float(neg_peaks_max) < 0.42]
     diff_arg_neg_must_be_deleted = np.diff(arg_neg_must_be_deleted)
 
     arg_diff = np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -686,30 +713,50 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
                 dis_to_next_down = abs(peaks[jj] - peaks_neg[jj + 1])
 
                 if peaks_values[jj] > mean_value_of_peaks - std_value_of_peaks / 2.0:
-                    point_up = peaks[jj] + first_nonzero - int(1.3 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = x_max_cont - 1  ##peaks[jj] + first_nonzero + int(1.3 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.3 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = x_max_cont - 1
+                    ##peaks[jj] + first_nonzero + int(1.3 * dis_to_next_down)
+                    #point_up
+                    # np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
                 else:
-                    point_up = peaks[jj] + first_nonzero - int(1.4 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = x_max_cont - 1  ##peaks[jj] + first_nonzero + int(1.6 * dis_to_next_down) #point_up# np.max(y_cont)#peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.4 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = x_max_cont - 1
+                    ##peaks[jj] + first_nonzero + int(1.6 * dis_to_next_down)
+                    #point_up
+                    # np.max(y_cont)
+                    #peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
 
-                point_down_narrow = peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
+                point_down_narrow = peaks[jj] + first_nonzero + int(1.4 * dis_to_next_down)
+                ###-int(dis_to_next_down*1./2)
             else:
                 dis_to_next_up = abs(peaks[jj] - peaks_neg[jj])
                 dis_to_next_down = abs(peaks[jj] - peaks_neg[jj + 1])
 
                 if peaks_values[jj] > mean_value_of_peaks - std_value_of_peaks / 2.0:
-                    point_up = peaks[jj] + first_nonzero - int(1.1 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.1 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
                 else:
-                    point_up = peaks[jj] + first_nonzero - int(1.23 * dis_to_next_up)  ##+int(dis_to_next_up*1./4.0)
-                    point_down = peaks[jj] + first_nonzero + int(1.33 * dis_to_next_down)  ###-int(dis_to_next_down*1./4.0)
+                    point_up = peaks[jj] + first_nonzero - int(1.23 * dis_to_next_up)
+                    ##+int(dis_to_next_up*1./4.0)
+                    point_down = peaks[jj] + first_nonzero + int(1.33 * dis_to_next_down)
+                    ###-int(dis_to_next_down*1./4.0)
 
-                point_down_narrow = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)  ###-int(dis_to_next_down*1./2)
+                point_down_narrow = peaks[jj] + first_nonzero + int(1.1 * dis_to_next_down)
+                ###-int(dis_to_next_down*1./2)
 
             if point_down_narrow >= img_patch.shape[0]:
                 point_down_narrow = img_patch.shape[0] - 2
             
-            distances = [cv2.pointPolygonTest(contour_text_interest_copy, tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True) for mj in range(len(xv))]
+            distances = [cv2.pointPolygonTest(contour_text_interest_copy,
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
+                         for mj in range(len(xv))]
             distances = np.array(distances)
 
             xvinside = xv[distances >= 0]
@@ -798,7 +845,8 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
                 point_up = peaks[jj] + first_nonzero - int(1.0 / 1.8 * dis_to_next)
             
             distances = [cv2.pointPolygonTest(contour_text_interest_copy,
-                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
                          for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -863,7 +911,8 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
                 point_down = peaks[jj] + first_nonzero + int(1.0 / 1.9 * dis_to_next_down)
             
             distances = [cv2.pointPolygonTest(contour_text_interest_copy,
-                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])), True)
+                                              tuple(int(x) for x in np.array([xv[mj], peaks[jj] + first_nonzero])),
+                                              True)
                          for mj in range(len(xv))]
             distances = np.array(distances)
 
@@ -947,7 +996,8 @@ def separate_lines_new_inside_tiles2(img_patch, thetha):
             peaks_neg_e, _ = find_peaks(y_padded_up_to_down_padded_e, height=0)
             neg_peaks_max = np.max(y_padded_up_to_down_padded_e[peaks_neg_e])
 
-            arg_neg_must_be_deleted = np.arange(len(peaks_neg_e))[y_padded_up_to_down_padded_e[peaks_neg_e] / float(neg_peaks_max) < 0.3]
+            arg_neg_must_be_deleted = np.arange(len(peaks_neg_e))[
+                y_padded_up_to_down_padded_e[peaks_neg_e] / float(neg_peaks_max) < 0.3]
             diff_arg_neg_must_be_deleted = np.diff(arg_neg_must_be_deleted)
 
             arg_diff = np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -960,8 +1010,11 @@ def separate_lines_new_inside_tiles2(img_patch, thetha):
             if len(arg_diff_cluster) > 0:
                 clusters_to_be_deleted.append(arg_neg_must_be_deleted[0 : arg_diff_cluster[0] + 1])
                 for i in range(len(arg_diff_cluster) - 1):
-                    clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[i] + 1 : arg_diff_cluster[i + 1] + 1])
-                clusters_to_be_deleted.append(arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster) - 1] + 1 :])
+                    clusters_to_be_deleted.append(
+                        arg_neg_must_be_deleted[arg_diff_cluster[i] + 1:
+                                                arg_diff_cluster[i + 1] + 1])
+                clusters_to_be_deleted.append(
+                    arg_neg_must_be_deleted[arg_diff_cluster[len(arg_diff_cluster) - 1] + 1 :])
             if len(clusters_to_be_deleted) > 0:
                 peaks_new_extra = []
                 for m in range(len(clusters_to_be_deleted)):
@@ -1011,7 +1064,8 @@ def separate_lines_new_inside_tiles2(img_patch, thetha):
     try:
         neg_peaks_max = np.max(y_padded_smoothed[peaks])
 
-        arg_neg_must_be_deleted = np.arange(len(peaks_neg))[y_padded_up_to_down_padded[peaks_neg] / float(neg_peaks_max) < 0.24]
+        arg_neg_must_be_deleted = np.arange(len(peaks_neg))[
+            y_padded_up_to_down_padded[peaks_neg] / float(neg_peaks_max) < 0.24]
         diff_arg_neg_must_be_deleted = np.diff(arg_neg_must_be_deleted)
 
         arg_diff = np.array(range(len(diff_arg_neg_must_be_deleted)))
@@ -1287,7 +1341,9 @@ def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
 
     return None, cont_final
 
-def textline_contours_postprocessing(textline_mask, slope, contour_text_interest, box_ind, add_boxes_coor_into_textlines=False):
+def textline_contours_postprocessing(textline_mask, slope,
+                                     contour_text_interest, box_ind,
+                                     add_boxes_coor_into_textlines=False):
     textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2) * 255
     textline_mask = textline_mask.astype(np.uint8)
     kernel = np.ones((5, 5), np.uint8)
@@ -1347,24 +1403,26 @@ def textline_contours_postprocessing(textline_mask, slope, contour_text_interest
 
     return contours_rotated_clean
 
-def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, plotter=None):
+def separate_lines_new2(img_crop, thetha, num_col, slope_region, logger=None, plotter=None):
     if logger is None:
         logger = getLogger(__package__)
+    if not np.prod(img_crop.shape):
+        return img_crop
 
     if num_col == 1:
-        num_patches = int(img_path.shape[1] / 200.0)
+        num_patches = int(img_crop.shape[1] / 200.0)
     else:
-        num_patches = int(img_path.shape[1] / 140.0)
-    # num_patches=int(img_path.shape[1]/200.)
+        num_patches = int(img_crop.shape[1] / 140.0)
+    # num_patches=int(img_crop.shape[1]/200.)
     if num_patches == 0:
         num_patches = 1
 
-    img_patch_ineterst = img_path[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[15]+dis_down ,:]
+    img_patch_interest = img_crop[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[15]+dis_down ,:]
 
-    # plt.imshow(img_patch_ineterst)
+    # plt.imshow(img_patch_interest)
     # plt.show()
 
-    length_x = int(img_path.shape[1] / float(num_patches))
+    length_x = int(img_crop.shape[1] / float(num_patches))
     # margin = int(0.04 * length_x) just recently this was changed because it break lines into 2
     margin = int(0.04 * length_x)
     # if margin<=4:
@@ -1372,7 +1430,7 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
     # margin=0
 
     width_mid = length_x - 2 * margin
-    nxf = img_path.shape[1] / float(width_mid)
+    nxf = img_crop.shape[1] / float(width_mid)
 
     if nxf > int(nxf):
         nxf = int(nxf) + 1
@@ -1388,12 +1446,12 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
             index_x_d = i * width_mid
             index_x_u = index_x_d + length_x
 
-        if index_x_u > img_path.shape[1]:
-            index_x_u = img_path.shape[1]
-            index_x_d = img_path.shape[1] - length_x
+        if index_x_u > img_crop.shape[1]:
+            index_x_u = img_crop.shape[1]
+            index_x_d = img_crop.shape[1] - length_x
 
         # img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-        img_xline = img_patch_ineterst[:, index_x_d:index_x_u]
+        img_xline = img_patch_interest[:, index_x_d:index_x_u]
 
         try:
             assert img_xline.any()
@@ -1409,9 +1467,9 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
         img_line_rotated = rotate_image(img_xline, slope_xline)
         img_line_rotated[:, :][img_line_rotated[:, :] != 0] = 1
         
-    img_patch_ineterst = img_path[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[14]+dis_down ,:]
+    img_patch_interest = img_crop[:, :]  # [peaks_neg_true[14]-dis_up:peaks_neg_true[14]+dis_down ,:]
 
-    img_patch_ineterst_revised = np.zeros(img_patch_ineterst.shape)
+    img_patch_interest_revised = np.zeros(img_patch_interest.shape)
 
     for i in range(nxf):
         if i == 0:
@@ -1421,11 +1479,11 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
             index_x_d = i * width_mid
             index_x_u = index_x_d + length_x
 
-        if index_x_u > img_path.shape[1]:
-            index_x_u = img_path.shape[1]
-            index_x_d = img_path.shape[1] - length_x
+        if index_x_u > img_crop.shape[1]:
+            index_x_u = img_crop.shape[1]
+            index_x_d = img_crop.shape[1] - length_x
 
-        img_xline = img_patch_ineterst[:, index_x_d:index_x_u]
+        img_xline = img_patch_interest[:, index_x_d:index_x_u]
 
         img_int = np.zeros((img_xline.shape[0], img_xline.shape[1]))
         img_int[:, :] = img_xline[:, :]  # img_patch_org[:,:,0]
@@ -1448,11 +1506,12 @@ def separate_lines_new2(img_path, thetha, num_col, slope_region, logger=None, pl
             int(img_int.shape[1] * (1.0)) : int(img_int.shape[1] * (1.0)) + img_int.shape[1]]
 
         img_patch_separated_returned_true_size = img_patch_separated_returned_true_size[:, margin : length_x - margin]
-        img_patch_ineterst_revised[:, index_x_d + margin : index_x_u - margin] = img_patch_separated_returned_true_size
+        img_patch_interest_revised[:, index_x_d + margin : index_x_u - margin] = img_patch_separated_returned_true_size
 
-    return img_patch_ineterst_revised
+    return img_patch_interest_revised
 
-def do_image_rotation(angle, img, sigma_des, logger=None):
+@wrap_ndarray_shared(kw='img')
+def do_image_rotation(angle, img=None, sigma_des=1.0, logger=None):
     if logger is None:
         logger = getLogger(__package__)
     img_rot = rotate_image(img, angle)
@@ -1465,7 +1524,7 @@ def do_image_rotation(angle, img, sigma_des, logger=None):
     return var
 
 def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
-                       main_page=False, logger=None, plotter=None, map=map):
+                       main_page=False, logger=None, plotter=None, map=None):
     if main_page and plotter:
         plotter.save_plot_of_textline_density(img_patch_org)
     
@@ -1479,159 +1538,75 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
     onset_y=int((img_resized.shape[0]-img_int.shape[0])/2.)
 
     #img_resized=np.zeros((int( img_int.shape[0]*(1.8) ) , int( img_int.shape[1]*(2.6) ) ))
-    #img_resized[ int( img_int.shape[0]*(.4)):int( img_int.shape[0]*(.4))+img_int.shape[0] , int( img_int.shape[1]*(.8)):int( img_int.shape[1]*(.8))+img_int.shape[1] ]=img_int[:,:]
+    #img_resized[ int( img_int.shape[0]*(.4)):int( img_int.shape[0]*(.4))+img_int.shape[0],
+    #             int( img_int.shape[1]*(.8)):int( img_int.shape[1]*(.8))+img_int.shape[1] ]=img_int[:,:]
     img_resized[ onset_y:onset_y+img_int.shape[0] , onset_x:onset_x+img_int.shape[1] ]=img_int[:,:]
 
     if main_page and img_patch_org.shape[1] > img_patch_org.shape[0]:
         angles = np.array([-45, 0, 45, 90,])
-        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
-        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
     elif main_page:
-        angles = np.array (list(np.linspace(-12, -7, int(n_tot_angles/4))) + list(np.linspace(-6, 6, n_tot_angles- 2* int(n_tot_angles/4))) + list(np.linspace(7, 12, int(n_tot_angles/4))))#np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
-        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        #angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
+        angles = np.concatenate((np.linspace(-12, -7, n_tot_angles // 4),
+                                 np.linspace(-6, 6, n_tot_angles // 2),
+                                 np.linspace(7, 12, n_tot_angles // 4)))
+        angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         early_slope_edge=11
         if abs(angle) > early_slope_edge:
             if angle < 0:
-                angles = np.linspace(-90, -12, n_tot_angles)
+                angles2 = np.linspace(-90, -12, n_tot_angles)
             else:
-                angles = np.linspace(90, 12, n_tot_angles)
-            angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+                angles2 = np.linspace(90, 12, n_tot_angles)
+            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, plotter=plotter)
+            if var2 > var:
+                angle = angle2
     else:
         angles = np.linspace(-25, 25, int(0.5 * n_tot_angles) + 10)
-        angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
 
         early_slope_edge=22
         if abs(angle) > early_slope_edge:
             if angle < 0:
-                angles = np.linspace(-90, -25, int(0.5 * n_tot_angles) + 10)
+                angles2 = np.linspace(-90, -25, int(0.5 * n_tot_angles) + 10)
             else:
-                angles = np.linspace(90, 25, int(0.5 * n_tot_angles) + 10)
-            angle = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
-
+                angles2 = np.linspace(90, 25, int(0.5 * n_tot_angles) + 10)
+            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, plotter=plotter)
+            if var2 > var:
+                angle = angle2
     return angle
 
 def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map):
     if logger is None:
         logger = getLogger(__package__)
-    results = list(map(partial(do_image_rotation, img=img, sigma_des=sigma_des, logger=logger), angles))
+    if map is None:
+        results = [do_image_rotation.__wrapped__(angle, img=img, sigma_des=sigma_des, logger=logger)
+                   for angle in angles]
+    else:
+        with share_ndarray(img) as img_shared:
+            results = list(map(partial(do_image_rotation, img=img_shared, sigma_des=sigma_des, logger=None),
+                               angles))
     if plotter:
         plotter.save_plot_of_rotation_angle(angles, results)
     try:
         var_res = np.array(results)
         assert var_res.any()
-        angle = angles[np.argmax(var_res)]
+        idx = np.argmax(var_res)
+        angle = angles[idx]
+        var = var_res[idx]
     except:
         logger.exception("cannot determine best angle among %s", str(angles))
         angle = 0
-    return angle
+        var = 0
+    return angle, var
 
-
-def return_deskew_slop_old_mp(img_patch_org, sigma_des,n_tot_angles=100,
-                       main_page=False, logger=None, plotter=None):
-    if main_page and plotter:
-        plotter.save_plot_of_textline_density(img_patch_org)
-
-    img_int=np.zeros((img_patch_org.shape[0],img_patch_org.shape[1]))
-    img_int[:,:]=img_patch_org[:,:]#img_patch_org[:,:,0]
-
-    max_shape=np.max(img_int.shape)
-    img_resized=np.zeros((int( max_shape*(1.1) ) , int( max_shape*(1.1) ) ))
-
-    onset_x=int((img_resized.shape[1]-img_int.shape[1])/2.)
-    onset_y=int((img_resized.shape[0]-img_int.shape[0])/2.)
-
-    img_resized[ onset_y:onset_y+img_int.shape[0] , onset_x:onset_x+img_int.shape[1] ]=img_int[:,:]
-
-    if main_page and img_patch_org.shape[1] > img_patch_org.shape[0]:
-        angles = np.array([-45, 0, 45, 90,])
-        angle = get_smallest_skew_omp(img_resized, sigma_des, angles, plotter=plotter)
-
-        angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
-        angle = get_smallest_skew_omp(img_resized, sigma_des, angles, plotter=plotter)
-    elif main_page:
-        angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
-        angle = get_smallest_skew_omp(img_resized, sigma_des, angles, plotter=plotter)
-
-        early_slope_edge=11
-        if abs(angle) > early_slope_edge:
-            if angle < 0:
-                angles = np.linspace(-90, -12, n_tot_angles)
-            else:
-                angles = np.linspace(90, 12, n_tot_angles)
-            angle = get_smallest_skew_omp(img_resized, sigma_des, angles, plotter=plotter)
-    else:
-        angles = np.linspace(-25, 25, int(0.5 * n_tot_angles) + 10)
-        angle = get_smallest_skew_omp(img_resized, sigma_des, angles, plotter=plotter)
-
-        early_slope_edge=22
-        if abs(angle) > early_slope_edge:
-            if angle < 0:
-                angles = np.linspace(-90, -25, int(0.5 * n_tot_angles) + 10)
-            else:
-                angles = np.linspace(90, 25, int(0.5 * n_tot_angles) + 10)
-            angle = get_smallest_skew_omp(img_resized, sigma_des, angles, plotter=plotter)
-
-    return angle
-
-def do_image_rotation_omp(queue_of_all_params,angles_per_process, img_resized, sigma_des):
-    vars_per_each_subprocess = []
-    angles_per_each_subprocess = []
-    for mv in range(len(angles_per_process)):
-        img_rot=rotate_image(img_resized,angles_per_process[mv])
-        img_rot[img_rot!=0]=1
-        try:
-            var_spectrum=find_num_col_deskew(img_rot,sigma_des,20.3  )
-        except:
-            var_spectrum=0
-        vars_per_each_subprocess.append(var_spectrum)
-        angles_per_each_subprocess.append(angles_per_process[mv])
-            
-    queue_of_all_params.put([vars_per_each_subprocess, angles_per_each_subprocess])
-
-def get_smallest_skew_omp(img_resized, sigma_des, angles, plotter=None):
-    num_cores = cpu_count()
-    
-    queue_of_all_params = Queue()
-    processes = []
-    nh = np.linspace(0, len(angles), num_cores + 1)
-    
-    for i in range(num_cores):
-        angles_per_process = angles[int(nh[i]) : int(nh[i + 1])]
-        processes.append(Process(target=do_image_rotation_omp, args=(queue_of_all_params, angles_per_process, img_resized, sigma_des)))
-        
-    for i in range(num_cores):
-        processes[i].start()
-    
-    var_res=[]
-    all_angles = []
-    for i in range(num_cores):
-        list_all_par = queue_of_all_params.get(True)
-        vars_for_subprocess = list_all_par[0]
-        angles_sub_process = list_all_par[1]
-        for j in range(len(vars_for_subprocess)):
-            var_res.append(vars_for_subprocess[j])
-            all_angles.append(angles_sub_process[j])
-            
-    for i in range(num_cores):
-        processes[i].join()
-        
-    if plotter:
-        plotter.save_plot_of_rotation_angle(all_angles, var_res)
-
-        
-    try:
-        var_res=np.array(var_res)
-        ang_int=all_angles[np.argmax(var_res)]#angels_sorted[arg_final]#angels[arg_sort_early[arg_sort[arg_final]]]#angels[arg_fin]
-    except:
-        ang_int=0
-    return ang_int
-
+@wrap_ndarray_shared(kw='textline_mask_tot_ea')
 def do_work_of_slopes_new(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, image_page_rotated, slope_deskew,
+        textline_mask_tot_ea=None, slope_deskew=0.0,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
     if KERNEL is None:
@@ -1641,7 +1616,7 @@ def do_work_of_slopes_new(
     logger.debug('enter do_work_of_slopes_new')
 
     x, y, w, h = box_text
-    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    crop_coor = box2rect(box_text)
     mask_textline = np.zeros(textline_mask_tot_ea.shape)
     mask_textline = cv2.fillPoly(mask_textline, pts=[contour], color=(1,1,1))
     all_text_region_raw = textline_mask_tot_ea * mask_textline
@@ -1649,7 +1624,7 @@ def do_work_of_slopes_new(
     img_int_p = all_text_region_raw[:,:]
     img_int_p = cv2.erode(img_int_p, KERNEL, iterations=2)
 
-    if img_int_p.shape[0] /img_int_p.shape[1] < 0.1:
+    if not np.prod(img_int_p.shape) or img_int_p.shape[0] /img_int_p.shape[1] < 0.1:
         slope = 0
         slope_for_all = slope_deskew
         all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w]
@@ -1687,9 +1662,12 @@ def do_work_of_slopes_new(
 
     return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope
 
+@wrap_ndarray_shared(kw='textline_mask_tot_ea')
+@wrap_ndarray_shared(kw='mask_texts_only')
 def do_work_of_slopes_new_curved(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, image_page_rotated, mask_texts_only, num_col, scale_par, slope_deskew,
+        textline_mask_tot_ea=None, mask_texts_only=None,
+        num_col=1, scale_par=1.0, slope_deskew=0.0,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
     if KERNEL is None:
@@ -1706,7 +1684,7 @@ def do_work_of_slopes_new_curved(
     # plt.imshow(img_int_p)
     # plt.show()
 
-    if img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
+    if not np.prod(img_int_p.shape) or img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
         slope = 0
         slope_for_all = slope_deskew
     else:
@@ -1732,7 +1710,7 @@ def do_work_of_slopes_new_curved(
             slope_for_all = slope_deskew
         slope = slope_for_all
 
-    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    crop_coor = box2rect(box_text)
 
     if abs(slope_for_all) < 45:
         textline_region_in_image = np.zeros(textline_mask_tot_ea.shape)
@@ -1765,20 +1743,25 @@ def do_work_of_slopes_new_curved(
                 mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=4)
 
             pixel_img = 1
-            mask_biggest2 = resize_image(mask_biggest2, int(mask_biggest2.shape[0] * scale_par), int(mask_biggest2.shape[1] * scale_par))
+            mask_biggest2 = resize_image(mask_biggest2,
+                                         int(mask_biggest2.shape[0] * scale_par),
+                                         int(mask_biggest2.shape[1] * scale_par))
             cnt_textlines_in_image_ind = return_contours_of_interested_textline(mask_biggest2, pixel_img)
             try:
                 textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0])
             except Exception as why:
                 logger.error(why)
     else:
-        textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contour_par, box_text, True)
+        textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw,
+                                                                    slope_for_all, contour_par,
+                                                                    box_text, True)
 
     return textlines_cnt_per_region[::-1], box_text, contour, contour_par, crop_coor, index_r_con, slope
 
+@wrap_ndarray_shared(kw='textline_mask_tot_ea')
 def do_work_of_slopes_new_light(
         box_text, contour, contour_par, index_r_con,
-        textline_mask_tot_ea, image_page_rotated, slope_deskew, textline_light,
+        textline_mask_tot_ea=None, slope_deskew=0, textline_light=True,
         logger=None
 ):
     if logger is None:
@@ -1786,7 +1769,7 @@ def do_work_of_slopes_new_light(
     logger.debug('enter do_work_of_slopes_new_light')
 
     x, y, w, h = box_text
-    _, crop_coor = crop_image_inside_box(box_text, image_page_rotated)
+    crop_coor = box2rect(box_text)
     mask_textline = np.zeros(textline_mask_tot_ea.shape)
     mask_textline = cv2.fillPoly(mask_textline, pts=[contour], color=(1,1,1))
     all_text_region_raw = textline_mask_tot_ea * mask_textline
