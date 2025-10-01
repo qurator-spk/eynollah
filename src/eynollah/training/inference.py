@@ -13,9 +13,14 @@ import click
 from tensorflow.python.keras import backend as tensorflow_backend
 import xml.etree.ElementTree as ET
 
-from .models import *
-from .gt_gen_utils import *
-
+from .gt_gen_utils import (
+    filter_contours_area_of_image,
+    find_new_features_of_contours,
+    read_xml,
+    resize_image,
+    update_list_and_return_first_with_length_bigger_than_one
+)
+from .models import PatchEncoder, Patches
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
