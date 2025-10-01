@@ -20,7 +20,10 @@ from .gt_gen_utils import (
     resize_image,
     update_list_and_return_first_with_length_bigger_than_one
 )
-from .models import PatchEncoder, Patches
+from .models import (
+    PatchEncoder,
+    Patches
+)
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -675,9 +678,3 @@ def main(image, dir_in, model, patches, save, save_layout, ground_truth, xml_fil
     x=sbb_predict(image, dir_in, model, task, config_params_model, patches, save, save_layout, ground_truth, xml_file, out, min_area)
     x.run()
 
-if __name__=="__main__":
-    main()
-
-    
-    
-    

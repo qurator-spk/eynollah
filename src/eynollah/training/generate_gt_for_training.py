@@ -581,6 +581,3 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
                     # Draw the text
                     draw.text((text_x, text_y), ocr_texts[index], fill="black", font=font)
         image_text.save(os.path.join(dir_out, f_name+'.png'))
-    
-if __name__ == "__main__":
-    main()

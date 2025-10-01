@@ -2,9 +2,13 @@ import os
 import sys
 import json
 
-from eynollah.training.metrics import soft_dice_loss, weighted_categorical_crossentropy
+import click
 
-from .models import (
+from eynollah.training.metrics import (
+    soft_dice_loss,
+    weighted_categorical_crossentropy
+)
+from eynollah.training.models import (
     PatchEncoder,
     Patches,
     machine_based_reading_order_model,
@@ -13,7 +17,7 @@ from .models import (
     vit_resnet50_unet,
     vit_resnet50_unet_transformer_before_cnn
 )
-from .utils import (
+from eynollah.training.utils import (
     data_gen,
     generate_arrays_from_folder_reading_order,
     generate_data_from_folder_evaluation,
@@ -141,7 +145,6 @@ def config_params():
     number_of_backgrounds_per_image = 1
     dir_rgb_backgrounds = None
     dir_rgb_foregrounds = None
-
 
 @ex.automain
 def run(_config, n_classes, n_epochs, input_height,
