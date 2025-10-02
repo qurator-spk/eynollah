@@ -4208,7 +4208,7 @@ class Eynollah:
         return generated_text
 
     def return_list_of_contours_with_desired_order(self, ls_cons, sorted_indexes):
-        return [ls_cons[sorted_indexes[index]] for index in range(len(sorted_indexes))]
+        return list(np.array(ls_cons)[np.array(sorted_indexes)])
 
     def return_it_in_two_groups(self, x_differential):
         split = [ind if x_differential[ind]!=x_differential[ind+1] else -1
@@ -4237,47 +4237,38 @@ class Eynollah:
 
     def filter_contours_inside_a_bigger_one(self, contours, contours_d_ordered, image,
                                             marginal_cnts=None, type_contour="textregion"):
-        if type_contour=="textregion":
-            areas = [cv2.contourArea(contours[j]) for j in range(len(contours))]
+        if type_contour == "textregion":
+            areas = np.array(list(map(cv2.contourArea, contours)))
             area_tot = image.shape[0]*image.shape[1]
+            areas_ratio = areas / area_tot
+            cx_main, cy_main = find_center_of_contours(contours)
 
-            M_main = [cv2.moments(contours[j])
-                      for j in range(len(contours))]
-            cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-            cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
+            contours_index_small = np.flatnonzero(areas_ratio < 1e-3)
+            contours_index_large = np.flatnonzero(areas_ratio >= 1e-3)
 
-            areas_ratio = np.array(areas)/ area_tot
-            contours_index_small = [ind for ind in range(len(contours)) if areas_ratio[ind] < 1e-3]
-            contours_index_big = [ind  for ind in range(len(contours)) if areas_ratio[ind] >= 1e-3]
-
-            #contours_> = [contours[ind] for ind in contours_index_big]
+            #contours_> = [contours[ind] for ind in contours_index_large]
             indexes_to_be_removed = []
             for ind_small in contours_index_small:
-                results = [cv2.pointPolygonTest(contours[ind], (cx_main[ind_small], cy_main[ind_small]), False)
-                           for ind in contours_index_big]
-                if marginal_cnts:
-                    results_marginal = [cv2.pointPolygonTest(marginal_cnts[ind],
+                results = [cv2.pointPolygonTest(contours[ind_large], (cx_main[ind_small],
+                                                                      cy_main[ind_small]),
+                                                False)
+                           for ind_large in contours_index_large]
+                results = np.array(results)
+                if np.any(results==1):
+                    indexes_to_be_removed.append(ind_small)
+                elif marginal_cnts:
+                    results_marginal = [cv2.pointPolygonTest(marginal_cnt,
                                                              (cx_main[ind_small],
                                                               cy_main[ind_small]),
                                                              False)
-                                        for ind in range(len(marginal_cnts))]
+                                        for marginal_cnt in marginal_cnts]
                     results_marginal = np.array(results_marginal)
-
                     if np.any(results_marginal==1):
                         indexes_to_be_removed.append(ind_small)
 
-                results = np.array(results)
-
-                if np.any(results==1):
-                    indexes_to_be_removed.append(ind_small)
-
-            if len(indexes_to_be_removed)>0:
-                indexes_to_be_removed = np.unique(indexes_to_be_removed)
-                indexes_to_be_removed = np.sort(indexes_to_be_removed)[::-1]
-                for ind in indexes_to_be_removed:
-                    contours.pop(ind)
-                    if len(contours_d_ordered)>0:
-                        contours_d_ordered.pop(ind)
+            contours = np.delete(contours, indexes_to_be_removed, axis=0)
+            if len(contours_d_ordered):
+                contours_d_ordered = np.delete(contours_d_ordered, indexes_to_be_removed, axis=0)
 
             return contours, contours_d_ordered
 
@@ -4285,33 +4276,21 @@ class Eynollah:
             contours_txtline_of_all_textregions = []
             indexes_of_textline_tot = []
             index_textline_inside_textregion = []
+            for ind_region, textlines in enumerate(contours):
+                contours_txtline_of_all_textregions.extend(textlines)
+                index_textline_inside_textregion.extend(list(range(len(textlines))))
+                indexes_of_textline_tot.extend([ind_region] * len(textlines))
 
-            for jj in range(len(contours)):
-                contours_txtline_of_all_textregions = contours_txtline_of_all_textregions + contours[jj]
-
-                ind_textline_inside_tr = list(range(len(contours[jj])))
-                index_textline_inside_textregion = index_textline_inside_textregion + ind_textline_inside_tr
-                ind_ins = [jj] * len(contours[jj])
-                indexes_of_textline_tot = indexes_of_textline_tot + ind_ins
-
-            M_main_tot = [cv2.moments(contours_txtline_of_all_textregions[j])
-                          for j in range(len(contours_txtline_of_all_textregions))]
-            cx_main_tot = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
-            cy_main_tot = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
-
-            areas_tot = [cv2.contourArea(con_ind) for con_ind in contours_txtline_of_all_textregions]
+            areas_tot = np.array(list(map(cv2.contourArea, contours_txtline_of_all_textregions)))
             area_tot_tot = image.shape[0]*image.shape[1]
+            cx_main_tot, cy_main_tot = find_center_of_contours(contours_txtline_of_all_textregions)
 
-            textregion_index_to_del = []
-            textline_in_textregion_index_to_del = []
+            textline_in_textregion_index_to_del = {}
             for ij in range(len(contours_txtline_of_all_textregions)):
-                args_all = list(np.array(range(len(contours_txtline_of_all_textregions))))
-                args_all.pop(ij)
-
-                areas_without = np.array(areas_tot)[args_all]
                 area_of_con_interest = areas_tot[ij]
-
-                args_with_bigger_area = np.array(args_all)[areas_without > 1.5*area_of_con_interest]
+                args_without = np.delete(np.arange(len(contours_txtline_of_all_textregions)), ij)
+                areas_without = areas_tot[args_without]
+                args_with_bigger_area = args_without[areas_without > 1.5*area_of_con_interest]
 
                 if len(args_with_bigger_area)>0:
                     results = [cv2.pointPolygonTest(contours_txtline_of_all_textregions[ind],
@@ -4322,18 +4301,15 @@ class Eynollah:
                     results = np.array(results)
                     if np.any(results==1):
                         #print(indexes_of_textline_tot[ij], index_textline_inside_textregion[ij])
-                        textregion_index_to_del.append(int(indexes_of_textline_tot[ij]))
-                        textline_in_textregion_index_to_del.append(int(index_textline_inside_textregion[ij]))
-                        #contours[int(indexes_of_textline_tot[ij])].pop(int(index_textline_inside_textregion[ij]))
+                        textline_in_textregion_index_to_del.setdefault(
+                            indexes_of_textline_tot[ij], list()).append(
+                                index_textline_inside_textregion[ij])
+                        #contours[indexes_of_textline_tot[ij]].pop(index_textline_inside_textregion[ij])
 
-            textregion_index_to_del = np.array(textregion_index_to_del)
-            textline_in_textregion_index_to_del = np.array(textline_in_textregion_index_to_del)
-            for ind_u_a_trs in np.unique(textregion_index_to_del):
-                textline_in_textregion_index_to_del_ind = \
-                    textline_in_textregion_index_to_del[textregion_index_to_del==ind_u_a_trs]
-                textline_in_textregion_index_to_del_ind = np.sort(textline_in_textregion_index_to_del_ind)[::-1]
-                for ittrd in textline_in_textregion_index_to_del_ind:
-                    contours[ind_u_a_trs].pop(ittrd)
+            for textregion_index_to_del in textline_in_textregion_index_to_del:
+                contours[textregion_index_to_del] = list(np.delete(
+                    contours[textregion_index_to_del],
+                    textline_in_textregion_index_to_del[textregion_index_to_del]))
 
             return contours
         
