@@ -1,0 +1,8 @@
+{
+"use_case": "textline",
+"textregions":{ "rest_as_paragraph": 1, "header":2 , "heading":2 , "marginalia":3 },
+"imageregion":4,
+"separatorregion":5,
+"graphicregions" :{"rest_as_decoration":6},
+"columns_width":{"1":1000, "2":1300, "3":1600, "4":2000, "5":2300, "6":2500}
+}

@@ -12,7 +12,7 @@ from .utils import crop_image_inside_box
 from .utils.rotate import rotate_image_different
 from .utils.resize import resize_image
 
-class EynollahPlotter():
+class EynollahPlotter:
     """
     Class collecting all the plotting and image writing methods
     """

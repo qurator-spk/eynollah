@@ -21,7 +21,7 @@ from ocrd_models.ocrd_page import (
         )
 import numpy as np
 
-class EynollahXmlWriter():
+class EynollahXmlWriter:
 
     def __init__(self, *, dir_out, image_filename, curved_line,textline_light, pcgts=None):
         self.logger = getLogger('eynollah.writer')

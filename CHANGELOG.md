@@ -22,7 +22,7 @@ Added:
 Fixed:
 
  * allow empty imports for optional dependencies
- * avoid Numpy warnings (empty slices etc)
+ * avoid Numpy warnings (empty slices etc.)
  * remove deprecated Numpy types
  * binarization CLI: make `dir_in` usable again
 
