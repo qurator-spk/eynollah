@@ -1,23 +1,29 @@
 import sys
 import os
-import numpy as np
 import warnings
+import json
+
+import numpy as np
 import cv2
-import seaborn as sns
 from tensorflow.keras.models import load_model
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras import layers
-import tensorflow.keras.losses
 from tensorflow.keras.layers import *
-from models import *
-from gt_gen_utils import *
 import click
-import json
 from tensorflow.python.keras import backend as tensorflow_backend
 import xml.etree.ElementTree as ET
-import matplotlib.pyplot as plt
 
+from .gt_gen_utils import (
+    filter_contours_area_of_image,
+    find_new_features_of_contours,
+    read_xml,
+    resize_image,
+    update_list_and_return_first_with_length_bigger_than_one
+)
+from .models import (
+    PatchEncoder,
+    Patches
+)
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -55,11 +61,9 @@ class sbb_predict:
             seg=seg[:,:,0]
             
         seg_img=np.zeros((np.shape(seg)[0],np.shape(seg)[1],3)).astype(np.uint8)
-        colors=sns.color_palette("hls", self.n_classes)
         
         for c in ann_u:
             c=int(c)
-            segl=(seg==c)
             seg_img[:,:,0][seg==c]=c
             seg_img[:,:,1][seg==c]=c
             seg_img[:,:,2][seg==c]=c
@@ -674,9 +678,3 @@ def main(image, dir_in, model, patches, save, save_layout, ground_truth, xml_fil
     x=sbb_predict(image, dir_in, model, task, config_params_model, patches, save, save_layout, ground_truth, xml_file, out, min_area)
     x.run()
 
-if __name__=="__main__":
-    main()
-
-    
-    
-    

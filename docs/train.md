@@ -13,7 +13,7 @@ The following three tasks can all be accomplished using the code in the
 * train a model
 * inference with the trained model
 
-## Training , evaluation and output 
+## Training, evaluation and output 
 
 The train and evaluation folders should contain subfolders of `images` and `labels`.
 
@@ -22,11 +22,13 @@ The output folder should be an empty folder where the output model will be writt
 ## Generate training dataset
 
 The script `generate_gt_for_training.py` is used for generating training datasets. As the results of the following
-command demonstrates, the dataset generator provides three different commands:
+command demonstrates, the dataset generator provides several subcommands:
 
-`python generate_gt_for_training.py --help`
+```sh
+eynollah-training generate-gt --help
+```
 
-These three commands are:
+The three most important subcommands are:
 
 * image-enhancement
 * machine-based-reading-order
@@ -38,7 +40,7 @@ Generating a training dataset for image enhancement is quite straightforward. Al
 high-resolution images. The training dataset can then be generated using the following command:
 
 ```sh
-python generate_gt_for_training.py image-enhancement \
+eynollah-training image-enhancement \
   -dis "dir of high resolution images" \
   -dois "dir where degraded images will be written" \
   -dols "dir where the corresponding high resolution image will be written as label" \
@@ -69,7 +71,7 @@ to filter out regions smaller than this minimum size. This minimum size is defin
 to the image area, with a default value of zero. To run the dataset generator, use the following command:
 
 ```shell
-python generate_gt_for_training.py machine-based-reading-order \
+eynollah-training generate-gt machine-based-reading-order \
   -dx "dir of GT xml files" \
   -domi "dir where output images will be written" \
 "" -docl "dir where the labels will be written" \
@@ -144,7 +146,7 @@ region" are also present in the label. However, other regions like "noise region
 included in the label PNG file, even if they have information in the page XML files, as we chose not to include them.
 
 ```sh
-python generate_gt_for_training.py pagexml2label \
+eynollah-training generate-gt pagexml2label \
   -dx "dir of GT xml files" \
   -do "dir where output label png files will be written" \
   -cfg "custom config json file" \
@@ -198,7 +200,7 @@ provided to ensure that they are cropped in sync with the labels. This ensures t
 required for training are obtained. The command should resemble the following:
 
 ```sh
-python generate_gt_for_training.py pagexml2label \
+eynollah-training generate-gt pagexml2label \
   -dx "dir of GT xml files" \
   -do "dir where output label png files will be written" \
   -cfg "custom config json file" \
@@ -261,7 +263,7 @@ And the "dir_eval" the same structure as train directory:
 The classification model can be trained using the following command line:
 
 ```sh
-python train.py with config_classification.json
+eynollah-training train with config_classification.json
 ```
 
 As evident in the example JSON file above, for classification, we utilize a "f1_threshold_classification" parameter.
@@ -395,7 +397,9 @@ And the "dir_eval" the same structure as train directory:
 After configuring the JSON file for segmentation or enhancement, training can be initiated by running the following
 command, similar to the process for classification and reading order:
 
-`python train.py with config_classification.json`
+```
+eynollah-training train with config_classification.json`
+```
 
 #### Binarization
 
@@ -679,7 +683,7 @@ For conducting inference with a trained model, you simply need to execute the fo
 directory of the model and the image on which to perform inference:
 
 ```sh
-python inference.py -m "model dir" -i "image"
+eynollah-training inference -m "model dir" -i "image"
 ```
 
 This will straightforwardly return the class of the image.
@@ -691,7 +695,7 @@ without the reading order. We simply need to provide the model directory, the XM
 new XML file with the added reading order will be written to the output directory with the same name. We need to run:
 
 ```sh
-python inference.py \
+eynollah-training inference \
   -m "model dir" \
   -xml "page xml file" \
   -o "output dir to write new xml with reading order"
@@ -702,7 +706,7 @@ python inference.py \
 For conducting inference with a trained model for segmentation and enhancement you need to run the following command line:
 
 ```sh
-python inference.py \
+eynollah-training inference \
   -m "model dir" \
   -i "image" \
   -p \
