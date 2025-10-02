@@ -65,11 +65,7 @@ def xml_reading_order(page, order_of_texts, id_of_marginalia_left, id_of_margina
         og.add_RegionRefIndexed(RegionRefIndexedType(index=str(region_counter.get('region')), regionRef=id_marginal))
         region_counter.inc('region')
 
-def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region_h, matrix_of_orders, indexes_sorted, index_of_types, kind_of_texts, ref_point):
-    indexes_sorted = np.array(indexes_sorted)
-    index_of_types = np.array(index_of_types)
-    kind_of_texts = np.array(kind_of_texts)
-
+def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region_h, indexes_sorted, index_of_types, kind_of_texts, ref_point):
     id_of_texts = []
     order_of_texts = []
 

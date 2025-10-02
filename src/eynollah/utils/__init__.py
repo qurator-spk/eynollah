@@ -1325,7 +1325,7 @@ def order_of_regions(textline_mask, contours_main, contours_header, y_ref):
             final_types.append(1)
             final_index_type.append(ind_missed)
 
-    return final_indexers_sorted, matrix_of_orders, final_types, final_index_type
+    return np.array(final_indexers_sorted), np.array(final_types), np.array(final_index_type)
 
 def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
         img_p_in_ver, img_in_hor,num_col_classifier):

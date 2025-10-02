@@ -2567,26 +2567,25 @@ class Eynollah:
             ref_point = 0
             order_of_texts_tot = []
             id_of_texts_tot = []
-            for iij in range(len(boxes)):
-                ys = slice(*boxes[iij][2:4])
-                xs = slice(*boxes[iij][0:2])
+            for iij, box in enumerate(boxes):
+                ys = slice(*box[2:4])
+                xs = slice(*box[0:2])
                 args_contours_box = args_contours[np.array(arg_text_con) == iij]
                 args_contours_box_h = args_contours_h[np.array(arg_text_con_h) == iij]
                 con_inter_box = contours_only_text_parent[args_contours_box]
                 con_inter_box_h = contours_only_text_parent_h[args_contours_box_h]
 
-
-                indexes_sorted, matrix_of_orders, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
-                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, boxes[iij][2])
+                indexes_sorted, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
+                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, box[2])
 
                 order_of_texts, id_of_texts = order_and_id_of_texts(
                     con_inter_box, con_inter_box_h,
-                    matrix_of_orders, indexes_sorted, index_by_kind_sorted, kind_of_texts_sorted, ref_point)
+                    indexes_sorted, index_by_kind_sorted, kind_of_texts_sorted, ref_point)
 
-                indexes_sorted_main = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 1]
-                indexes_by_type_main = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 1]
-                indexes_sorted_head = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 2]
-                indexes_by_type_head = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 2]
+                indexes_sorted_main = indexes_sorted[kind_of_texts_sorted == 1]
+                indexes_by_type_main = index_by_kind_sorted[kind_of_texts_sorted == 1]
+                indexes_sorted_head = indexes_sorted[kind_of_texts_sorted == 2]
+                indexes_by_type_head = index_by_kind_sorted[kind_of_texts_sorted == 2]
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
@@ -2664,25 +2663,25 @@ class Eynollah:
             ref_point = 0
             order_of_texts_tot = []
             id_of_texts_tot = []
-            for iij, _ in enumerate(boxes):
-                ys = slice(*boxes[iij][2:4])
-                xs = slice(*boxes[iij][0:2])
+            for iij, box in enumerate(boxes):
+                ys = slice(*box[2:4])
+                xs = slice(*box[0:2])
                 args_contours_box = args_contours[np.array(arg_text_con) == iij]
                 args_contours_box_h = args_contours_h[np.array(arg_text_con_h) == iij]
                 con_inter_box = contours_only_text_parent[args_contours_box]
                 con_inter_box_h = contours_only_text_parent_h[args_contours_box_h]
 
-                indexes_sorted, matrix_of_orders, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
-                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, boxes[iij][2])
+                indexes_sorted, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
+                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, box[2])
 
                 order_of_texts, id_of_texts = order_and_id_of_texts(
                     con_inter_box, con_inter_box_h,
-                    matrix_of_orders, indexes_sorted, index_by_kind_sorted, kind_of_texts_sorted, ref_point)
+                    indexes_sorted, index_by_kind_sorted, kind_of_texts_sorted, ref_point)
 
-                indexes_sorted_main = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 1]
-                indexes_by_type_main = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 1]
-                indexes_sorted_head = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 2]
-                indexes_by_type_head = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 2]
+                indexes_sorted_main = indexes_sorted[kind_of_texts_sorted == 1]
+                indexes_by_type_main = index_by_kind_sorted[kind_of_texts_sorted == 1]
+                indexes_sorted_head = indexes_sorted[kind_of_texts_sorted == 2]
+                indexes_by_type_head = index_by_kind_sorted[kind_of_texts_sorted == 2]
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
@@ -2747,22 +2746,22 @@ class Eynollah:
             ref_point = 0
             order_of_texts_tot = []
             id_of_texts_tot = []
-            for iij in range(len(boxes)):
-                ys = slice(*boxes[iij][2:4])
-                xs = slice(*boxes[iij][0:2])
+            for iij, box in enumerate(boxes):
+                ys = slice(*box[2:4])
+                xs = slice(*box[0:2])
                 args_contours_box = args_contours[np.array(arg_text_con) == iij]
                 con_inter_box = contours_only_text_parent[args_contours_box]
                 con_inter_box_h = []
 
-                indexes_sorted, matrix_of_orders, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
-                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, boxes[iij][2])
+                indexes_sorted, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
+                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, box[2])
 
                 order_of_texts, id_of_texts = order_and_id_of_texts(
                     con_inter_box, con_inter_box_h,
-                    matrix_of_orders, indexes_sorted, index_by_kind_sorted, kind_of_texts_sorted, ref_point)
+                    indexes_sorted, index_by_kind_sorted, kind_of_texts_sorted, ref_point)
 
-                indexes_sorted_main = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 1]
-                indexes_by_type_main = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 1]
+                indexes_sorted_main = indexes_sorted[kind_of_texts_sorted == 1]
+                indexes_by_type_main = index_by_kind_sorted[kind_of_texts_sorted == 1]
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
@@ -2808,24 +2807,24 @@ class Eynollah:
             ref_point = 0
             order_of_texts_tot = []
             id_of_texts_tot = []
-            for iij in range(len(boxes)):
-                ys = slice(*boxes[iij][2:4])
-                xs = slice(*boxes[iij][0:2])
+            for iij, box in enumerate(boxes):
+                ys = slice(*box[2:4])
+                xs = slice(*box[0:2])
                 args_contours_box = args_contours[np.array(arg_text_con) == iij]
                 con_inter_box = []
                 con_inter_box_h = []
                 for i in range(len(args_contours_box)):
                     con_inter_box.append(contours_only_text_parent[args_contours_box[i]])
 
-                indexes_sorted, matrix_of_orders, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
-                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, boxes[iij][2])
+                indexes_sorted, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
+                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, box[2])
 
                 order_of_texts, id_of_texts = order_and_id_of_texts(
                     con_inter_box, con_inter_box_h,
-                    matrix_of_orders, indexes_sorted, index_by_kind_sorted, kind_of_texts_sorted, ref_point)
+                    indexes_sorted, index_by_kind_sorted, kind_of_texts_sorted, ref_point)
 
-                indexes_sorted_main = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 1]
-                indexes_by_type_main = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 1]
+                indexes_sorted_main = indexes_sorted[kind_of_texts_sorted == 1]
+                indexes_by_type_main = index_by_kind_sorted[kind_of_texts_sorted == 1]
 
                 for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
