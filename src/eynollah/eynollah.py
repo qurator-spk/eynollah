@@ -70,6 +70,7 @@ from .utils.contour import (
     filter_contours_area_of_image,
     filter_contours_area_of_image_tables,
     find_contours_mean_y_diff,
+    find_center_of_contours,
     find_new_features_of_contours,
     find_features_of_contours,
     get_text_region_boxes_by_given_contours,
@@ -1859,14 +1860,10 @@ class Eynollah:
     def get_slopes_and_deskew_new_light2(self, contours, contours_par, textline_mask_tot, boxes, slope_deskew):
 
         polygons_of_textlines = return_contours_of_interested_region(textline_mask_tot,1,0.00001)
-        M_main_tot = [cv2.moments(polygons_of_textlines[j])
-                      for j in range(len(polygons_of_textlines))]
+        cx_main_tot, cy_main_tot = find_center_of_contours(polygons_of_textlines)
+        w_h_textlines = [cv2.boundingRect(polygon)[2:] for polygon in polygons_of_textlines]
 
-        w_h_textlines = [cv2.boundingRect(polygons_of_textlines[i])[2:] for i in range(len(polygons_of_textlines))]
-        cx_main_tot = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
-        cy_main_tot = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
-
-        args_textlines = np.array(range(len(polygons_of_textlines)))
+        args_textlines = np.arange(len(polygons_of_textlines))
         all_found_textline_polygons = []
         slopes = []
         all_box_coord =[]
@@ -4809,8 +4806,8 @@ class Eynollah:
             areas_cnt_text_parent = self.return_list_of_contours_with_desired_order(
                 areas_cnt_text_parent, index_con_parents)
 
-            cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
-            cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
+            cx_bigest_big, cy_biggest_big = find_center_of_contours([contours_biggest])
+            cx_bigest, cy_biggest = find_center_of_contours(contours_only_text_parent)
 
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
@@ -4834,10 +4831,8 @@ class Eynollah:
                     areas_cnt_text_d = self.return_list_of_contours_with_desired_order(
                         areas_cnt_text_d, index_con_parents_d)
 
-                    cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = \
-                        find_new_features_of_contours([contours_biggest_d])
-                    cx_bigest_d, cy_biggest_d, _, _, _, _, _ = \
-                        find_new_features_of_contours(contours_only_text_parent_d)
+                    cx_bigest_d_big, cy_biggest_d_big = find_center_of_contours([contours_biggest_d])
+                    cx_bigest_d, cy_biggest_d = find_center_of_contours(contours_only_text_parent_d)
                     try:
                         if len(cx_bigest_d) >= 5:
                             cx_bigest_d_last5 = cx_bigest_d[-5:]
