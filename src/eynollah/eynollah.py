@@ -2518,6 +2518,8 @@ class Eynollah:
             self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
 
         self.logger.debug("enter do_order_of_regions_full_layout")
+        contours_only_text_parent = np.array(contours_only_text_parent)
+        contours_only_text_parent_h = np.array(contours_only_text_parent_h)
         boxes = np.array(boxes, dtype=int) # to be on the safe side
         cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = find_new_features_of_contours(
             contours_only_text_parent)
@@ -2573,14 +2575,9 @@ class Eynollah:
                 xs = slice(*boxes[iij][0:2])
                 args_contours_box = args_contours[np.array(arg_text_con) == iij]
                 args_contours_box_h = args_contours_h[np.array(arg_text_con_h) == iij]
-                con_inter_box = []
-                con_inter_box_h = []
+                con_inter_box = contours_only_text_parent[args_contours_box]
+                con_inter_box_h = contours_only_text_parent_h[args_contours_box_h]
 
-                for box in args_contours_box:
-                    con_inter_box.append(contours_only_text_parent[box])
-
-                for box in args_contours_box_h:
-                    con_inter_box_h.append(contours_only_text_parent_h[box])
 
                 indexes_sorted, matrix_of_orders, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
                     textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, boxes[iij][2])
@@ -2675,14 +2672,8 @@ class Eynollah:
                 xs = slice(*boxes[iij][0:2])
                 args_contours_box = args_contours[np.array(arg_text_con) == iij]
                 args_contours_box_h = args_contours_h[np.array(arg_text_con_h) == iij]
-                con_inter_box = []
-                con_inter_box_h = []
-
-                for box in args_contours_box:
-                    con_inter_box.append(contours_only_text_parent[box])
-
-                for box in args_contours_box_h:
-                    con_inter_box_h.append(contours_only_text_parent_h[box])
+                con_inter_box = contours_only_text_parent[args_contours_box]
+                con_inter_box_h = contours_only_text_parent_h[args_contours_box_h]
 
                 indexes_sorted, matrix_of_orders, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
                     textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, boxes[iij][2])
@@ -2729,6 +2720,8 @@ class Eynollah:
             self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
 
         self.logger.debug("enter do_order_of_regions_no_full_layout")
+        contours_only_text_parent = np.array(contours_only_text_parent)
+        contours_only_text_parent_h = np.array(contours_only_text_parent_h)
         boxes = np.array(boxes, dtype=int) # to be on the safe side
         cx_text_only, cy_text_only, x_min_text_only, _, _, _, y_cor_x_min_main = find_new_features_of_contours(
             contours_only_text_parent)
@@ -2761,10 +2754,8 @@ class Eynollah:
                 ys = slice(*boxes[iij][2:4])
                 xs = slice(*boxes[iij][0:2])
                 args_contours_box = args_contours[np.array(arg_text_con) == iij]
-                con_inter_box = []
+                con_inter_box = contours_only_text_parent[args_contours_box]
                 con_inter_box_h = []
-                for i in range(len(args_contours_box)):
-                    con_inter_box.append(contours_only_text_parent[args_contours_box[i]])
 
                 indexes_sorted, matrix_of_orders, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
                     textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, boxes[iij][2])
