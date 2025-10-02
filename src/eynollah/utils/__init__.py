@@ -1417,7 +1417,7 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
         imgray = cv2.cvtColor(sep_ver_hor_cross, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(imgray, 0, 255, 0)
         contours_cross,_=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        cx_cross,cy_cross ,_ , _, _ ,_,_=find_new_features_of_contours(contours_cross)
+        cx_cross, cy_cross = find_center_of_contours(contours_cross)
         for ii in range(len(cx_cross)):
             img_p_in[int(cy_cross[ii])-30:int(cy_cross[ii])+30,int(cx_cross[ii])+5:int(cx_cross[ii])+40,0]=0
             img_p_in[int(cy_cross[ii])-30:int(cy_cross[ii])+30,int(cx_cross[ii])-40:int(cx_cross[ii])-4,0]=0

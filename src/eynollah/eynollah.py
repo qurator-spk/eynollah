@@ -4418,52 +4418,53 @@ class Eynollah:
     def separate_marginals_to_left_and_right_and_order_from_top_to_down(
             self, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals,
             slopes_marginals, mid_point_of_page_width):
-        cx_marg, cy_marg, _, _, _, _, _ = find_new_features_of_contours(
-            polygons_of_marginals)
-        
+        cx_marg, cy_marg = find_center_of_contours(polygons_of_marginals)
         cx_marg = np.array(cx_marg)
         cy_marg = np.array(cy_marg)
+
+        def split(lis):
+            array = np.array(lis)
+            return (list(array[cx_marg < mid_point_of_page_width]),
+                    list(array[cx_marg >= mid_point_of_page_width]))
+
+        (poly_marg_left,
+         poly_marg_right) = \
+             split(polygons_of_marginals)
+
+        (all_found_textline_polygons_marginals_left,
+         all_found_textline_polygons_marginals_right) = \
+            split(all_found_textline_polygons_marginals)
         
-        poly_marg_left = list( np.array(polygons_of_marginals)[cx_marg < mid_point_of_page_width] )
-        poly_marg_right = list( np.array(polygons_of_marginals)[cx_marg >= mid_point_of_page_width] )
+        (all_box_coord_marginals_left,
+         all_box_coord_marginals_right) = \
+             split(all_box_coord_marginals)
         
-        all_found_textline_polygons_marginals_left = \
-            list( np.array(all_found_textline_polygons_marginals)[cx_marg < mid_point_of_page_width] )
-        all_found_textline_polygons_marginals_right = \
-            list( np.array(all_found_textline_polygons_marginals)[cx_marg >= mid_point_of_page_width] )
+        (slopes_marg_left,
+         slopes_marg_right) = \
+             split(slopes_marginals)
         
-        all_box_coord_marginals_left = list( np.array(all_box_coord_marginals)[cx_marg < mid_point_of_page_width] )
-        all_box_coord_marginals_right = list( np.array(all_box_coord_marginals)[cx_marg >= mid_point_of_page_width] )
+        (cy_marg_left,
+         cy_marg_right) = \
+             split(cy_marg)
+
+        order_left = np.argsort(cy_marg_left)
+        order_right = np.argsort(cy_marg_right)
+        def sort_left(lis):
+            return list(np.array(lis)[order_left])
+        def sort_right(lis):
+            return list(np.array(lis)[order_right])
         
-        slopes_marg_left = list( np.array(slopes_marginals)[cx_marg < mid_point_of_page_width] )
-        slopes_marg_right = list( np.array(slopes_marginals)[cx_marg >= mid_point_of_page_width] )
+        ordered_left_marginals = sort_left(poly_marg_left)
+        ordered_right_marginals = sort_right(poly_marg_right)
         
-        cy_marg_left = cy_marg[cx_marg < mid_point_of_page_width]
-        cy_marg_right = cy_marg[cx_marg >= mid_point_of_page_width]
+        ordered_left_marginals_textline = sort_left(all_found_textline_polygons_marginals_left)
+        ordered_right_marginals_textline = sort_right(all_found_textline_polygons_marginals_right)
         
-        ordered_left_marginals = [poly for _, poly in sorted(zip(cy_marg_left, poly_marg_left),
-                                                             key=lambda x: x[0])]
-        ordered_right_marginals = [poly for _, poly in sorted(zip(cy_marg_right, poly_marg_right),
-                                                              key=lambda x: x[0])]
+        ordered_left_marginals_bbox = sort_left(all_box_coord_marginals_left)
+        ordered_right_marginals_bbox = sort_right(all_box_coord_marginals_right)
         
-        ordered_left_marginals_textline = [poly for _, poly in sorted(zip(cy_marg_left,
-                                                                          all_found_textline_polygons_marginals_left),
-                                                                      key=lambda x: x[0])]
-        ordered_right_marginals_textline = [poly for _, poly in sorted(zip(cy_marg_right,
-                                                                           all_found_textline_polygons_marginals_right),
-                                                                       key=lambda x: x[0])]
-        
-        ordered_left_marginals_bbox = [poly for _, poly in sorted(zip(cy_marg_left,
-                                                                      all_box_coord_marginals_left),
-                                                                  key=lambda x: x[0])]
-        ordered_right_marginals_bbox = [poly for _, poly in sorted(zip(cy_marg_right,
-                                                                       all_box_coord_marginals_right),
-                                                                   key=lambda x: x[0])]
-        
-        ordered_left_slopes_marginals = [poly for _, poly in sorted(zip(cy_marg_left, slopes_marg_left),
-                                                                    key=lambda x: x[0])]
-        ordered_right_slopes_marginals = [poly for _, poly in sorted(zip(cy_marg_right, slopes_marg_right),
-                                                                     key=lambda x: x[0])]
+        ordered_left_slopes_marginals = sort_left(slopes_marg_left)
+        ordered_right_slopes_marginals = sort_right(slopes_marg_right)
         
         return (ordered_left_marginals,
                 ordered_right_marginals,
