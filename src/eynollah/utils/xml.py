@@ -57,8 +57,8 @@ def xml_reading_order(page, order_of_texts, id_of_marginalia_left, id_of_margina
         og.add_RegionRefIndexed(RegionRefIndexedType(index=str(region_counter.get('region')), regionRef=id_marginal))
         region_counter.inc('region')
         
-    for idx_textregion, _ in enumerate(order_of_texts):
-        og.add_RegionRefIndexed(RegionRefIndexedType(index=str(region_counter.get('region')), regionRef=region_counter.region_id(order_of_texts[idx_textregion] + 1)))
+    for idx_textregion in order_of_texts:
+        og.add_RegionRefIndexed(RegionRefIndexedType(index=str(region_counter.get('region')), regionRef=region_counter.region_id(idx_textregion + 1)))
         region_counter.inc('region')
         
     for id_marginal in id_of_marginalia_right:
