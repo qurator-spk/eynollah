@@ -1,4 +1,3 @@
-# tensorflow == 2.12.1 # TODO why not tensorflow < 2.13 as in eynollah/requirements.txt
 sacred
 seaborn
 tqdm
