@@ -1222,6 +1222,8 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref):
     # offset from bbox of mask
     peaks_neg_new += y_ref
 
+    # assert not len(cy_main) or np.min(peaks_neg_new) <= np.min(cy_main) and np.max(cy_main) <= np.max(peaks_neg_new)
+    # assert not len(cy_head) or np.min(peaks_neg_new) <= np.min(cy_head) and np.max(cy_head) <= np.max(peaks_neg_new)
 
     matrix_of_orders = np.zeros((len(contours_main) + len(contours_head), 5), dtype=int)
     matrix_of_orders[:, 0] = np.arange(len(contours_main) + len(contours_head))
@@ -1251,16 +1253,8 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref):
 
     ##matrix_of_orders[:len_main,4]=final_indexers_sorted[:]
 
-    # This fix is applied if the sum of the lengths of contours and contours_h
-    # does not match final_indexers_sorted. However, this is not the optimal solution..
-    if len(cy_main) + len(cy_header) == len(final_index_type):
-        pass
-    else:
-        indexes_missed = set(np.arange(len(cy_main) + len(cy_header))) - set(final_indexers_sorted)
-        for ind_missed in indexes_missed:
-            final_indexers_sorted.append(ind_missed)
-            final_types.append(1)
-            final_index_type.append(ind_missed)
+    # assert len(final_indexers_sorted) == len(contours_main) + len(contours_head)
+    # assert not len(final_indexers_sorted) or max(final_index_type) == max(len(contours_main)
 
     return np.array(final_indexers_sorted), np.array(final_types), np.array(final_index_type)
 
