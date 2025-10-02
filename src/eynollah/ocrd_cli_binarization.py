@@ -10,16 +10,7 @@ from ocrd_models.ocrd_page import OcrdPage, AlternativeImageType
 from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 
 from .sbb_binarize import SbbBinarizer
-
-
-def cv2pil(img):
-    return Image.fromarray(img.astype('uint8'))
-
-def pil2cv(img):
-    # from ocrd/workspace.py
-    color_conversion = cv2.COLOR_GRAY2BGR if img.mode in ('1', 'L') else  cv2.COLOR_RGB2BGR
-    pil_as_np_array = np.array(img).astype('uint8') if img.mode == '1' else np.array(img)
-    return cv2.cvtColor(pil_as_np_array, color_conversion)
+from .utils.pil_cv2 import cv2pil, pil2cv
 
 class SbbBinarizeProcessor(Processor):
     # already employs GPU (without singleton process atm)
