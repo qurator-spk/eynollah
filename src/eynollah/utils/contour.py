@@ -79,61 +79,37 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area=1.
             found_polygons_early.append(polygon2contour(polygon))
     return found_polygons_early
 
-def find_new_features_of_contours(contours_main):
-    areas_main = np.array([cv2.contourArea(contours_main[j])
-                           for j in range(len(contours_main))])
-    M_main = [cv2.moments(contours_main[j])
-              for j in range(len(contours_main))]
-    cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32))
-               for j in range(len(M_main))]
-    cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32))
-               for j in range(len(M_main))]
-    try:
-        x_min_main = np.array([np.min(contours_main[j][:, 0, 0])
-                               for j in range(len(contours_main))])
-        argmin_x_main = np.array([np.argmin(contours_main[j][:, 0, 0])
-                                  for j in range(len(contours_main))])
-        x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0, 0]
-                                      for j in range(len(contours_main))])
-        y_corr_x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0, 1]
-                                             for j in range(len(contours_main))])
-        x_max_main = np.array([np.max(contours_main[j][:, 0, 0])
-                               for j in range(len(contours_main))])
-        y_min_main = np.array([np.min(contours_main[j][:, 0, 1])
-                               for j in range(len(contours_main))])
-        y_max_main = np.array([np.max(contours_main[j][:, 0, 1])
-                               for j in range(len(contours_main))])
-    except:
-        x_min_main = np.array([np.min(contours_main[j][:, 0])
-                               for j in range(len(contours_main))])
-        argmin_x_main = np.array([np.argmin(contours_main[j][:, 0])
-                                  for j in range(len(contours_main))])
-        x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0]
-                                      for j in range(len(contours_main))])
-        y_corr_x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 1]
-                                             for j in range(len(contours_main))])
-        x_max_main = np.array([np.max(contours_main[j][:, 0])
-                               for j in range(len(contours_main))])
-        y_min_main = np.array([np.min(contours_main[j][:, 1])
-                               for j in range(len(contours_main))])
-        y_max_main = np.array([np.max(contours_main[j][:, 1])
-                               for j in range(len(contours_main))])
-    # dis_x=np.abs(x_max_main-x_min_main)
+def find_center_of_contours(contours):
+    moments = [cv2.moments(contour) for contour in contours]
+    cx = [feat["m10"] / (feat["m00"] + 1e-32)
+          for feat in moments]
+    cy = [feat["m01"] / (feat["m00"] + 1e-32)
+          for feat in moments]
+    return cx, cy
 
-    return cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin
+def find_new_features_of_contours(contours):
+    # areas = np.array([cv2.contourArea(contour) for contour in contours])
+    cx, cy = find_center_of_contours(contours)
+    slice_x = np.index_exp[:, 0, 0]
+    slice_y = np.index_exp[:, 0, 1]
+    if any(contour.ndim < 3 for contour in contours):
+        slice_x = np.index_exp[:, 0]
+        slice_y = np.index_exp[:, 1]
+    x_min = np.array([np.min(contour[slice_x]) for contour in contours])
+    x_max = np.array([np.max(contour[slice_x]) for contour in contours])
+    y_min = np.array([np.min(contour[slice_y]) for contour in contours])
+    y_max = np.array([np.max(contour[slice_y]) for contour in contours])
+    # dis_x=np.abs(x_max-x_min)
+    y_corr_x_min = np.array([contour[np.argmin(contour[slice_x])][slice_y[1:]]
+                             for contour in contours])
 
-def find_features_of_contours(contours_main):
-    areas_main=np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
-    M_main=[cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-    cx_main=[(M_main[j]['m10']/(M_main[j]['m00']+1e-32)) for j in range(len(M_main))]
-    cy_main=[(M_main[j]['m01']/(M_main[j]['m00']+1e-32)) for j in range(len(M_main))]
-    x_min_main=np.array([np.min(contours_main[j][:,0,0]) for j in range(len(contours_main))])
-    x_max_main=np.array([np.max(contours_main[j][:,0,0]) for j in range(len(contours_main))])
+    return cx, cy, x_min, x_max, y_min, y_max, y_corr_x_min
 
-    y_min_main=np.array([np.min(contours_main[j][:,0,1]) for j in range(len(contours_main))])
-    y_max_main=np.array([np.max(contours_main[j][:,0,1]) for j in range(len(contours_main))])
+def find_features_of_contours(contours):
+    y_min = np.array([np.min(contour[:,0,1]) for contour in contours])
+    y_max = np.array([np.max(contour[:,0,1]) for contour in contours])
 
-    return y_min_main, y_max_main
+    return y_min, y_max
 
 def return_parent_contours(contours, hierarchy):
     contours_parent = [contours[i]
