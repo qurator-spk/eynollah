@@ -4559,27 +4559,16 @@ class Eynollah:
             areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
             areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
             #self.logger.info('areas_cnt_text %s', areas_cnt_text)
-            contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
-            contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent)
-                                         if areas_cnt_text[jz] > MIN_AREA_REGION]
-            areas_cnt_text_parent = [area for area in areas_cnt_text if area > MIN_AREA_REGION]
+            contour0 = contours_only_text_parent[np.argmax(areas_cnt_text)]
+            contours_only_text_parent = np.array(contours_only_text_parent)[areas_cnt_text > MIN_AREA_REGION]
+            areas_cnt_text_parent = areas_cnt_text[areas_cnt_text > MIN_AREA_REGION]
+
             index_con_parents = np.argsort(areas_cnt_text_parent)
+            contours_only_text_parent = contours_only_text_parent[index_con_parents]
+            areas_cnt_text_parent = areas_cnt_text_parent[index_con_parents]
 
-            contours_only_text_parent = self.return_list_of_contours_with_desired_order(
-                contours_only_text_parent, index_con_parents)
-
-            ##try:
-                ##contours_only_text_parent = \
-                    ##list(np.array(contours_only_text_parent,dtype=object)[index_con_parents])
-            ##except:
-                ##contours_only_text_parent = \
-                    ##list(np.array(contours_only_text_parent,dtype=np.int32)[index_con_parents])
-            ##areas_cnt_text_parent = list(np.array(areas_cnt_text_parent)[index_con_parents])
-            areas_cnt_text_parent = self.return_list_of_contours_with_desired_order(
-                areas_cnt_text_parent, index_con_parents)
-
-            cx_bigest_big, cy_biggest_big = find_center_of_contours([contours_biggest])
-            cx_bigest, cy_biggest = find_center_of_contours(contours_only_text_parent)
+            center0 = np.stack(find_center_of_contours([contour0])) # [2, 1]
+            centers = np.stack(find_center_of_contours(contours_only_text_parent)) # [2, N]
 
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
@@ -4588,65 +4577,48 @@ class Eynollah:
                 areas_cnt_text_d = np.array([cv2.contourArea(c) for c in contours_only_text_parent_d])
                 areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
 
-                if len(areas_cnt_text_d)>0:
-                    contours_biggest_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
+                if len(contours_only_text_parent_d):
+                    contour0_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
                     index_con_parents_d = np.argsort(areas_cnt_text_d)
-                    contours_only_text_parent_d = self.return_list_of_contours_with_desired_order(
-                        contours_only_text_parent_d, index_con_parents_d)
-                    #try:
-                        #contours_only_text_parent_d = \
-                            #list(np.array(contours_only_text_parent_d,dtype=object)[index_con_parents_d])
-                    #except:
-                        #contours_only_text_parent_d = \
-                            #list(np.array(contours_only_text_parent_d,dtype=np.int32)[index_con_parents_d])
-                    #areas_cnt_text_d = list(np.array(areas_cnt_text_d)[index_con_parents_d])
-                    areas_cnt_text_d = self.return_list_of_contours_with_desired_order(
-                        areas_cnt_text_d, index_con_parents_d)
+                    contours_only_text_parent_d = np.array(contours_only_text_parent_d)[index_con_parents_d]
+                    # rs: should be the same, no?
+                    assert np.all(contour0_d == contours_only_text_parent_d[-1]), (np.argmax(areas_cnt_text_d), index_con_parents_d[-1])
+                    areas_cnt_text_d = areas_cnt_text_d[index_con_parents_d]
 
-                    cx_bigest_d_big, cy_biggest_d_big = find_center_of_contours([contours_biggest_d])
-                    cx_bigest_d, cy_biggest_d = find_center_of_contours(contours_only_text_parent_d)
-                    try:
-                        if len(cx_bigest_d) >= 5:
-                            cx_bigest_d_last5 = cx_bigest_d[-5:]
-                            cy_biggest_d_last5 = cy_biggest_d[-5:]
-                            dists_d = [math.sqrt((cx_bigest_big[0] - cx_bigest_d_last5[j]) ** 2 +
-                                                 (cy_biggest_big[0] - cy_biggest_d_last5[j]) ** 2)
-                                       for j in range(len(cy_biggest_d_last5))]
-                            ind_largest = len(cx_bigest_d) -5 + np.argmin(dists_d)
-                        else:
-                            cx_bigest_d_last5 = cx_bigest_d[-len(cx_bigest_d):]
-                            cy_biggest_d_last5 = cy_biggest_d[-len(cx_bigest_d):]
-                            dists_d = [math.sqrt((cx_bigest_big[0]-cx_bigest_d_last5[j])**2 +
-                                                 (cy_biggest_big[0]-cy_biggest_d_last5[j])**2)
-                                       for j in range(len(cy_biggest_d_last5))]
-                            ind_largest = len(cx_bigest_d) - len(cx_bigest_d) + np.argmin(dists_d)
+                    center0_d = np.stack(find_center_of_contours([contour0_d])) # [2, 1]
+                    centers_d = np.stack(find_center_of_contours(contours_only_text_parent_d)) # [2, N]
+                    # rs: should be the same, no?
+                    assert center0_d[0,0] == centers_d[0,-1] and center0_d[1,0] == centers_d[1,-1]
+                    last5_centers_d = centers_d[:, -5:]
+                    dists_d = np.linalg.norm(center0 - last5_centers_d, axis=0)
+                    ind_largest = len(contours_only_text_parent_d) - last5_centers_d.shape[1] + np.argmin(dists_d)
+                    center0_d[:, 0] = centers_d[:, ind_largest]
 
-                        cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
-                        cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
-                    except Exception as why:
-                        self.logger.error(str(why))
-
+                    # order new contours the same way as the undeskewed contours
+                    # (by calculating the offset of the largest contours, respectively,
+                    #  of the new and undeskewed image; then for each contour,
+                    #  finding the closest new contour, with proximity calculated
+                    #  as distance of their centers modulo offset vector)
                     (h, w) = text_only.shape[:2]
                     center = (w // 2.0, h // 2.0)
                     M = cv2.getRotationMatrix2D(center, slope_deskew, 1.0)
                     M_22 = np.array(M)[:2, :2]
-                    p_big = np.dot(M_22, [cx_bigest_big, cy_biggest_big])
-                    x_diff = p_big[0] - cx_bigest_d_big
-                    y_diff = p_big[1] - cy_biggest_d_big
+                    p0 = np.dot(M_22, center0) # [2, 1]
+                    offset = p0 - center0_d # [2, 1]
 
+                    # img2 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
                     contours_only_text_parent_d_ordered = []
                     for i in range(len(contours_only_text_parent)):
-                        p = np.dot(M_22, [cx_bigest[i], cy_biggest[i]])
-                        p[0] = p[0] - x_diff[0]
-                        p[1] = p[1] - y_diff[0]
-                        dists = [math.sqrt((p[0] - cx_bigest_d[j]) ** 2 +
-                                           (p[1] - cy_biggest_d[j]) ** 2)
-                                 for j in range(len(cx_bigest_d))]
-                        contours_only_text_parent_d_ordered.append(contours_only_text_parent_d[np.argmin(dists)])
-                        # img2=np.zeros((text_only.shape[0],text_only.shape[1],3))
-                        # img2=cv2.fillPoly(img2,pts=[contours_only_text_parent_d[np.argmin(dists)]] ,color=(1,1,1))
-                        # plt.imshow(img2[:,:,0])
-                        # plt.show()
+                        p = np.dot(M_22, centers[:, i:i+1]) # [2, 1]
+                        p -= offset
+                        dists = np.linalg.norm(p - centers_d, axis=0)
+                        contours_only_text_parent_d_ordered.append(
+                            contours_only_text_parent_d[np.argmin(dists)])
+                        # cv2.fillPoly(img2, pts=[contours_only_text_parent_d[np.argmin(dists)]], color=i + 1)
+                    # plt.imshow(img2)
+                    # plt.show()
+                    # rs: what about the remaining contours_only_text_parent_d?
+                    # rs: what about duplicates?
                 else:
                     contours_only_text_parent_d_ordered = []
                     contours_only_text_parent_d = []
