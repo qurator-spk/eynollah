@@ -4610,7 +4610,11 @@ class Eynollah:
                     for i in range(len(contours_only_text_parent)):
                         p = np.dot(M_22, centers[:, i:i+1]) # [2, 1]
                         p -= offset
-                        dists = np.linalg.norm(p - centers_d, axis=0)
+                        # add dimension for area
+                        #dists = np.linalg.norm(p - centers_d, axis=0)
+                        diffs = (np.append(p, [[areas_cnt_text_parent[i]]], axis=0) -
+                                 np.append(centers_d, areas_cnt_text_d[np.newaxis], axis=0))
+                        dists = np.linalg.norm(diffs, axis=0)
                         contours_only_text_parent_d_ordered.append(
                             contours_only_text_parent_d[np.argmin(dists)])
                         # cv2.fillPoly(img2, pts=[contours_only_text_parent_d[np.argmin(dists)]], color=i + 1)
