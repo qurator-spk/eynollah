@@ -4559,7 +4559,6 @@ class Eynollah:
             areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
             areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
             #self.logger.info('areas_cnt_text %s', areas_cnt_text)
-            contour0 = contours_only_text_parent[np.argmax(areas_cnt_text)]
             contours_only_text_parent = np.array(contours_only_text_parent)[areas_cnt_text > MIN_AREA_REGION]
             areas_cnt_text_parent = areas_cnt_text[areas_cnt_text > MIN_AREA_REGION]
 
@@ -4567,8 +4566,10 @@ class Eynollah:
             contours_only_text_parent = contours_only_text_parent[index_con_parents]
             areas_cnt_text_parent = areas_cnt_text_parent[index_con_parents]
 
-            center0 = np.stack(find_center_of_contours([contour0])) # [2, 1]
             centers = np.stack(find_center_of_contours(contours_only_text_parent)) # [2, N]
+
+            contour0 = contours_only_text_parent[-1]
+            center0 = centers[:, -1:] # [2, 1]
 
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
@@ -4578,17 +4579,15 @@ class Eynollah:
                 areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
 
                 if len(contours_only_text_parent_d):
-                    contour0_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
                     index_con_parents_d = np.argsort(areas_cnt_text_d)
                     contours_only_text_parent_d = np.array(contours_only_text_parent_d)[index_con_parents_d]
-                    # rs: should be the same, no?
-                    assert np.all(contour0_d == contours_only_text_parent_d[-1]), (np.argmax(areas_cnt_text_d), index_con_parents_d[-1])
                     areas_cnt_text_d = areas_cnt_text_d[index_con_parents_d]
 
-                    center0_d = np.stack(find_center_of_contours([contour0_d])) # [2, 1]
                     centers_d = np.stack(find_center_of_contours(contours_only_text_parent_d)) # [2, N]
-                    # rs: should be the same, no?
-                    assert center0_d[0,0] == centers_d[0,-1] and center0_d[1,0] == centers_d[1,-1]
+
+                    contour0_d = contours_only_text_parent_d[-1]
+                    center0_d = centers_d[:, -1:] # [2, 1]
+
                     last5_centers_d = centers_d[:, -5:]
                     dists_d = np.linalg.norm(center0 - last5_centers_d, axis=0)
                     ind_largest = len(contours_only_text_parent_d) - last5_centers_d.shape[1] + np.argmin(dists_d)
