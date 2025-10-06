@@ -4568,7 +4568,6 @@ class Eynollah:
 
             centers = np.stack(find_center_of_contours(contours_only_text_parent)) # [2, N]
 
-            contour0 = contours_only_text_parent[-1]
             center0 = centers[:, -1:] # [2, 1]
 
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
@@ -4578,6 +4577,9 @@ class Eynollah:
                 areas_cnt_text_d = np.array([cv2.contourArea(c) for c in contours_only_text_parent_d])
                 areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
 
+                contours_only_text_parent_d = np.array(contours_only_text_parent_d)[areas_cnt_text_d > MIN_AREA_REGION]
+                areas_cnt_text_d = areas_cnt_text_d[areas_cnt_text_d > MIN_AREA_REGION]
+
                 if len(contours_only_text_parent_d):
                     index_con_parents_d = np.argsort(areas_cnt_text_d)
                     contours_only_text_parent_d = np.array(contours_only_text_parent_d)[index_con_parents_d]
@@ -4585,9 +4587,10 @@ class Eynollah:
 
                     centers_d = np.stack(find_center_of_contours(contours_only_text_parent_d)) # [2, N]
 
-                    contour0_d = contours_only_text_parent_d[-1]
                     center0_d = centers_d[:, -1:] # [2, 1]
 
+                    # find the largest among the largest 5 deskewed contours
+                    # that is also closest to the largest original contour
                     last5_centers_d = centers_d[:, -5:]
                     dists_d = np.linalg.norm(center0 - last5_centers_d, axis=0)
                     ind_largest = len(contours_only_text_parent_d) - last5_centers_d.shape[1] + np.argmin(dists_d)
@@ -4762,14 +4765,7 @@ class Eynollah:
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 contours_only_text_parent_d_ordered = self.return_list_of_contours_with_desired_order(
                     contours_only_text_parent_d_ordered, index_by_text_par_con)
-                #try:
-                    #contours_only_text_parent_d_ordered = \
-                        #list(np.array(contours_only_text_parent_d_ordered, dtype=np.int32)[index_by_text_par_con])
-                #except:
-                    #contours_only_text_parent_d_ordered = \
-                        #list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
             else:
-                #takes long timee
                 contours_only_text_parent_d_ordered = None
             if self.light_version:
                 fun = check_any_text_region_in_model_one_is_main_or_header_light
@@ -4949,12 +4945,6 @@ class Eynollah:
             else:
                 contours_only_text_parent_d_ordered = self.return_list_of_contours_with_desired_order(
                     contours_only_text_parent_d_ordered, index_by_text_par_con)
-                #try:
-                    #contours_only_text_parent_d_ordered = \
-                        #list(np.array(contours_only_text_parent_d_ordered, dtype=object)[index_by_text_par_con])
-                #except:
-                    #contours_only_text_parent_d_ordered = \
-                        #list(np.array(contours_only_text_parent_d_ordered, dtype=np.int32)[index_by_text_par_con])
                 order_text_new, id_of_texts_tot = self.do_order_of_regions(
                     contours_only_text_parent_d_ordered, contours_only_text_parent_h, boxes_d, textline_mask_tot_d)
 
