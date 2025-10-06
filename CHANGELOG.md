@@ -10,12 +10,32 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 Fixed:
 
   * restoring the contour in the original image caused an error due to an empty tuple, #154
+  * removed NumPy warnings (fixed issue #158)
+  * fixed issue #124
+  * Drop capitals are now handled separately from their corresponding textline
+  * Marginals are now divided into left and right. Their reading order is written first for left marginals, then for right marginals, and within each side from top to bottom
+  * Added a new page extraction model. Instead of bounding boxes, it outputs page contours in the XML file, improving results for skewed pages
+  * Improved reading order for cases where a textline is segmented into multiple smaller textlines
 
 Added:
 
   * `eynollah machine-based-reading-order` CLI to run reading order detection, #175
   * `eynollah enhancement` CLI to run image enhancement, #175
   * Improved models for page extraction and reading order detection, #175
+  * For the lightweight version (layout and textline detection), thresholds are now assigned to the artificial class. Users can apply these thresholds to improve detection of isolated textlines and regions. To counteract the drawback of thresholding, the skeleton of the artificial class is used to keep lines as thin as possible (resolved issues #163 and #161)
+  * Added and integrated trained CNN-RNN OCR models
+  * Added and integrated a trained TrOCR model
+  * Improved OCR detection to support vertical and curved textlines
+  * Introduced a new machine-based reading order model with rotation augmentation
+  * Optimized reading order speed by clustering text regions that belong to the same block, maintaining top-to-bottom order
+  * Implemented text merging across textlines based on hyphenation when a line ends with a hyphen
+  * Integrated image enhancement as a separate use case
+  * Added reading order functionality on the layout level as a separate use case
+  * CNN-RNN OCR models provide confidence scores for predictions
+  * Added OCR visualization: predicted OCR can be overlaid on an image of the same size as the input
+  * Introduced a threshold value for CNN-RNN OCR models, allowing users to filter out low-confidence textline predictions
+  * For OCR, users can specify a single model by name instead of always using the default model
+  * Under the OCR use case, if ground-truth XMLs and images are available, textline image and corresponding text extraction can now be performed
 
 ## [0.4.0] - 2025-04-07
 
