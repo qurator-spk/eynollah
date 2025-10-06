@@ -33,6 +33,7 @@ from concurrent.futures import ProcessPoolExecutor
 import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
+import shapely.affinity
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from numba import cuda
@@ -83,6 +84,10 @@ from .utils.contour import (
     return_parent_contours,
     dilate_textregion_contours,
     dilate_textline_contours,
+    polygon2contour,
+    contour2polygon,
+    join_polygons,
+    make_intersection,
 )
 from .utils.rotate import (
     rotate_image,
@@ -4556,8 +4561,9 @@ class Eynollah:
         contours_only_text, hir_on_text = return_contours_of_image(text_only)
         contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
         if len(contours_only_text_parent) > 0:
+            areas_tot_text = np.prod(text_only.shape)
             areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
-            areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
+            areas_cnt_text = areas_cnt_text / float(areas_tot_text)
             #self.logger.info('areas_cnt_text %s', areas_cnt_text)
             contours_only_text_parent = np.array(contours_only_text_parent)[areas_cnt_text > MIN_AREA_REGION]
             areas_cnt_text_parent = areas_cnt_text[areas_cnt_text > MIN_AREA_REGION]
@@ -4574,8 +4580,9 @@ class Eynollah:
                 contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
                 contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
 
+                areas_tot_text_d = np.prod(text_only_d.shape)
                 areas_cnt_text_d = np.array([cv2.contourArea(c) for c in contours_only_text_parent_d])
-                areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
+                areas_cnt_text_d = areas_cnt_text_d / float(areas_tot_text_d)
 
                 contours_only_text_parent_d = np.array(contours_only_text_parent_d)[areas_cnt_text_d > MIN_AREA_REGION]
                 areas_cnt_text_d = areas_cnt_text_d[areas_cnt_text_d > MIN_AREA_REGION]
@@ -4587,7 +4594,7 @@ class Eynollah:
 
                     centers_d = np.stack(find_center_of_contours(contours_only_text_parent_d)) # [2, N]
 
-                    center0_d = centers_d[:, -1:] # [2, 1]
+                    center0_d = centers_d[:, -1:].copy() # [2, 1]
 
                     # find the largest among the largest 5 deskewed contours
                     # that is also closest to the largest original contour
@@ -4605,26 +4612,75 @@ class Eynollah:
                     center = (w // 2.0, h // 2.0)
                     M = cv2.getRotationMatrix2D(center, slope_deskew, 1.0)
                     M_22 = np.array(M)[:2, :2]
-                    p0 = np.dot(M_22, center0) # [2, 1]
-                    offset = p0 - center0_d # [2, 1]
+                    center0 = np.dot(M_22, center0) # [2, 1]
+                    offset = center0 - center0_d # [2, 1]
 
-                    # img2 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
-                    contours_only_text_parent_d_ordered = []
+                    centers = np.dot(M_22, centers) - offset # [2,N]
+                    # add dimension for area (so only contours of similar size will be considered close)
+                    centers = np.append(centers, areas_cnt_text_parent[np.newaxis], axis=0)
+                    centers_d = np.append(centers_d, areas_cnt_text_d[np.newaxis], axis=0)
+
+                    dists = np.zeros((len(contours_only_text_parent), len(contours_only_text_parent_d)))
                     for i in range(len(contours_only_text_parent)):
-                        p = np.dot(M_22, centers[:, i:i+1]) # [2, 1]
-                        p -= offset
-                        # add dimension for area
-                        #dists = np.linalg.norm(p - centers_d, axis=0)
-                        diffs = (np.append(p, [[areas_cnt_text_parent[i]]], axis=0) -
-                                 np.append(centers_d, areas_cnt_text_d[np.newaxis], axis=0))
-                        dists = np.linalg.norm(diffs, axis=0)
-                        contours_only_text_parent_d_ordered.append(
-                            contours_only_text_parent_d[np.argmin(dists)])
-                        # cv2.fillPoly(img2, pts=[contours_only_text_parent_d[np.argmin(dists)]], color=i + 1)
+                        dists[i] = np.linalg.norm(centers[:, i:i + 1] - centers_d, axis=0)
+                    corresp = np.zeros(dists.shape, dtype=bool)
+                    # keep searching next-closest until at least one correspondence on each side
+                    while not np.all(corresp.sum(axis=1)) and not np.all(corresp.sum(axis=0)):
+                        idx = np.nanargmin(dists)
+                        i, j = np.unravel_index(idx, dists.shape)
+                        dists[i, j] = np.nan
+                        corresp[i, j] = True
+                    #print("original/deskewed adjacency", corresp.nonzero())
+                    contours_only_text_parent_d_ordered = np.zeros_like(contours_only_text_parent)
+                    contours_only_text_parent_d_ordered = contours_only_text_parent_d[np.argmax(corresp, axis=1)]
+                    # img1 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
+                    # for i in range(len(contours_only_text_parent)):
+                    #     cv2.fillPoly(img1, pts=[contours_only_text_parent_d_ordered[i]], color=i + 1)
+                    # plt.subplot(2, 2, 1, title="direct corresp contours")
+                    # plt.imshow(img1)
+                    # img2 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
+                    # join deskewed regions mapping to single original ones
+                    for i in range(len(contours_only_text_parent)):
+                        if np.count_nonzero(corresp[i]) > 1:
+                            indices = np.flatnonzero(corresp[i])
+                            #print("joining", indices)
+                            polygons_d = [contour2polygon(contour)
+                                          for contour in contours_only_text_parent_d[indices]]
+                            contour_d = polygon2contour(join_polygons(polygons_d))
+                            contours_only_text_parent_d_ordered[i] = contour_d
+                    #         cv2.fillPoly(img2, pts=[contour_d], color=i + 1)
+                    # plt.subplot(2, 2, 3, title="joined contours")
                     # plt.imshow(img2)
+                    # img3 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
+                    # split deskewed regions mapping to multiple original ones
+                    def deskew(polygon):
+                        polygon = shapely.affinity.rotate(polygon, -slope_deskew, origin=center)
+                        polygon = shapely.affinity.translate(polygon, *offset.squeeze())
+                        return polygon
+                    for j in range(len(contours_only_text_parent_d)):
+                        if np.count_nonzero(corresp[:, j]) > 1:
+                            indices = np.flatnonzero(corresp[:, j])
+                            #print("splitting along", indices)
+                            polygons = [deskew(contour2polygon(contour))
+                                        for contour in contours_only_text_parent[indices]]
+                            polygon_d = contour2polygon(contours_only_text_parent_d[j])
+                            polygons_d = [make_intersection(polygon_d, polygon)
+                                          for polygon in polygons]
+                            # ignore where there is no actual overlap
+                            indices = indices[np.flatnonzero(polygons_d)]
+                            contours_d = [polygon2contour(polygon_d)
+                                          for polygon_d in polygons_d
+                                          if polygon_d]
+                            contours_only_text_parent_d_ordered[indices] = contours_d
+                    #         cv2.fillPoly(img3, pts=contours_d, color=j + 1)
+                    # plt.subplot(2, 2, 4, title="split contours")
+                    # plt.imshow(img3)
+                    # img4 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
+                    # for i in range(len(contours_only_text_parent)):
+                    #     cv2.fillPoly(img4, pts=[contours_only_text_parent_d_ordered[i]], color=i + 1)
+                    # plt.subplot(2, 2, 2, title="result contours")
+                    # plt.imshow(img4)
                     # plt.show()
-                    # rs: what about the remaining contours_only_text_parent_d?
-                    # rs: what about duplicates?
                 else:
                     contours_only_text_parent_d_ordered = []
                     contours_only_text_parent_d = []

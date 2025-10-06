@@ -335,6 +335,21 @@ def polygon2contour(polygon: Polygon) -> np.ndarray:
     polygon = np.array(polygon.exterior.coords[:-1], dtype=int)
     return np.maximum(0, polygon).astype(np.uint)[:, np.newaxis]
 
+def make_intersection(poly1, poly2):
+    interp = poly1.intersection(poly2)
+    # post-process
+    if interp.is_empty or interp.area == 0.0:
+        return None
+    if interp.geom_type == 'GeometryCollection':
+        # heterogeneous result: filter zero-area shapes (LineString, Point)
+        interp = unary_union([geom for geom in interp.geoms if geom.area > 0])
+    if interp.geom_type == 'MultiPolygon':
+        # homogeneous result: construct convex hull to connect
+        interp = join_polygons(interp.geoms)
+    assert interp.geom_type == 'Polygon', interp.wkt
+    interp = make_valid(interp)
+    return interp
+
 def make_valid(polygon: Polygon) -> Polygon:
     """Ensures shapely.geometry.Polygon object is valid by repeated rearrangement/simplification/enlargement."""
     def isint(x):
