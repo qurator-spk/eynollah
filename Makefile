@@ -91,7 +91,7 @@ endif
 deps-test: $(BIN_MODELNAME) $(SEG_MODELNAME)
 	$(PIP) install -r requirements-test.txt
 ifeq (OCR,$(findstring OCR, $(EXTRAS)))
-	ln -s $(OCR_MODELNAME)/* $(SEG_MODELNAME)/
+	ln -rs $(OCR_MODELNAME)/* $(SEG_MODELNAME)/
 endif
 
 smoke-test: TMPDIR != mktemp -d
