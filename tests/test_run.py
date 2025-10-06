@@ -24,14 +24,18 @@ MODELS_BIN = environ.get('MODELS_BIN', str(testdir.joinpath('..', 'default-2021-
     "options",
     [
             [], # defaults
-            ["--allow_scaling", "--curved-line"],
+            #["--allow_scaling", "--curved-line"],
             ["--allow_scaling", "--curved-line", "--full-layout"],
             ["--allow_scaling", "--curved-line", "--full-layout", "--reading_order_machine_based"],
             ["--allow_scaling", "--curved-line", "--full-layout", "--reading_order_machine_based",
              "--textline_light", "--light_version"],
             # -ep ...
             # -eoi ...
-            # --do_ocr
+            ["--do_ocr"],
+            ["--do_ocr", "--light_version", "--textline_light"],
+            ["--do_ocr", "--transformer_ocr"],
+            #["--do_ocr", "--transformer_ocr", "--light_version", "--textline_light"],
+            ["--do_ocr", "--transformer_ocr", "--light_version", "--textline_light", "--full-layout"],
             # --skip_layout_and_reading_order
     ], ids=str)
 def test_run_eynollah_layout_filename(tmp_path, pytestconfig, caplog, options):
