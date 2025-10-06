@@ -142,13 +142,12 @@ def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
             rotation_matrix)
 
 def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
-    (h, w) = img_patch.shape[:2]
+    h, w = img_patch.shape[:2]
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
     x_d = M[0, 2]
     y_d = M[1, 2]
-    thetha = thetha / 180. * np.pi
-    rotation_matrix = np.array([[np.cos(thetha), -np.sin(thetha)], [np.sin(thetha), np.cos(thetha)]])
+    rotation_matrix = M[:2, :2]
     contour_text_interest_copy = contour_text_interest.copy()
 
     x_cont = contour_text_interest[:, 0, 0]
@@ -1311,7 +1310,7 @@ def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
     else:
         cnts_images = (img_patch[:, :] == label) * 1
     _, thresh = cv2.threshold(cnts_images, 0, 255, 0)
-    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_imgs, hierarchy = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
     contours_imgs = filter_contours_area_of_image_tables(thresh,
@@ -1319,14 +1318,12 @@ def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
                                                          max_area=max_area, min_area=min_area)
     cont_final = []
     for i in range(len(contours_imgs)):
-        img_contour = np.zeros((cnts_images.shape[0], cnts_images.shape[1], 3))
-        img_contour = cv2.fillPoly(img_contour, pts=[contours_imgs[i]], color=(255, 255, 255))
-        img_contour = img_contour.astype(np.uint8)
+        img_contour = np.zeros(cnts_images.shape[:2], dtype=np.uint8)
+        img_contour = cv2.fillPoly(img_contour, pts=[contours_imgs[i]], color=255)
 
         img_contour = cv2.dilate(img_contour, kernel, iterations=4)
-        imgrayrot = cv2.cvtColor(img_contour, cv2.COLOR_BGR2GRAY)
-        _, threshrot = cv2.threshold(imgrayrot, 0, 255, 0)
-        contours_text_rot, _ = cv2.findContours(threshrot.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        _, threshrot = cv2.threshold(img_contour, 0, 255, 0)
+        contours_text_rot, _ = cv2.findContours(threshrot.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         ##contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[
         ##0]
@@ -1378,7 +1375,7 @@ def textline_contours_postprocessing(textline_mask, slope,
         img_contour_rot = rotate_image(img_contour_help, slope)
 
         _, threshrot = cv2.threshold(img_contour_rot, 0, 255, 0)
-        contours_text_rot, _ = cv2.findContours(threshrot.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours_text_rot, _ = cv2.findContours(threshrot.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         len_con_text_rot = [len(contours_text_rot[ib]) for ib in range(len(contours_text_rot))]
         ind_big_con = np.argmax(len_con_text_rot)
