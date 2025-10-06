@@ -1344,51 +1344,49 @@ def textline_contours_postprocessing(textline_mask, slope,
     textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_CLOSE, kernel)
     textline_mask = cv2.erode(textline_mask, kernel, iterations=2)
     # textline_mask = cv2.erode(textline_mask, kernel, iterations=1)
-    try:
-        x_help = 30
-        y_help = 2
 
-        textline_mask_help = np.zeros((textline_mask.shape[0] + int(2 * y_help),
-                                       textline_mask.shape[1] + int(2 * x_help)))
-        textline_mask_help[y_help : y_help + textline_mask.shape[0],
-                           x_help : x_help + textline_mask.shape[1]] = np.copy(textline_mask[:, :])
+    x_help = 30
+    y_help = 2
 
-        dst = rotate_image(textline_mask_help, slope)
-        dst[dst != 0] = 1
+    textline_mask_help = np.zeros((textline_mask.shape[0] + int(2 * y_help),
+                                   textline_mask.shape[1] + int(2 * x_help)))
+    textline_mask_help[y_help : y_help + textline_mask.shape[0],
+                       x_help : x_help + textline_mask.shape[1]] = np.copy(textline_mask[:, :])
 
-        # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
-        # plt.imshow(dst)
-        # plt.show()
+    dst = rotate_image(textline_mask_help, slope)
+    dst[dst != 0] = 1
 
-        contour_text_copy = contour_text_interest.copy()
-        contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[0]
-        contour_text_copy[:, 0, 1] = contour_text_copy[:, 0, 1] - box_ind[1]
+    # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
+    # plt.imshow(dst)
+    # plt.show()
 
-        img_contour = np.zeros((box_ind[3], box_ind[2]))
-        img_contour = cv2.fillPoly(img_contour, pts=[contour_text_copy], color=255)
+    contour_text_copy = contour_text_interest.copy()
+    contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[0]
+    contour_text_copy[:, 0, 1] = contour_text_copy[:, 0, 1] - box_ind[1]
 
-        img_contour_help = np.zeros((img_contour.shape[0] + int(2 * y_help),
-                                     img_contour.shape[1] + int(2 * x_help)))
-        img_contour_help[y_help : y_help + img_contour.shape[0],
-                         x_help : x_help + img_contour.shape[1]] = np.copy(img_contour[:, :])
+    img_contour = np.zeros((box_ind[3], box_ind[2]))
+    img_contour = cv2.fillPoly(img_contour, pts=[contour_text_copy], color=255)
 
-        img_contour_rot = rotate_image(img_contour_help, slope)
+    img_contour_help = np.zeros((img_contour.shape[0] + int(2 * y_help),
+                                 img_contour.shape[1] + int(2 * x_help)))
+    img_contour_help[y_help : y_help + img_contour.shape[0],
+                     x_help : x_help + img_contour.shape[1]] = np.copy(img_contour[:, :])
 
-        _, threshrot = cv2.threshold(img_contour_rot, 0, 255, 0)
-        contours_text_rot, _ = cv2.findContours(threshrot.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    img_contour_rot = rotate_image(img_contour_help, slope)
 
-        len_con_text_rot = [len(contours_text_rot[ib]) for ib in range(len(contours_text_rot))]
-        ind_big_con = np.argmax(len_con_text_rot)
+    _, threshrot = cv2.threshold(img_contour_rot, 0, 255, 0)
+    contours_text_rot, _ = cv2.findContours(threshrot.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        if abs(slope) > 45:
-            _, contours_rotated_clean = separate_lines_vertical_cont(
-                textline_mask, contours_text_rot[ind_big_con], box_ind, slope,
-                add_boxes_coor_into_textlines=add_boxes_coor_into_textlines)
-        else:
-            _, contours_rotated_clean = separate_lines(
-                dst, contours_text_rot[ind_big_con], slope, x_help, y_help)
-    except:
-        contours_rotated_clean = []
+    len_con_text_rot = [len(contours_text_rot[ib]) for ib in range(len(contours_text_rot))]
+    ind_big_con = np.argmax(len_con_text_rot)
+
+    if abs(slope) > 45:
+        _, contours_rotated_clean = separate_lines_vertical_cont(
+            textline_mask, contours_text_rot[ind_big_con], box_ind, slope,
+            add_boxes_coor_into_textlines=add_boxes_coor_into_textlines)
+    else:
+        _, contours_rotated_clean = separate_lines(
+            dst, contours_text_rot[ind_big_con], slope, x_help, y_help)
 
     return contours_rotated_clean
 
