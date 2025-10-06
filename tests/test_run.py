@@ -17,7 +17,7 @@ from ocrd_models.constants import NAMESPACES as NS
 testdir = Path(__file__).parent.resolve()
 
 MODELS_LAYOUT = environ.get('MODELS_LAYOUT', str(testdir.joinpath('..', 'models_layout_v0_5_0').resolve()))
-MODELS_OCR = environ.get('MODELS_OCR', str(testdir.joinpath('..', 'models_ocr_v0_5_0').resolve()))
+MODELS_OCR = environ.get('MODELS_OCR', str(testdir.joinpath('..', 'models_ocr_v0_5_1').resolve()))
 MODELS_BIN = environ.get('MODELS_BIN', str(testdir.joinpath('..', 'default-2021-03-09').resolve()))
 
 @pytest.mark.parametrize(
@@ -31,6 +31,7 @@ MODELS_BIN = environ.get('MODELS_BIN', str(testdir.joinpath('..', 'default-2021-
              "--textline_light", "--light_version"],
             # -ep ...
             # -eoi ...
+            # FIXME: find out whether OCR extra was installed, otherwise skip these
             ["--do_ocr"],
             ["--do_ocr", "--light_version", "--textline_light"],
             ["--do_ocr", "--transformer_ocr"],
