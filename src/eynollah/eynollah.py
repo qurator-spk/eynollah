@@ -712,7 +712,7 @@ class Eynollah:
         if self.input_binary:
             img = self.imread()
             prediction_bin = self.do_prediction(True, img, self.model_bin, n_batch_inference=5)
-            prediction_bin = 255 * (prediction_bin[:,:,0]==0)
+            prediction_bin = 255 * (prediction_bin[:,:,0] == 0)
             prediction_bin = np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2).astype(np.uint8)
             img= np.copy(prediction_bin)
             img_bin = prediction_bin
@@ -2064,9 +2064,7 @@ class Eynollah:
         boxes_sub_new = []
         poly_sub = []
         for mv in range(len(boxes_per_process)):
-            crop_img, _ = crop_image_inside_box(boxes_per_process[mv],
-                                                np.repeat(textline_mask_tot[:, :, np.newaxis], 3, axis=2))
-            crop_img = crop_img[:, :, 0]
+            crop_img, _ = crop_image_inside_box(boxes_per_process[mv], textline_mask_tot)
             crop_img = cv2.erode(crop_img, KERNEL, iterations=2)
             try:
                 textline_con, hierarchy = return_contours_of_image(crop_img)
@@ -2638,10 +2636,8 @@ class Eynollah:
         layout_org[:,:,0][layout_org[:,:,0]==pixel_table] = 0
         layout = (layout[:,:,0]==pixel_table)*1
 
-        layout =np.repeat(layout[:, :, np.newaxis], 3, axis=2)
         layout = layout.astype(np.uint8)
-        imgray = cv2.cvtColor(layout, cv2.COLOR_BGR2GRAY )
-        _, thresh = cv2.threshold(imgray, 0, 255, 0)
+        _, thresh = cv2.threshold(layout, 0, 255, 0)
 
         contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cnt_size = np.array([cv2.contourArea(contours[j])
@@ -2652,8 +2648,8 @@ class Eynollah:
             x, y, w, h = cv2.boundingRect(contours[i])
             iou = cnt_size[i] /float(w*h) *100
             if iou<80:
-                layout_contour = np.zeros((layout_org.shape[0], layout_org.shape[1]))
-                layout_contour= cv2.fillPoly(layout_contour,pts=[contours[i]] ,color=(1,1,1))
+                layout_contour = np.zeros(layout_org.shape[:2])
+                layout_contour = cv2.fillPoly(layout_contour, pts=[contours[i]] ,color=1)
 
                 layout_contour_sum = layout_contour.sum(axis=0)
                 layout_contour_sum_diff = np.diff(layout_contour_sum)
@@ -2669,20 +2665,17 @@ class Eynollah:
                 layout_contour=cv2.erode(layout_contour[:,:], KERNEL, iterations=5)
                 layout_contour=cv2.dilate(layout_contour[:,:], KERNEL, iterations=5)
 
-                layout_contour =np.repeat(layout_contour[:, :, np.newaxis], 3, axis=2)
                 layout_contour = layout_contour.astype(np.uint8)
-
-                imgray = cv2.cvtColor(layout_contour, cv2.COLOR_BGR2GRAY )
-                _, thresh = cv2.threshold(imgray, 0, 255, 0)
+                _, thresh = cv2.threshold(layout_contour, 0, 255, 0)
 
                 contours_sep, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
                 for ji in range(len(contours_sep) ):
                     contours_new.append(contours_sep[ji])
                     if num_col_classifier>=2:
-                        only_recent_contour_image = np.zeros((layout.shape[0],layout.shape[1]))
-                        only_recent_contour_image= cv2.fillPoly(only_recent_contour_image,
-                                                                pts=[contours_sep[ji]], color=(1,1,1))
+                        only_recent_contour_image = np.zeros(layout.shape[:2])
+                        only_recent_contour_image = cv2.fillPoly(only_recent_contour_image,
+                                                                 pts=[contours_sep[ji]], color=1)
                         table_pixels_masked_from_early_pre = only_recent_contour_image * table_prediction_early
                         iou_in = 100. * table_pixels_masked_from_early_pre.sum() / only_recent_contour_image.sum()
                         #print(iou_in,'iou_in_in1')
@@ -3210,13 +3203,11 @@ class Eynollah:
         pixel_lines = 3
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
             _, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(
-                np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2),
-                num_col_classifier, self.tables, pixel_lines)
+                text_regions_p, num_col_classifier, self.tables, pixel_lines)
 
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
             _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
-                np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2),
-                num_col_classifier, self.tables, pixel_lines)
+                text_regions_p_1_n, num_col_classifier, self.tables, pixel_lines)
         #print(time.time()-t_0_box,'time box in 2')
         self.logger.info("num_col_classifier: %s", num_col_classifier)
 
@@ -3392,13 +3383,11 @@ class Eynollah:
                 pixel_lines=3
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(
-                        np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2),
-                        num_col_classifier, self.tables, pixel_lines)
+                        text_regions_p, num_col_classifier, self.tables, pixel_lines)
 
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                     num_col_d, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
-                        np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2),
-                        num_col_classifier, self.tables, pixel_lines)
+                        text_regions_p_1_n, num_col_classifier, self.tables, pixel_lines)
 
                 if num_col_classifier>=3:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
@@ -3498,7 +3487,7 @@ class Eynollah:
 
         #text_regions_p[:,:][regions_fully[:,:,0]==6]=6
         ##regions_fully_only_drop = put_drop_out_from_only_drop_model(regions_fully_only_drop, text_regions_p)
-        ##regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 4] = 4
+        ##regions_fully[:, :, 0][regions_fully_only_drop[:, :] == 4] = 4
         drop_capital_label_in_full_layout_model = 3
 
         drops = (regions_fully[:,:,0]==drop_capital_label_in_full_layout_model)*1
@@ -4715,7 +4704,6 @@ class Eynollah:
             return pcgts
 
 
-
         #print("text region early 3 in %.1fs", time.time() - t0)
         if self.light_version:
             contours_only_text_parent = dilate_textregion_contours(contours_only_text_parent)
@@ -4851,21 +4839,17 @@ class Eynollah:
                 if not self.headers_off:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(
-                            np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2),
-                            num_col_classifier, self.tables,  label_seps, contours_only_text_parent_h)
+                            text_regions_p, num_col_classifier, self.tables,  label_seps, contours_only_text_parent_h)
                     else:
                         _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
-                            np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2),
-                            num_col_classifier, self.tables, label_seps, contours_only_text_parent_h_d_ordered)
+                            text_regions_p_1_n, num_col_classifier, self.tables, label_seps, contours_only_text_parent_h_d_ordered)
                 elif self.headers_off:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(
-                            np.repeat(text_regions_p[:, :, np.newaxis], 3, axis=2),
-                            num_col_classifier, self.tables,  label_seps)
+                            text_regions_p, num_col_classifier, self.tables,  label_seps)
                     else:
                         _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
-                            np.repeat(text_regions_p_1_n[:, :, np.newaxis], 3, axis=2),
-                            num_col_classifier, self.tables, label_seps)
+                            text_regions_p_1_n, num_col_classifier, self.tables, label_seps)
 
                 if num_col_classifier >= 3:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:

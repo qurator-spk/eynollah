@@ -119,14 +119,11 @@ def return_parent_contours(contours, hierarchy):
 
 def return_contours_of_interested_region(region_pre_p, label, min_area=0.0002):
     # pixels of images are identified by 5
-    if len(region_pre_p.shape) == 3:
+    if region_pre_p.ndim == 3:
         cnts_images = (region_pre_p[:, :, 0] == label) * 1
     else:
         cnts_images = (region_pre_p[:, :] == label) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
 
     contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
@@ -135,13 +132,11 @@ def return_contours_of_interested_region(region_pre_p, label, min_area=0.0002):
     return contours_imgs
 
 def do_work_of_contours_in_image(contour, index_r_con, img, slope_first):
-    img_copy = np.zeros(img.shape)
-    img_copy = cv2.fillPoly(img_copy, pts=[contour], color=(1, 1, 1))
+    img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
+    img_copy = cv2.fillPoly(img_copy, pts=[contour], color=1)
 
     img_copy = rotation_image_new(img_copy, -slope_first)
-    img_copy = img_copy.astype(np.uint8)
-    imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    _, thresh = cv2.threshold(img_copy, 0, 255, 0)
 
     cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -164,8 +159,8 @@ def get_textregion_contours_in_org_image(cnts, img, slope_first):
     cnts_org = []
     # print(cnts,'cnts')
     for i in range(len(cnts)):
-        img_copy = np.zeros(img.shape)
-        img_copy = cv2.fillPoly(img_copy, pts=[cnts[i]], color=(1, 1, 1))
+        img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
+        img_copy = cv2.fillPoly(img_copy, pts=[cnts[i]], color=1)
 
         # plt.imshow(img_copy)
         # plt.show()
@@ -176,9 +171,7 @@ def get_textregion_contours_in_org_image(cnts, img, slope_first):
         # plt.imshow(img_copy)
         # plt.show()
 
-        img_copy = img_copy.astype(np.uint8)
-        imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+        _, thresh = cv2.threshold(img_copy, 0, 255, 0)
 
         cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
@@ -195,12 +188,11 @@ def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
                      interpolation=cv2.INTER_NEAREST)
     cnts_org = []
     for cnt in cnts:
-        img_copy = np.zeros(img.shape)
-        img_copy = cv2.fillPoly(img_copy, pts=[(cnt / zoom).astype(int)], color=(1, 1, 1))
+        img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
+        img_copy = cv2.fillPoly(img_copy, pts=[cnt // zoom], color=1)
 
         img_copy = rotation_image_new(img_copy, -slope_first).astype(np.uint8)
-        imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+        _, thresh = cv2.threshold(img_copy, 0, 255, 0)
 
         cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
@@ -210,14 +202,13 @@ def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
     return cnts_org
 
 def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first, confidence_matrix):
-    img_copy = np.zeros(img.shape)
-    img_copy = cv2.fillPoly(img_copy, pts=[contour_par], color=(1, 1, 1))
-    confidence_matrix_mapped_with_contour = confidence_matrix * img_copy[:,:,0]
-    confidence_contour = np.sum(confidence_matrix_mapped_with_contour) / float(np.sum(img_copy[:,:,0]))
+    img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
+    img_copy = cv2.fillPoly(img_copy, pts=[contour_par], color=1)
+    confidence_matrix_mapped_with_contour = confidence_matrix * img_copy
+    confidence_contour = np.sum(confidence_matrix_mapped_with_contour) / float(np.sum(img_copy))
 
     img_copy = rotation_image_new(img_copy, -slope_first).astype(np.uint8)
-    imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    _, thresh = cv2.threshold(img_copy, 0, 255, 0)
 
     cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if len(cont_int)==0:
@@ -245,14 +236,11 @@ def get_textregion_contours_in_org_image_light(cnts, img, confidence_matrix):
 
 def return_contours_of_interested_textline(region_pre_p, label):
     # pixels of images are identified by 5
-    if len(region_pre_p.shape) == 3:
+    if region_pre_p.ndim == 3:
         cnts_images = (region_pre_p[:, :, 0] == label) * 1
     else:
         cnts_images = (region_pre_p[:, :] == label) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
     contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
@@ -262,25 +250,22 @@ def return_contours_of_interested_textline(region_pre_p, label):
 
 def return_contours_of_image(image):
     if len(image.shape) == 2:
-        image = np.repeat(image[:, :, np.newaxis], 3, axis=2)
         image = image.astype(np.uint8)
+        imgray = image
     else:
         image = image.astype(np.uint8)
-    imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+        imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(imgray, 0, 255, 0)
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     return contours, hierarchy
 
 def return_contours_of_interested_region_by_min_size(region_pre_p, label, min_size=0.00003):
     # pixels of images are identified by 5
-    if len(region_pre_p.shape) == 3:
+    if region_pre_p.ndim == 3:
         cnts_images = (region_pre_p[:, :, 0] == label) * 1
     else:
         cnts_images = (region_pre_p[:, :] == label) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
 
     contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
@@ -291,24 +276,21 @@ def return_contours_of_interested_region_by_min_size(region_pre_p, label, min_si
 
 def return_contours_of_interested_region_by_size(region_pre_p, label, min_area, max_area):
     # pixels of images are identified by 5
-    if len(region_pre_p.shape) == 3:
+    if region_pre_p.ndim == 3:
         cnts_images = (region_pre_p[:, :, 0] == label) * 1
     else:
         cnts_images = (region_pre_p[:, :] == label) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
     contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
     contours_imgs = filter_contours_area_of_image_tables(
         thresh, contours_imgs, hierarchy, max_area=max_area, min_area=min_area)
 
-    img_ret = np.zeros((region_pre_p.shape[0], region_pre_p.shape[1], 3))
-    img_ret = cv2.fillPoly(img_ret, pts=contours_imgs, color=(1, 1, 1))
+    img_ret = np.zeros((region_pre_p.shape[0], region_pre_p.shape[1]))
+    img_ret = cv2.fillPoly(img_ret, pts=contours_imgs, color=1)
 
-    return img_ret[:, :, 0]
+    return img_ret
 
 def dilate_textline_contours(all_found_textline_polygons):
     return [[polygon2contour(contour2polygon(contour, dilate=6))
