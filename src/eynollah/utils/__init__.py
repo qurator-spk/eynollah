@@ -796,7 +796,7 @@ def find_num_col_only_image(regions_without_separators, multiplier=3.8):
     return len(peaks_fin_true), peaks_fin_true
 
 def find_num_col_by_vertical_lines(regions_without_separators, multiplier=3.8):
-    regions_without_separators_0 = regions_without_separators[:, :, 0].sum(axis=0)
+    regions_without_separators_0 = regions_without_separators.sum(axis=0)
 
     ##plt.plot(regions_without_separators_0)
     ##plt.show()
@@ -823,7 +823,10 @@ def return_regions_without_separators(regions_pre):
     return regions_without_separators
 
 def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
-    drop_only = (layout_no_patch[:, :, 0] == 4) * 1
+    if layout_no_patch.ndim == 3:
+        layout_no_patch = layout_no_patch[:, :, 0]
+
+    drop_only = (layout_no_patch[:, :] == 4) * 1
     contours_drop, hir_on_drop = return_contours_of_image(drop_only)
     contours_drop_parent = return_parent_contours(contours_drop, hir_on_drop)
 
@@ -849,9 +852,8 @@ def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
             (map_of_drop_contour_bb == 5).sum()) >= 15:
             contours_drop_parent_final.append(contours_drop_parent[jj])
 
-    layout_no_patch[:, :, 0][layout_no_patch[:, :, 0] == 4] = 0
-
-    layout_no_patch = cv2.fillPoly(layout_no_patch, pts=contours_drop_parent_final, color=(4, 4, 4))
+    layout_no_patch[:, :][layout_no_patch[:, :] == 4] = 0
+    layout_no_patch = cv2.fillPoly(layout_no_patch, pts=contours_drop_parent_final, color=4)
 
     return layout_no_patch
 
@@ -925,17 +927,16 @@ def check_any_text_region_in_model_one_is_main_or_header(
     contours_only_text_parent_main_d=[]
     contours_only_text_parent_head_d=[]
 
-    for ii in range(len(contours_only_text_parent)):
-        con=contours_only_text_parent[ii]
-        img=np.zeros((regions_model_1.shape[0],regions_model_1.shape[1],3))
-        img = cv2.fillPoly(img, pts=[con], color=(255, 255, 255))
+    for ii, con in enumerate(contours_only_text_parent):
+        img = np.zeros(regions_model_1.shape[:2])
+        img = cv2.fillPoly(img, pts=[con], color=255)
 
-        all_pixels=((img[:,:,0]==255)*1).sum()
-        pixels_header=( ( (img[:,:,0]==255) & (regions_model_full[:,:,0]==2) )*1 ).sum()
+        all_pixels=((img == 255)*1).sum()
+        pixels_header=( ( (img == 255) & (regions_model_full[:,:,0]==2) )*1 ).sum()
         pixels_main=all_pixels-pixels_header
 
         if (pixels_header>=pixels_main) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ):
-            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=2
+            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ]=2
             contours_only_text_parent_head.append(con)
             if contours_only_text_parent_d_ordered is not None:
                 contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
@@ -944,7 +945,7 @@ def check_any_text_region_in_model_one_is_main_or_header(
             all_found_textline_polygons_head.append(all_found_textline_polygons[ii])
             conf_contours_head.append(None)
         else:
-            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ]=1
+            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ]=1
             contours_only_text_parent_main.append(con)
             conf_contours_main.append(conf_contours[ii])
             if contours_only_text_parent_d_ordered is not None:
@@ -1015,11 +1016,11 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
     contours_only_text_parent_head_d=[]
 
     for ii, con in enumerate(contours_only_text_parent_z):
-        img=np.zeros((regions_model_1.shape[0], regions_model_1.shape[1], 3))
-        img = cv2.fillPoly(img, pts=[con], color=(255, 255, 255))
+        img = np.zeros(regions_model_1.shape[:2])
+        img = cv2.fillPoly(img, pts=[con], color=255)
 
-        all_pixels = (img[:,:,0]==255).sum()
-        pixels_header=((img[:,:,0]==255) &
+        all_pixels = (img == 255).sum()
+        pixels_header=((img == 255) &
                        (regions_model_full[:,:,0]==2)).sum()
         pixels_main = all_pixels - pixels_header
 
@@ -1029,7 +1030,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
             ( pixels_header / float(pixels_main) >= 0.3 and
               length_con[ii] / float(height_con[ii]) >=3 )):
 
-            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ] = 2
+            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ] = 2
             contours_only_text_parent_head.append(contours_only_text_parent[ii])
             conf_contours_head.append(None) # why not conf_contours[ii], too?
             if contours_only_text_parent_d_ordered is not None:
@@ -1039,7 +1040,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
             all_found_textline_polygons_head.append(all_found_textline_polygons[ii])
 
         else:
-            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img[:,:,0]==255) ] = 1
+            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ] = 1
             contours_only_text_parent_main.append(contours_only_text_parent[ii])
             conf_contours_main.append(conf_contours[ii])
             if contours_only_text_parent_d_ordered is not None:
@@ -1119,11 +1120,11 @@ def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col)
             textlines_big.append(textlines_tot[i])
             textlines_big_org_form.append(textlines_tot_org_form[i])
 
-        img_textline_s = np.zeros((textline_iamge.shape[0], textline_iamge.shape[1]))
-        img_textline_s = cv2.fillPoly(img_textline_s, pts=textlines_small, color=(1, 1, 1))
+        img_textline_s = np.zeros(textline_iamge.shape[:2])
+        img_textline_s = cv2.fillPoly(img_textline_s, pts=textlines_small, color=1)
 
-        img_textline_b = np.zeros((textline_iamge.shape[0], textline_iamge.shape[1]))
-        img_textline_b = cv2.fillPoly(img_textline_b, pts=textlines_big, color=(1, 1, 1))
+        img_textline_b = np.zeros(textline_iamge.shape[:2])
+        img_textline_b = cv2.fillPoly(img_textline_b, pts=textlines_big, color=1)
 
         sum_small_big_all = img_textline_s + img_textline_b
         sum_small_big_all2 = (sum_small_big_all[:, :] == 2) * 1
@@ -1135,11 +1136,11 @@ def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col)
                 # print(len(textlines_small),'small')
                 intersections = []
                 for z2 in range(len(textlines_big)):
-                    img_text = np.zeros((textline_iamge.shape[0], textline_iamge.shape[1]))
-                    img_text = cv2.fillPoly(img_text, pts=[textlines_small[z1]], color=(1, 1, 1))
+                    img_text = np.zeros(textline_iamge.shape[:2])
+                    img_text = cv2.fillPoly(img_text, pts=[textlines_small[z1]], color=1)
 
-                    img_text2 = np.zeros((textline_iamge.shape[0], textline_iamge.shape[1]))
-                    img_text2 = cv2.fillPoly(img_text2, pts=[textlines_big[z2]], color=(1, 1, 1))
+                    img_text2 = np.zeros(textline_iamge.shape[:2])
+                    img_text2 = cv2.fillPoly(img_text2, pts=[textlines_big[z2]], color=1)
 
                     sum_small_big = img_text2 + img_text
                     sum_small_big_2 = (sum_small_big[:, :] == 2) * 1
@@ -1165,19 +1166,17 @@ def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col)
                 index_small_textlines = list(np.where(np.array(dis_small_from_bigs_tot) == z)[0])
                 # print(z,index_small_textlines)
 
-                img_text2 = np.zeros((textline_iamge.shape[0], textline_iamge.shape[1], 3))
-                img_text2 = cv2.fillPoly(img_text2, pts=[textlines_big[z]], color=(255, 255, 255))
+                img_text2 = np.zeros(textline_iamge.shape[:2], dtype=np.uint8)
+                img_text2 = cv2.fillPoly(img_text2, pts=[textlines_big[z]], color=255)
 
                 textlines_big_with_change.append(z)
 
                 for k in index_small_textlines:
-                    img_text2 = cv2.fillPoly(img_text2, pts=[textlines_small[k]], color=(255, 255, 255))
+                    img_text2 = cv2.fillPoly(img_text2, pts=[textlines_small[k]], color=255)
                     textlines_small_with_change.append(k)
 
-                img_text2 = img_text2.astype(np.uint8)
-                imgray = cv2.cvtColor(img_text2, cv2.COLOR_BGR2GRAY)
-                ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-                cont, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                _, thresh = cv2.threshold(img_text2, 0, 255, 0)
+                cont, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
                 # print(cont[0],type(cont))
                 textlines_big_with_change_con.append(cont)
@@ -1189,9 +1188,8 @@ def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col)
             # print(textlines_big_with_change,'textlines_big_with_change')
             # print(textlines_small_with_change,'textlines_small_with_change')
             # print(textlines_big)
-            textlines_con_changed.append(textlines_big_org_form)
-        else:
-            textlines_con_changed.append(textlines_big_org_form)
+
+        textlines_con_changed.append(textlines_big_org_form)
     return textlines_con_changed
 
 def order_of_regions(textline_mask, contours_main, contours_head, y_ref):
@@ -1262,29 +1260,22 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
         img_p_in_ver, img_in_hor,num_col_classifier):
 
     #img_p_in_ver = cv2.erode(img_p_in_ver, self.kernel, iterations=2)
-    img_p_in_ver=img_p_in_ver.astype(np.uint8)
-    img_p_in_ver=np.repeat(img_p_in_ver[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(img_p_in_ver, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-
-    contours_lines_ver,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    _, thresh = cv2.threshold(img_p_in_ver, 0, 255, 0)
+    contours_lines_ver, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     slope_lines_ver, _, x_min_main_ver, _, _, _, y_min_main_ver, y_max_main_ver, cx_main_ver = \
         find_features_of_lines(contours_lines_ver)
     for i in range(len(x_min_main_ver)):
         img_p_in_ver[int(y_min_main_ver[i]):
                      int(y_min_main_ver[i])+30,
                      int(cx_main_ver[i])-25:
-                     int(cx_main_ver[i])+25, 0] = 0
+                     int(cx_main_ver[i])+25] = 0
         img_p_in_ver[int(y_max_main_ver[i])-30:
                      int(y_max_main_ver[i]),
                      int(cx_main_ver[i])-25:
-                     int(cx_main_ver[i])+25, 0] = 0
+                     int(cx_main_ver[i])+25] = 0
 
-    img_in_hor=img_in_hor.astype(np.uint8)
-    img_in_hor=np.repeat(img_in_hor[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(img_in_hor, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours_lines_hor,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    _, thresh = cv2.threshold(img_in_hor, 0, 255, 0)
+    contours_lines_hor, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     slope_lines_hor, dist_x_hor, x_min_main_hor, x_max_main_hor, cy_main_hor, _, _, _, _ = \
         find_features_of_lines(contours_lines_hor)
@@ -1340,22 +1331,19 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
             img_p_in=img_in_hor
             special_separators=[]
 
-        img_p_in_ver[:,:,0][img_p_in_ver[:,:,0]==255]=1
-        sep_ver_hor=img_p_in+img_p_in_ver
-        sep_ver_hor_cross=(sep_ver_hor[:,:,0]==2)*1
-        sep_ver_hor_cross=np.repeat(sep_ver_hor_cross[:, :, np.newaxis], 3, axis=2)
-        sep_ver_hor_cross=sep_ver_hor_cross.astype(np.uint8)
-        imgray = cv2.cvtColor(sep_ver_hor_cross, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-        contours_cross,_=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        cx_cross, cy_cross = find_center_of_contours(contours_cross)
-        for ii in range(len(cx_cross)):
-            img_p_in[int(cy_cross[ii])-30:int(cy_cross[ii])+30,int(cx_cross[ii])+5:int(cx_cross[ii])+40,0]=0
-            img_p_in[int(cy_cross[ii])-30:int(cy_cross[ii])+30,int(cx_cross[ii])-40:int(cx_cross[ii])-4,0]=0
+        img_p_in_ver[img_p_in_ver == 255] = 1
+        sep_ver_hor = img_p_in + img_p_in_ver
+        sep_ver_hor_cross = (sep_ver_hor == 2) * 1
+        _, thresh = cv2.threshold(sep_ver_hor_cross.astype(np.uint8), 0, 255, 0)
+        contours_cross, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        center_cross = np.array(find_center_of_contours(contours_cross), dtype=int)
+        for cx, cy in center_cross.T:
+            img_p_in[cy - 30: cy + 30, cx + 5: cx + 40] = 0
+            img_p_in[cy - 30: cy + 30, cx - 40: cx - 4] = 0
     else:
         img_p_in=np.copy(img_in_hor)
         special_separators=[]
-    return img_p_in[:,:,0], special_separators
+    return img_p_in, special_separators
 
 def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     peaks_neg_tot = []
@@ -1365,11 +1353,11 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     peaks_neg_tot.append(last_point)
     return peaks_neg_tot
 
-def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, pixel_lines, contours_h=None):
+def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, label_lines, contours_h=None):
     t_ins_c0 = time.time()
-    separators_closeup=( (region_pre_p[:,:,:]==pixel_lines))*1
-    separators_closeup[0:110,:,:]=0
-    separators_closeup[separators_closeup.shape[0]-150:,:,:]=0
+    separators_closeup=( (region_pre_p[:,:]==label_lines))*1
+    separators_closeup[0:110,:]=0
+    separators_closeup[separators_closeup.shape[0]-150:,:]=0
 
     kernel = np.ones((5,5),np.uint8)
     separators_closeup=separators_closeup.astype(np.uint8)
@@ -1381,15 +1369,11 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     separators_closeup_n=separators_closeup_n.astype(np.uint8)
 
     separators_closeup_n_binary=np.zeros(( separators_closeup_n.shape[0],separators_closeup_n.shape[1]) )
-    separators_closeup_n_binary[:,:]=separators_closeup_n[:,:,0]
+    separators_closeup_n_binary[:,:]=separators_closeup_n[:,:]
     separators_closeup_n_binary[:,:][separators_closeup_n_binary[:,:]!=0]=1
 
-    gray_early=np.repeat(separators_closeup_n_binary[:, :, np.newaxis], 3, axis=2)
-    gray_early=gray_early.astype(np.uint8)
-    imgray_e = cv2.cvtColor(gray_early, cv2.COLOR_BGR2GRAY)
-    ret_e, thresh_e = cv2.threshold(imgray_e, 0, 255, 0)
-
-    contours_line_e,hierarchy_e=cv2.findContours(thresh_e,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    _, thresh_e = cv2.threshold(separators_closeup_n_binary, 0, 255, 0)
+    contours_line_e, _ = cv2.findContours(thresh_e.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     _, dist_xe, _, _, _, _, y_min_main, y_max_main, _ = \
         find_features_of_lines(contours_line_e)
     dist_ye = y_max_main - y_min_main
@@ -1399,10 +1383,8 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     cnts_hor_e=[]
     for ce in args_hor_e:
         cnts_hor_e.append(contours_line_e[ce])
-    figs_e=np.zeros(thresh_e.shape)
-    figs_e=cv2.fillPoly(figs_e,pts=cnts_hor_e,color=(1,1,1))
 
-    separators_closeup_n_binary=cv2.fillPoly(separators_closeup_n_binary, pts=cnts_hor_e, color=(0,0,0))
+    separators_closeup_n_binary=cv2.fillPoly(separators_closeup_n_binary, pts=cnts_hor_e, color=0)
     gray = cv2.bitwise_not(separators_closeup_n_binary)
     gray=gray.astype(np.uint8)
 
@@ -1422,7 +1404,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     kernel = np.ones((5,5),np.uint8)
     horizontal = cv2.dilate(horizontal,kernel,iterations = 2)
     horizontal = cv2.erode(horizontal,kernel,iterations = 2)
-    horizontal = cv2.fillPoly(horizontal, pts=cnts_hor_e, color=(255,255,255))
+    horizontal = cv2.fillPoly(horizontal, pts=cnts_hor_e, color=255)
 
     rows = vertical.shape[0]
     verticalsize = rows // 30
@@ -1440,13 +1422,8 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     separators_closeup_new[:,:][vertical[:,:]!=0]=1
     separators_closeup_new[:,:][horizontal[:,:]!=0]=1
 
-    vertical=np.repeat(vertical[:, :, np.newaxis], 3, axis=2)
-    vertical=vertical.astype(np.uint8)
-
-    imgray = cv2.cvtColor(vertical, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-
-    contours_line_vers,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    _, thresh = cv2.threshold(vertical, 0, 255, 0)
+    contours_line_vers, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     slope_lines, dist_x, x_min_main, x_max_main, cy_main, slope_lines_org, y_min_main, y_max_main, cx_main = \
         find_features_of_lines(contours_line_vers)
 
@@ -1461,11 +1438,8 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     dist_y_ver=y_max_main_ver-y_min_main_ver
     len_y=separators_closeup.shape[0]/3.0
 
-    horizontal=np.repeat(horizontal[:, :, np.newaxis], 3, axis=2)
-    horizontal=horizontal.astype(np.uint8)
-    imgray = cv2.cvtColor(horizontal, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours_line_hors,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    _, thresh = cv2.threshold(horizontal, 0, 255, 0)
+    contours_line_hors, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     slope_lines, dist_x, x_min_main, x_max_main, cy_main, slope_lines_org, y_min_main, y_max_main, cx_main = \
         find_features_of_lines(contours_line_hors)
 
@@ -1558,7 +1532,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     peaks_neg_fin_fin=[]
     for itiles in args_big_parts:
         regions_without_separators_tile=regions_without_separators[int(splitter_y_new[itiles]):
-                                                                   int(splitter_y_new[itiles+1]),:,0]
+                                                                   int(splitter_y_new[itiles+1]),:]
         try:
             num_col, peaks_neg_fin = find_num_col(regions_without_separators_tile,
                                                   num_col_classifier, tables, multiplier=7.0)
