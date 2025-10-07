@@ -67,6 +67,44 @@ def test_run_eynollah_layout_filename(tmp_path, pytestconfig, caplog, options):
     lines = tree.xpath("//page:TextLine", namespaces=NS)
     assert len(lines) == 31, "result is inaccurate" # 29 paragraph lines, 1 page and 1 catch-word line
 
+@pytest.mark.parametrize(
+    "options",
+    [
+            ["--tables"],
+            ["--tables", "--full-layout"],
+            ["--tables", "--full-layout", "--textline_light", "--light_version"],
+    ], ids=str)
+def test_run_eynollah_layout_filename2(tmp_path, pytestconfig, caplog, options):
+    infile = testdir.joinpath('resources/euler_rechenkunst01_1738_0025.tif')
+    outfile = tmp_path / 'euler_rechenkunst01_1738_0025.xml'
+    args = [
+        '-m', MODELS_LAYOUT,
+        '-i', str(infile),
+        '-o', str(outfile.parent),
+    ]
+    if pytestconfig.getoption('verbose') > 0:
+        args.extend(['-l', 'DEBUG'])
+    caplog.set_level(logging.INFO)
+    def only_eynollah(logrec):
+        return logrec.name == 'eynollah'
+    runner = CliRunner()
+    with caplog.filtering(only_eynollah):
+        result = runner.invoke(layout_cli, args + options, catch_exceptions=False)
+    assert result.exit_code == 0, result.stdout
+    logmsgs = [logrec.message for logrec in caplog.records]
+    assert str(infile) in logmsgs
+    assert outfile.exists()
+    tree = page_from_file(str(outfile)).etree
+    regions = tree.xpath("//page:TextRegion", namespaces=NS)
+    assert len(regions) >= 2, "result is inaccurate"
+    regions = tree.xpath("//page:TableRegion", namespaces=NS)
+    # model/decoding is not very precise, so (depending on mode) we can get fractures/splits/FP
+    assert len(regions) >= 1, "result is inaccurate"
+    regions = tree.xpath("//page:SeparatorRegion", namespaces=NS)
+    assert len(regions) >= 2, "result is inaccurate"
+    lines = tree.xpath("//page:TextLine", namespaces=NS)
+    assert len(lines) >= 2, "result is inaccurate" # mostly table (if detected correctly), but 1 page and 1 catch-word line
+
 def test_run_eynollah_layout_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
