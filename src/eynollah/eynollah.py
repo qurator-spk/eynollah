@@ -879,7 +879,7 @@ class Eynollah:
             thresholding_for_fl_light_version=False,
             threshold_art_class_textline=0.1):
 
-        self.logger.debug("enter do_prediction")
+        self.logger.debug("enter do_prediction (patches=%d)", patches)
         img_height_model = model.layers[-1].output_shape[1]
         img_width_model = model.layers[-1].output_shape[2]
 
@@ -1856,7 +1856,7 @@ class Eynollah:
 
         return sorted_textlines
 
-    def get_slopes_and_deskew_new_light2(self, contours, contours_par, textline_mask_tot, boxes, slope_deskew):
+    def get_slopes_and_deskew_new_light2(self, contours_par, textline_mask_tot, boxes, slope_deskew):
 
         polygons_of_textlines = return_contours_of_interested_region(textline_mask_tot,1,0.00001)
         cx_main_tot, cy_main_tot = find_center_of_contours(polygons_of_textlines)
@@ -1889,16 +1889,12 @@ class Eynollah:
             all_box_coord.append(crop_coor)
 
         return (all_found_textline_polygons,
-                boxes,
-                contours,
-                contours_par,
                 all_box_coord,
-                np.array(range(len(contours_par))),
                 slopes)
 
     def get_slopes_and_deskew_new_light(self, contours, contours_par, textline_mask_tot, boxes, slope_deskew):
         if not len(contours):
-            return [], [], [], [], [], [], []
+            return [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_light")
         with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
             results = self.executor.map(partial(do_work_of_slopes_new_light,
@@ -1906,15 +1902,15 @@ class Eynollah:
                                                 slope_deskew=slope_deskew,
                                                 textline_light=self.textline_light,
                                                 logger=self.logger,),
-                                        boxes, contours, contours_par, range(len(contours_par)))
+                                        boxes, contours, contours_par)
             results = list(results) # exhaust prior to release
-        #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
+        #textline_polygons, box_coord, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new_light")
         return tuple(zip(*results))
 
     def get_slopes_and_deskew_new(self, contours, contours_par, textline_mask_tot, boxes, slope_deskew):
         if not len(contours):
-            return [], [], [], [], [], [], []
+            return [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new")
         with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
             results = self.executor.map(partial(do_work_of_slopes_new,
@@ -1924,16 +1920,16 @@ class Eynollah:
                                                 KERNEL=KERNEL,
                                                 logger=self.logger,
                                                 plotter=self.plotter,),
-                                        boxes, contours, contours_par, range(len(contours_par)))
+                                        boxes, contours, contours_par)
             results = list(results) # exhaust prior to release
-        #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
+        #textline_polygons, box_coord, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new")
         return tuple(zip(*results))
 
-    def get_slopes_and_deskew_new_curved(self, contours, contours_par, textline_mask_tot, boxes,
+    def get_slopes_and_deskew_new_curved(self, contours_par, textline_mask_tot, boxes,
                                          mask_texts_only, num_col, scale_par, slope_deskew):
-        if not len(contours):
-            return [], [], [], [], [], [], []
+        if not len(contours_par):
+            return [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_curved")
         with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
             with share_ndarray(mask_texts_only) as mask_texts_only_shared:
@@ -1947,9 +1943,9 @@ class Eynollah:
                                             KERNEL=KERNEL,
                                             logger=self.logger,
                                             plotter=self.plotter,),
-                                    boxes, contours, contours_par, range(len(contours_par)))
+                                    boxes, contours_par)
                 results = list(results) # exhaust prior to release
-        #textline_polygons, boxes, text_regions, text_regions_par, box_coord, index_text_con, slopes = zip(*results)
+        #textline_polygons, box_coord, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new_curved")
         return tuple(zip(*results))
 
@@ -4037,7 +4033,7 @@ class Eynollah:
         
 
     def filter_contours_without_textline_inside(
-            self, contours, text_con_org, contours_textline,
+            self, contours_par, contours_textline,
             contours_only_text_parent_d_ordered,
             conf_contours_textregions):
 
@@ -4049,12 +4045,11 @@ class Eynollah:
                 return []
             return list(np.array(lis)[indices])
 
-        return (filterfun(contours),
-                filterfun(text_con_org),
-                filterfun(conf_contours_textregions),
+        return (filterfun(contours_par),
                 filterfun(contours_textline),
                 filterfun(contours_only_text_parent_d_ordered),
-                indices
+                filterfun(conf_contours_textregions),
+                # indices
         )
 
     def separate_marginals_to_left_and_right_and_order_from_top_to_down(
@@ -4592,12 +4587,11 @@ class Eynollah:
                 contours_only_text_parent, contours_only_text_parent_d_ordered, text_only,
                 marginal_cnts=polygons_of_marginals)
             #print("text region early 3.5 in %.1fs", time.time() - t0)
-            txt_con_org , conf_contours_textregions = get_textregion_contours_in_org_image_light(
+            conf_contours_textregions = get_textregion_contours_in_org_image_light(
                 contours_only_text_parent, self.image, confidence_matrix)
-            #txt_con_org = dilate_textregion_contours(txt_con_org)
             #contours_only_text_parent = dilate_textregion_contours(contours_only_text_parent)
         else:
-            txt_con_org , conf_contours_textregions = get_textregion_contours_in_org_image_light(
+            conf_contours_textregions = get_textregion_contours_in_org_image_light(
                 contours_only_text_parent, self.image, confidence_matrix)
         #print("text region early 4 in %.1fs", time.time() - t0)
         boxes_text = get_text_region_boxes_by_given_contours(contours_only_text_parent)
@@ -4607,13 +4601,13 @@ class Eynollah:
         if not self.curved_line:
             if self.light_version:
                 if self.textline_light:
-                    all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, \
-                        all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_light2(
-                            txt_con_org, contours_only_text_parent, textline_mask_tot_ea_org,
+                    all_found_textline_polygons, \
+                        all_box_coord, slopes = self.get_slopes_and_deskew_new_light2(
+                            contours_only_text_parent, textline_mask_tot_ea_org,
                             boxes_text, slope_deskew)
-                    all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, \
-                        all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new_light2(
-                            polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea_org,
+                    all_found_textline_polygons_marginals, \
+                        all_box_coord_marginals, slopes_marginals = self.get_slopes_and_deskew_new_light2(
+                            polygons_of_marginals, textline_mask_tot_ea_org,
                             boxes_marginals, slope_deskew)
 
                     all_found_textline_polygons = dilate_textline_contours(
@@ -4622,46 +4616,46 @@ class Eynollah:
                         all_found_textline_polygons, None, textline_mask_tot_ea_org, type_contour="textline")
                     all_found_textline_polygons_marginals = dilate_textline_contours(
                         all_found_textline_polygons_marginals)
-                    contours_only_text_parent, txt_con_org, conf_contours_textregions, \
-                        all_found_textline_polygons, contours_only_text_parent_d_ordered, \
-                        index_by_text_par_con = self.filter_contours_without_textline_inside(
-                            contours_only_text_parent, txt_con_org, all_found_textline_polygons,
+                    contours_only_text_parent, all_found_textline_polygons, \
+                        contours_only_text_parent_d_ordered, conf_contours_textregions = \
+                        self.filter_contours_without_textline_inside(
+                            contours_only_text_parent, all_found_textline_polygons,
                             contours_only_text_parent_d_ordered, conf_contours_textregions)
                 else:
                     textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
-                    all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, all_box_coord, \
-                        index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_light(
-                            txt_con_org, contours_only_text_parent, textline_mask_tot_ea,
+                    all_found_textline_polygons, \
+                        all_box_coord, slopes = self.get_slopes_and_deskew_new_light(
+                            contours_only_text_parent, contours_only_text_parent, textline_mask_tot_ea,
                             boxes_text, slope_deskew)
-                    all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, \
-                        all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new_light(
+                    all_found_textline_polygons_marginals, \
+                        all_box_coord_marginals, slopes_marginals = self.get_slopes_and_deskew_new_light(
                             polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea,
                             boxes_marginals, slope_deskew)
                     #all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(
                     #    all_found_textline_polygons, textline_mask_tot_ea_org, type_contour="textline")
             else:
                 textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=1)
-                all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, \
-                    all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new(
-                        txt_con_org, contours_only_text_parent, textline_mask_tot_ea,
+                all_found_textline_polygons, \
+                    all_box_coord, slopes = self.get_slopes_and_deskew_new(
+                        contours_only_text_parent, contours_only_text_parent, textline_mask_tot_ea,
                         boxes_text, slope_deskew)
-                all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, \
-                    all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new(
+                all_found_textline_polygons_marginals, \
+                    all_box_coord_marginals, slopes_marginals = self.get_slopes_and_deskew_new(
                         polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea,
                         boxes_marginals, slope_deskew)
         else:
             scale_param = 1
             textline_mask_tot_ea_erode = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=2)
-            all_found_textline_polygons, boxes_text, txt_con_org, contours_only_text_parent, \
-                all_box_coord, index_by_text_par_con, slopes = self.get_slopes_and_deskew_new_curved(
-                    txt_con_org, contours_only_text_parent, textline_mask_tot_ea_erode,
+            all_found_textline_polygons, \
+                all_box_coord, slopes = self.get_slopes_and_deskew_new_curved(
+                    contours_only_text_parent, textline_mask_tot_ea_erode,
                     boxes_text, text_only,
                     num_col_classifier, scale_param, slope_deskew)
             all_found_textline_polygons = small_textlines_to_parent_adherence2(
                 all_found_textline_polygons, textline_mask_tot_ea, num_col_classifier)
-            all_found_textline_polygons_marginals, boxes_marginals, _, polygons_of_marginals, \
-                all_box_coord_marginals, _, slopes_marginals = self.get_slopes_and_deskew_new_curved(
-                    polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea_erode,
+            all_found_textline_polygons_marginals, \
+                all_box_coord_marginals, slopes_marginals = self.get_slopes_and_deskew_new_curved(
+                    polygons_of_marginals, textline_mask_tot_ea_erode,
                     boxes_marginals, text_only,
                     num_col_classifier, scale_param, slope_deskew)
             all_found_textline_polygons_marginals = small_textlines_to_parent_adherence2(
@@ -4884,7 +4878,7 @@ class Eynollah:
                 conf_contours_textregions, conf_contours_textregions_h)
         else:
             pcgts = self.writer.build_pagexml_no_full_layout(
-                txt_con_org, page_coord, order_text_new, id_of_texts_tot,
+                contours_only_text_parent, page_coord, order_text_new, id_of_texts_tot,
                 all_found_textline_polygons, all_box_coord, polygons_of_images,
                 polygons_of_marginals_left, polygons_of_marginals_right,
                 all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right,

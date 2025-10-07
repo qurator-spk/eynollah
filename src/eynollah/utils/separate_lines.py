@@ -1592,7 +1592,7 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map
 
 @wrap_ndarray_shared(kw='textline_mask_tot_ea')
 def do_work_of_slopes_new(
-        box_text, contour, contour_par, index_r_con,
+        box_text, contour, contour_par,
         textline_mask_tot_ea=None, slope_deskew=0.0,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
@@ -1647,12 +1647,12 @@ def do_work_of_slopes_new(
         all_text_region_raw[mask_only_con_region == 0] = 0
         cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contour_par, box_text)
 
-    return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope
+    return cnt_clean_rot, crop_coor, slope
 
 @wrap_ndarray_shared(kw='textline_mask_tot_ea')
 @wrap_ndarray_shared(kw='mask_texts_only')
 def do_work_of_slopes_new_curved(
-        box_text, contour, contour_par, index_r_con,
+        box_text, contour_par,
         textline_mask_tot_ea=None, mask_texts_only=None,
         num_col=1, scale_par=1.0, slope_deskew=0.0,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
@@ -1743,11 +1743,11 @@ def do_work_of_slopes_new_curved(
                                                                     slope_for_all, contour_par,
                                                                     box_text, True)
 
-    return textlines_cnt_per_region[::-1], box_text, contour, contour_par, crop_coor, index_r_con, slope
+    return textlines_cnt_per_region[::-1], crop_coor, slope
 
 @wrap_ndarray_shared(kw='textline_mask_tot_ea')
 def do_work_of_slopes_new_light(
-        box_text, contour, contour_par, index_r_con,
+        box_text, contour, contour_par,
         textline_mask_tot_ea=None, slope_deskew=0, textline_light=True,
         logger=None
 ):
@@ -1777,4 +1777,4 @@ def do_work_of_slopes_new_light(
         all_text_region_raw[mask_only_con_region == 0] = 0
         cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_deskew, contour_par, box_text)
 
-    return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope_deskew
+    return cnt_clean_rot, crop_coor, slope_deskew
