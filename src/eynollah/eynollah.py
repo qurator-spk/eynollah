@@ -4068,7 +4068,9 @@ class Eynollah:
             for textregion_index_to_del in textline_in_textregion_index_to_del:
                 contours[textregion_index_to_del] = list(np.delete(
                     contours[textregion_index_to_del],
-                    textline_in_textregion_index_to_del[textregion_index_to_del]))
+                    textline_in_textregion_index_to_del[textregion_index_to_del],
+                    # needed so numpy does not flatten the entire result when 0 left
+                    axis=0))
 
             return contours
         
