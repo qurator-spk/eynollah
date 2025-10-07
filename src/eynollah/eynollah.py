@@ -4260,18 +4260,6 @@ class Eynollah:
             order_text_new = [0]
             slopes =[0]
             id_of_texts_tot =['region_0001']
-
-            polygons_of_images = []
-            slopes_marginals_left = []
-            slopes_marginals_right = []
-            polygons_of_marginals_left = []
-            polygons_of_marginals_right = []
-            all_found_textline_polygons_marginals_left = []
-            all_found_textline_polygons_marginals_right = []
-            all_box_coord_marginals_left = []
-            all_box_coord_marginals_right = []
-            polygons_seplines = []
-            contours_tables = []
             conf_contours_textregions =[0]
             
             if self.ocr and not self.tr:
@@ -4284,15 +4272,13 @@ class Eynollah:
             
             pcgts = self.writer.build_pagexml_no_full_layout(
                 cont_page, page_coord, order_text_new, id_of_texts_tot,
-                all_found_textline_polygons, page_coord, polygons_of_images,
-                polygons_of_marginals_left, polygons_of_marginals_right,
-                all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right,
-                all_box_coord_marginals_left, all_box_coord_marginals_right,
-                slopes, slopes_marginals_left, slopes_marginals_right, 
-                cont_page, polygons_seplines, contours_tables,
+                all_found_textline_polygons, page_coord, [],
+                [], [], [], [], [], [],
+                slopes, [], [],
+                cont_page, [], [],
                 ocr_all_textlines=ocr_all_textlines,
                 conf_contours_textregion=conf_contours_textregions,
-                skip_layout_reading_order=self.skip_layout_and_reading_order)
+                skip_layout_reading_order=True)
             self.logger.info("Basic processing complete")
             return pcgts
 
@@ -4884,9 +4870,11 @@ class Eynollah:
                 all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right,
                 all_box_coord_marginals_left, all_box_coord_marginals_right,
                 slopes, slopes_marginals_left, slopes_marginals_right, 
-                cont_page, polygons_seplines, contours_tables, ocr_all_textlines,
-                ocr_all_textlines_marginals_left, ocr_all_textlines_marginals_right,
-                conf_contours_textregions)
+                cont_page, polygons_seplines, contours_tables,
+                ocr_all_textlines=ocr_all_textlines,
+                ocr_all_textlines_marginals_left=ocr_all_textlines_marginals_left,
+                ocr_all_textlines_marginals_right=ocr_all_textlines_marginals_right,
+                conf_contours_textregions=conf_contours_textregions)
             
         return pcgts
 
