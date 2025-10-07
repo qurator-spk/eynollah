@@ -128,7 +128,7 @@ class EynollahXmlWriter():
             ocr_all_textlines=None, ocr_all_textlines_h=None,
             ocr_all_textlines_marginals_left=None, ocr_all_textlines_marginals_right=None,
             ocr_all_textlines_drop=None,
-            conf_contours_textregion=None, conf_contours_textregion_h=None,
+            conf_contours_textregions=None, conf_contours_textregions_h=None,
             skip_layout_reading_order=False):
         self.logger.debug('enter build_pagexml')
 
@@ -152,8 +152,8 @@ class EynollahXmlWriter():
                 Coords=CoordsType(points=self.calculate_polygon_coords(region_contour, page_coord,
                                                                        skip_layout_reading_order))
             )
-            if conf_contours_textregion:
-                textregion.Coords.set_conf(conf_contours_textregion[mm])
+            if conf_contours_textregions:
+                textregion.Coords.set_conf(conf_contours_textregions[mm])
             page.add_TextRegion(textregion)
             if ocr_all_textlines:
                 ocr_textlines = ocr_all_textlines[mm]
@@ -168,8 +168,8 @@ class EynollahXmlWriter():
                 id=counter.next_region_id, type_='heading',
                 Coords=CoordsType(points=self.calculate_polygon_coords(region_contour, page_coord))
             )
-            if conf_contours_textregion_h:
-                textregion.Coords.set_conf(conf_contours_textregion_h[mm])
+            if conf_contours_textregions_h:
+                textregion.Coords.set_conf(conf_contours_textregions_h[mm])
             page.add_TextRegion(textregion)
             if ocr_all_textlines_h:
                 ocr_textlines = ocr_all_textlines_h[mm]
