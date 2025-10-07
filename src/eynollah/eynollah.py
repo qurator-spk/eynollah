@@ -4040,79 +4040,23 @@ class Eynollah:
             self, contours, text_con_org, contours_textline,
             contours_only_text_parent_d_ordered,
             conf_contours_textregions):
-        ###contours_txtline_of_all_textregions = []
-        ###for jj in range(len(contours_textline)):
-            ###contours_txtline_of_all_textregions = contours_txtline_of_all_textregions + contours_textline[jj]
 
-        ###M_main_textline = [cv2.moments(contours_txtline_of_all_textregions[j])
-        ###                   for j in range(len(contours_txtline_of_all_textregions))]
-        ###cx_main_textline = [(M_main_textline[j]["m10"] / (M_main_textline[j]["m00"] + 1e-32))
-        ###                    for j in range(len(M_main_textline))]
-        ###cy_main_textline = [(M_main_textline[j]["m01"] / (M_main_textline[j]["m00"] + 1e-32))
-        ###                    for j in range(len(M_main_textline))]
-
-        ###M_main = [cv2.moments(contours[j]) for j in range(len(contours))]
-        ###cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-        ###cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32)) for j in range(len(M_main))]
-
-        ###contours_with_textline = []
-        ###for ind_tr, con_tr in enumerate(contours):
-            ###results = [cv2.pointPolygonTest(con_tr,
-            ###                                 (cx_main_textline[index_textline_con],
-            ###                                  cy_main_textline[index_textline_con]),
-            ###                                 False)
-        ###               for index_textline_con in range(len(contours_txtline_of_all_textregions)) ]
-            ###results = np.array(results)
-            ###if np.any(results==1):
-                ###contours_with_textline.append(con_tr)
-
-        textregion_index_to_del = set()
-        for index_textregion, textlines_textregion in enumerate(contours_textline):
-            if len(textlines_textregion) == 0:
-                textregion_index_to_del.add(index_textregion)
+        assert len(contours_par) == len(contours_textline)
+        indices = np.arange(len(contours_textline))
+        indices = np.delete(indices, np.flatnonzero([len(lines) == 0 for lines in contours_textline]))
         def filterfun(lis):
             if len(lis) == 0:
                 return []
-            if len(textregion_index_to_del) == 0:
-                return lis
-            return list(np.delete(lis, list(textregion_index_to_del)))
+            return list(np.array(lis)[indices])
 
         return (filterfun(contours),
                 filterfun(text_con_org),
                 filterfun(conf_contours_textregions),
                 filterfun(contours_textline),
                 filterfun(contours_only_text_parent_d_ordered),
-                np.arange(len(contours) - len(textregion_index_to_del)))
+                indices
+        )
 
-    def delete_regions_without_textlines(
-            self, slopes, all_found_textline_polygons, boxes_text, txt_con_org,
-            contours_only_text_parent, index_by_text_par_con):
-
-        slopes_rem = []
-        all_found_textline_polygons_rem = []
-        boxes_text_rem = []
-        txt_con_org_rem = []
-        contours_only_text_parent_rem = []
-        index_by_text_par_con_rem = []
-
-        for i, ind_con in enumerate(all_found_textline_polygons):
-            if len(ind_con):
-                all_found_textline_polygons_rem.append(ind_con)
-                slopes_rem.append(slopes[i])
-                boxes_text_rem.append(boxes_text[i])
-                txt_con_org_rem.append(txt_con_org[i])
-                contours_only_text_parent_rem.append(contours_only_text_parent[i])
-                index_by_text_par_con_rem.append(index_by_text_par_con[i])
-
-        index_sort = np.argsort(index_by_text_par_con_rem)
-        indexes_new = np.array(range(len(index_by_text_par_con_rem)))
-
-        index_by_text_par_con_rem_sort = [indexes_new[index_sort==j][0]
-                                          for j in range(len(index_by_text_par_con_rem))]
-
-        return (slopes_rem, all_found_textline_polygons_rem, boxes_text_rem, txt_con_org_rem,
-                contours_only_text_parent_rem, index_by_text_par_con_rem_sort)
-    
     def separate_marginals_to_left_and_right_and_order_from_top_to_down(
             self, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals,
             slopes_marginals, mid_point_of_page_width):
@@ -4679,15 +4623,6 @@ class Eynollah:
                             polygons_of_marginals, polygons_of_marginals, textline_mask_tot_ea_org,
                             boxes_marginals, slope_deskew)
 
-                    #slopes, all_found_textline_polygons, boxes_text, txt_con_org, \
-                    #    contours_only_text_parent, index_by_text_par_con = \
-                    #    self.delete_regions_without_textlines(slopes, all_found_textline_polygons,
-                    #        boxes_text, txt_con_org, contours_only_text_parent, index_by_text_par_con)
-                    #slopes_marginals, all_found_textline_polygons_marginals, boxes_marginals, \
-                    #    polygons_of_marginals, polygons_of_marginals, _ = \
-                    #    self.delete_regions_without_textlines(slopes_marginals, all_found_textline_polygons_marginals,
-                    #        boxes_marginals, polygons_of_marginals, polygons_of_marginals,
-                    #        np.array(range(len(polygons_of_marginals))))
                     all_found_textline_polygons = dilate_textline_contours(
                         all_found_textline_polygons)
                     all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(
