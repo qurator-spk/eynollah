@@ -4437,6 +4437,8 @@ class Eynollah:
         ###min_con_area = 0.000005
         contours_only_text, hir_on_text = return_contours_of_image(text_only)
         contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
+        contours_only_text_parent_d_ordered = []
+        contours_only_text_parent_d = []
         if len(contours_only_text_parent) > 0:
             areas_tot_text = np.prod(text_only.shape)
             areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
@@ -4558,15 +4560,6 @@ class Eynollah:
                     # plt.subplot(2, 2, 2, title="result contours")
                     # plt.imshow(img4)
                     # plt.show()
-                else:
-                    contours_only_text_parent_d_ordered = []
-                    contours_only_text_parent_d = []
-                    contours_only_text_parent = []
-
-            else:
-                contours_only_text_parent_d_ordered = []
-                contours_only_text_parent_d = []
-                #contours_only_text_parent = []
 
         if not len(contours_only_text_parent):
             # stop early
@@ -4684,11 +4677,6 @@ class Eynollah:
                  slopes_marginals, mid_point_of_page_width)
         
         #print(len(polygons_of_marginals), len(ordered_left_marginals), len(ordered_right_marginals), 'marginals ordred')
-        if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            contours_only_text_parent_d_ordered = self.return_list_of_contours_with_desired_order(
-                contours_only_text_parent_d_ordered, index_by_text_par_con)
-        else:
-            contours_only_text_parent_d_ordered = None
 
         if self.full_layout:
             if self.light_version:

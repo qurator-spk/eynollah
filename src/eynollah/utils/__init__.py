@@ -938,7 +938,7 @@ def check_any_text_region_in_model_one_is_main_or_header(
         if (pixels_header>=pixels_main) and ( (length_con[ii]/float(height_con[ii]) )>=1.3 ):
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ]=2
             contours_only_text_parent_head.append(con)
-            if contours_only_text_parent_d_ordered is not None:
+            if len(contours_only_text_parent_d_ordered):
                 contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_head.append(all_box_coord[ii])
             slopes_head.append(slopes[ii])
@@ -948,7 +948,7 @@ def check_any_text_region_in_model_one_is_main_or_header(
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ]=1
             contours_only_text_parent_main.append(con)
             conf_contours_main.append(conf_contours[ii])
-            if contours_only_text_parent_d_ordered is not None:
+            if len(contours_only_text_parent_d_ordered):
                 contours_only_text_parent_main_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_main.append(all_box_coord[ii])
             slopes_main.append(slopes[ii])
@@ -1033,7 +1033,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ] = 2
             contours_only_text_parent_head.append(contours_only_text_parent[ii])
             conf_contours_head.append(None) # why not conf_contours[ii], too?
-            if contours_only_text_parent_d_ordered is not None:
+            if len(contours_only_text_parent_d_ordered):
                 contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_head.append(all_box_coord[ii])
             slopes_head.append(slopes[ii])
@@ -1043,7 +1043,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ] = 1
             contours_only_text_parent_main.append(contours_only_text_parent[ii])
             conf_contours_main.append(conf_contours[ii])
-            if contours_only_text_parent_d_ordered is not None:
+            if len(contours_only_text_parent_d_ordered):
                 contours_only_text_parent_main_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_main.append(all_box_coord[ii])
             slopes_main.append(slopes[ii])
