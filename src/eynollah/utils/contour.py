@@ -36,14 +36,8 @@ def find_contours_mean_y_diff(contours_main):
     return np.mean(np.diff(np.sort(np.array(cy_main))))
 
 def get_text_region_boxes_by_given_contours(contours):
-    boxes = []
-    contours_new = []
-    for jj in range(len(contours)):
-        box = cv2.boundingRect(contours[jj])
-        boxes.append(box)
-        contours_new.append(contours[jj])
-
-    return boxes, contours_new
+    return [cv2.boundingRect(contour)
+            for contour in contours]
 
 def filter_contours_area_of_image(image, contours, hierarchy, max_area=1.0, min_area=0.0, dilate=0):
     found_polygons_early = []
