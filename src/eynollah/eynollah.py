@@ -930,10 +930,8 @@ class Eynollah:
         img_w = img.shape[1]
         prediction_true = np.zeros((img_h, img_w, 3))
         mask_true = np.zeros((img_h, img_w))
-        nxf = img_w / float(width_mid)
-        nyf = img_h / float(height_mid)
-        nxf = int(nxf) + 1 if nxf > int(nxf) else int(nxf)
-        nyf = int(nyf) + 1 if nyf > int(nyf) else int(nyf)
+        nxf = math.ceil(img_w / float(width_mid))
+        nyf = math.ceil(img_h / float(height_mid))
 
         list_i_s = []
         list_j_s = []
@@ -946,18 +944,10 @@ class Eynollah:
         img_patch = np.zeros((n_batch_inference, img_height_model, img_width_model, 3))
         for i in range(nxf):
             for j in range(nyf):
-                if i == 0:
-                    index_x_d = i * width_mid
-                    index_x_u = index_x_d + img_width_model
-                else:
-                    index_x_d = i * width_mid
-                    index_x_u = index_x_d + img_width_model
-                if j == 0:
-                    index_y_d = j * height_mid
-                    index_y_u = index_y_d + img_height_model
-                else:
-                    index_y_d = j * height_mid
-                    index_y_u = index_y_d + img_height_model
+                index_x_d = i * width_mid
+                index_x_u = index_x_d + img_width_model
+                index_y_d = j * height_mid
+                index_y_u = index_y_d + img_height_model
                 if index_x_u > img_w:
                     index_x_u = img_w
                     index_x_d = img_w - img_width_model
@@ -2600,23 +2590,20 @@ class Eynollah:
             self, layout, table_prediction_early, pixel_table, num_col_classifier):
 
         layout_org  = np.copy(layout)
-        layout_org[:,:,0][layout_org[:,:,0]==pixel_table] = 0
-        layout = (layout[:,:,0]==pixel_table)*1
-
-        layout = layout.astype(np.uint8)
+        layout_org[layout_org == pixel_table] = 0
+        layout = (layout == pixel_table).astype(np.uint8) * 1
         _, thresh = cv2.threshold(layout, 0, 255, 0)
 
         contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        cnt_size = np.array([cv2.contourArea(contours[j])
-                             for j in range(len(contours))])
+        cnt_size = np.array([cv2.contourArea(cnt) for cnt in contours])
 
         contours_new = []
-        for i in range(len(contours)):
-            x, y, w, h = cv2.boundingRect(contours[i])
+        for i, contour in enumerate(contours):
+            x, y, w, h = cv2.boundingRect(contour)
             iou = cnt_size[i] /float(w*h) *100
             if iou<80:
                 layout_contour = np.zeros(layout_org.shape[:2])
-                layout_contour = cv2.fillPoly(layout_contour, pts=[contours[i]] ,color=1)
+                layout_contour = cv2.fillPoly(layout_contour, pts=[contour] ,color=1)
 
                 layout_contour_sum = layout_contour.sum(axis=0)
                 layout_contour_sum_diff = np.diff(layout_contour_sum)
@@ -2648,26 +2635,26 @@ class Eynollah:
                         #print(iou_in,'iou_in_in1')
 
                         if iou_in>30:
-                            layout_org= cv2.fillPoly(layout_org, pts=[contours_sep[ji]], color=3 * (pixel_table,))
+                            layout_org = cv2.fillPoly(layout_org, pts=[contours_sep[ji]], color=pixel_table)
                         else:
                             pass
                     else:
-                        layout_org= cv2.fillPoly(layout_org, pts=[contours_sep[ji]], color=3 * (pixel_table,))
+                        layout_org= cv2.fillPoly(layout_org, pts=[contours_sep[ji]], color=pixel_table)
             else:
-                contours_new.append(contours[i])
+                contours_new.append(contour)
                 if num_col_classifier>=2:
-                    only_recent_contour_image = np.zeros((layout.shape[0],layout.shape[1]))
-                    only_recent_contour_image= cv2.fillPoly(only_recent_contour_image,pts=[contours[i]] ,color=(1,1,1))
+                    only_recent_contour_image = np.zeros(layout.shape[:2])
+                    only_recent_contour_image = cv2.fillPoly(only_recent_contour_image, pts=[contour],color=1)
 
                     table_pixels_masked_from_early_pre = only_recent_contour_image * table_prediction_early
                     iou_in = 100. * table_pixels_masked_from_early_pre.sum() / only_recent_contour_image.sum()
                     #print(iou_in,'iou_in')
                     if iou_in>30:
-                        layout_org= cv2.fillPoly(layout_org, pts=[contours[i]], color=3 * (pixel_table,))
+                        layout_org = cv2.fillPoly(layout_org, pts=[contour], color=pixel_table)
                     else:
                         pass
                 else:
-                    layout_org= cv2.fillPoly(layout_org, pts=[contours[i]], color=3 * (pixel_table,))
+                    layout_org = cv2.fillPoly(layout_org, pts=[contour], color=pixel_table)
 
         return layout_org, contours_new
 
@@ -2714,16 +2701,10 @@ class Eynollah:
             pass
         boxes = np.array(boxes, dtype=int) # to be on the safe side
 
-        img_comm_e = np.zeros(image_revised_1.shape)
-        img_comm = np.repeat(img_comm_e[:, :, np.newaxis], 3, axis=2)
-
+        img_comm = np.zeros(image_revised_1.shape, dtype=np.uint8)
         for indiv in np.unique(image_revised_1):
-            image_col=(image_revised_1==indiv)*255
-            img_comm_in=np.repeat(image_col[:, :, np.newaxis], 3, axis=2)
-            img_comm_in=img_comm_in.astype(np.uint8)
-
-            imgray = cv2.cvtColor(img_comm_in, cv2.COLOR_BGR2GRAY)
-            ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+            image_col = (image_revised_1 == indiv).astype(np.uint8) * 255
+            _, thresh = cv2.threshold(image_col, 0, 255, 0)
             contours,hirarchy=cv2.findContours(thresh.copy(), cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
             if indiv==pixel_table:
@@ -2733,35 +2714,27 @@ class Eynollah:
                 main_contours = filter_contours_area_of_image_tables(thresh, contours, hirarchy,
                                                                      max_area=1, min_area=min_area)
 
-            img_comm = cv2.fillPoly(img_comm, pts = main_contours, color = (indiv, indiv, indiv))
-            img_comm = img_comm.astype(np.uint8)
+            img_comm = cv2.fillPoly(img_comm, pts=main_contours, color=indiv)
 
         if not self.isNaN(slope_mean_hor):
-            image_revised_last = np.zeros((image_regions_eraly_p.shape[0], image_regions_eraly_p.shape[1],3))
+            image_revised_last = np.zeros(image_regions_eraly_p.shape[:2])
             for i in range(len(boxes)):
                 box_ys = slice(*boxes[i][2:4])
                 box_xs = slice(*boxes[i][0:2])
                 image_box = img_comm[box_ys, box_xs]
                 try:
-                    image_box_tabels_1=(image_box[:,:,0]==pixel_table)*1
+                    image_box_tabels_1 = (image_box == pixel_table) * 1
                     contours_tab,_=return_contours_of_image(image_box_tabels_1)
                     contours_tab=filter_contours_area_of_image_tables(image_box_tabels_1,contours_tab,_,1,0.003)
-                    image_box_tabels_1=(image_box[:,:,0]==pixel_line)*1
+                    image_box_tabels_1 = (image_box == pixel_line).astype(np.uint8) * 1
+                    image_box_tabels_and_m_text = ( (image_box == pixel_table) |
+                                                    (image_box == 1) ).astype(np.uint8) * 1
 
-                    image_box_tabels_and_m_text=( (image_box[:,:,0]==pixel_table) | (image_box[:,:,0]==1) )*1
-                    image_box_tabels_and_m_text=image_box_tabels_and_m_text.astype(np.uint8)
+                    image_box_tabels_1 = cv2.dilate(image_box_tabels_1, KERNEL, iterations=5)
 
-                    image_box_tabels_1=image_box_tabels_1.astype(np.uint8)
-                    image_box_tabels_1 = cv2.dilate(image_box_tabels_1,KERNEL,iterations = 5)
-
-                    contours_table_m_text,_=return_contours_of_image(image_box_tabels_and_m_text)
-                    image_box_tabels=np.repeat(image_box_tabels_1[:, :, np.newaxis], 3, axis=2)
-
-                    image_box_tabels=image_box_tabels.astype(np.uint8)
-                    imgray = cv2.cvtColor(image_box_tabels, cv2.COLOR_BGR2GRAY)
-                    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-
-                    contours_line,hierachy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+                    contours_table_m_text, _ = return_contours_of_image(image_box_tabels_and_m_text)
+                    _, thresh = cv2.threshold(image_box_tabels_1, 0, 255, 0)
+                    contours_line, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
                     y_min_main_line ,y_max_main_line=find_features_of_contours(contours_line)
                     y_min_main_tab ,y_max_main_tab=find_features_of_contours(contours_tab)
@@ -2793,18 +2766,20 @@ class Eynollah:
                                       y_max_main_tab[i_t] < y_min_main_line[i_l] and
                                       y_min_main_tab[i_t] < y_min_main_line[i_l]):
                                     pass
-                                elif np.abs(y_max_main_line[i_l]-y_min_main_line[i_l])<100:
+                                elif abs(y_max_main_line[i_l] - y_min_main_line[i_l]) < 100:
                                     pass
                                 else:
-                                    y_up_tab.append(np.min([y_min_main_line[i_l], y_min_main_tab[i_t] ])  )
-                                    y_down_tab.append( np.max([ y_max_main_line[i_l],y_max_main_tab[i_t] ]) )
+                                    y_up_tab.append(min([y_min_main_line[i_l],
+                                                         y_min_main_tab[i_t]]))
+                                    y_down_tab.append(max([y_max_main_line[i_l],
+                                                           y_max_main_tab[i_t]]))
 
                             if len(y_up_tab)==0:
                                 y_up_tabs.append(y_min_main_tab[i_t])
                                 y_down_tabs.append(y_max_main_tab[i_t])
                             else:
-                                y_up_tabs.append(np.min(y_up_tab))
-                                y_down_tabs.append(np.max(y_down_tab))
+                                y_up_tabs.append(min(y_up_tab))
+                                y_down_tabs.append(max(y_down_tab))
                     else:
                         y_down_tabs=[]
                         y_up_tabs=[]
@@ -2814,7 +2789,7 @@ class Eynollah:
                     y_up_tabs=[]
 
                 for ii in range(len(y_up_tabs)):
-                    image_box[y_up_tabs[ii]:y_down_tabs[ii],:,0]=pixel_table
+                    image_box[y_up_tabs[ii]:y_down_tabs[ii]] = pixel_table
 
                 image_revised_last[box_ys, box_xs] = image_box
         else:
@@ -2825,14 +2800,14 @@ class Eynollah:
                 image_revised_last[box_ys, box_xs] = image_box
 
         if num_col_classifier==1:
-            img_tables_col_1 = (image_revised_last[:,:,0] == pixel_table).astype(np.uint8)
+            img_tables_col_1 = (image_revised_last == pixel_table).astype(np.uint8)
             contours_table_col1, _ = return_contours_of_image(img_tables_col_1)
 
             _,_ ,_ , _, y_min_tab_col1 ,y_max_tab_col1, _= find_new_features_of_contours(contours_table_col1)
 
             if len(y_min_tab_col1)>0:
                 for ijv in range(len(y_min_tab_col1)):
-                    image_revised_last[int(y_min_tab_col1[ijv]):int(y_max_tab_col1[ijv]),:,:]=pixel_table
+                    image_revised_last[int(y_min_tab_col1[ijv]):int(y_max_tab_col1[ijv])] = pixel_table
         return image_revised_last
 
     def get_tables_from_model(self, img, num_col_classifier):
@@ -3200,7 +3175,7 @@ class Eynollah:
                     pass
                 else:
                     text_regions_p_tables = np.copy(text_regions_p)
-                    text_regions_p_tables[:,:][(table_prediction[:,:] == 1)] = 10
+                    text_regions_p_tables[(table_prediction == 1)] = 10
                     pixel_line = 3
                     img_revised_tab2 = self.add_tables_heuristic_to_layout(
                         text_regions_p_tables, boxes, 0, splitter_y_new, peaks_neg_tot_tables, text_regions_p_tables,
@@ -3221,8 +3196,8 @@ class Eynollah:
                     pass
                 else:
                     text_regions_p_tables = np.copy(text_regions_p_1_n)
-                    text_regions_p_tables =np.round(text_regions_p_tables)
-                    text_regions_p_tables[:,:][(text_regions_p_tables[:,:] != 3) & (table_prediction_n[:,:] == 1)] = 10
+                    text_regions_p_tables = np.round(text_regions_p_tables)
+                    text_regions_p_tables[(text_regions_p_tables != 3) & (table_prediction_n == 1)] = 10
 
                     pixel_line = 3
                     img_revised_tab2 = self.add_tables_heuristic_to_layout(
@@ -3242,21 +3217,21 @@ class Eynollah:
 
         if self.tables:
             if self.light_version:
-                text_regions_p[:,:][table_prediction[:,:]==1] = 10
-                img_revised_tab=text_regions_p[:,:]
+                text_regions_p[table_prediction == 1] = 10
+                img_revised_tab = text_regions_p[:,:]
             else:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    img_revised_tab = np.copy(img_revised_tab2[:,:,0])
-                    img_revised_tab[:,:][(text_regions_p[:,:] == 1) & (img_revised_tab[:,:] != 10)] = 1
+                    img_revised_tab = np.copy(img_revised_tab2)
+                    img_revised_tab[(text_regions_p == 1) & (img_revised_tab != 10)] = 1
                 else:
-                    img_revised_tab = np.copy(text_regions_p[:,:])
-                    img_revised_tab[:,:][img_revised_tab[:,:] == 10] = 0
-                    img_revised_tab[:,:][img_revised_tab2_d_rotated[:,:,0] == 10] = 10
+                    img_revised_tab = np.copy(text_regions_p)
+                    img_revised_tab[img_revised_tab == 10] = 0
+                    img_revised_tab[img_revised_tab2_d_rotated == 10] = 10
 
-                text_regions_p[:,:][text_regions_p[:,:]==10] = 0
-                text_regions_p[:,:][img_revised_tab[:,:]==10] = 10
+                text_regions_p[text_regions_p == 10] = 0
+                text_regions_p[img_revised_tab == 10] = 10
         else:
-            img_revised_tab=text_regions_p[:,:]
+            img_revised_tab = text_regions_p[:,:]
         #img_revised_tab = text_regions_p[:, :]
         if self.light_version:
             polygons_of_images = return_contours_of_interested_region(text_regions_p, 2)
@@ -3386,7 +3361,7 @@ class Eynollah:
                         num_col_classifier, erosion_hurts, self.tables, self.right2left)
                     text_regions_p_tables = np.copy(text_regions_p_1_n)
                     text_regions_p_tables = np.round(text_regions_p_tables)
-                    text_regions_p_tables[:,:][(text_regions_p_tables[:,:]!=3) & (table_prediction_n[:,:]==1)] = 10
+                    text_regions_p_tables[(text_regions_p_tables != 3) & (table_prediction_n == 1)] = 10
 
                     pixel_line = 3
                     img_revised_tab2 = self.add_tables_heuristic_to_layout(
@@ -3405,17 +3380,17 @@ class Eynollah:
                                                               text_regions_p.shape[1])
 
                 if np.abs(slope_deskew) < 0.13:
-                    img_revised_tab = np.copy(img_revised_tab2[:,:,0])
+                    img_revised_tab = np.copy(img_revised_tab2)
                 else:
-                    img_revised_tab = np.copy(text_regions_p[:,:])
-                    img_revised_tab[:,:][img_revised_tab[:,:] == 10] = 0
-                    img_revised_tab[:,:][img_revised_tab2_d_rotated[:,:,0] == 10] = 10
+                    img_revised_tab = np.copy(text_regions_p)
+                    img_revised_tab[img_revised_tab == 10] = 0
+                    img_revised_tab[img_revised_tab2_d_rotated == 10] = 10
 
-                ##img_revised_tab=img_revised_tab2[:,:,0]
-                #img_revised_tab=text_regions_p[:,:]
-                text_regions_p[:,:][text_regions_p[:,:]==10] = 0
-                text_regions_p[:,:][img_revised_tab[:,:]==10] = 10
-                #img_revised_tab[img_revised_tab2[:,:,0]==10] =10
+                ##img_revised_tab = img_revised_tab2[:,:]
+                #img_revised_tab = text_regions_p[:,:]
+                text_regions_p[text_regions_p == 10] = 0
+                text_regions_p[img_revised_tab == 10] = 10
+                #img_revised_tab[img_revised_tab2 == 10] = 10
 
         pixel_img = 4
         min_area_mar = 0.00001
