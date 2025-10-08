@@ -66,3 +66,6 @@ ignore = [
 # disable bare except
 "E722",
 ]
+
+[tool.ruff.format]
+quote-style = "preserve"

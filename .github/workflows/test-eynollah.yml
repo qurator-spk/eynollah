@@ -67,6 +67,10 @@ jobs:
         make install-dev EXTRAS=OCR,plotting
         make deps-test EXTRAS=OCR,plotting
         ls -l models_*
+    - name: Lint with ruff
+      uses: astral-sh/ruff-action@v3
+      with:
+        src: "./src"
     - name: Test with pytest
       run: make coverage PYTEST_ARGS="-vv --junitxml=pytest.xml"
     - name: Get coverage results
