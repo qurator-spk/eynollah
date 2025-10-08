@@ -1928,8 +1928,8 @@ class Eynollah:
 
     def get_slopes_and_deskew_new_curved(self, contours_par, textline_mask_tot, boxes,
                                          mask_texts_only, num_col, scale_par, slope_deskew):
-        if not len(contours):
-            return [], [], [], []
+        if not len(contours_par):
+            return [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_curved")
         with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
             with share_ndarray(mask_texts_only) as mask_texts_only_shared:
