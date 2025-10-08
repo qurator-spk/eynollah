@@ -4722,7 +4722,6 @@ class Eynollah:
             self.plotter.write_images_into_directory(polygons_of_images, image_page)
         t_order = time.time()
 
-        #if self.full_layout:
         self.logger.info("Step 4/5: Reading Order Detection")
 
         if self.reading_order_machine_based:
@@ -4751,35 +4750,35 @@ class Eynollah:
             if not self.tr:
                 gc.collect()
 
-                if len(all_found_textline_polygons)>0:
+                if len(all_found_textline_polygons):
                     ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(
                         image_page, all_found_textline_polygons, all_box_coord,
                         self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
                 else:
                     ocr_all_textlines = None
                     
-                if all_found_textline_polygons_marginals_left and len(all_found_textline_polygons_marginals_left)>0:
+                if len(all_found_textline_polygons_marginals_left):
                     ocr_all_textlines_marginals_left = return_rnn_cnn_ocr_of_given_textlines(
                         image_page, all_found_textline_polygons_marginals_left, all_box_coord_marginals_left,
                         self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
                 else:
                     ocr_all_textlines_marginals_left = None
                     
-                if all_found_textline_polygons_marginals_right and len(all_found_textline_polygons_marginals_right)>0:
+                if len(all_found_textline_polygons_marginals_right):
                     ocr_all_textlines_marginals_right = return_rnn_cnn_ocr_of_given_textlines(
                         image_page, all_found_textline_polygons_marginals_right, all_box_coord_marginals_right,
                         self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
                 else:
                     ocr_all_textlines_marginals_right = None
                 
-                if all_found_textline_polygons_h and len(all_found_textline_polygons)>0:
+                if self.full_layout and len(all_found_textline_polygons):
                     ocr_all_textlines_h = return_rnn_cnn_ocr_of_given_textlines(
                         image_page, all_found_textline_polygons_h, all_box_coord_h,
                         self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
                 else:
                     ocr_all_textlines_h = None
                     
-                if polygons_of_drop_capitals and len(polygons_of_drop_capitals)>0:
+                if self.full_layout and len(polygons_of_drop_capitals):
                     ocr_all_textlines_drop = return_rnn_cnn_ocr_of_given_textlines(
                         image_page, polygons_of_drop_capitals, np.zeros((len(polygons_of_drop_capitals), 4)),
                         self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
