@@ -4726,7 +4726,6 @@ class Eynollah:
             self.plotter.write_images_into_directory(polygons_of_images, image_page)
         t_order = time.time()
 
-        #if self.full_layout:
         self.logger.info("Step 4/5: Reading Order Detection")
 
         if self.reading_order_machine_based:
@@ -4749,46 +4748,41 @@ class Eynollah:
                     boxes_d, textline_mask_tot_d)
         self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
 
+        ocr_all_textlines = None
+        ocr_all_textlines_marginals_left = None
+        ocr_all_textlines_marginals_right = None
+        ocr_all_textlines_h = None
+        ocr_all_textlines_drop = None
         if self.ocr:
             self.logger.info("Step 4.5/5: OCR Processing")
 
             if not self.tr:
                 gc.collect()
 
-                if len(all_found_textline_polygons)>0:
+                if len(all_found_textline_polygons):
                     ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(
                         image_page, all_found_textline_polygons, all_box_coord,
                         self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
-                else:
-                    ocr_all_textlines = None
                     
-                if all_found_textline_polygons_marginals_left and len(all_found_textline_polygons_marginals_left)>0:
+                if len(all_found_textline_polygons_marginals_left):
                     ocr_all_textlines_marginals_left = return_rnn_cnn_ocr_of_given_textlines(
                         image_page, all_found_textline_polygons_marginals_left, all_box_coord_marginals_left,
                         self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
-                else:
-                    ocr_all_textlines_marginals_left = None
                     
-                if all_found_textline_polygons_marginals_right and len(all_found_textline_polygons_marginals_right)>0:
+                if len(all_found_textline_polygons_marginals_right):
                     ocr_all_textlines_marginals_right = return_rnn_cnn_ocr_of_given_textlines(
                         image_page, all_found_textline_polygons_marginals_right, all_box_coord_marginals_right,
                         self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
-                else:
-                    ocr_all_textlines_marginals_right = None
                 
-                if all_found_textline_polygons_h and len(all_found_textline_polygons)>0:
+                if self.full_layout and len(all_found_textline_polygons):
                     ocr_all_textlines_h = return_rnn_cnn_ocr_of_given_textlines(
                         image_page, all_found_textline_polygons_h, all_box_coord_h,
                         self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
-                else:
-                    ocr_all_textlines_h = None
                     
-                if polygons_of_drop_capitals and len(polygons_of_drop_capitals)>0:
+                if self.full_layout and len(polygons_of_drop_capitals):
                     ocr_all_textlines_drop = return_rnn_cnn_ocr_of_given_textlines(
                         image_page, polygons_of_drop_capitals, np.zeros((len(polygons_of_drop_capitals), 4)),
                         self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
-                else:
-                    ocr_all_textlines_drop = None
 
             else:
                 if self.light_version:
@@ -4805,6 +4799,7 @@ class Eynollah:
                 ind_tot = 0
                 #cv2.imwrite('./img_out.png', image_page)
                 ocr_all_textlines = []
+                # FIXME: what about lines in marginals / headings / drop-capitals here?
                 for indexing, ind_poly_first in enumerate(all_found_textline_polygons):
                     ocr_textline_in_textregion = []
                     for indexing2, ind_poly in enumerate(ind_poly_first):
@@ -4840,12 +4835,6 @@ class Eynollah:
                         ocr_textline_in_textregion.append(text_ocr)
                         ind_tot = ind_tot +1
                     ocr_all_textlines.append(ocr_textline_in_textregion)
-        else:
-            ocr_all_textlines = None
-            ocr_all_textlines_marginals_left = None
-            ocr_all_textlines_marginals_right = None
-            ocr_all_textlines_h = None
-            ocr_all_textlines_drop = None
                 
         self.logger.info("Step 5/5: Output Generation")
 
