@@ -1309,7 +1309,7 @@ def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
         cnts_images = (img_patch[:, :, 0] == label) * 1
     else:
         cnts_images = (img_patch[:, :] == label) * 1
-    _, thresh = cv2.threshold(cnts_images, 0, 255, 0)
+    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
     contours_imgs, hierarchy = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
