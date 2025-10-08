@@ -58,6 +58,9 @@ help:
 # Download and extract models to $(PWD)/models_layout_v0_5_0
 models: $(BIN_MODELNAME) $(SEG_MODELNAME) $(OCR_MODELNAME)
 
+# do not download these files if we already have the directories
+.INTERMEDIATE: $(BIN_MODELFILE) $(SEG_MODELFILE) $(OCR_MODELFILE)
+
 $(BIN_MODELFILE):
 	wget -O $@ $(BIN_MODEL)
 $(SEG_MODELFILE):
