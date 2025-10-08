@@ -96,6 +96,7 @@ from .utils.rotate import (
     rotation_image_new
 )
 from .utils.utils_ocr import (
+    return_start_and_end_of_common_text_of_textline_ocr_without_common_section,
     return_textline_contour_with_added_box_coordinate,
     preprocess_and_resize_image_for_ocrcnn_model,
     return_textlines_split_if_needed,
@@ -4796,7 +4797,6 @@ class Eynollah:
                     self.logger.info("Using light text line detection for OCR")
                 self.logger.info("Processing text lines...")
 
-                self.device.reset()
                 gc.collect()
 
                 torch.cuda.empty_cache()
