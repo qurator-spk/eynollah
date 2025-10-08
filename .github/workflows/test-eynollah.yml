@@ -66,6 +66,7 @@ jobs:
         python -m pip install --upgrade pip
         make install-dev EXTRAS=OCR,plotting
         make deps-test EXTRAS=OCR,plotting
+        ls -l models_*
     - name: Test with pytest
       run: make coverage PYTEST_ARGS="-vv --junitxml=pytest.xml"
     - name: Get coverage results
