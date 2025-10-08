@@ -79,7 +79,6 @@ from .utils.contour import (
     get_textregion_contours_in_org_image_light,
     return_contours_of_image,
     return_contours_of_interested_region,
-    return_contours_of_interested_region_by_min_size,
     return_contours_of_interested_textline,
     return_parent_contours,
     dilate_textregion_contours,
@@ -4242,14 +4241,11 @@ class Eynollah:
             all_found_textline_polygons = filter_contours_area_of_image(
                 textline_mask_tot_ea, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
             
-            M_main_tot = [cv2.moments(all_found_textline_polygons[j])
-                        for j in range(len(all_found_textline_polygons))]
-            w_h_textlines = [cv2.boundingRect(all_found_textline_polygons[j])[2:]
-                             for j in range(len(all_found_textline_polygons))]
-            w_h_textlines = [w_h_textlines[j][0] / float(w_h_textlines[j][1]) for j in range(len(w_h_textlines))]
-            cx_main_tot = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
-            cy_main_tot = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
-            
+            cx_main_tot, cy_main_tot = find_center_of_contours(all_found_textline_polygons)
+            w_h_textlines = [cv2.boundingRect(polygon)[2:]
+                             for polygon in all_found_textline_polygons]
+            w_h_textlines = [w / float(h) for w, h in w_h_textlines]
+
             all_found_textline_polygons = self.get_textlines_of_a_textregion_sorted(
                 #all_found_textline_polygons[::-1]
                 all_found_textline_polygons, cx_main_tot, cy_main_tot, w_h_textlines)
@@ -4677,7 +4673,8 @@ class Eynollah:
                 self.plotter.save_plot_of_layout_all(text_regions_p, image_page)
 
             label_img = 4
-            polygons_of_drop_capitals = return_contours_of_interested_region_by_min_size(text_regions_p, label_img)
+            polygons_of_drop_capitals = return_contours_of_interested_region(text_regions_p, label_img,
+                                                                             min_area=0.00003)
             ##all_found_textline_polygons = adhere_drop_capital_region_into_corresponding_textline(
                 ##text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h,
                 ##all_box_coord, all_box_coord_h, all_found_textline_polygons, all_found_textline_polygons_h,

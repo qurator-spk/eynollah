@@ -253,39 +253,6 @@ def return_contours_of_image(image):
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     return contours, hierarchy
 
-def return_contours_of_interested_region_by_min_size(region_pre_p, label, min_size=0.00003):
-    # pixels of images are identified by 5
-    if region_pre_p.ndim == 3:
-        cnts_images = (region_pre_p[:, :, 0] == label) * 1
-    else:
-        cnts_images = (region_pre_p[:, :] == label) * 1
-    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
-
-    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
-    contours_imgs = filter_contours_area_of_image_tables(
-        thresh, contours_imgs, hierarchy, max_area=1, min_area=min_size)
-
-    return contours_imgs
-
-def return_contours_of_interested_region_by_size(region_pre_p, label, min_area, max_area):
-    # pixels of images are identified by 5
-    if region_pre_p.ndim == 3:
-        cnts_images = (region_pre_p[:, :, 0] == label) * 1
-    else:
-        cnts_images = (region_pre_p[:, :] == label) * 1
-    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
-    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
-    contours_imgs = filter_contours_area_of_image_tables(
-        thresh, contours_imgs, hierarchy, max_area=max_area, min_area=min_area)
-
-    img_ret = np.zeros((region_pre_p.shape[0], region_pre_p.shape[1]))
-    img_ret = cv2.fillPoly(img_ret, pts=contours_imgs, color=1)
-
-    return img_ret
-
 def dilate_textline_contours(all_found_textline_polygons):
     return [[polygon2contour(contour2polygon(contour, dilate=6))
              for contour in region]
