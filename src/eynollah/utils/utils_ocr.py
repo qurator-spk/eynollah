@@ -1,12 +1,16 @@
+import math
+import copy
+
 import numpy as np
 import cv2
 import tensorflow as tf
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-import math
 from PIL import Image, ImageDraw, ImageFont
 from Bio import pairwise2
+
 from .resize import resize_image
+
 
 def decode_batch_predictions(pred, num_to_char, max_len = 128):
     # input_len is the product of the batch size and the
@@ -370,7 +374,9 @@ def return_textline_contour_with_added_box_coordinate(textline_contour,  box_ind
     return textline_contour
 
 
-def return_rnn_cnn_ocr_of_given_textlines(image, all_found_textline_polygons,
+def return_rnn_cnn_ocr_of_given_textlines(image,
+                                          all_found_textline_polygons,
+                                          all_box_coord,
                                           prediction_model,
                                           b_s_ocr, num_to_char,
                                           textline_light=False,
