@@ -4265,8 +4265,8 @@ class Eynollah:
             if self.ocr and not self.tr:
                 gc.collect()
                 ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(
-                    image_page, all_found_textline_polygons, self.prediction_model,
-                    self.b_s_ocr, self.num_to_char, textline_light=True)
+                    image_page, all_found_textline_polygons, np.zeros((len(all_found_textline_polygons), 4)),
+                    self.prediction_model, self.b_s_ocr, self.num_to_char, textline_light=True)
             else:
                 ocr_all_textlines = None
             
@@ -4756,36 +4756,36 @@ class Eynollah:
 
                 if len(all_found_textline_polygons)>0:
                     ocr_all_textlines = return_rnn_cnn_ocr_of_given_textlines(
-                        image_page, all_found_textline_polygons, self.prediction_model,
-                        self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                        image_page, all_found_textline_polygons, all_box_coord,
+                        self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
                 else:
                     ocr_all_textlines = None
                     
                 if all_found_textline_polygons_marginals_left and len(all_found_textline_polygons_marginals_left)>0:
                     ocr_all_textlines_marginals_left = return_rnn_cnn_ocr_of_given_textlines(
-                        image_page, all_found_textline_polygons_marginals_left, self.prediction_model,
-                        self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                        image_page, all_found_textline_polygons_marginals_left, all_box_coord_marginals_left,
+                        self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
                 else:
                     ocr_all_textlines_marginals_left = None
                     
                 if all_found_textline_polygons_marginals_right and len(all_found_textline_polygons_marginals_right)>0:
                     ocr_all_textlines_marginals_right = return_rnn_cnn_ocr_of_given_textlines(
-                        image_page, all_found_textline_polygons_marginals_right, self.prediction_model,
-                        self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                        image_page, all_found_textline_polygons_marginals_right, all_box_coord_marginals_right,
+                        self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
                 else:
                     ocr_all_textlines_marginals_right = None
                 
                 if all_found_textline_polygons_h and len(all_found_textline_polygons)>0:
                     ocr_all_textlines_h = return_rnn_cnn_ocr_of_given_textlines(
-                        image_page, all_found_textline_polygons_h, self.prediction_model,
-                        self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                        image_page, all_found_textline_polygons_h, all_box_coord_h,
+                        self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
                 else:
                     ocr_all_textlines_h = None
                     
                 if polygons_of_drop_capitals and len(polygons_of_drop_capitals)>0:
                     ocr_all_textlines_drop = return_rnn_cnn_ocr_of_given_textlines(
-                        image_page, polygons_of_drop_capitals, self.prediction_model,
-                        self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
+                        image_page, polygons_of_drop_capitals, np.zeros((len(polygons_of_drop_capitals), 4)),
+                        self.prediction_model, self.b_s_ocr, self.num_to_char, self.textline_light, self.curved_line)
                 else:
                     ocr_all_textlines_drop = None
 
