@@ -6,23 +6,23 @@ from logging import Logger
 import os
 import time
 from typing import Optional
-import atexit
-from functools import partial
 from pathlib import Path
-from multiprocessing import cpu_count
 import gc
+
 import cv2
 import numpy as np
 from ocrd_utils import getLogger, tf_disable_interactive_logs
 import tensorflow as tf
 from skimage.morphology import skeletonize
 from tensorflow.keras.models import load_model
+
 from .utils.resize import resize_image
 from .utils.pil_cv2 import pil2cv
 from .utils import (
     is_image_filename,
     crop_image_inside_box
 )
+from .eynollah import PatchEncoder, Patches
 
 DPI_THRESHOLD = 298
 KERNEL = np.ones((5, 5), np.uint8)
