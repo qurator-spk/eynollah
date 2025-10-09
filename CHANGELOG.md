@@ -7,6 +7,9 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 Fixed:
 
+ * continue processing when no columns detected but text regions exist
+ * convert marginalia to main text if no main text is present
+ * reset deskewing angle to 0° when text covers <30% image area and detected angle >45°
  * :fire: polygons: avoid invalid paths (use `Polygon.buffer()` instead of dilation etc.)
  * `return_boxes_of_images_by_order_of_reading_new`: avoid Numpy.dtype mismatch, simplify
  * `return_boxes_of_images_by_order_of_reading_new`: log any exceptions instead of ignoring
