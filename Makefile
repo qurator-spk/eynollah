@@ -58,6 +58,9 @@ help:
 # Download and extract models to $(PWD)/models_layout_v0_5_0
 models: $(BIN_MODELNAME) $(SEG_MODELNAME) $(OCR_MODELNAME)
 
+# do not download these files if we already have the directories
+.INTERMEDIATE: $(BIN_MODELFILE) $(SEG_MODELFILE) $(OCR_MODELFILE)
+
 $(BIN_MODELFILE):
 	wget -O $@ $(BIN_MODEL)
 $(SEG_MODELFILE):
@@ -90,26 +93,29 @@ deps-test: $(OCR_MODELNAME)
 endif
 deps-test: $(BIN_MODELNAME) $(SEG_MODELNAME)
 	$(PIP) install -r requirements-test.txt
+ifeq (OCR,$(findstring OCR, $(EXTRAS)))
+	ln -rs $(OCR_MODELNAME)/* $(SEG_MODELNAME)/
+endif
 
 smoke-test: TMPDIR != mktemp -d
 smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	# layout analysis:
-	eynollah layout -i $< -o $(TMPDIR) -m $(CURDIR)/models_layout_v0_5_0
+	eynollah layout -i $< -o $(TMPDIR) -m $(CURDIR)/$(SEG_MODELNAME)
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$(basename $(<F)).xml
 	fgrep -c -e TextRegion -e ImageRegion -e SeparatorRegion $(TMPDIR)/$(basename $(<F)).xml
 	# layout, directory mode (skip one, add one):
-	eynollah layout -di $(<D) -o $(TMPDIR) -m $(CURDIR)/models_layout_v0_5_0
+	eynollah layout -di $(<D) -o $(TMPDIR) -m $(CURDIR)/$(SEG_MODELNAME)
 	test -s $(TMPDIR)/euler_rechenkunst01_1738_0025.xml
 	# mbreorder, directory mode (overwrite):
-	eynollah machine-based-reading-order -di $(<D) -o $(TMPDIR) -m $(CURDIR)/models_layout_v0_5_0
+	eynollah machine-based-reading-order -di $(<D) -o $(TMPDIR) -m $(CURDIR)/$(SEG_MODELNAME)
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$(basename $(<F)).xml
 	fgrep -c -e RegionRefIndexed $(TMPDIR)/$(basename $(<F)).xml
 	# binarize:
-	eynollah binarization -m $(CURDIR)/default-2021-03-09 -i $< -o $(TMPDIR)/$(<F)
+	eynollah binarization -m $(CURDIR)/$(BIN_MODELNAME) -i $< -o $(TMPDIR)/$(<F)
 	test -s $(TMPDIR)/$(<F)
 	@set -x; test "$$(identify -format '%w %h' $<)" = "$$(identify -format '%w %h' $(TMPDIR)/$(<F))"
 	# enhance:
-	eynollah enhancement -m $(CURDIR)/models_layout_v0_5_0 -sos -i $< -o $(TMPDIR) -O
+	eynollah enhancement -m $(CURDIR)/$(SEG_MODELNAME) -sos -i $< -o $(TMPDIR) -O
 	test -s $(TMPDIR)/$(<F)
 	@set -x; test "$$(identify -format '%w %h' $<)" = "$$(identify -format '%w %h' $(TMPDIR)/$(<F))"
 	$(RM) -r $(TMPDIR)
@@ -120,12 +126,12 @@ ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	cp $< $(TMPDIR)
 	ocrd workspace -d $(TMPDIR) init
 	ocrd workspace -d $(TMPDIR) add -G OCR-D-IMG -g PHYS_0020 -i OCR-D-IMG_0020 $(<F)
-	ocrd-eynollah-segment -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-SEG -P models $(CURDIR)/models_layout_v0_5_0
+	ocrd-eynollah-segment -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-SEG -P models $(CURDIR)/$(SEG_MODELNAME)
 	result=$$(ocrd workspace -d $(TMPDIR) find -G OCR-D-SEG); \
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$$result && \
 	fgrep -c -e TextRegion -e ImageRegion -e SeparatorRegion $(TMPDIR)/$$result
-	ocrd-sbb-binarize -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-BIN -P model $(CURDIR)/default-2021-03-09
-	ocrd-sbb-binarize -w $(TMPDIR) -I OCR-D-SEG -O OCR-D-SEG-BIN -P model $(CURDIR)/default-2021-03-09 -P operation_level region
+	ocrd-sbb-binarize -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-BIN -P model $(CURDIR)/$(BIN_MODELNAME)
+	ocrd-sbb-binarize -w $(TMPDIR) -I OCR-D-SEG -O OCR-D-SEG-BIN -P model $(CURDIR)/$(BIN_MODELNAME) -P operation_level region
 	$(RM) -r $(TMPDIR)
 
 # Run unit tests

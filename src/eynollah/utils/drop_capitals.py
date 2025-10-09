@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 from .contour import (
+    find_center_of_contours,
     find_new_features_of_contours,
     return_contours_of_image,
     return_parent_contours,
@@ -22,8 +23,8 @@ def adhere_drop_capital_region_into_corresponding_textline(
 ):
     # print(np.shape(all_found_textline_polygons),np.shape(all_found_textline_polygons[3]),'all_found_textline_polygonsshape')
     # print(all_found_textline_polygons[3])
-    cx_m, cy_m, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
-    cx_h, cy_h, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent_h)
+    cx_m, cy_m = find_center_of_contours(contours_only_text_parent)
+    cx_h, cy_h = find_center_of_contours(contours_only_text_parent_h)
     cx_d, cy_d, _, _, y_min_d, y_max_d, _ = find_new_features_of_contours(polygons_of_drop_capitals)
 
     img_con_all = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1], 3))
@@ -89,9 +90,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
                 region_final = region_with_intersected_drop[np.argmax(sum_pixels_of_intersection)] - 1
 
                 # print(region_final,'region_final')
-                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
+                # cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[int(region_final)])
                 try:
-                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
+                    cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -153,9 +154,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
 
                 # areas_main=np.array([cv2.contourArea(all_found_textline_polygons[int(region_final)][0][j] ) for j in range(len(all_found_textline_polygons[int(region_final)]))])
 
-                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
+                # cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[int(region_final)])
                 try:
-                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
+                    cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -208,7 +209,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
 
                 try:
                     # print(all_found_textline_polygons[j_cont][0])
-                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
+                    cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -261,7 +262,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
             else:
                 pass
 
-            ##cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
+            ##cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[int(region_final)])
             ###print(all_box_coord[j_cont])
             ###print(cx_t)
             ###print(cy_t)
@@ -315,9 +316,9 @@ def adhere_drop_capital_region_into_corresponding_textline(
                 region_final = region_with_intersected_drop[np.argmax(sum_pixels_of_intersection)] - 1
 
                 # print(region_final,'region_final')
-                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
+                # cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[int(region_final)])
                 try:
-                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
+                    cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -375,12 +376,12 @@ def adhere_drop_capital_region_into_corresponding_textline(
 
                 # areas_main=np.array([cv2.contourArea(all_found_textline_polygons[int(region_final)][0][j] ) for j in range(len(all_found_textline_polygons[int(region_final)]))])
 
-                # cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
+                # cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[int(region_final)])
 
                 # print(cx_t,'print')
                 try:
                     # print(all_found_textline_polygons[j_cont][0])
-                    cx_t, cy_t, _, _, _, _, _ = find_new_features_of_contours(all_found_textline_polygons[int(region_final)])
+                    cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[int(region_final)])
                     # print(all_box_coord[j_cont])
                     # print(cx_t)
                     # print(cy_t)
@@ -453,7 +454,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
     #####try:
     #####if len(contours_new_parent)==1:
     ######print(all_found_textline_polygons[j_cont][0])
-    #####cx_t,cy_t ,_, _, _ ,_,_= find_new_features_of_contours(all_found_textline_polygons[j_cont])
+    #####cx_t, cy_t = find_center_of_contours(all_found_textline_polygons[j_cont])
     ######print(all_box_coord[j_cont])
     ######print(cx_t)
     ######print(cy_t)
