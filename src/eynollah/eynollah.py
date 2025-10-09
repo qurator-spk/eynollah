@@ -2155,7 +2155,7 @@ class Eynollah:
                 page_coord,
                 cont_page)
 
-    def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier, skip_layout_and_reading_order=False):
+    def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_light_v")
         t_in = time.time()
         erosion_hurts = False
@@ -2221,109 +2221,109 @@ class Eynollah:
 
         #plt.imshwo(self.image_page_org_size)
         #plt.show()
-        if not skip_layout_and_reading_order:
-            #print("inside 2 ", time.time()-t_in)
-            if num_col_classifier == 1 or num_col_classifier == 2:
-                if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
-                    self.logger.debug("resized to %dx%d for %d cols",
-                                      img_resized.shape[1], img_resized.shape[0], num_col_classifier)
-                    prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
-                        True, img_resized, self.model_region_1_2, n_batch_inference=1,
-                        thresholding_for_some_classes_in_light_version=True,
-                        threshold_art_class_layout=self.threshold_art_class_layout)
-                else:
-                    prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
-                    confidence_matrix = np.zeros((self.image_org.shape[0], self.image_org.shape[1]))
-                    prediction_regions_page, confidence_matrix_page = self.do_prediction_new_concept(
-                        False, self.image_page_org_size, self.model_region_1_2, n_batch_inference=1,
-                        thresholding_for_artificial_class_in_light_version=True,
-                        threshold_art_class_layout=self.threshold_art_class_layout)
-                    ys = slice(*self.page_coord[0:2])
-                    xs = slice(*self.page_coord[2:4])
-                    prediction_regions_org[ys, xs] = prediction_regions_page
-                    confidence_matrix[ys, xs] = confidence_matrix_page
-
-            else:
-                new_h = (900+ (num_col_classifier-3)*100)
-                img_resized = resize_image(img_bin, int(new_h * img_bin.shape[0] /img_bin.shape[1]), new_h)
-                self.logger.debug("resized to %dx%d (new_h=%d) for %d cols",
-                                  img_resized.shape[1], img_resized.shape[0], new_h, num_col_classifier)
-                prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
-                    True, img_resized, self.model_region_1_2, n_batch_inference=2,
-                    thresholding_for_some_classes_in_light_version=True,
-                    threshold_art_class_layout=self.threshold_art_class_layout)
-            ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_region,
-            ###n_batch_inference=3,
-            ###thresholding_for_some_classes_in_light_version=True)
-            #print("inside 3 ", time.time()-t_in)
-            #plt.imshow(prediction_regions_org[:,:,0])
-            #plt.show()
-
-            prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
-            confidence_matrix = resize_image(confidence_matrix, img_height_h, img_width_h )
-            img_bin = resize_image(img_bin, img_height_h, img_width_h )
-            prediction_regions_org=prediction_regions_org[:,:,0]
-
-            mask_lines_only = (prediction_regions_org[:,:] ==3)*1
-            mask_texts_only = (prediction_regions_org[:,:] ==1)*1
-            mask_texts_only = mask_texts_only.astype('uint8')
-
-            ##if num_col_classifier == 1 or num_col_classifier == 2:
-                ###mask_texts_only = cv2.erode(mask_texts_only, KERNEL, iterations=1)
-                ##mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=1)
-
-            mask_texts_only = cv2.dilate(mask_texts_only, kernel=np.ones((2,2), np.uint8), iterations=1)
-            mask_images_only=(prediction_regions_org[:,:] ==2)*1
-
-            polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
-            test_khat = np.zeros(prediction_regions_org.shape)
-            test_khat = cv2.fillPoly(test_khat, pts=polygons_seplines, color=(1,1,1))
-
-            #plt.imshow(test_khat[:,:])
-            #plt.show()
-            #for jv in range(1):
-                #print(jv, hir_seplines[0][232][3])
-                #test_khat = np.zeros(prediction_regions_org.shape)
-                #test_khat = cv2.fillPoly(test_khat, pts = [polygons_seplines[232]], color=(1,1,1))
-                #plt.imshow(test_khat[:,:])
-                #plt.show()
-
-            polygons_seplines = filter_contours_area_of_image(
-                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001, dilate=1)
-
-            test_khat = np.zeros(prediction_regions_org.shape)
-            test_khat = cv2.fillPoly(test_khat, pts = polygons_seplines, color=(1,1,1))
-
-            #plt.imshow(test_khat[:,:])
-            #plt.show()
-            #sys.exit()
-
-            polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
-            ##polygons_of_only_texts = dilate_textregion_contours(polygons_of_only_texts)
-            polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
-
-            text_regions_p_true = np.zeros(prediction_regions_org.shape)
-            text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts=polygons_of_only_lines, color=(3,3,3))
-
-            text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
-            text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
-
-            textline_mask_tot_ea[(text_regions_p_true==0) | (text_regions_p_true==4) ] = 0
-            #plt.imshow(textline_mask_tot_ea)
-            #plt.show()
-            #print("inside 4 ", time.time()-t_in)
-            self.logger.debug("exit get_regions_light_v")
-            return (text_regions_p_true,
-                    erosion_hurts,
-                    polygons_seplines,
-                    polygons_of_only_texts,
-                    textline_mask_tot_ea,
-                    img_bin,
-                    confidence_matrix)
-        else:
+        if self.skip_layout_and_reading_order:
             img_bin = resize_image(img_bin,img_height_h, img_width_h )
             self.logger.debug("exit get_regions_light_v")
             return None, erosion_hurts, None, None, textline_mask_tot_ea, img_bin, None
+
+        #print("inside 2 ", time.time()-t_in)
+        if num_col_classifier == 1 or num_col_classifier == 2:
+            if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
+                self.logger.debug("resized to %dx%d for %d cols",
+                                  img_resized.shape[1], img_resized.shape[0], num_col_classifier)
+                prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
+                    True, img_resized, self.model_region_1_2, n_batch_inference=1,
+                    thresholding_for_some_classes_in_light_version=True,
+                    threshold_art_class_layout=self.threshold_art_class_layout)
+            else:
+                prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
+                confidence_matrix = np.zeros((self.image_org.shape[0], self.image_org.shape[1]))
+                prediction_regions_page, confidence_matrix_page = self.do_prediction_new_concept(
+                    False, self.image_page_org_size, self.model_region_1_2, n_batch_inference=1,
+                    thresholding_for_artificial_class_in_light_version=True,
+                    threshold_art_class_layout=self.threshold_art_class_layout)
+                ys = slice(*self.page_coord[0:2])
+                xs = slice(*self.page_coord[2:4])
+                prediction_regions_org[ys, xs] = prediction_regions_page
+                confidence_matrix[ys, xs] = confidence_matrix_page
+
+        else:
+            new_h = (900+ (num_col_classifier-3)*100)
+            img_resized = resize_image(img_bin, int(new_h * img_bin.shape[0] /img_bin.shape[1]), new_h)
+            self.logger.debug("resized to %dx%d (new_h=%d) for %d cols",
+                              img_resized.shape[1], img_resized.shape[0], new_h, num_col_classifier)
+            prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
+                True, img_resized, self.model_region_1_2, n_batch_inference=2,
+                thresholding_for_some_classes_in_light_version=True,
+                threshold_art_class_layout=self.threshold_art_class_layout)
+        ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_region,
+        ###n_batch_inference=3,
+        ###thresholding_for_some_classes_in_light_version=True)
+        #print("inside 3 ", time.time()-t_in)
+        #plt.imshow(prediction_regions_org[:,:,0])
+        #plt.show()
+
+        prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
+        confidence_matrix = resize_image(confidence_matrix, img_height_h, img_width_h )
+        img_bin = resize_image(img_bin, img_height_h, img_width_h )
+        prediction_regions_org=prediction_regions_org[:,:,0]
+
+        mask_lines_only = (prediction_regions_org[:,:] ==3)*1
+        mask_texts_only = (prediction_regions_org[:,:] ==1)*1
+        mask_texts_only = mask_texts_only.astype('uint8')
+
+        ##if num_col_classifier == 1 or num_col_classifier == 2:
+            ###mask_texts_only = cv2.erode(mask_texts_only, KERNEL, iterations=1)
+            ##mask_texts_only = cv2.dilate(mask_texts_only, KERNEL, iterations=1)
+
+        mask_texts_only = cv2.dilate(mask_texts_only, kernel=np.ones((2,2), np.uint8), iterations=1)
+        mask_images_only=(prediction_regions_org[:,:] ==2)*1
+
+        polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
+        test_khat = np.zeros(prediction_regions_org.shape)
+        test_khat = cv2.fillPoly(test_khat, pts=polygons_seplines, color=(1,1,1))
+
+        #plt.imshow(test_khat[:,:])
+        #plt.show()
+        #for jv in range(1):
+            #print(jv, hir_seplines[0][232][3])
+            #test_khat = np.zeros(prediction_regions_org.shape)
+            #test_khat = cv2.fillPoly(test_khat, pts = [polygons_seplines[232]], color=(1,1,1))
+            #plt.imshow(test_khat[:,:])
+            #plt.show()
+
+        polygons_seplines = filter_contours_area_of_image(
+            mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001, dilate=1)
+
+        test_khat = np.zeros(prediction_regions_org.shape)
+        test_khat = cv2.fillPoly(test_khat, pts = polygons_seplines, color=(1,1,1))
+
+        #plt.imshow(test_khat[:,:])
+        #plt.show()
+        #sys.exit()
+
+        polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
+        ##polygons_of_only_texts = dilate_textregion_contours(polygons_of_only_texts)
+        polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
+
+        text_regions_p_true = np.zeros(prediction_regions_org.shape)
+        text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts=polygons_of_only_lines, color=(3,3,3))
+
+        text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
+        text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
+
+        textline_mask_tot_ea[(text_regions_p_true==0) | (text_regions_p_true==4) ] = 0
+        #plt.imshow(textline_mask_tot_ea)
+        #plt.show()
+        #print("inside 4 ", time.time()-t_in)
+        self.logger.debug("exit get_regions_light_v")
+        return (text_regions_p_true,
+                erosion_hurts,
+                polygons_seplines,
+                polygons_of_only_texts,
+                textline_mask_tot_ea,
+                img_bin,
+                confidence_matrix)
 
     def get_regions_from_xy_2models(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_from_xy_2models")
@@ -4226,8 +4226,7 @@ class Eynollah:
             self.logger.info("Skipping layout analysis and reading order detection")
     
             _ ,_, _, _, textline_mask_tot_ea, img_bin_light, _ = \
-                self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier,
-                                         skip_layout_and_reading_order=self.skip_layout_and_reading_order)
+                self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier,)
 
             page_coord, image_page, textline_mask_tot_ea, img_bin_light, cont_page = \
                 self.run_graphics_and_columns_without_layout(textline_mask_tot_ea, img_bin_light)
