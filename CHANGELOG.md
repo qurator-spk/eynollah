@@ -55,12 +55,57 @@ Changed:
 Fixed:
 
   * restoring the contour in the original image caused an error due to an empty tuple, #154
+  * removed NumPy warnings calculating sigma, mean,  (fixed issue #158)
+  * fixed bug in `separate_lines.py`, #124
+  * Drop capitals are now handled separately from their corresponding textline
+  * Marginals are now divided into left and right. Their reading order is written first for left marginals, then for right marginals, and within each side from top to bottom
+  * Added a new page extraction model. Instead of bounding boxes, it outputs page contours in the XML file, improving results for skewed pages
+  * Improved reading order for cases where a textline is segmented into multiple smaller textlines
+
+Changed
+
+  * CLIs: read only allowed filename suffixes (image or XML) with `--dir_in`
+  * CLIs: make all output option required, and `-i` / `-di` required but mutually exclusive
+  * ocr CLI: drop redundant `-brb` in favour of just `-dib`
+  * APIs: move all input/output path options from class (kwarg and attribute) ro `run` kwarg
+  * layout textlines: polygonal also without `-cl`
 
 Added:
 
   * `eynollah machine-based-reading-order` CLI to run reading order detection, #175
   * `eynollah enhancement` CLI to run image enhancement, #175
   * Improved models for page extraction and reading order detection, #175
+  * For the lightweight version (layout and textline detection), thresholds are now assigned to the artificial class. Users can apply these thresholds to improve detection of isolated textlines and regions. To counteract the drawback of thresholding, the skeleton of the artificial class is used to keep lines as thin as possible (resolved issues #163 and #161)
+  * Added and integrated a trained CNN-RNN OCR models
+  * Added and integrated a trained TrOCR model
+  * Improved OCR detection to support vertical and curved textlines
+  * Introduced a new machine-based reading order model with rotation augmentation
+  * Optimized reading order speed by clustering text regions that belong to the same block, maintaining top-to-bottom order
+  * Implemented text merging across textlines based on hyphenation when a line ends with a hyphen
+  * Integrated image enhancement as a separate use case
+  * Added reading order functionality on the layout level as a separate use case
+  * CNN-RNN OCR models provide confidence scores for predictions
+  * Added OCR visualization: predicted OCR can be overlaid on an image of the same size as the input
+  * Introduced a threshold value for CNN-RNN OCR models, allowing users to filter out low-confidence textline predictions
+  * For OCR, users can specify a single model by name instead of always using the default model
+  * Under the OCR use case, if Ground Truth XMLs and images are available, textline image and corresponding text extraction can now be performed
+
+Merged PRs:
+
+  * better machine based reading order + layout and textline + ocr by @vahidrezanezhad in https://github.com/qurator-spk/eynollah/pull/175
+  * CI: pypi by @kba in https://github.com/qurator-spk/eynollah/pull/154
+  * CI: Use most recent actions/setup-python@v5 by @kba in https://github.com/qurator-spk/eynollah/pull/157
+  * update docker by @bertsky in https://github.com/qurator-spk/eynollah/pull/159
+  * Ocrd fixes by @kba in https://github.com/qurator-spk/eynollah/pull/167
+  * Updating readme for eynollah use cases cli by @kba in https://github.com/qurator-spk/eynollah/pull/166
+  * OCR-D processor: expose reading_order_machine_based by @bertsky in https://github.com/qurator-spk/eynollah/pull/171
+  * prepare release v0.5.0: fix logging by @bertsky in https://github.com/qurator-spk/eynollah/pull/180
+  * mb_ro_on_layout: remove copy-pasta code not actually used by @kba in https://github.com/qurator-spk/eynollah/pull/181
+  * prepare release v0.5.0: improve CLI docstring, refactor I/O path options from class to run kwargs, increase test coverage @bertsky in #182
+  * prepare release v0.5.0: fix for OCR doit subtest by @bertsky in https://github.com/qurator-spk/eynollah/pull/183
+  * Prepare release v0.5.0 by @kba in https://github.com/qurator-spk/eynollah/pull/178
+  * updating eynollah README, how to use it for use cases by @vahidrezanezhad in https://github.com/qurator-spk/eynollah/pull/156
+  * add feedback to command line interface by @michalbubula in https://github.com/qurator-spk/eynollah/pull/170
 
 ## [0.4.0] - 2025-04-07
 

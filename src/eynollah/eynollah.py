@@ -2308,11 +2308,7 @@ class Eynollah:
             text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
             text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
 
-            #plt.imshow(textline_mask_tot_ea)
-            #plt.show()
-
             textline_mask_tot_ea[(text_regions_p_true==0) | (text_regions_p_true==4) ] = 0
-
             #plt.imshow(textline_mask_tot_ea)
             #plt.show()
             #print("inside 4 ", time.time()-t_in)
@@ -2320,13 +2316,14 @@ class Eynollah:
             return (text_regions_p_true,
                     erosion_hurts,
                     polygons_seplines,
+                    polygons_of_only_texts,
                     textline_mask_tot_ea,
                     img_bin,
                     confidence_matrix)
         else:
             img_bin = resize_image(img_bin,img_height_h, img_width_h )
             self.logger.debug("exit get_regions_light_v")
-            return None, erosion_hurts, None, textline_mask_tot_ea, img_bin, None
+            return None, erosion_hurts, None, None, textline_mask_tot_ea, img_bin, None
 
     def get_regions_from_xy_2models(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_from_xy_2models")
@@ -2419,7 +2416,7 @@ class Eynollah:
             text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
 
             self.logger.debug("exit get_regions_from_xy_2models")
-            return text_regions_p_true, erosion_hurts, polygons_seplines
+            return text_regions_p_true, erosion_hurts, polygons_seplines, polygons_of_only_texts
         except:
             if self.input_binary:
                 prediction_bin = np.copy(img_org)
@@ -2465,7 +2462,7 @@ class Eynollah:
 
             erosion_hurts = True
             self.logger.debug("exit get_regions_from_xy_2models")
-            return text_regions_p_true, erosion_hurts, polygons_seplines
+            return text_regions_p_true, erosion_hurts, polygons_seplines, polygons_of_only_texts
 
     def do_order_of_regions(
             self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
@@ -4228,7 +4225,7 @@ class Eynollah:
             self.logger.info("Step 2/5: Basic Processing Mode")
             self.logger.info("Skipping layout analysis and reading order detection")
     
-            _ ,_, _, textline_mask_tot_ea, img_bin_light, _ = \
+            _ ,_, _, _, textline_mask_tot_ea, img_bin_light, _ = \
                 self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier,
                                          skip_layout_and_reading_order=self.skip_layout_and_reading_order)
 
@@ -4285,8 +4282,8 @@ class Eynollah:
         
         if self.light_version:
             self.logger.info("Using light version processing")
-            text_regions_p_1 ,erosion_hurts, polygons_seplines, textline_mask_tot_ea, \
-                img_bin_light, confidence_matrix = \
+            text_regions_p_1 ,erosion_hurts, polygons_seplines, polygons_text_early, \
+                textline_mask_tot_ea, img_bin_light, confidence_matrix = \
                 self.get_regions_light_v(img_res, is_image_enhanced, num_col_classifier)
             #print("text region early -2 in %.1fs", time.time() - t0)
 
@@ -4311,9 +4308,9 @@ class Eynollah:
             #self.logger.info("run graphics %.1fs ", time.time() - t1t)
             #print("text region early -3 in %.1fs", time.time() - t0)
             textline_mask_tot_ea_org = np.copy(textline_mask_tot_ea)
-            #print("text region early -4 in %.1fs", time.time() - t0)
+
         else:
-            text_regions_p_1, erosion_hurts, polygons_seplines = \
+            text_regions_p_1, erosion_hurts, polygons_seplines, polygons_text_early = \
                 self.get_regions_from_xy_2models(img_res, is_image_enhanced,
                                                  num_col_classifier)
             self.logger.info(f"Textregion detection took {time.time() - t1:.1f}s")
@@ -4330,7 +4327,7 @@ class Eynollah:
         #plt.show()
         self.logger.info(f"Layout analysis complete ({time.time() - t1:.1f}s)")
 
-        if not num_col:
+        if not num_col and len(polygons_text_early) == 0:
             self.logger.info("No columns detected - generating empty PAGE-XML")
     
             pcgts = self.writer.build_pagexml_no_full_layout(
@@ -4368,6 +4365,18 @@ class Eynollah:
         if self.plotter:
             self.plotter.save_plot_of_layout_main_all(text_regions_p, image_page)
             self.plotter.save_plot_of_layout_main(text_regions_p, image_page)
+
+        if image_page.size:
+            # if ratio of text regions to page area is smaller that 30%,
+            # then deskew angle will not be allowed to exceed 45
+            if (abs(slope_deskew) > 45 and
+                ((text_regions_p == 1).sum() +
+                 (text_regions_p == 4).sum()) / float(image_page.size) <= 0.3):
+                slope_deskew = 0
+
+        # if there is no main text, then relabel marginalia as main
+        if (text_regions_p == 1).sum() == 0:
+            text_regions_p[text_regions_p == 4] = 1
 
         self.logger.info("Step 3/5: Text Line Detection")
         
@@ -4417,6 +4426,7 @@ class Eynollah:
         contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
         contours_only_text_parent_d_ordered = []
         contours_only_text_parent_d = []
+
         if len(contours_only_text_parent) > 0:
             areas_tot_text = np.prod(text_only.shape)
             areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
