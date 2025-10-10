@@ -805,7 +805,7 @@ class machine_based_reading_order_on_layout:
             tree_xml.write(os.path.join(dir_out, file_name+'.xml'),
                            xml_declaration=True,
                            method='xml',
-                           encoding="utf8",
+                           encoding="utf-8",
                            default_namespace=None)
             
             #sys.exit()

@@ -5284,7 +5284,7 @@ class Eynollah_ocr:
                     ##unicode_textpage.text = tot_page_text
                 
                 ET.register_namespace("",name_space)
-                tree1.write(out_file_ocr,xml_declaration=True,method='xml',encoding="utf8",default_namespace=None)
+                tree1.write(out_file_ocr,xml_declaration=True,method='xml',encoding="utf-8",default_namespace=None)
         else:
             ###max_len = 280#512#280#512
             ###padding_token = 1500#299#1500#299
@@ -5833,5 +5833,5 @@ class Eynollah_ocr:
                         ##unicode_textpage.text = tot_page_text
                     
                     ET.register_namespace("",name_space)
-                    tree1.write(out_file_ocr,xml_declaration=True,method='xml',encoding="utf8",default_namespace=None)
+                    tree1.write(out_file_ocr,xml_declaration=True,method='xml',encoding="utf-8",default_namespace=None)
                     #print("Job done in %.1fs", time.time() - t0)
