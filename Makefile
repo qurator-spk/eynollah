@@ -12,15 +12,15 @@ DOCKER ?= docker
 # SEG_MODEL := https://qurator-data.de/eynollah/2022-04-05/models_eynollah.tar.gz
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz
-SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1
-SEG_MODELFILE = $(notdir $(patsubst %?download=1,%,$(SEG_MODEL)))
+SEG_MODEL := https://zenodo.org/records/17295988/files/models_layout_v0_6_0.tar.gz
+SEG_MODELFILE = $(notdir $(SEG_MODEL))
 SEG_MODELNAME = $(SEG_MODELFILE:%.tar.gz=%)
 
-BIN_MODEL := https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2021_03_09.zip
+BIN_MODEL := https://zenodo.org/records/17295988/files/models_binarization_v0_6_0.tar.gz
 BIN_MODELFILE = $(notdir $(BIN_MODEL))
 BIN_MODELNAME := default-2021-03-09
 
-OCR_MODEL := https://zenodo.org/records/17236998/files/models_ocr_v0_5_1.tar.gz?download=1
+OCR_MODEL := https://zenodo.org/records/17295988/files/models_ocr_v0_6_0.tar.gz
 OCR_MODELFILE = $(notdir $(patsubst %?download=1,%,$(OCR_MODEL)))
 OCR_MODELNAME = $(OCR_MODELFILE:%.tar.gz=%)
 
@@ -55,7 +55,7 @@ help:
 # END-EVAL
 
 
-# Download and extract models to $(PWD)/models_layout_v0_5_0
+# Download and extract models to $(PWD)/models_{binarization,layout,ocr}_[version]
 models: $(BIN_MODELNAME) $(SEG_MODELNAME) $(OCR_MODELNAME)
 
 # do not download these files if we already have the directories
