@@ -25,6 +25,7 @@ f458e3e
    (so CUDA memory gets freed between tests if running on GPU)
 
 Added:
+ * :fire: `layout` CLI: new option `--model_version` to override default choices
  * test coverage for OCR options in `layout`
  * test coverage for table detection in `layout`
  * CI linting with ruff
