@@ -1,5 +1,5 @@
 {
-  "version": "0.5.0",
+  "version": "0.6.0rc1",
   "git_url": "https://github.com/qurator-spk/eynollah",
   "dockerhub": "ocrd/eynollah",
   "tools": {
