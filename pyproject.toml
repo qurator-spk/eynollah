@@ -51,3 +51,21 @@ where = ["src"]
 [tool.coverage.run]
 branch = true
 source = ["eynollah"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+ignore = [
+# disable unused imports
+"F401",
+# disable import order
+"E402",
+# disable unused variables
+"F841",
+# disable bare except
+"E722",
+]
+
+[tool.ruff.format]
+quote-style = "preserve"

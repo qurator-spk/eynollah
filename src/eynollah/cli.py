@@ -203,6 +203,13 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
     required=True,
 )
 @click.option(
+    "--model_version",
+    "-mv",
+    help="override default versions of model categories",
+    type=(str, str),
+    multiple=True,
+)
+@click.option(
     "--save_images",
     "-si",
     help="if a directory is given, images in documents will be cropped and saved there",
@@ -373,7 +380,7 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
     help="Setup a basic console logger",
 )
 
-def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, transformer_ocr, batch_size_ocr, num_col_upper, num_col_lower, threshold_art_class_textline, threshold_art_class_layout, skip_layout_and_reading_order, ignore_page_extraction, log_level, setup_logging):
+def layout(image, out, overwrite, dir_in, model, model_version, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, transformer_ocr, batch_size_ocr, num_col_upper, num_col_lower, threshold_art_class_textline, threshold_art_class_layout, skip_layout_and_reading_order, ignore_page_extraction, log_level, setup_logging):
     if setup_logging:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO)
@@ -404,6 +411,7 @@ def layout(image, out, overwrite, dir_in, model, save_images, save_layout, save_
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     eynollah = Eynollah(
         model,
+        model_versions=model_version,
         extract_only_images=extract_only_images,
         enable_plotting=enable_plotting,
         allow_enhancement=allow_enhancement,

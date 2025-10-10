@@ -142,13 +142,12 @@ def dedup_separate_lines(img_patch, contour_text_interest, thetha, axis):
             rotation_matrix)
 
 def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
-    (h, w) = img_patch.shape[:2]
+    h, w = img_patch.shape[:2]
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
     x_d = M[0, 2]
     y_d = M[1, 2]
-    thetha = thetha / 180. * np.pi
-    rotation_matrix = np.array([[np.cos(thetha), -np.sin(thetha)], [np.sin(thetha), np.cos(thetha)]])
+    rotation_matrix = M[:2, :2]
     contour_text_interest_copy = contour_text_interest.copy()
 
     x_cont = contour_text_interest[:, 0, 0]
@@ -1302,19 +1301,16 @@ def separate_lines_new_inside_tiles(img_path, thetha):
 
 def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_ind, add_boxes_coor_into_textlines):
     kernel = np.ones((5, 5), np.uint8)
-    pixel = 255
+    label = 255
     min_area = 0
     max_area = 1
 
-    if len(img_patch.shape) == 3:
-        cnts_images = (img_patch[:, :, 0] == pixel) * 1
+    if img_patch.ndim == 3:
+        cnts_images = (img_patch[:, :, 0] == label) * 1
     else:
-        cnts_images = (img_patch[:, :] == pixel) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        cnts_images = (img_patch[:, :] == label) * 1
+    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
+    contours_imgs, hierarchy = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
     contours_imgs = filter_contours_area_of_image_tables(thresh,
@@ -1322,14 +1318,12 @@ def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
                                                          max_area=max_area, min_area=min_area)
     cont_final = []
     for i in range(len(contours_imgs)):
-        img_contour = np.zeros((cnts_images.shape[0], cnts_images.shape[1], 3))
-        img_contour = cv2.fillPoly(img_contour, pts=[contours_imgs[i]], color=(255, 255, 255))
-        img_contour = img_contour.astype(np.uint8)
+        img_contour = np.zeros(cnts_images.shape[:2], dtype=np.uint8)
+        img_contour = cv2.fillPoly(img_contour, pts=[contours_imgs[i]], color=255)
 
         img_contour = cv2.dilate(img_contour, kernel, iterations=4)
-        imgrayrot = cv2.cvtColor(img_contour, cv2.COLOR_BGR2GRAY)
-        _, threshrot = cv2.threshold(imgrayrot, 0, 255, 0)
-        contours_text_rot, _ = cv2.findContours(threshrot.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        _, threshrot = cv2.threshold(img_contour, 0, 255, 0)
+        contours_text_rot, _ = cv2.findContours(threshrot.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         ##contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[
         ##0]
@@ -1344,62 +1338,55 @@ def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_i
 def textline_contours_postprocessing(textline_mask, slope,
                                      contour_text_interest, box_ind,
                                      add_boxes_coor_into_textlines=False):
-    textline_mask = np.repeat(textline_mask[:, :, np.newaxis], 3, axis=2) * 255
-    textline_mask = textline_mask.astype(np.uint8)
+    textline_mask = textline_mask * 255
     kernel = np.ones((5, 5), np.uint8)
     textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_OPEN, kernel)
     textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_CLOSE, kernel)
     textline_mask = cv2.erode(textline_mask, kernel, iterations=2)
     # textline_mask = cv2.erode(textline_mask, kernel, iterations=1)
-    try:
-        x_help = 30
-        y_help = 2
 
-        textline_mask_help = np.zeros((textline_mask.shape[0] + int(2 * y_help),
-                                       textline_mask.shape[1] + int(2 * x_help), 3))
-        textline_mask_help[y_help : y_help + textline_mask.shape[0],
-                           x_help : x_help + textline_mask.shape[1], :] = np.copy(textline_mask[:, :, :])
+    x_help = 30
+    y_help = 2
 
-        dst = rotate_image(textline_mask_help, slope)
-        dst = dst[:, :, 0]
-        dst[dst != 0] = 1
+    textline_mask_help = np.zeros((textline_mask.shape[0] + int(2 * y_help),
+                                   textline_mask.shape[1] + int(2 * x_help)))
+    textline_mask_help[y_help : y_help + textline_mask.shape[0],
+                       x_help : x_help + textline_mask.shape[1]] = np.copy(textline_mask[:, :])
 
-        # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
-        # plt.imshow(dst)
-        # plt.show()
+    dst = rotate_image(textline_mask_help, slope)
+    dst[dst != 0] = 1
 
-        contour_text_copy = contour_text_interest.copy()
-        contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[0]
-        contour_text_copy[:, 0, 1] = contour_text_copy[:, 0, 1] - box_ind[1]
+    # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
+    # plt.imshow(dst)
+    # plt.show()
 
-        img_contour = np.zeros((box_ind[3], box_ind[2], 3))
-        img_contour = cv2.fillPoly(img_contour, pts=[contour_text_copy], color=(255, 255, 255))
+    contour_text_copy = contour_text_interest.copy()
+    contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[0]
+    contour_text_copy[:, 0, 1] = contour_text_copy[:, 0, 1] - box_ind[1]
 
-        img_contour_help = np.zeros((img_contour.shape[0] + int(2 * y_help),
-                                     img_contour.shape[1] + int(2 * x_help), 3))
-        img_contour_help[y_help : y_help + img_contour.shape[0],
-                         x_help : x_help + img_contour.shape[1], :] = np.copy(img_contour[:, :, :])
+    img_contour = np.zeros((box_ind[3], box_ind[2]))
+    img_contour = cv2.fillPoly(img_contour, pts=[contour_text_copy], color=255)
 
-        img_contour_rot = rotate_image(img_contour_help, slope)
+    img_contour_help = np.zeros((img_contour.shape[0] + int(2 * y_help),
+                                 img_contour.shape[1] + int(2 * x_help)))
+    img_contour_help[y_help : y_help + img_contour.shape[0],
+                     x_help : x_help + img_contour.shape[1]] = np.copy(img_contour[:, :])
 
-        img_contour_rot = img_contour_rot.astype(np.uint8)
-        # dst_help = dst_help.astype(np.uint8)
-        imgrayrot = cv2.cvtColor(img_contour_rot, cv2.COLOR_BGR2GRAY)
-        _, threshrot = cv2.threshold(imgrayrot, 0, 255, 0)
-        contours_text_rot, _ = cv2.findContours(threshrot.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    img_contour_rot = rotate_image(img_contour_help, slope)
 
-        len_con_text_rot = [len(contours_text_rot[ib]) for ib in range(len(contours_text_rot))]
-        ind_big_con = np.argmax(len_con_text_rot)
+    _, threshrot = cv2.threshold(img_contour_rot, 0, 255, 0)
+    contours_text_rot, _ = cv2.findContours(threshrot.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        if abs(slope) > 45:
-            _, contours_rotated_clean = separate_lines_vertical_cont(
-                textline_mask, contours_text_rot[ind_big_con], box_ind, slope,
-                add_boxes_coor_into_textlines=add_boxes_coor_into_textlines)
-        else:
-            _, contours_rotated_clean = separate_lines(
-                dst, contours_text_rot[ind_big_con], slope, x_help, y_help)
-    except:
-        contours_rotated_clean = []
+    len_con_text_rot = [len(contours_text_rot[ib]) for ib in range(len(contours_text_rot))]
+    ind_big_con = np.argmax(len_con_text_rot)
+
+    if abs(slope) > 45:
+        _, contours_rotated_clean = separate_lines_vertical_cont(
+            textline_mask, contours_text_rot[ind_big_con], box_ind, slope,
+            add_boxes_coor_into_textlines=add_boxes_coor_into_textlines)
+    else:
+        _, contours_rotated_clean = separate_lines(
+            dst, contours_text_rot[ind_big_con], slope, x_help, y_help)
 
     return contours_rotated_clean
 
@@ -1605,7 +1592,7 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map
 
 @wrap_ndarray_shared(kw='textline_mask_tot_ea')
 def do_work_of_slopes_new(
-        box_text, contour, contour_par, index_r_con,
+        box_text, contour, contour_par,
         textline_mask_tot_ea=None, slope_deskew=0.0,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
 ):
@@ -1660,12 +1647,12 @@ def do_work_of_slopes_new(
         all_text_region_raw[mask_only_con_region == 0] = 0
         cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_for_all, contour_par, box_text)
 
-    return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope
+    return cnt_clean_rot, crop_coor, slope
 
 @wrap_ndarray_shared(kw='textline_mask_tot_ea')
 @wrap_ndarray_shared(kw='mask_texts_only')
 def do_work_of_slopes_new_curved(
-        box_text, contour, contour_par, index_r_con,
+        box_text, contour_par,
         textline_mask_tot_ea=None, mask_texts_only=None,
         num_col=1, scale_par=1.0, slope_deskew=0.0,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
@@ -1756,11 +1743,11 @@ def do_work_of_slopes_new_curved(
                                                                     slope_for_all, contour_par,
                                                                     box_text, True)
 
-    return textlines_cnt_per_region[::-1], box_text, contour, contour_par, crop_coor, index_r_con, slope
+    return textlines_cnt_per_region[::-1], crop_coor, slope
 
 @wrap_ndarray_shared(kw='textline_mask_tot_ea')
 def do_work_of_slopes_new_light(
-        box_text, contour, contour_par, index_r_con,
+        box_text, contour, contour_par,
         textline_mask_tot_ea=None, slope_deskew=0, textline_light=True,
         logger=None
 ):
@@ -1790,4 +1777,4 @@ def do_work_of_slopes_new_light(
         all_text_region_raw[mask_only_con_region == 0] = 0
         cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_deskew, contour_par, box_text)
 
-    return cnt_clean_rot, box_text, contour, contour_par, crop_coor, index_r_con, slope_deskew
+    return cnt_clean_rot, crop_coor, slope_deskew

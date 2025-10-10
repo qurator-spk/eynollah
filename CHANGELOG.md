@@ -7,6 +7,9 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 Fixed:
 
+ * continue processing when no columns detected but text regions exist
+ * convert marginalia to main text if no main text is present
+ * reset deskewing angle to 0° when text covers <30% image area and detected angle >45°
  * :fire: polygons: avoid invalid paths (use `Polygon.buffer()` instead of dilation etc.)
  * `return_boxes_of_images_by_order_of_reading_new`: avoid Numpy.dtype mismatch, simplify
  * `return_boxes_of_images_by_order_of_reading_new`: log any exceptions instead of ignoring
@@ -15,10 +18,17 @@ Fixed:
  * `get_smallest_skew`: after shifting search range of rotation angle, use overall best result
  * Dockerfile: fix CUDA installation (cuDNN contested between Torch and TF due to extra OCR)
  * OCR: re-instate missing methods and fix `utils_ocr` function calls
+ * mbreorder/enhancement CLIs: missing imports
  * :fire: writer: `SeparatorRegion` needs `SeparatorRegionType` (not `ImageRegionType`)
 f458e3e
  * tests: switch from `pytest-subtests` to `parametrize` so we can use `pytest-isolate`
    (so CUDA memory gets freed between tests if running on GPU)
+
+Added:
+ * :fire: `layout` CLI: new option `--model_version` to override default choices
+ * test coverage for OCR options in `layout`
+ * test coverage for table detection in `layout`
+ * CI linting with ruff
 
 Changed:
  
@@ -28,7 +38,19 @@ Changed:
    but use shared memory if necessary, and switch back from `loky` to stdlib,
    and shutdown in `del()` instead of `atexit`
  * :fire: OCR: switch CNN-RNN model to `20250930` version compatible with TF 2.12 on CPU, too
+ * OCR: allow running `-tr` without `-fl`, too
  * :fire: writer: use `@type='heading'` instead of `'header'` for headings
+ * :fire: performance gains via refactoring (simplification, less copy-code, vectorization,
+   avoiding unused calculations, avoiding unnecessary 3-channel image operations)
+ * :fire: heuristic reading order detection: many improvements
+    - contour vs splitter box matching: 
+      * contour must be contained in box exactly instead of heuristics
+      * make fallback center matching, center must be contained in box
+    - original vs deskewed contour matching:
+      * same min-area filter on both sides
+      * similar area score in addition to center proximity
+      * avoid duplicate and missing mappings by allowing N:M
+        matches and splitting+joining where necessary
  * CI: update+improve model caching
 
 
