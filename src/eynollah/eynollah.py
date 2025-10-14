@@ -385,6 +385,8 @@ class Eynollah:
             self.logger.warning("overriding default model %s version %s to %s", key, self.model_versions[key], val)
             self.model_versions[key] = val
         # load models, depending on modes
+        # (note: loading too many models can cause OOM on GPU/CUDA,
+        #  thus, we try set up the minimal configuration for the current mode)
         loadable = [
             "col_classifier",
             "binarization",
@@ -400,8 +402,8 @@ class Eynollah:
                 # if self.allow_enhancement:?
                 loadable.append("enhancement")
             if self.full_layout:
-                loadable.extend(["region_fl_np",
-                                 "region_fl"])
+                loadable.append("region_fl_np")
+                #loadable.append("region_fl")
             if self.reading_order_machine_based:
                 loadable.append("reading_order")
             if self.tables:
