@@ -276,7 +276,7 @@ def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number
 
 def polygon2contour(polygon: Polygon) -> np.ndarray:
     polygon = np.array(polygon.exterior.coords[:-1], dtype=int)
-    return np.maximum(0, polygon).astype(np.uint)[:, np.newaxis]
+    return np.maximum(0, polygon).astype(int)[:, np.newaxis]
 
 def make_intersection(poly1, poly2):
     interp = poly1.intersection(poly2)
