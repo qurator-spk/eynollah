@@ -8,6 +8,7 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 Fixed:
 
   * Prevent OOM GPU error by avoiding loading the `region_fl` model, #199
+  * XML output: encoding should be `utf-8`, not `utf8`, #196, #197
 
 ## [0.6.0rc1] - 2025-10-10
 
