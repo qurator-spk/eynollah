@@ -5,6 +5,8 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.6.0rc2] - 2025-10-14
+
 Fixed:
 
   * Prevent OOM GPU error by avoiding loading the `region_fl` model, #199
@@ -295,6 +297,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.6.0rc2]: ../../compare/v0.6.0rc2...v0.6.0rc1
 [0.6.0rc1]: ../../compare/v0.6.0rc1...v0.5.0
 [0.5.0]: ../../compare/v0.5.0...v0.4.0
 [0.4.0]: ../../compare/v0.4.0...v0.3.1
