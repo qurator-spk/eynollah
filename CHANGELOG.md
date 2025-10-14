@@ -5,6 +5,10 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Fixed:
+
+  * Prevent OOM GPU error by avoiding loading the `region_fl` model, #199
+
 ## [0.6.0rc1] - 2025-10-10
 
 Fixed:
@@ -21,8 +25,7 @@ Fixed:
  * Dockerfile: fix CUDA installation (cuDNN contested between Torch and TF due to extra OCR)
  * OCR: re-instate missing methods and fix `utils_ocr` function calls
  * mbreorder/enhancement CLIs: missing imports
- * :fire: writer: `SeparatorRegion` needs `SeparatorRegionType` (not `ImageRegionType`)
-f458e3e
+ * :fire: writer: `SeparatorRegion` needs `SeparatorRegionType` (not `ImageRegionType`), f458e3e
  * tests: switch from `pytest-subtests` to `parametrize` so we can use `pytest-isolate`
    (so CUDA memory gets freed between tests if running on GPU)
 
