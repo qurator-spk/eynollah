@@ -353,6 +353,8 @@ def join_polygons(polygons: Sequence[Polygon], scale=20) -> Polygon:
         bridgep = orient(LineString(nearest).buffer(max(1, scale/5), resolution=1), -1)
         polygons.append(bridgep)
     jointp = unary_union(polygons)
+    if jointp.geom_type == 'MultiPolygon':
+        jointp = unary_union(jointp.geoms)
     assert jointp.geom_type == 'Polygon', jointp.wkt
     # follow-up calculations will necessarily be integer;
     # so anticipate rounding here and then ensure validity
