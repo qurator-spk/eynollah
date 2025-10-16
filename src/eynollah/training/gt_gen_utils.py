@@ -1,5 +1,3 @@
-import click
-import sys
 import os
 import numpy as np
 import warnings
@@ -8,8 +6,7 @@ from tqdm import tqdm
 import cv2
 from shapely import geometry
 from pathlib import Path
-import matplotlib.pyplot as plt
-from PIL import Image, ImageDraw, ImageFont
+from PIL import ImageFont
 
 
 KERNEL = np.ones((5, 5), np.uint8)
