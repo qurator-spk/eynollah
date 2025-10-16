@@ -1,19 +1,44 @@
 import os
 import sys
+import json
+
+import click
+
+from eynollah.training.metrics import (
+    soft_dice_loss,
+    weighted_categorical_crossentropy
+)
+from eynollah.training.models import (
+    PatchEncoder,
+    Patches,
+    machine_based_reading_order_model,
+    resnet50_classifier,
+    resnet50_unet,
+    vit_resnet50_unet,
+    vit_resnet50_unet_transformer_before_cnn
+)
+from eynollah.training.utils import (
+    data_gen,
+    generate_arrays_from_folder_reading_order,
+    generate_data_from_folder_evaluation,
+    generate_data_from_folder_training,
+    get_one_hot,
+    provide_patches,
+    return_number_of_total_training_data
+)
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
 from tensorflow.compat.v1.keras.backend import set_session
-import warnings
-from tensorflow.keras.optimizers import *
+from tensorflow.keras.optimizers import SGD, Adam
 from sacred import Experiment
-from models import *
-from utils import *
-from metrics import *
 from tensorflow.keras.models import load_model
 from tqdm import tqdm
-import json
 from sklearn.metrics import f1_score
 from tensorflow.keras.callbacks import Callback
+
+import numpy as np
+import cv2
 
 class SaveWeightsAfterSteps(Callback):
     def __init__(self, save_interval, save_path, _config):
@@ -45,8 +70,8 @@ def configuration():
 
 
 def get_dirs_or_files(input_data):
+    image_input, labels_input = os.path.join(input_data, 'images/'), os.path.join(input_data, 'labels/')
     if os.path.isdir(input_data):
-        image_input, labels_input = os.path.join(input_data, 'images/'), os.path.join(input_data, 'labels/')
         # Check if training dir exists
         assert os.path.isdir(image_input), "{} is not a directory".format(image_input)
         assert os.path.isdir(labels_input), "{} is not a directory".format(labels_input)
@@ -120,7 +145,6 @@ def config_params():
     number_of_backgrounds_per_image = 1
     dir_rgb_backgrounds = None
     dir_rgb_foregrounds = None
-
 
 @ex.automain
 def run(_config, n_classes, n_epochs, input_height,
@@ -423,7 +447,7 @@ def run(_config, n_classes, n_epochs, input_height,
 
         #f1score_tot = [0]
         indexer_start = 0
-        opt = SGD(learning_rate=0.01, momentum=0.9)
+        # opt = SGD(learning_rate=0.01, momentum=0.9)
         opt_adam = tf.keras.optimizers.Adam(learning_rate=0.0001)
         model.compile(loss="binary_crossentropy",
                             optimizer = opt_adam,metrics=['accuracy'])

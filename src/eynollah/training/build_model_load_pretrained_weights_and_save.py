@@ -1,20 +1,15 @@
-import os
-import sys
+import click
 import tensorflow as tf
-import warnings
-from tensorflow.keras.optimizers import *
-from sacred import Experiment
-from models import *
-from utils import *
-from metrics import *
+
+from .models import resnet50_unet
 
 
 def configuration():
     gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
     session = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
 
-
-if __name__ == '__main__':
+@click.command()
+def build_model_load_pretrained_weights_and_save():
     n_classes = 2
     input_height = 224
     input_width = 448

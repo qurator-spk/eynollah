@@ -1,9 +1,28 @@
 import click
 import json
-from gt_gen_utils import *
+import os
 from tqdm import tqdm
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
+import cv2
+import numpy as np
+
+from eynollah.training.gt_gen_utils import (
+    filter_contours_area_of_image,
+    find_format_of_given_filename_in_dir,
+    find_new_features_of_contours,
+    fit_text_single_line,
+    get_content_of_dir,
+    get_images_of_ground_truth,
+    get_layout_contours_for_visualization,
+    get_textline_contours_and_ocr_text,
+    get_textline_contours_for_visualization,
+    overlay_layout_on_image,
+    read_xml,
+    resize_image,
+    visualize_image_from_contours,
+    visualize_image_from_contours_layout
+)
 
 @click.group()
 def main():
@@ -562,6 +581,3 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
                     # Draw the text
                     draw.text((text_x, text_y), ocr_texts[index], fill="black", font=font)
         image_text.save(os.path.join(dir_out, f_name+'.png'))
-    
-if __name__ == "__main__":
-    main()
