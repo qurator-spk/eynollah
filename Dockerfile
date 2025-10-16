@@ -40,6 +40,8 @@ RUN ocrd ocrd-tool ocrd-tool.json dump-tools > $(dirname $(ocrd bashlib filename
 RUN ocrd ocrd-tool ocrd-tool.json dump-module-dirs > $(dirname $(ocrd bashlib filename))/ocrd-all-module-dir.json
 # install everything and reduce image size
 RUN make install EXTRAS=OCR && rm -rf /build/eynollah
+# fixup for broken cuDNN installation (Torch pulls in 8.5.0, which is incompatible with Tensorflow)
+RUN pip install nvidia-cudnn-cu11==8.6.0.163
 # smoke test
 RUN eynollah --help
 

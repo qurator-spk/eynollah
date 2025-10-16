@@ -1,7 +1,15 @@
+from typing import Sequence, Union
+from numbers import Number
 from functools import partial
+import itertools
+
 import cv2
 import numpy as np
-from shapely import geometry
+from scipy.sparse.csgraph import minimum_spanning_tree
+from shapely.geometry import Polygon, LineString
+from shapely.geometry.polygon import orient
+from shapely import set_precision
+from shapely.ops import unary_union, nearest_points
 
 from .rotate import rotate_image, rotation_image_new
 
@@ -28,38 +36,31 @@ def find_contours_mean_y_diff(contours_main):
     return np.mean(np.diff(np.sort(np.array(cy_main))))
 
 def get_text_region_boxes_by_given_contours(contours):
-    boxes = []
-    contours_new = []
-    for jj in range(len(contours)):
-        box = cv2.boundingRect(contours[jj])
-        boxes.append(box)
-        contours_new.append(contours[jj])
+    return [cv2.boundingRect(contour)
+            for contour in contours]
 
-    return boxes, contours_new
-
-def filter_contours_area_of_image(image, contours, hierarchy, max_area, min_area):
+def filter_contours_area_of_image(image, contours, hierarchy, max_area=1.0, min_area=0.0, dilate=0):
     found_polygons_early = []
-    for jv,c in enumerate(contours):
-        if len(c) < 3:  # A polygon cannot have less than 3 points
+    for jv, contour in enumerate(contours):
+        if len(contour) < 3:  # A polygon cannot have less than 3 points
             continue
 
-        polygon = geometry.Polygon([point[0] for point in c])
+        polygon = contour2polygon(contour, dilate=dilate)
         area = polygon.area
         if (area >= min_area * np.prod(image.shape[:2]) and
             area <= max_area * np.prod(image.shape[:2]) and
             hierarchy[0][jv][3] == -1):
-            found_polygons_early.append(np.array([[point]
-                                                  for point in polygon.exterior.coords], dtype=np.uint))
+            found_polygons_early.append(polygon2contour(polygon))
     return found_polygons_early
 
-def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, min_area):
+def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area=1.0, min_area=0.0, dilate=0):
     found_polygons_early = []
-    for jv,c in enumerate(contours):
-        if len(c) < 3:  # A polygon cannot have less than 3 points
+    for jv, contour in enumerate(contours):
+        if len(contour) < 3:  # A polygon cannot have less than 3 points
             continue
 
-        polygon = geometry.Polygon([point[0] for point in c])
-        # area = cv2.contourArea(c)
+        polygon = contour2polygon(contour, dilate=dilate)
+        # area = cv2.contourArea(contour)
         area = polygon.area
         ##print(np.prod(thresh.shape[:2]))
         # Check that polygon has area greater than minimal area
@@ -68,66 +69,41 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area, m
             area <= max_area * np.prod(image.shape[:2]) and
             # hierarchy[0][jv][3]==-1
             True):
-            # print(c[0][0][1])
-            found_polygons_early.append(np.array([[point]
-                                                  for point in polygon.exterior.coords], dtype=np.int32))
+            # print(contour[0][0][1])
+            found_polygons_early.append(polygon2contour(polygon))
     return found_polygons_early
 
-def find_new_features_of_contours(contours_main):
-    areas_main = np.array([cv2.contourArea(contours_main[j])
-                           for j in range(len(contours_main))])
-    M_main = [cv2.moments(contours_main[j])
-              for j in range(len(contours_main))]
-    cx_main = [(M_main[j]["m10"] / (M_main[j]["m00"] + 1e-32))
-               for j in range(len(M_main))]
-    cy_main = [(M_main[j]["m01"] / (M_main[j]["m00"] + 1e-32))
-               for j in range(len(M_main))]
-    try:
-        x_min_main = np.array([np.min(contours_main[j][:, 0, 0])
-                               for j in range(len(contours_main))])
-        argmin_x_main = np.array([np.argmin(contours_main[j][:, 0, 0])
-                                  for j in range(len(contours_main))])
-        x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0, 0]
-                                      for j in range(len(contours_main))])
-        y_corr_x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0, 1]
-                                             for j in range(len(contours_main))])
-        x_max_main = np.array([np.max(contours_main[j][:, 0, 0])
-                               for j in range(len(contours_main))])
-        y_min_main = np.array([np.min(contours_main[j][:, 0, 1])
-                               for j in range(len(contours_main))])
-        y_max_main = np.array([np.max(contours_main[j][:, 0, 1])
-                               for j in range(len(contours_main))])
-    except:
-        x_min_main = np.array([np.min(contours_main[j][:, 0])
-                               for j in range(len(contours_main))])
-        argmin_x_main = np.array([np.argmin(contours_main[j][:, 0])
-                                  for j in range(len(contours_main))])
-        x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 0]
-                                      for j in range(len(contours_main))])
-        y_corr_x_min_from_argmin = np.array([contours_main[j][argmin_x_main[j], 1]
-                                             for j in range(len(contours_main))])
-        x_max_main = np.array([np.max(contours_main[j][:, 0])
-                               for j in range(len(contours_main))])
-        y_min_main = np.array([np.min(contours_main[j][:, 1])
-                               for j in range(len(contours_main))])
-        y_max_main = np.array([np.max(contours_main[j][:, 1])
-                               for j in range(len(contours_main))])
-    # dis_x=np.abs(x_max_main-x_min_main)
+def find_center_of_contours(contours):
+    moments = [cv2.moments(contour) for contour in contours]
+    cx = [feat["m10"] / (feat["m00"] + 1e-32)
+          for feat in moments]
+    cy = [feat["m01"] / (feat["m00"] + 1e-32)
+          for feat in moments]
+    return cx, cy
 
-    return cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin
+def find_new_features_of_contours(contours):
+    # areas = np.array([cv2.contourArea(contour) for contour in contours])
+    cx, cy = find_center_of_contours(contours)
+    slice_x = np.index_exp[:, 0, 0]
+    slice_y = np.index_exp[:, 0, 1]
+    if any(contour.ndim < 3 for contour in contours):
+        slice_x = np.index_exp[:, 0]
+        slice_y = np.index_exp[:, 1]
+    x_min = np.array([np.min(contour[slice_x]) for contour in contours])
+    x_max = np.array([np.max(contour[slice_x]) for contour in contours])
+    y_min = np.array([np.min(contour[slice_y]) for contour in contours])
+    y_max = np.array([np.max(contour[slice_y]) for contour in contours])
+    # dis_x=np.abs(x_max-x_min)
+    y_corr_x_min = np.array([contour[np.argmin(contour[slice_x])][slice_y[1:]]
+                             for contour in contours])
 
-def find_features_of_contours(contours_main):
-    areas_main=np.array([cv2.contourArea(contours_main[j]) for j in range(len(contours_main))])
-    M_main=[cv2.moments(contours_main[j]) for j in range(len(contours_main))]
-    cx_main=[(M_main[j]['m10']/(M_main[j]['m00']+1e-32)) for j in range(len(M_main))]
-    cy_main=[(M_main[j]['m01']/(M_main[j]['m00']+1e-32)) for j in range(len(M_main))]
-    x_min_main=np.array([np.min(contours_main[j][:,0,0]) for j in range(len(contours_main))])
-    x_max_main=np.array([np.max(contours_main[j][:,0,0]) for j in range(len(contours_main))])
+    return cx, cy, x_min, x_max, y_min, y_max, y_corr_x_min
 
-    y_min_main=np.array([np.min(contours_main[j][:,0,1]) for j in range(len(contours_main))])
-    y_max_main=np.array([np.max(contours_main[j][:,0,1]) for j in range(len(contours_main))])
+def find_features_of_contours(contours):
+    y_min = np.array([np.min(contour[:,0,1]) for contour in contours])
+    y_max = np.array([np.max(contour[:,0,1]) for contour in contours])
 
-    return y_min_main, y_max_main
+    return y_min, y_max
 
 def return_parent_contours(contours, hierarchy):
     contours_parent = [contours[i]
@@ -135,16 +111,13 @@ def return_parent_contours(contours, hierarchy):
                        if hierarchy[0][i][3] == -1]
     return contours_parent
 
-def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
+def return_contours_of_interested_region(region_pre_p, label, min_area=0.0002):
     # pixels of images are identified by 5
-    if len(region_pre_p.shape) == 3:
-        cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
+    if region_pre_p.ndim == 3:
+        cnts_images = (region_pre_p[:, :, 0] == label) * 1
     else:
-        cnts_images = (region_pre_p[:, :] == pixel) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+        cnts_images = (region_pre_p[:, :] == label) * 1
+    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
 
     contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
@@ -153,13 +126,11 @@ def return_contours_of_interested_region(region_pre_p, pixel, min_area=0.0002):
     return contours_imgs
 
 def do_work_of_contours_in_image(contour, index_r_con, img, slope_first):
-    img_copy = np.zeros(img.shape)
-    img_copy = cv2.fillPoly(img_copy, pts=[contour], color=(1, 1, 1))
+    img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
+    img_copy = cv2.fillPoly(img_copy, pts=[contour], color=1)
 
     img_copy = rotation_image_new(img_copy, -slope_first)
-    img_copy = img_copy.astype(np.uint8)
-    imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    _, thresh = cv2.threshold(img_copy, 0, 255, 0)
 
     cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -182,8 +153,8 @@ def get_textregion_contours_in_org_image(cnts, img, slope_first):
     cnts_org = []
     # print(cnts,'cnts')
     for i in range(len(cnts)):
-        img_copy = np.zeros(img.shape)
-        img_copy = cv2.fillPoly(img_copy, pts=[cnts[i]], color=(1, 1, 1))
+        img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
+        img_copy = cv2.fillPoly(img_copy, pts=[cnts[i]], color=1)
 
         # plt.imshow(img_copy)
         # plt.show()
@@ -194,9 +165,7 @@ def get_textregion_contours_in_org_image(cnts, img, slope_first):
         # plt.imshow(img_copy)
         # plt.show()
 
-        img_copy = img_copy.astype(np.uint8)
-        imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+        _, thresh = cv2.threshold(img_copy, 0, 255, 0)
 
         cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
@@ -213,12 +182,11 @@ def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
                      interpolation=cv2.INTER_NEAREST)
     cnts_org = []
     for cnt in cnts:
-        img_copy = np.zeros(img.shape)
-        img_copy = cv2.fillPoly(img_copy, pts=[(cnt / zoom).astype(int)], color=(1, 1, 1))
+        img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
+        img_copy = cv2.fillPoly(img_copy, pts=[cnt // zoom], color=1)
 
         img_copy = rotation_image_new(img_copy, -slope_first).astype(np.uint8)
-        imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
-        ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+        _, thresh = cv2.threshold(img_copy, 0, 255, 0)
 
         cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
@@ -228,14 +196,13 @@ def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
     return cnts_org
 
 def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first, confidence_matrix):
-    img_copy = np.zeros(img.shape)
-    img_copy = cv2.fillPoly(img_copy, pts=[contour_par], color=(1, 1, 1))
-    confidence_matrix_mapped_with_contour = confidence_matrix * img_copy[:,:,0]
-    confidence_contour = np.sum(confidence_matrix_mapped_with_contour) / float(np.sum(img_copy[:,:,0]))
+    img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
+    img_copy = cv2.fillPoly(img_copy, pts=[contour_par], color=1)
+    confidence_matrix_mapped_with_contour = confidence_matrix * img_copy
+    confidence_contour = np.sum(confidence_matrix_mapped_with_contour) / float(np.sum(img_copy))
 
     img_copy = rotation_image_new(img_copy, -slope_first).astype(np.uint8)
-    imgray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    _, thresh = cv2.threshold(img_copy, 0, 255, 0)
 
     cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if len(cont_int)==0:
@@ -246,34 +213,27 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
         cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
     return cont_int[0], index_r_con, confidence_contour
 
-def get_textregion_contours_in_org_image_light(cnts, img, slope_first, confidence_matrix, map=map):
+def get_textregion_contours_in_org_image_light(cnts, img, confidence_matrix):
     if not len(cnts):
-        return [], []
-    
-    confidence_matrix = cv2.resize(confidence_matrix, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
-    img = cv2.resize(img, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
-    ##cnts = list( (np.array(cnts)/2).astype(np.int16) )
-    #cnts = cnts/2
-    cnts = [(i/6).astype(int) for i in cnts]
-    results = map(partial(do_back_rotation_and_get_cnt_back,
-                          img=img,
-                          slope_first=slope_first,
-                          confidence_matrix=confidence_matrix,
-                          ),
-                  cnts, range(len(cnts)))
-    contours, indexes, conf_contours = tuple(zip(*results))
-    return [i*6 for i in contours], list(conf_contours)
+        return []
 
-def return_contours_of_interested_textline(region_pre_p, pixel):
+    confidence_matrix = cv2.resize(confidence_matrix,
+                                   (img.shape[1] // 6, img.shape[0] // 6),
+                                   interpolation=cv2.INTER_NEAREST)
+    confs = []
+    for cnt in cnts:
+        cnt_mask = np.zeros(confidence_matrix.shape)
+        cnt_mask = cv2.fillPoly(cnt_mask, pts=[cnt // 6], color=1.0)
+        confs.append(np.sum(confidence_matrix * cnt_mask) / np.sum(cnt_mask))
+    return confs
+
+def return_contours_of_interested_textline(region_pre_p, label):
     # pixels of images are identified by 5
-    if len(region_pre_p.shape) == 3:
-        cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
+    if region_pre_p.ndim == 3:
+        cnts_images = (region_pre_p[:, :, 0] == label) * 1
     else:
-        cnts_images = (region_pre_p[:, :] == pixel) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+        cnts_images = (region_pre_p[:, :] == label) * 1
+    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
     contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
@@ -283,51 +243,123 @@ def return_contours_of_interested_textline(region_pre_p, pixel):
 
 def return_contours_of_image(image):
     if len(image.shape) == 2:
-        image = np.repeat(image[:, :, np.newaxis], 3, axis=2)
         image = image.astype(np.uint8)
+        imgray = image
     else:
         image = image.astype(np.uint8)
-    imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+        imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(imgray, 0, 255, 0)
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     return contours, hierarchy
 
-def return_contours_of_interested_region_by_min_size(region_pre_p, pixel, min_size=0.00003):
-    # pixels of images are identified by 5
-    if len(region_pre_p.shape) == 3:
-        cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
-    else:
-        cnts_images = (region_pre_p[:, :] == pixel) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+def dilate_textline_contours(all_found_textline_polygons):
+    return [[polygon2contour(contour2polygon(contour, dilate=6))
+             for contour in region]
+            for region in all_found_textline_polygons]
 
-    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
-    contours_imgs = filter_contours_area_of_image_tables(
-        thresh, contours_imgs, hierarchy, max_area=1, min_area=min_size)
+def dilate_textregion_contours(all_found_textline_polygons):
+    return [polygon2contour(contour2polygon(contour, dilate=6))
+            for contour in all_found_textline_polygons]
 
-    return contours_imgs
+def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number]]]], dilate=0):
+    polygon = Polygon([point[0] for point in contour])
+    if dilate:
+        polygon = polygon.buffer(dilate)
+    if polygon.geom_type == 'GeometryCollection':
+        # heterogeneous result: filter zero-area shapes (LineString, Point)
+        polygon = unary_union([geom for geom in polygon.geoms if geom.area > 0])
+    if polygon.geom_type == 'MultiPolygon':
+        # homogeneous result: construct convex hull to connect
+        polygon = join_polygons(polygon.geoms)
+    return make_valid(polygon)
 
-def return_contours_of_interested_region_by_size(region_pre_p, pixel, min_area, max_area):
-    # pixels of images are identified by 5
-    if len(region_pre_p.shape) == 3:
-        cnts_images = (region_pre_p[:, :, 0] == pixel) * 1
-    else:
-        cnts_images = (region_pre_p[:, :] == pixel) * 1
-    cnts_images = cnts_images.astype(np.uint8)
-    cnts_images = np.repeat(cnts_images[:, :, np.newaxis], 3, axis=2)
-    imgray = cv2.cvtColor(cnts_images, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+def polygon2contour(polygon: Polygon) -> np.ndarray:
+    polygon = np.array(polygon.exterior.coords[:-1], dtype=int)
+    return np.maximum(0, polygon).astype(int)[:, np.newaxis]
 
-    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
-    contours_imgs = filter_contours_area_of_image_tables(
-        thresh, contours_imgs, hierarchy, max_area=max_area, min_area=min_area)
+def make_intersection(poly1, poly2):
+    interp = poly1.intersection(poly2)
+    # post-process
+    if interp.is_empty or interp.area == 0.0:
+        return None
+    if interp.geom_type == 'GeometryCollection':
+        # heterogeneous result: filter zero-area shapes (LineString, Point)
+        interp = unary_union([geom for geom in interp.geoms if geom.area > 0])
+    if interp.geom_type == 'MultiPolygon':
+        # homogeneous result: construct convex hull to connect
+        interp = join_polygons(interp.geoms)
+    assert interp.geom_type == 'Polygon', interp.wkt
+    interp = make_valid(interp)
+    return interp
 
-    img_ret = np.zeros((region_pre_p.shape[0], region_pre_p.shape[1], 3))
-    img_ret = cv2.fillPoly(img_ret, pts=contours_imgs, color=(1, 1, 1))
+def make_valid(polygon: Polygon) -> Polygon:
+    """Ensures shapely.geometry.Polygon object is valid by repeated rearrangement/simplification/enlargement."""
+    def isint(x):
+        return isinstance(x, int) or int(x) == x
+    # make sure rounding does not invalidate
+    if not all(map(isint, np.array(polygon.exterior.coords).flat)) and polygon.minimum_clearance < 1.0:
+        polygon = Polygon(np.round(polygon.exterior.coords))
+    points = list(polygon.exterior.coords[:-1])
+    # try by re-arranging points
+    for split in range(1, len(points)):
+        if polygon.is_valid or polygon.simplify(polygon.area).is_valid:
+            break
+        # simplification may not be possible (at all) due to ordering
+        # in that case, try another starting point
+        polygon = Polygon(points[-split:]+points[:-split])
+    # try by simplification
+    for tolerance in range(int(polygon.area + 1.5)):
+        if polygon.is_valid:
+            break
+        # simplification may require a larger tolerance
+        polygon = polygon.simplify(tolerance + 1)
+    # try by enlarging
+    for tolerance in range(1, int(polygon.area + 2.5)):
+        if polygon.is_valid:
+            break
+        # enlargement may require a larger tolerance
+        polygon = polygon.buffer(tolerance)
+    assert polygon.is_valid, polygon.wkt
+    return polygon
 
-    return img_ret[:, :, 0]
-
+def join_polygons(polygons: Sequence[Polygon], scale=20) -> Polygon:
+    """construct concave hull (alpha shape) from input polygons by connecting their pairwise nearest points"""
+    # ensure input polygons are simply typed and all oriented equally
+    polygons = [orient(poly)
+                for poly in itertools.chain.from_iterable(
+                        [poly.geoms
+                         if poly.geom_type in ['MultiPolygon', 'GeometryCollection']
+                         else [poly]
+                         for poly in polygons])]
+    npoly = len(polygons)
+    if npoly == 1:
+        return polygons[0]
+    # find min-dist path through all polygons (travelling salesman)
+    pairs = itertools.combinations(range(npoly), 2)
+    dists = np.zeros((npoly, npoly), dtype=float)
+    for i, j in pairs:
+        dist = polygons[i].distance(polygons[j])
+        if dist < 1e-5:
+            dist = 1e-5 # if pair merely touches, we still need to get an edge
+        dists[i, j] = dist
+        dists[j, i] = dist
+    dists = minimum_spanning_tree(dists, overwrite=True)
+    # add bridge polygons (where necessary)
+    for prevp, nextp in zip(*dists.nonzero()):
+        prevp = polygons[prevp]
+        nextp = polygons[nextp]
+        nearest = nearest_points(prevp, nextp)
+        bridgep = orient(LineString(nearest).buffer(max(1, scale/5), resolution=1), -1)
+        polygons.append(bridgep)
+    jointp = unary_union(polygons)
+    if jointp.geom_type == 'MultiPolygon':
+        jointp = unary_union(jointp.geoms)
+    assert jointp.geom_type == 'Polygon', jointp.wkt
+    # follow-up calculations will necessarily be integer;
+    # so anticipate rounding here and then ensure validity
+    jointp2 = set_precision(jointp, 1.0)
+    if jointp2.geom_type != 'Polygon' or not jointp2.is_valid:
+        jointp2 = Polygon(np.round(jointp.exterior.coords))
+        jointp2 = make_valid(jointp2)
+    assert jointp2.geom_type == 'Polygon', jointp2.wkt
+    return jointp2

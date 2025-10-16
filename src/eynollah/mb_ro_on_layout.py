@@ -6,25 +6,24 @@ from logging import Logger
 import os
 import time
 from typing import Optional
-import atexit
-from functools import partial
 from pathlib import Path
-from multiprocessing import cpu_count
 import xml.etree.ElementTree as ET
+
 import cv2
 import numpy as np
 from ocrd_utils import getLogger
 import statistics
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from .utils.resize import resize_image
 
+from .utils.resize import resize_image
 from .utils.contour import (
     find_new_features_of_contours,
     return_contours_of_image,
     return_parent_contours,
 )
 from .utils import is_xml_filename
+from .eynollah import PatchEncoder, Patches
 
 DPI_THRESHOLD = 298
 KERNEL = np.ones((5, 5), np.uint8)
@@ -806,7 +805,7 @@ class machine_based_reading_order_on_layout:
             tree_xml.write(os.path.join(dir_out, file_name+'.xml'),
                            xml_declaration=True,
                            method='xml',
-                           encoding="utf8",
+                           encoding="utf-8",
                            default_namespace=None)
             
             #sys.exit()
