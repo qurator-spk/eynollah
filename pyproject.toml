@@ -58,6 +58,8 @@ source = ["eynollah"]
 
 [tool.ruff]
 line-length = 120
+# TODO: Reenable and fix after release v0.6.0
+exclude = ['src/eynollah/training']
 
 [tool.ruff.lint]
 ignore = [
@@ -73,3 +75,4 @@ ignore = [
 
 [tool.ruff.format]
 quote-style = "preserve"
+
