@@ -5,6 +5,10 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Fixed:
+
+  * `join_polygons` always returning Polygon, not MultiPolygon, #203
+
 ## [0.6.0rc2] - 2025-10-14
 
 Fixed:
