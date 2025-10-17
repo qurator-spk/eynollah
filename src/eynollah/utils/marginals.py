@@ -76,7 +76,7 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
 
         peaks, _ = find_peaks(text_with_lines_y_rev, height=0)
         peaks=np.array(peaks)
-        peaks=peaks[(peaks>first_nonzero) & ((peaks<last_nonzero))]
+        peaks=peaks[(peaks>first_nonzero) & (peaks < last_nonzero)]
         peaks=peaks[region_sum_0[peaks]<min_textline_thickness ]
 
 

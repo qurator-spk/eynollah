@@ -9,4 +9,5 @@ output.html
 /build
 /dist
 *.tif
+*.sw?
 TAGS

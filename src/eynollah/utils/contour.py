@@ -206,8 +206,7 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
 
     cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if len(cont_int)==0:
-        cont_int = []
-        cont_int.append(contour_par)
+        cont_int = [contour_par]
         confidence_contour = 0
     else:
         cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])

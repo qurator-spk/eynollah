@@ -13,7 +13,11 @@ license.file = "LICENSE"
 requires-python = ">=3.8"
 keywords = ["document layout analysis", "image segmentation"]
 
-dynamic = ["dependencies", "version"]
+dynamic = [
+  "dependencies",
+  "optional-dependencies",
+  "version"
+]
 
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -25,12 +29,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Image Processing",
 ]
 
-[project.optional-dependencies]
-OCR = ["torch <= 2.0.1", "transformers <= 4.30.2"]
-plotting = ["matplotlib"]
-
 [project.scripts]
 eynollah = "eynollah.cli:main"
+eynollah-training = "eynollah.training.cli:main"
 ocrd-eynollah-segment = "eynollah.ocrd_cli:main"
 ocrd-sbb-binarize = "eynollah.ocrd_cli_binarization:main"
 
@@ -41,6 +42,9 @@ Repository = "https://github.com/qurator-spk/eynollah.git"
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 optional-dependencies.test = {file = ["requirements-test.txt"]}
+optional-dependencies.OCR = {file = ["requirements-ocr.txt"]}
+optional-dependencies.plotting = {file = ["requirements-plotting.txt"]}
+optional-dependencies.training = {file = ["requirements-training.txt"]}
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -54,6 +58,8 @@ source = ["eynollah"]
 
 [tool.ruff]
 line-length = 120
+# TODO: Reenable and fix after release v0.6.0
+exclude = ['src/eynollah/training']
 
 [tool.ruff.lint]
 ignore = [
@@ -69,3 +75,4 @@ ignore = [
 
 [tool.ruff.format]
 quote-style = "preserve"
+
