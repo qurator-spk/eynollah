@@ -252,6 +252,7 @@ def get_textline_contours_for_visualization(xml_file):
                             
         
                             
+    x_len, y_len = 0, 0
     for jj in root1.iter(link+'Page'):
         y_len=int(jj.attrib['imageHeight'])
         x_len=int(jj.attrib['imageWidth'])
@@ -293,6 +294,7 @@ def get_textline_contours_and_ocr_text(xml_file):
                             
         
                             
+    x_len, y_len = 0, 0
     for jj in root1.iter(link+'Page'):
         y_len=int(jj.attrib['imageHeight'])
         x_len=int(jj.attrib['imageWidth'])
@@ -362,7 +364,7 @@ def get_layout_contours_for_visualization(xml_file):
     link=alltags[0].split('}')[0]+'}'
                             
         
-                            
+    x_len, y_len = 0, 0 
     for jj in root1.iter(link+'Page'):
         y_len=int(jj.attrib['imageHeight'])
         x_len=int(jj.attrib['imageWidth'])
@@ -637,7 +639,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
         link=alltags[0].split('}')[0]+'}'
                             
         
-                            
+        x_len, y_len = 0, 0
         for jj in root1.iter(link+'Page'):
             y_len=int(jj.attrib['imageHeight'])
             x_len=int(jj.attrib['imageWidth'])
@@ -645,15 +647,12 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
         if 'columns_width' in list(config_params.keys()):
             columns_width_dict = config_params['columns_width']
             metadata_element = root1.find(link+'Metadata')
-            comment_is_sub_element = False
+            num_col = None
             for child in metadata_element:
                 tag2 = child.tag
                 if tag2.endswith('}Comments') or tag2.endswith('}comments'):
                     text_comments = child.text
                     num_col = int(text_comments.split('num_col')[1])
-                    comment_is_sub_element = True
-            if not comment_is_sub_element:
-                num_col = None
                 
             if num_col:
                 x_new = columns_width_dict[str(num_col)]
@@ -1739,15 +1738,15 @@ tot_region_ref,x_len, y_len,index_tot_regions, img_poly
 
 
 
-def bounding_box(cnt,color, corr_order_index ):
-    x, y, w, h = cv2.boundingRect(cnt)
-    x = int(x*scale_w)
-    y = int(y*scale_h)
-    
-    w = int(w*scale_w)
-    h = int(h*scale_h)
-    
-    return [x,y,w,h,int(color), int(corr_order_index)+1]
+# def bounding_box(cnt,color, corr_order_index ):
+#     x, y, w, h = cv2.boundingRect(cnt)
+#     x = int(x*scale_w)
+#     y = int(y*scale_h)
+#     
+#     w = int(w*scale_w)
+#     h = int(h*scale_h)
+#     
+#     return [x,y,w,h,int(color), int(corr_order_index)+1]
 
 def resize_image(seg_in,input_height,input_width):
     return cv2.resize(seg_in,(input_width,input_height),interpolation=cv2.INTER_NEAREST)
