@@ -32,8 +32,8 @@ class EynollahProcessor(Processor):
             allow_scaling=self.parameter['allow_scaling'],
             headers_off=self.parameter['headers_off'],
             tables=self.parameter['tables'],
+            logger=self.logger
         )
-        self.eynollah.logger = self.logger
         self.eynollah.plotter = None
 
     def shutdown(self):

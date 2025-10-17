@@ -34,6 +34,7 @@ class SbbBinarizeProcessor(Processor):
         Set up the model prior to processing.
         """
         # resolve relative path via OCR-D ResourceManager
+        assert isinstance(self.parameter, dict)
         model_path = self.resolve_resource(self.parameter['model'])
         self.binarizer = SbbBinarizer(model_dir=model_path, logger=self.logger)
 

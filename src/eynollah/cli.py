@@ -1,15 +1,34 @@
-import sys
-import click
+from dataclasses import dataclass
 import logging
-from ocrd_utils import initLogging, getLevelName, getLogger
-from eynollah.eynollah import Eynollah, Eynollah_ocr
-from eynollah.sbb_binarize import SbbBinarizer
-from eynollah.image_enhancer import Enhancer
-from eynollah.mb_ro_on_layout import machine_based_reading_order_on_layout
+import sys
+from typing import Union
+
+import click
+
+
+@dataclass
+class EynollahCliContext():
+    log_level : Union[str, None] = 'INFO'
 
 @click.group()
-def main():
-    pass
+@click.option(
+    "--log_level",
+    "-l",
+    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
+    help="Override log level globally to this",
+)
+@click.pass_context
+def main(ctx, log_level):
+    """
+    eynollah - Document Layout Analysis, Image Enhancement, OCR
+    """
+    ctx.obj = EynollahCliContext(log_level=log_level)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.NOTSET)
+    formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname)s %(name)s - %(message)s', datefmt='%H:%M:%S')
+    console_handler.setFormatter(formatter)
+    logging.getLogger('eynollah').addHandler(console_handler)
+    logging.getLogger('eynollah').setLevel(ctx.obj.log_level or logging.INFO)
 
 @main.command()
 @click.option(
@@ -38,18 +57,13 @@ def main():
     type=click.Path(exists=True, file_okay=False),
     required=True,
 )
-@click.option(
-    "--log_level",
-    "-l",
-    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override log level globally to this",
-)
-
-def machine_based_reading_order(input, dir_in, out, model, log_level):
+def machine_based_reading_order(input, dir_in, out, model):
+    """
+    Generate ReadingOrder with a ML model
+    """
+    from .mb_ro_on_layout import machine_based_reading_order_on_layout
     assert bool(input) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     orderer = machine_based_reading_order_on_layout(model)
-    if log_level:
-        orderer.logger.setLevel(getLevelName(log_level))
 
     orderer.run(xml_filename=input,
                 dir_in=dir_in,
@@ -79,17 +93,13 @@ def machine_based_reading_order(input, dir_in, out, model, log_level):
     type=click.Path(file_okay=True, dir_okay=True),
     required=True,
 )
-@click.option(
-    "--log_level",
-    "-l",
-    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override log level globally to this",
-)
-def binarization(patches, model_dir, input_image, dir_in, output, log_level):
+def binarization(patches, model_dir, input_image, dir_in, output):
+    """
+    Binarize images with a ML model
+    """
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
+    from .sbb_binarize import SbbBinarizer
     binarizer = SbbBinarizer(model_dir)
-    if log_level:
-        binarizer.log.setLevel(getLevelName(log_level))
     binarizer.run(image_path=input_image, use_patches=patches, output=output, dir_in=dir_in)
 
 
@@ -144,24 +154,18 @@ def binarization(patches, model_dir, input_image, dir_in, output, log_level):
     is_flag=True,
     help="if this parameter set to true, this tool will save the enhanced image in org scale.",
 )
-@click.option(
-    "--log_level",
-    "-l",
-    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override log level globally to this",
-)
-
-def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_lower, save_org_scale,  log_level):
+def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_lower, save_org_scale):
+    """
+    Enhance image
+    """
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    initLogging()
+    from .image_enhancer import Enhancer
     enhancer = Enhancer(
         model,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
         save_org_scale=save_org_scale,
     )
-    if log_level:
-        enhancer.logger.setLevel(getLevelName(log_level))
     enhancer.run(overwrite=overwrite,
                  dir_in=dir_in,
                  image_filename=image,
@@ -366,30 +370,10 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
     is_flag=True,
     help="if this parameter set to true, this tool will ignore layout detection and reading order. It means that textline detection will be done within printspace and contours of textline will be written in xml output file.",
 )
-# TODO move to top-level CLI context
-@click.option(
-    "--log_level",
-    "-l",
-    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override 'eynollah' log level globally to this",
-)
-# 
-@click.option(
-    "--setup-logging",
-    is_flag=True,
-    help="Setup a basic console logger",
-)
-
-def layout(image, out, overwrite, dir_in, model, model_version, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, transformer_ocr, batch_size_ocr, num_col_upper, num_col_lower, threshold_art_class_textline, threshold_art_class_layout, skip_layout_and_reading_order, ignore_page_extraction, log_level, setup_logging):
-    if setup_logging:
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(message)s')
-        console_handler.setFormatter(formatter)
-        getLogger('eynollah').addHandler(console_handler)
-        getLogger('eynollah').setLevel(logging.INFO)
-    else:
-        initLogging()
+def layout(image, out, overwrite, dir_in, model, model_version, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, transformer_ocr, batch_size_ocr, num_col_upper, num_col_lower, threshold_art_class_textline, threshold_art_class_layout, skip_layout_and_reading_order, ignore_page_extraction):
+    """
+    Detect Layout (with optional image enhancement and reading order detection)
+    """
     assert enable_plotting or not save_layout, "Plotting with -sl also requires -ep"
     assert enable_plotting or not save_deskewed, "Plotting with -sd also requires -ep"
     assert enable_plotting or not save_all, "Plotting with -sa also requires -ep"
@@ -409,6 +393,7 @@ def layout(image, out, overwrite, dir_in, model, model_version, save_images, sav
     assert not extract_only_images or not right2left, "Image extraction -eoi can not be set alongside right2left -r2l"
     assert not extract_only_images or not headers_off, "Image extraction -eoi can not be set alongside headers_off -ho"
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
+    from .eynollah import Eynollah
     eynollah = Eynollah(
         model,
         model_versions=model_version,
@@ -435,8 +420,6 @@ def layout(image, out, overwrite, dir_in, model, model_version, save_images, sav
         threshold_art_class_textline=threshold_art_class_textline,
         threshold_art_class_layout=threshold_art_class_layout,
     )
-    if log_level:
-        eynollah.logger.setLevel(getLevelName(log_level))
     eynollah.run(overwrite=overwrite,
                  image_filename=image,
                  dir_in=dir_in,
@@ -537,16 +520,11 @@ def layout(image, out, overwrite, dir_in, model, model_version, save_images, sav
     "-min_conf",
     help="minimum OCR confidence value. Text lines with a confidence value lower than this threshold will not be included in the output XML file.",
 )
-@click.option(
-    "--log_level",
-    "-l",
-    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override log level globally to this",
-)
 
-def ocr(image, dir_in, dir_in_bin, dir_xmls, out, dir_out_image_text, overwrite, model, model_name, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, batch_size, dataset_abbrevation, min_conf_value_of_textline_text, log_level):
-    initLogging()
-        
+def ocr(image, dir_in, dir_in_bin, dir_xmls, out, dir_out_image_text, overwrite, model, model_name, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, batch_size, dataset_abbrevation, min_conf_value_of_textline_text):
+    """
+    Recognize text with a CNN/RNN or transformer ML model.
+    """
     assert bool(model) != bool(model_name), "Either -m (model directory) or --model_name (specific model name) must be provided."
     assert not export_textline_images_and_text or not tr_ocr, "Exporting textline and text  -etit can not be set alongside transformer ocr -tr_ocr"
     assert not export_textline_images_and_text or not model, "Exporting textline and text  -etit can not be set alongside model -m"
@@ -554,6 +532,7 @@ def ocr(image, dir_in, dir_in_bin, dir_xmls, out, dir_out_image_text, overwrite,
     assert not export_textline_images_and_text or not dir_in_bin, "Exporting textline and text  -etit can not be set alongside directory of bin images -dib"
     assert not export_textline_images_and_text or not dir_out_image_text, "Exporting textline and text  -etit can not be set alongside directory of images with predicted text -doit"
     assert bool(image) != bool(dir_in), "Either -i (single image) or -di (directory) must be provided, but not both."
+    from .eynollah import Eynollah_ocr
     eynollah_ocr = Eynollah_ocr(
         dir_models=model,
         model_name=model_name,
@@ -562,10 +541,7 @@ def ocr(image, dir_in, dir_in_bin, dir_xmls, out, dir_out_image_text, overwrite,
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
         batch_size=batch_size,
         pref_of_dataset=dataset_abbrevation,
-        min_conf_value_of_textline_text=min_conf_value_of_textline_text,
-    )
-    if log_level:
-        eynollah_ocr.logger.setLevel(getLevelName(log_level))
+        min_conf_value_of_textline_text=min_conf_value_of_textline_text)
     eynollah_ocr.run(overwrite=overwrite,
                      dir_in=dir_in,
                      dir_in_bin=dir_in_bin,

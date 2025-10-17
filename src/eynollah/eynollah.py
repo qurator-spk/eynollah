@@ -7,6 +7,7 @@ document layout analysis (segmentation) with output in PAGE-XML
 """
 
 # cannot use importlib.resources until we move to 3.9+ forimportlib.resources.files
+import logging
 import sys
 if sys.version_info < (3, 10):
     import importlib_resources
@@ -19,8 +20,7 @@ import math
 import os
 import sys
 import time
-from typing import Dict, List, Optional, Tuple
-import atexit
+from typing import List, Optional, Tuple
 import warnings
 from functools import partial
 from pathlib import Path
@@ -39,7 +39,7 @@ from scipy.ndimage import gaussian_filter1d
 from numba import cuda
 from skimage.morphology import skeletonize
 from ocrd import OcrdPage
-from ocrd_utils import getLogger, tf_disable_interactive_logs
+from ocrd_utils import tf_disable_interactive_logs
 import statistics
 
 try:
@@ -60,8 +60,6 @@ tf_disable_interactive_logs()
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
 from tensorflow.keras.models import load_model
-tf.get_logger().setLevel("ERROR")
-warnings.filterwarnings("ignore")
 # use tf1 compatibility for keras backend
 from tensorflow.compat.v1.keras.backend import set_session
 from tensorflow.keras import layers
@@ -230,8 +228,9 @@ class Eynollah:
         threshold_art_class_layout: Optional[float] = None,
         threshold_art_class_textline: Optional[float] = None,
         skip_layout_and_reading_order : bool = False,
+        logger : Optional[logging.Logger] = None,
     ):
-        self.logger = getLogger('eynollah')
+        self.logger = logger or logging.getLogger('eynollah')
         self.plotter = None
 
         if skip_layout_and_reading_order:
@@ -4888,14 +4887,13 @@ class Eynollah_ocr:
         do_not_mask_with_textline_contour=False,
         pref_of_dataset=None,
         min_conf_value_of_textline_text : Optional[float]=None,
-        logger=None,
     ):
         self.model_name = model_name
         self.tr_ocr = tr_ocr
         self.export_textline_images_and_text = export_textline_images_and_text
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
         self.pref_of_dataset = pref_of_dataset
-        self.logger = logger if logger else getLogger('eynollah')
+        self.logger = logging.getLogger('eynollah')
         
         if not export_textline_images_and_text:
             if min_conf_value_of_textline_text:

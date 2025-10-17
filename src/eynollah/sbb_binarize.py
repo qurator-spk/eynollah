@@ -2,19 +2,16 @@
 Tool to load model and binarize a given image.
 """
 
-import sys
 from glob import glob
 import os
 import logging
+from typing import Optional
 
 import numpy as np
-from PIL import Image
 import cv2
-from ocrd_utils import tf_disable_interactive_logs
-tf_disable_interactive_logs()
 import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.python.keras import backend as tensorflow_backend
+from keras.models import load_model
+from keras import backend as tensorflow_backend
 
 from .utils import is_image_filename
 
@@ -23,9 +20,13 @@ def resize_image(img_in, input_height, input_width):
 
 class SbbBinarizer:
 
-    def __init__(self, model_dir, logger=None):
+    def __init__(
+        self,
+        model_dir,
+        logger: Optional[logging.Logger] = None,
+    ):
         self.model_dir = model_dir
-        self.log = logger if logger else logging.getLogger('SbbBinarizer')
+        self.logger = logger or logging.getLogger('eynollah.binarize')
 
         self.start_new_session()
 
@@ -325,7 +326,7 @@ class SbbBinarizer:
                 image = cv2.imread(image_path)
             img_last = 0
             for n, (model, model_file) in enumerate(zip(self.models, self.model_files)):
-                self.log.info('Predicting with model %s [%s/%s]' % (model_file, n + 1, len(self.model_files)))
+                self.logger.debug('Binarizing with model %s [%s/%s]' % (model_file, n + 1, len(self.model_files)))
 
                 res = self.predict(model, image, use_patches)
 
@@ -345,17 +346,19 @@ class SbbBinarizer:
             img_last[:, :][img_last[:, :] > 0] = 255
             img_last = (img_last[:, :] == 0) * 255
             if output:
+                self.logger.info('Writing binarized image to %s', output)
                 cv2.imwrite(output, img_last)
             return img_last
         else:
             ls_imgs = list(filter(is_image_filename, os.listdir(dir_in)))
-            for image_name in ls_imgs:
+            self.logger.info("Found %d image files to binarize in %s", len(ls_imgs), dir_in)
+            for i, image_name in enumerate(ls_imgs):
                 image_stem = image_name.split('.')[0]
-                print(image_name,'image_name')
+                self.logger.info('Binarizing [%3d/%d] %s', i + 1, len(ls_imgs), image_name)
                 image = cv2.imread(os.path.join(dir_in,image_name) )
                 img_last = 0
                 for n, (model, model_file) in enumerate(zip(self.models, self.model_files)):
-                    self.log.info('Predicting with model %s [%s/%s]' % (model_file, n + 1, len(self.model_files)))
+                    self.logger.debug('Predicting with model %s [%s/%s]' % (model_file, n + 1, len(self.model_files)))
 
                     res = self.predict(model, image, use_patches)
 
@@ -375,4 +378,6 @@ class SbbBinarizer:
                 img_last[:, :][img_last[:, :] > 0] = 255
                 img_last = (img_last[:, :] == 0) * 255
                 
-                cv2.imwrite(os.path.join(output, image_stem + '.png'), img_last)
+                output_filename = os.path.join(output, image_stem + '.png')
+                self.logger.info('Writing binarized image to %s', output_filename)
+                cv2.imwrite(output_filename, img_last)
