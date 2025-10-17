@@ -1355,7 +1355,7 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
 
 def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, label_lines, contours_h=None):
     t_ins_c0 = time.time()
-    separators_closeup=( (region_pre_p[:,:]==label_lines))*1
+    separators_closeup= (region_pre_p[:, :] == label_lines) * 1
     separators_closeup[0:110,:]=0
     separators_closeup[separators_closeup.shape[0]-150:,:]=0
 
