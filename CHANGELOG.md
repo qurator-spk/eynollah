@@ -5,6 +5,10 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Added:
+
+  * `eynollah-training` CLI and docs for training the models, #187, #193, https://github.com/qurator-spk/sbb_pixelwise_segmentation/tree/unifying-training-models
+
 Fixed:
 
   * `join_polygons` always returning Polygon, not MultiPolygon, #203
