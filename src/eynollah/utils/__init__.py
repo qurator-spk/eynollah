@@ -1384,8 +1384,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     gray = cv2.bitwise_not(separators_closeup_n_binary)
     gray=gray.astype(np.uint8)
 
-    bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, \
-                               cv2.THRESH_BINARY, 15, -2)
+    bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 15, -2)
     horizontal = np.copy(bw)
     vertical = np.copy(bw)
 
