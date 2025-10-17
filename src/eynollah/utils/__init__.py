@@ -151,8 +151,7 @@ def return_x_start_end_mothers_childs_and_type_of_reading_order(
         min_ys=np.min(y_sep)
         max_ys=np.max(y_sep)
 
-        y_mains=[]
-        y_mains.append(min_ys)
+        y_mains= [min_ys]
         y_mains_sep_ohne_grenzen=[]
 
         for ii in range(len(new_main_sep_y)):
@@ -525,8 +524,7 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
                 # print(forest[np.argmin(z[forest]) ] )
                 if not isNaN(forest[np.argmin(z[forest])]):
                     peaks_neg_true.append(forest[np.argmin(z[forest])])
-                forest = []
-                forest.append(peaks_neg_fin[i + 1])
+                forest = [peaks_neg_fin[i + 1]]
         if i == (len(peaks_neg_fin) - 1):
             # print(print(forest[np.argmin(z[forest]) ] ))
             if not isNaN(forest[np.argmin(z[forest])]):
@@ -694,8 +692,7 @@ def find_num_col_only_image(regions_without_separators, multiplier=3.8):
                 # print(forest[np.argmin(z[forest]) ] )
                 if not isNaN(forest[np.argmin(z[forest])]):
                     peaks_neg_true.append(forest[np.argmin(z[forest])])
-                forest = []
-                forest.append(peaks_neg_fin[i + 1])
+                forest = [peaks_neg_fin[i + 1]]
         if i == (len(peaks_neg_fin) - 1):
             # print(print(forest[np.argmin(z[forest]) ] ))
             if not isNaN(forest[np.argmin(z[forest])]):
@@ -1346,8 +1343,7 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
     return img_p_in, special_separators
 
 def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
-    peaks_neg_tot = []
-    peaks_neg_tot.append(first_point)
+    peaks_neg_tot = [first_point]
     for ii in range(len(peaks_neg_fin)):
         peaks_neg_tot.append(peaks_neg_fin[ii])
     peaks_neg_tot.append(last_point)
@@ -1516,8 +1512,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     args_cy_splitter=np.argsort(cy_main_splitters)
     cy_main_splitters_sort=cy_main_splitters[args_cy_splitter]
 
-    splitter_y_new=[]
-    splitter_y_new.append(0)
+    splitter_y_new= [0]
     for i in range(len(cy_main_splitters_sort)):
         splitter_y_new.append(  cy_main_splitters_sort[i] )
     splitter_y_new.append(region_pre_p.shape[0])
@@ -1593,8 +1588,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                         num_col, peaks_neg_fin = find_num_col(
                             regions_without_separators[splitter_y_new[i]:splitter_y_new[i+1], :],
                             num_col_classifier, tables, multiplier=3.)
-                    peaks_neg_fin_early=[]
-                    peaks_neg_fin_early.append(0)
+                    peaks_neg_fin_early= [0]
                     #print(peaks_neg_fin,'peaks_neg_fin')
                     for p_n in peaks_neg_fin:
                         peaks_neg_fin_early.append(p_n)
