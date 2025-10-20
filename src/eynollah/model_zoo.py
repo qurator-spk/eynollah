@@ -11,7 +11,7 @@ from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 
 from eynollah.patch_encoder import PatchEncoder, Patches
 
-SomeEynollahModel = Union[VisionEncoderDecoderModel, TrOCRProcessor, Model]
+SomeEynollahModel = Union[VisionEncoderDecoderModel, TrOCRProcessor, Model, List]
 
 
 # Dict mapping model_category to dict mapping variant (default is '') to Path
@@ -114,14 +114,19 @@ DEFAULT_MODEL_VERSIONS: Dict[str, Dict[str, str]] = {
         '': "model_eynollah_ocr_cnnrnn_20250930",
     },
 
-    'ocr_tr_processor': {
+    'trocr_processor': {
         '': 'microsoft/trocr-base-printed',
         'htr': "microsoft/trocr-base-handwritten",
     },
 
     'num_to_char': {
-        '': 'model_eynollah_ocr_cnnrnn_20250930/characters_org.txt'
+        '': 'characters_org.txt'
     },
+
+    'characters': {
+        '': 'characters_org.txt'
+    },
+
 }
 
 
@@ -142,7 +147,7 @@ class EynollahModelZoo():
         self.model_versions = deepcopy(DEFAULT_MODEL_VERSIONS)
         if model_overrides:
             self.override_models(*model_overrides)
-        self._loaded: Dict[Tuple[str, str], SomeEynollahModel] = {}
+        self._loaded: Dict[str, SomeEynollahModel] = {}
 
     def override_models(self, *model_overrides: Tuple[str, str, str]):
         """
@@ -216,7 +221,9 @@ class EynollahModelZoo():
             model = self._load_ocr_model(variant=model_variant)
         elif model_category == 'num_to_char':
             model = self._load_num_to_char()
-        elif model_category == 'tr_processor':
+        elif model_category == 'characters':
+            model = self._load_characters()
+        elif model_category == 'trocr_processor':
             return TrOCRProcessor.from_pretrained(self.model_path(...))
         else:
             try:
@@ -225,14 +232,13 @@ class EynollahModelZoo():
                 self.logger.exception(e)
                 model = load_model(model_path, compile=False, custom_objects={
                     "PatchEncoder": PatchEncoder, "Patches": Patches})
-        self._loaded[(model_category, model_variant)] = model
+        self._loaded[model_category] = model
         return model # type: ignore
 
-    def get_model(self, model_categeory, model_variant) -> SomeEynollahModel:
-        needle = (model_categeory, model_variant)
-        if needle not in self._loaded:
-            raise ValueError('Model/variant "{needle} not previously loaded with "load_model(..)"')
-        return self._loaded[needle]
+    def get(self, model_category) -> SomeEynollahModel:
+        if model_category not in self._loaded:
+            raise ValueError(f'Model "{model_category} not previously loaded with "load_model(..)"')
+        return self._loaded[model_category]
 
     def _load_ocr_model(self, variant: str) -> SomeEynollahModel:
         """
@@ -247,15 +253,21 @@ class EynollahModelZoo():
             return Model(
                 ocr_model.get_layer(name = "image").input,    # type: ignore
                 ocr_model.get_layer(name = "dense2").output)  # type: ignore
+
+    def _load_characters(self) -> List[str]:
+        """
+        Load encoding for OCR
+        """
+        with open(self.model_path('ocr') / self.model_path('num_to_char', absolute=False), "r") as config_file:
+            return json.load(config_file)
                 
-    def _load_num_to_char(self):
+    def _load_num_to_char(self) -> StringLookup:
         """
         Load decoder for OCR
         """
-        with open(self.model_path('ocr') / self.model_path('ocr', 'num_to_char', absolute=False), "r") as config_file:
-            characters = json.load(config_file)
+        characters = self._load_characters()
         # Mapping characters to integers.
-        char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
+        char_to_num = StringLookup(vocabulary=characters, mask_token=None)
         # Mapping integers back to original characters.
         return StringLookup(
             vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True

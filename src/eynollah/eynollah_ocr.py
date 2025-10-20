@@ -1,6 +1,6 @@
 # pyright: reportPossiblyUnboundVariable=false
 
-from logging import getLogger
+from logging import Logger, getLogger
 from typing import Optional
 from pathlib import Path
 import os
@@ -8,22 +8,30 @@ import json
 import gc
 import sys
 import math
-import cv2
 import time
 
 from keras.layers import StringLookup
-
-from eynollah.utils.resize import resize_image
-from eynollah.utils.utils_ocr import break_curved_line_into_small_pieces_and_then_merge, decode_batch_predictions, fit_text_single_line, get_contours_and_bounding_boxes, get_orientation_moments, preprocess_and_resize_image_for_ocrcnn_model, return_textlines_split_if_needed, rotate_image_with_padding
-
-from .utils import is_image_filename
-
+import cv2
 import xml.etree.ElementTree as ET
 import tensorflow as tf
 from keras.models import load_model
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
+from eynollah.model_zoo import EynollahModelZoo
 import torch
+
+from .utils import is_image_filename
+from .utils.resize import resize_image
+from .utils.utils_ocr import (
+    break_curved_line_into_small_pieces_and_then_merge,
+    decode_batch_predictions,
+    fit_text_single_line,
+    get_contours_and_bounding_boxes,
+    get_orientation_moments,
+    preprocess_and_resize_image_for_ocrcnn_model,
+    return_textlines_split_if_needed,
+    rotate_image_with_padding,
+)
 
 # cannot use importlib.resources until we move to 3.9+ forimportlib.resources.files
 if sys.version_info < (3, 10):
@@ -43,68 +51,51 @@ class Eynollah_ocr:
         model_name=None,
         dir_xmls=None,
         tr_ocr=False,
-        batch_size=None,
-        export_textline_images_and_text=False,
-        do_not_mask_with_textline_contour=False,
+        batch_size: Optional[int]=None,
+        export_textline_images_and_text: bool=False,
+        do_not_mask_with_textline_contour: bool=False,
         pref_of_dataset=None,
-        min_conf_value_of_textline_text : Optional[float]=None,
-        logger=None,
+        min_conf_value_of_textline_text : float=0.3,
+        logger: Optional[Logger]=None,
     ):
-        self.model_name = model_name
         self.tr_ocr = tr_ocr
         self.export_textline_images_and_text = export_textline_images_and_text
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
         self.pref_of_dataset = pref_of_dataset
         self.logger = logger if logger else getLogger('eynollah')
+        self.model_zoo = EynollahModelZoo(basedir=dir_models)
         
-        if not export_textline_images_and_text:
-            if min_conf_value_of_textline_text:
-                self.min_conf_value_of_textline_text = float(min_conf_value_of_textline_text)
+        # TODO: Properly document what 'export_textline_images_and_text' is about
+        if export_textline_images_and_text:
+            self.logger.info("export_textline_images_and_text was set, so no actual models are loaded")
+            return
+
+        self.min_conf_value_of_textline_text = min_conf_value_of_textline_text
+        self.b_s = 2 if batch_size is None and tr_ocr else 8 if batch_size is None else batch_size
+
+        if tr_ocr:
+            self.model_zoo.load_model('trocr_processor', '')
+            if model_name:
+                self.model_zoo.load_model('ocr', 'tr', model_name)
             else:
-                self.min_conf_value_of_textline_text = 0.3
-            if tr_ocr:
-                assert TrOCRProcessor
-                self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
-                self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-                if self.model_name:
-                    self.model_ocr_dir = self.model_name
-                else:
-                    self.model_ocr_dir = dir_models + "/model_eynollah_ocr_trocr_20250919"
-                self.model_ocr = VisionEncoderDecoderModel.from_pretrained(self.model_ocr_dir)
-                self.model_ocr.to(self.device)
-                if not batch_size:
-                    self.b_s = 2
-                else:
-                    self.b_s = int(batch_size)
-
+                self.model_zoo.load_model('ocr', 'tr')
+            self.model_zoo.get('ocr').to(self.device)
+        else:
+            if model_name:
+                self.model_zoo.load_model('ocr', '', model_name)
             else:
-                if self.model_name:
-                    self.model_ocr_dir = self.model_name
-                else:
-                    self.model_ocr_dir = dir_models + "/model_eynollah_ocr_cnnrnn_20250930"
-                model_ocr = load_model(self.model_ocr_dir , compile=False)
-                
-                self.prediction_model = tf.keras.models.Model(
-                                model_ocr.get_layer(name = "image").input, 
-                                model_ocr.get_layer(name = "dense2").output)
-                if not batch_size:
-                    self.b_s = 8
-                else:
-                    self.b_s = int(batch_size)
-                    
-                with open(os.path.join(self.model_ocr_dir, "characters_org.txt"),"r") as config_file:
-                    characters = json.load(config_file)
-                    
-                AUTOTUNE = tf.data.AUTOTUNE
+                self.model_zoo.load_model('ocr', '')
+            self.model_zoo.load_model('num_to_char')
+            self.end_character = len(self.model_zoo.load_model('characters')) + 2
 
-                # Mapping characters to integers.
-                char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
-
-                # Mapping integers back to original characters.
-                self.num_to_char = StringLookup(
-                    vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
-                )
-                self.end_character = len(characters) + 2
+    @property
+    def device(self):
+        if torch.cuda.is_available():
+            self.logger.info("Using GPU acceleration")
+            return torch.device("cuda:0")
+        else:
+            self.logger.info("Using CPU processing")
+            return torch.device("cpu")
 
     def run(self, overwrite: bool = False,
             dir_in: Optional[str] = None,
@@ -119,13 +110,16 @@ class Eynollah_ocr:
                        for image_filename in filter(is_image_filename,
                                                     os.listdir(dir_in))]
         else:
+            assert image_filename
             ls_imgs = [image_filename]
 
         if self.tr_ocr:
             tr_ocr_input_height_and_width = 384
             for dir_img in ls_imgs:
                 file_name = Path(dir_img).stem
+                assert dir_xmls  # FIXME: check the logic
                 dir_xml = os.path.join(dir_xmls, file_name+'.xml')
+                assert dir_out # FIXME: check the logic
                 out_file_ocr = os.path.join(dir_out, file_name+'.xml')
                 
                 if os.path.exists(out_file_ocr):
@@ -204,10 +198,10 @@ class Eynollah_ocr:
                                             cropped_lines = []
                                             indexer_b_s = 0
                                             
-                                            pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                                            pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
                                             generated_ids_merged = self.model_ocr.generate(
                                                 pixel_values_merged.to(self.device))
-                                            generated_text_merged = self.processor.batch_decode(
+                                            generated_text_merged = self.model_zoo.get('processor').batch_decode(
                                                 generated_ids_merged, skip_special_tokens=True)
                                             
                                             extracted_texts = extracted_texts + generated_text_merged
@@ -227,10 +221,10 @@ class Eynollah_ocr:
                                                 cropped_lines = []
                                                 indexer_b_s = 0
                                                 
-                                                pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                                                pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
                                                 generated_ids_merged = self.model_ocr.generate(
                                                     pixel_values_merged.to(self.device))
-                                                generated_text_merged = self.processor.batch_decode(
+                                                generated_text_merged = self.model_zoo.get('processor').batch_decode(
                                                     generated_ids_merged, skip_special_tokens=True)
                                                 
                                                 extracted_texts = extracted_texts + generated_text_merged
@@ -247,10 +241,10 @@ class Eynollah_ocr:
                                                 cropped_lines = []
                                                 indexer_b_s = 0
                                                 
-                                                pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                                                pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
                                                 generated_ids_merged = self.model_ocr.generate(
                                                     pixel_values_merged.to(self.device))
-                                                generated_text_merged = self.processor.batch_decode(
+                                                generated_text_merged = self.model_zoo.get('processor').batch_decode(
                                                     generated_ids_merged, skip_special_tokens=True)
                                                 
                                                 extracted_texts = extracted_texts + generated_text_merged
@@ -265,10 +259,10 @@ class Eynollah_ocr:
                                                 cropped_lines = []
                                                 indexer_b_s = 0
                                                 
-                                                pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                                                pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
                                                 generated_ids_merged = self.model_ocr.generate(
                                                     pixel_values_merged.to(self.device))
-                                                generated_text_merged = self.processor.batch_decode(
+                                                generated_text_merged = self.model_zoo.get('processor').batch_decode(
                                                     generated_ids_merged, skip_special_tokens=True)
                                                 
                                                 extracted_texts = extracted_texts + generated_text_merged
@@ -282,9 +276,9 @@ class Eynollah_ocr:
                     cropped_lines = []
                     indexer_b_s = 0
                     
-                    pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                    pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
                     generated_ids_merged = self.model_ocr.generate(pixel_values_merged.to(self.device))
-                    generated_text_merged = self.processor.batch_decode(generated_ids_merged, skip_special_tokens=True)
+                    generated_text_merged = self.model_zoo.get('processor').batch_decode(generated_ids_merged, skip_special_tokens=True)
                     
                     extracted_texts = extracted_texts + generated_text_merged
                     
@@ -299,10 +293,10 @@ class Eynollah_ocr:
                         ####n_start = i*self.b_s
                         ####n_end = (i+1)*self.b_s
                         ####imgs = cropped_lines[n_start:n_end]
-                    ####pixel_values_merged = self.processor(imgs, return_tensors="pt").pixel_values
+                    ####pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
                     ####generated_ids_merged = self.model_ocr.generate(
                     ####    pixel_values_merged.to(self.device))
-                    ####generated_text_merged = self.processor.batch_decode(
+                    ####generated_text_merged = self.model_zoo.get('processor').batch_decode(
                     ####    generated_ids_merged, skip_special_tokens=True)
                     
                     ####extracted_texts = extracted_texts + generated_text_merged

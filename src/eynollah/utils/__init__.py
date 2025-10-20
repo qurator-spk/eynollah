@@ -393,7 +393,12 @@ def find_num_col_deskew(regions_without_separators, sigma_, multiplier=3.8):
     z = gaussian_filter1d(regions_without_separators_0, sigma_)
     return np.std(z)
 
-def find_num_col(regions_without_separators, num_col_classifier, tables, multiplier=3.8):
+def find_num_col(
+    regions_without_separators,
+    num_col_classifier,
+    tables,
+    multiplier=3.8,
+):
     if not regions_without_separators.any():
         return 0, []
     #plt.imshow(regions_without_separators)
