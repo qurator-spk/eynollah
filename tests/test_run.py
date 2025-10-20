@@ -4,11 +4,7 @@ import pytest
 import logging
 from PIL import Image
 from eynollah.cli import (
-    layout as layout_cli,
-    binarization as binarization_cli,
-    enhancement as enhancement_cli,
-    machine_based_reading_order as mbreorder_cli,
-    ocr as ocr_cli,
+    main as main_cli,
 )
 from click.testing import CliRunner
 from ocrd_modelfactory import page_from_file
@@ -43,18 +39,19 @@ def test_run_eynollah_layout_filename(tmp_path, pytestconfig, caplog, options):
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path / 'kant_aufklaerung_1784_0020.xml'
     args = [
+        'layout',
         '-m', MODELS_LAYOUT,
         '-i', str(infile),
         '-o', str(outfile.parent),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
         return logrec.name == 'eynollah'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(layout_cli, args + options, catch_exceptions=False)
+        result = runner.invoke(main_cli, args + options, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     assert str(infile) in logmsgs
@@ -78,18 +75,19 @@ def test_run_eynollah_layout_filename2(tmp_path, pytestconfig, caplog, options):
     infile = testdir.joinpath('resources/euler_rechenkunst01_1738_0025.tif')
     outfile = tmp_path / 'euler_rechenkunst01_1738_0025.xml'
     args = [
+        'layout',
         '-m', MODELS_LAYOUT,
         '-i', str(infile),
         '-o', str(outfile.parent),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
         return logrec.name == 'eynollah'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(layout_cli, args + options, catch_exceptions=False)
+        result = runner.invoke(main_cli, args + options, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     assert str(infile) in logmsgs
@@ -109,18 +107,19 @@ def test_run_eynollah_layout_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
+        'layout',
         '-m', MODELS_LAYOUT,
         '-di', str(indir),
         '-o', str(outdir),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
         return logrec.name == 'eynollah'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(layout_cli, args, catch_exceptions=False)
+        result = runner.invoke(main_cli, args, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     assert len([logmsg for logmsg in logmsgs if logmsg.startswith('Job done in')]) == 2
@@ -137,18 +136,19 @@ def test_run_eynollah_binarization_filename(tmp_path, pytestconfig, caplog, opti
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     args = [
+        'binarization',
         '-m', MODELS_BIN,
         '-i', str(infile),
         '-o', str(outfile),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
         return logrec.name == 'SbbBinarizer'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(binarization_cli, args + options, catch_exceptions=False)
+        result = runner.invoke(main_cli, args + options, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     assert any(True for logmsg in logmsgs if logmsg.startswith('Predicting'))
@@ -163,18 +163,19 @@ def test_run_eynollah_binarization_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
+        'binarization',
         '-m', MODELS_BIN,
         '-di', str(indir),
         '-o', str(outdir),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
         return logrec.name == 'SbbBinarizer'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(binarization_cli, args, catch_exceptions=False)
+        result = runner.invoke(main_cli, args, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     assert len([logmsg for logmsg in logmsgs if logmsg.startswith('Predicting')]) == 2
@@ -190,18 +191,19 @@ def test_run_eynollah_enhancement_filename(tmp_path, pytestconfig, caplog, optio
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     args = [
+        'enhancement',
         '-m', MODELS_LAYOUT,
         '-i', str(infile),
         '-o', str(outfile.parent),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
         return logrec.name == 'enhancement'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(enhancement_cli, args + options, catch_exceptions=False)
+        result = runner.invoke(main_cli, args + options, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     assert any(True for logmsg in logmsgs if logmsg.startswith('Image was enhanced')), logmsgs
@@ -216,18 +218,19 @@ def test_run_eynollah_enhancement_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
+        'enhancement',
         '-m', MODELS_LAYOUT,
         '-di', str(indir),
         '-o', str(outdir),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
         return logrec.name == 'enhancement'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(enhancement_cli, args, catch_exceptions=False)
+        result = runner.invoke(main_cli, args, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     assert len([logmsg for logmsg in logmsgs if logmsg.startswith('Image was enhanced')]) == 2
@@ -237,18 +240,19 @@ def test_run_eynollah_mbreorder_filename(tmp_path, pytestconfig, caplog):
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.xml')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.xml')
     args = [
+        'machine-based-reading-order',
         '-m', MODELS_LAYOUT,
         '-i', str(infile),
         '-o', str(outfile.parent),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
         return logrec.name == 'mbreorder'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(mbreorder_cli, args, catch_exceptions=False)
+        result = runner.invoke(main_cli, args, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     # FIXME: mbreorder has no logging!
@@ -266,18 +270,19 @@ def test_run_eynollah_mbreorder_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
+        'machine-based-reading-order',
         '-m', MODELS_LAYOUT,
         '-di', str(indir),
         '-o', str(outdir),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
         return logrec.name == 'mbreorder'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(mbreorder_cli, args, catch_exceptions=False)
+        result = runner.invoke(main_cli, args, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     # FIXME: mbreorder has no logging!
@@ -298,13 +303,14 @@ def test_run_eynollah_ocr_filename(tmp_path, pytestconfig, caplog, options):
     outrenderfile = tmp_path.joinpath('render').joinpath('kant_aufklaerung_1784_0020.png')
     outrenderfile.parent.mkdir()
     args = [
+        'ocr',
         '-m', MODELS_OCR,
         '-i', str(infile),
         '-dx', str(infile.parent),
         '-o', str(outfile.parent),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.DEBUG)
     def only_eynollah(logrec):
         return logrec.name == 'eynollah'
@@ -312,7 +318,7 @@ def test_run_eynollah_ocr_filename(tmp_path, pytestconfig, caplog, options):
     if "-doit" in options:
         options.insert(options.index("-doit") + 1, str(outrenderfile.parent))
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(ocr_cli, args + options, catch_exceptions=False)
+        result = runner.invoke(main_cli, args + options, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     # FIXME: ocr has no logging!
@@ -331,19 +337,20 @@ def test_run_eynollah_ocr_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
+        'ocr',
         '-m', MODELS_OCR,
         '-di', str(indir),
         '-dx', str(indir),
         '-o', str(outdir),
     ]
     if pytestconfig.getoption('verbose') > 0:
-        args.extend(['-l', 'DEBUG'])
+        args = ['-l', 'DEBUG'] + args
     caplog.set_level(logging.INFO)
     def only_eynollah(logrec):
         return logrec.name == 'eynollah'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
-        result = runner.invoke(ocr_cli, args, catch_exceptions=False)
+        result = runner.invoke(main_cli, args, catch_exceptions=False)
     assert result.exit_code == 0, result.stdout
     logmsgs = [logrec.message for logrec in caplog.records]
     # FIXME: ocr has no logging!
