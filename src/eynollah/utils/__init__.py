@@ -396,16 +396,18 @@ def find_num_col_deskew(regions_without_separators, sigma_, multiplier=3.8):
 def find_num_col(regions_without_separators, num_col_classifier, tables, multiplier=3.8):
     if not regions_without_separators.any():
         return 0, []
-    #plt.imshow(regions_without_separators)
-    #plt.show()
     regions_without_separators_0 = regions_without_separators.sum(axis=0)
-    ##plt.plot(regions_without_separators_0)
-    ##plt.show()
+    # fig, (ax1, ax2) = plt.subplots(2, sharex=True)
+    # ax1.imshow(regions_without_separators, aspect="auto")
+    # ax2.plot(regions_without_separators_0)
+    # plt.show()
     sigma_ = 35  # 70#35
-    meda_n_updown = regions_without_separators_0[len(regions_without_separators_0) :: -1]
+    meda_n_updown = regions_without_separators_0[::-1]
     first_nonzero = next((i for i, x in enumerate(regions_without_separators_0) if x), 0)
     last_nonzero = next((i for i, x in enumerate(meda_n_updown) if x), 0)
     last_nonzero = len(regions_without_separators_0) - last_nonzero
+    last_nonzero = last_nonzero - 100
+    first_nonzero = first_nonzero + 200
     y = regions_without_separators_0  # [first_nonzero:last_nonzero]
     y_help = np.zeros(len(y) + 20)
     y_help[10 : len(y) + 10] = y
@@ -416,28 +418,44 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
     z = gaussian_filter1d(y, sigma_)
     zneg = gaussian_filter1d(zneg, sigma_)
 
-    peaks_neg, _ = find_peaks(zneg, height=0)
-    #plt.plot(zneg)
-    #plt.plot(peaks_neg, zneg[peaks_neg], 'rx')
-    #plt.show()
     peaks, _ = find_peaks(z, height=0)
+    peaks_neg, _ = find_peaks(zneg, height=0)
+    # _, (ax1, ax2) = plt.subplots(2, sharex=True)
+    # ax1.set_title("z")
+    # ax1.plot(z)
+    # ax1.scatter(peaks, z[peaks])
+    # ax1.axvline(0.06 * len(y), label="first")
+    # ax1.axvline(0.94 * len(y), label="last")
+    # ax1.text(0.06 * len(y), 0, "first", rotation=90)
+    # ax1.text(0.94 * len(y), 0, "last", rotation=90)
+    # ax1.axhline(10, label="minimum")
+    # ax1.text(0, 10, "minimum")
+    # ax2.set_title("zneg")
+    # ax2.plot(zneg)
+    # ax2.scatter(peaks_neg, zneg[peaks_neg])
+    # ax2.axvline(first_nonzero, label="first nonzero")
+    # ax2.axvline(last_nonzero, label="last nonzero")
+    # ax2.text(first_nonzero, 0, "first nonzero", rotation=90)
+    # ax2.text(last_nonzero, 0, "last nonzero", rotation=90)
+    # ax2.axvline(370, label="first")
+    # ax2.axvline(len(y) - 370, label="last")
+    # ax2.text(370, 0, "first", rotation=90)
+    # ax2.text(len(y) - 370, 0, "last", rotation=90)
+    # plt.show()
     peaks_neg = peaks_neg - 10 - 10
 
-    last_nonzero = last_nonzero - 100
-    first_nonzero = first_nonzero + 200
-
-    peaks_neg = peaks_neg[(peaks_neg > first_nonzero) &
-                          (peaks_neg < last_nonzero)]
-    peaks = peaks[(peaks > 0.06 * regions_without_separators.shape[1]) &
-                  (peaks < 0.94 * regions_without_separators.shape[1])]
-    peaks_neg = peaks_neg[(peaks_neg > 370) &
-                          (peaks_neg < (regions_without_separators.shape[1] - 370))]
+    peaks = peaks[(peaks > 0.06 * len(y)) &
+                  (peaks < 0.94 * len(y))]
     interest_pos = z[peaks]
     interest_pos = interest_pos[interest_pos > 10]
     if not interest_pos.any():
         return 0, []
     # plt.plot(z)
     # plt.show()
+    peaks_neg = peaks_neg[(peaks_neg > first_nonzero) &
+                          (peaks_neg < last_nonzero)]
+    peaks_neg = peaks_neg[(peaks_neg > 370) &
+                          (peaks_neg < len(y) - 370)]
     interest_neg = z[peaks_neg]
     if not interest_neg.any():
         return 0, []
@@ -445,21 +463,28 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
     min_peaks_pos = np.min(interest_pos)
     max_peaks_pos = np.max(interest_pos)
 
-    if max_peaks_pos / min_peaks_pos >= 35:
+    #print(min_peaks_pos, max_peaks_pos, max_peaks_pos / min_peaks_pos, 'minmax')
+    if max_peaks_pos / (min_peaks_pos or 1e-9) >= 35:
         min_peaks_pos = np.mean(interest_pos)
 
     min_peaks_neg = 0  # np.min(interest_neg)
 
-    # print(np.min(interest_pos),np.max(interest_pos),np.max(interest_pos)/np.min(interest_pos),'minmax')
     dis_talaei = (min_peaks_pos - min_peaks_neg) / multiplier
     grenze = min_peaks_pos - dis_talaei
-    # np.mean(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])-np.std(y[peaks_neg[0]:peaks_neg[len(peaks_neg)-1]])/2.0
+    #np.mean(y[peaks_neg[0]:peaks_neg[-1]])-np.std(y[peaks_neg[0]:peaks_neg[-1]])/2.0
 
     # print(interest_neg,'interest_neg')
     # print(grenze,'grenze')
     # print(min_peaks_pos,'min_peaks_pos')
     # print(dis_talaei,'dis_talaei')
     # print(peaks_neg,'peaks_neg')
+    # fig, (ax1, ax2) = plt.subplots(2, sharex=True)
+    # ax1.imshow(regions_without_separators, aspect="auto")
+    # ax2.plot(z)
+    # ax2.scatter(peaks_neg, z[peaks_neg])
+    # ax2.axhline(grenze, label="grenze")
+    # ax2.text(0, grenze, "grenze")
+    # plt.show()
 
     interest_neg_fin = interest_neg[(interest_neg < grenze)]
     peaks_neg_fin = peaks_neg[(interest_neg < grenze)]
@@ -479,46 +504,38 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
 
     # print(peaks_neg_fin,'peaks_neg_fin')
     # print(num_col,'diz')
-    p_l = 0
-    p_u = len(y) - 1
-    p_m = int(len(y) / 2.0)
-    p_g_l = int(len(y) / 4.0)
-    p_g_u = len(y) - int(len(y) / 4.0)
-
-    if num_col == 3:
-        if ((peaks_neg_fin[0] > p_g_u and
-             peaks_neg_fin[1] > p_g_u) or
-            (peaks_neg_fin[0] < p_g_l and
-             peaks_neg_fin[1] < p_g_l) or
-            (peaks_neg_fin[0] + 200 < p_m and
-             peaks_neg_fin[1] < p_m) or
-            (peaks_neg_fin[0] - 200 > p_m and
-             peaks_neg_fin[1] > p_m)):
-            num_col = 1
-            peaks_neg_fin = []
-
-    if num_col == 2:
-        if (peaks_neg_fin[0] > p_g_u or
-            peaks_neg_fin[0] < p_g_l):
-            num_col = 1
-            peaks_neg_fin = []
+    # cancel if resulting split is highly unbalanced across available width
+    if ((num_col == 3 and
+        ((peaks_neg_fin[0] > 0.75 * len(y) and
+          peaks_neg_fin[1] > 0.75 * len(y)) or
+         (peaks_neg_fin[0] < 0.25 * len(y) and
+          peaks_neg_fin[1] < 0.25 * len(y)) or
+         (peaks_neg_fin[0] < 0.5 * len(y) - 200 and
+          peaks_neg_fin[1] < 0.5 * len(y)) or
+         (peaks_neg_fin[0] > 0.5 * len(y) + 200 and
+          peaks_neg_fin[1] > 0.5 * len(y)))) or
+        (num_col == 2 and
+         (peaks_neg_fin[0] > 0.75 * len(y) or
+          peaks_neg_fin[0] < 0.25 * len(y)))):
+        num_col = 1
+        peaks_neg_fin = []
 
     ##print(len(peaks_neg_fin))
 
+    # filter out peaks that are too close (<400px) to each other:
+    # among each group, pick the position with smallest amount of text
     diff_peaks = np.abs(np.diff(peaks_neg_fin))
     cut_off = 400
     peaks_neg_true = []
     forest = []
-
     # print(len(peaks_neg_fin),'len_')
-
     for i in range(len(peaks_neg_fin)):
         if i == 0:
             forest.append(peaks_neg_fin[i])
         if i < len(peaks_neg_fin) - 1:
             if diff_peaks[i] <= cut_off:
                 forest.append(peaks_neg_fin[i + 1])
-            if diff_peaks[i] > cut_off:
+            else:
                 # print(forest[np.argmin(z[forest]) ] )
                 if not isNaN(forest[np.argmin(z[forest])]):
                     peaks_neg_true.append(forest[np.argmin(z[forest])])
@@ -530,68 +547,59 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
                 peaks_neg_true.append(forest[np.argmin(z[forest])])
 
     num_col = len(peaks_neg_true) + 1
-    p_l = 0
-    p_u = len(y) - 1
-    p_m = int(len(y) / 2.0)
-    p_quarter = int(len(y) / 5.0)
-    p_g_l = int(len(y) / 4.0)
-    p_g_u = len(y) - int(len(y) / 4.0)
-
-    p_u_quarter = len(y) - p_quarter
-
+    #print(peaks_neg_true, "peaks_neg_true")
     ##print(num_col,'early')
-    if num_col == 3:
-        if ((peaks_neg_true[0] > p_g_u and
-             peaks_neg_true[1] > p_g_u) or
-            (peaks_neg_true[0] < p_g_l and
-             peaks_neg_true[1] < p_g_l) or
-            (peaks_neg_true[0] < p_m and
-             peaks_neg_true[1] + 200 < p_m) or
-            (peaks_neg_true[0] - 200 > p_m and
-             peaks_neg_true[1] > p_m)):
-            num_col = 1
-            peaks_neg_true = []
-        elif (peaks_neg_true[0] < p_g_u and
-              peaks_neg_true[0] > p_g_l and
-              peaks_neg_true[1] > p_u_quarter):
-            peaks_neg_true = [peaks_neg_true[0]]
-        elif (peaks_neg_true[1] < p_g_u and
-              peaks_neg_true[1] > p_g_l and
-              peaks_neg_true[0] < p_quarter):
-            peaks_neg_true = [peaks_neg_true[1]]
+    # cancel if resulting split is highly unbalanced across available width
+    if ((num_col == 3 and
+        ((peaks_neg_true[0] > 0.75 * len(y) and
+          peaks_neg_true[1] > 0.75 * len(y)) or
+         (peaks_neg_true[0] < 0.25 * len(y) and
+          peaks_neg_true[1] < 0.25 * len(y)) or
+         (peaks_neg_true[0] < 0.5 * len(y) - 200 and
+          peaks_neg_true[1] < 0.5 * len(y)) or
+         (peaks_neg_true[0] > 0.5 * len(y) + 200 and
+          peaks_neg_true[1] > 0.5 * len(y)))) or
+        (num_col == 2 and
+         (peaks_neg_true[0] > 0.75 * len(y) or
+          peaks_neg_true[0] < 0.25 * len(y)))):
+        num_col = 1
+        peaks_neg_true = []
+    if (num_col == 3 and
+        (peaks_neg_true[0] < 0.75 * len(y) and
+         peaks_neg_true[0] > 0.25 * len(y) and
+         peaks_neg_true[1] > 0.80 * len(y))):
+        num_col = 2
+        peaks_neg_true = [peaks_neg_true[0]]
+    if (num_col == 3 and
+        (peaks_neg_true[1] < 0.75 * len(y) and
+         peaks_neg_true[1] > 0.25 * len(y) and
+         peaks_neg_true[0] < 0.20 * len(y))):
+        num_col = 2
+        peaks_neg_true = [peaks_neg_true[1]]
 
-    if num_col == 2:
-        if (peaks_neg_true[0] > p_g_u or
-            peaks_neg_true[0] < p_g_l):
-            num_col = 1
-            peaks_neg_true = []
+    # get rid of too narrow columns (not used)
+    # if np.count_nonzero(diff_peaks < 360):
+    #     arg_help = np.arange(len(diff_peaks))
+    #     arg_help_ann = arg_help[diff_peaks < 360]
+    #     peaks_neg_fin_new = []
+    #     for ii in range(len(peaks_neg_fin)):
+    #         if ii in arg_help_ann:
+    #             if interest_neg_fin[ii] < interest_neg_fin[ii + 1]:
+    #                 peaks_neg_fin_new.append(peaks_neg_fin[ii])
+    #             else:
+    #                 peaks_neg_fin_new.append(peaks_neg_fin[ii + 1])
 
-    diff_peaks_abnormal = diff_peaks[diff_peaks < 360]
-
-    if len(diff_peaks_abnormal) > 0:
-        arg_help = np.arange(len(diff_peaks))
-        arg_help_ann = arg_help[diff_peaks < 360]
-
-        peaks_neg_fin_new = []
-
-        for ii in range(len(peaks_neg_fin)):
-            if ii in arg_help_ann:
-                arg_min = np.argmin([interest_neg_fin[ii], interest_neg_fin[ii + 1]])
-                if arg_min == 0:
-                    peaks_neg_fin_new.append(peaks_neg_fin[ii])
-                else:
-                    peaks_neg_fin_new.append(peaks_neg_fin[ii + 1])
-
-            elif (ii - 1) not in arg_help_ann:
-                peaks_neg_fin_new.append(peaks_neg_fin[ii])
-    else:
-        peaks_neg_fin_new = peaks_neg_fin
+    #         elif (ii - 1) not in arg_help_ann:
+    #             peaks_neg_fin_new.append(peaks_neg_fin[ii])
+    # else:
+    #     peaks_neg_fin_new = peaks_neg_fin
 
     # plt.plot(gaussian_filter1d(y, sigma_))
     # plt.plot(peaks_neg_true,z[peaks_neg_true],'*')
     # plt.plot([0,len(y)], [grenze,grenze])
     # plt.show()
     ##print(len(peaks_neg_true))
+    #print(peaks_neg_true, "peaks_neg_true")
     return len(peaks_neg_true), peaks_neg_true
 
 def find_num_col_only_image(regions_without_separators, multiplier=3.8):
