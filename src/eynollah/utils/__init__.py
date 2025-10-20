@@ -1377,175 +1377,149 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     peaks_neg_tot.append(last_point)
     return peaks_neg_tot
 
-def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, label_lines, contours_h=None):
-    t_ins_c0 = time.time()
-    separators_closeup=( (region_pre_p[:,:]==label_lines))*1
-    separators_closeup[0:110,:]=0
-    separators_closeup[separators_closeup.shape[0]-150:,:]=0
+def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, label_seps, contours_h=None):
+    separators_closeup = 1 * (region_pre_p == label_seps)
+    separators_closeup[0:110] = 0
+    separators_closeup[-150:] = 0
 
     kernel = np.ones((5,5),np.uint8)
-    separators_closeup=separators_closeup.astype(np.uint8)
-    separators_closeup = cv2.dilate(separators_closeup,kernel,iterations = 1)
-    separators_closeup = cv2.erode(separators_closeup,kernel,iterations = 1)
+    separators_closeup = separators_closeup.astype(np.uint8)
+    separators_closeup = cv2.morphologyEx(separators_closeup, cv2.MORPH_CLOSE, kernel, iterations=1)
 
-    separators_closeup_new=np.zeros((separators_closeup.shape[0] ,separators_closeup.shape[1] ))
-    separators_closeup_n=np.copy(separators_closeup)
-    separators_closeup_n=separators_closeup_n.astype(np.uint8)
+    separators_closeup_n = separators_closeup.astype(np.uint8) # to be returned
 
-    separators_closeup_n_binary=np.zeros(( separators_closeup_n.shape[0],separators_closeup_n.shape[1]) )
-    separators_closeup_n_binary[:,:]=separators_closeup_n[:,:]
-    separators_closeup_n_binary[:,:][separators_closeup_n_binary[:,:]!=0]=1
+    separators_closeup_n_binary = separators_closeup_n.copy()
 
-    _, thresh_e = cv2.threshold(separators_closeup_n_binary, 0, 255, 0)
-    contours_line_e, _ = cv2.findContours(thresh_e.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    _, dist_xe, _, _, _, _, y_min_main, y_max_main, _ = \
-        find_features_of_lines(contours_line_e)
-    dist_ye = y_max_main - y_min_main
-    args_e=np.arange(len(contours_line_e))
-    args_hor_e=args_e[(dist_ye<=50) &
-                      (dist_xe>=3*dist_ye)]
-    cnts_hor_e=[]
-    for ce in args_hor_e:
-        cnts_hor_e.append(contours_line_e[ce])
+    # find horizontal lines by contour properties
+    contours_sep_e, _ = cv2.findContours(separators_closeup_n_binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cnts_hor_e = []
+    for cnt in contours_sep_e:
+        max_xe = cnt[:, 0, 0].max()
+        min_xe = cnt[:, 0, 0].min()
+        max_ye = cnt[:, 0, 1].max()
+        min_ye = cnt[:, 0, 1].min()
+        dist_xe = max_xe - min_xe
+        dist_ye = max_ye - min_ye
+        if dist_ye <= 50 and dist_xe >= 3 * dist_ye:
+            cnts_hor_e.append(cnt)
 
-    separators_closeup_n_binary=cv2.fillPoly(separators_closeup_n_binary, pts=cnts_hor_e, color=0)
-    gray = cv2.bitwise_not(separators_closeup_n_binary)
-    gray=gray.astype(np.uint8)
+    # delete horizontal contours (leaving only the edges)
+    separators_closeup_n_binary = cv2.fillPoly(separators_closeup_n_binary, pts=cnts_hor_e, color=0)
+    edges = cv2.adaptiveThreshold(separators_closeup_n_binary * 255, 255,
+                                  cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 15, -2)
+    horizontal = np.copy(edges)
+    vertical = np.copy(edges)
 
-    bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, \
-                               cv2.THRESH_BINARY, 15, -2)
-    horizontal = np.copy(bw)
-    vertical = np.copy(bw)
-
-    cols = horizontal.shape[1]
-    horizontal_size = cols // 30
-    # Create structure element for extracting horizontal lines through morphology operations
+    horizontal_size = horizontal.shape[1] // 30
+    # find horizontal lines by morphology
     horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontal_size, 1))
-    # Apply morphology operations
-    horizontal = cv2.erode(horizontal, horizontalStructure)
-    horizontal = cv2.dilate(horizontal, horizontalStructure)
-
-    kernel = np.ones((5,5),np.uint8)
-    horizontal = cv2.dilate(horizontal,kernel,iterations = 2)
-    horizontal = cv2.erode(horizontal,kernel,iterations = 2)
+    horizontal = cv2.morphologyEx(horizontal, cv2.MORPH_OPEN, horizontalStructure)
+    horizontal = cv2.morphologyEx(horizontal, cv2.MORPH_CLOSE, kernel, iterations=2)
+    # re-insert deleted horizontal contours
     horizontal = cv2.fillPoly(horizontal, pts=cnts_hor_e, color=255)
 
-    rows = vertical.shape[0]
-    verticalsize = rows // 30
-    # Create structure element for extracting vertical lines through morphology operations
-    verticalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (1, verticalsize))
-    # Apply morphology operations
-    vertical = cv2.erode(vertical, verticalStructure)
-    vertical = cv2.dilate(vertical, verticalStructure)
-    vertical = cv2.dilate(vertical,kernel,iterations = 1)
+    vertical_size = vertical.shape[0] // 30
+    # find vertical lines by morphology
+    verticalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (1, vertical_size))
+    vertical = cv2.morphologyEx(vertical, cv2.MORPH_OPEN, verticalStructure)
+    vertical = cv2.dilate(vertical, kernel, iterations=1)
 
     horizontal, special_separators = \
         combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
             vertical, horizontal, num_col_classifier)
 
-    separators_closeup_new[:,:][vertical[:,:]!=0]=1
-    separators_closeup_new[:,:][horizontal[:,:]!=0]=1
-
     _, thresh = cv2.threshold(vertical, 0, 255, 0)
-    contours_line_vers, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    slope_lines, dist_x, x_min_main, x_max_main, cy_main, slope_lines_org, y_min_main, y_max_main, cx_main = \
-        find_features_of_lines(contours_line_vers)
+    contours_sep_vers, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    slope_seps, dist_x, x_min_seps, x_max_seps, cy_seps, slope_seps_org, y_min_seps, y_max_seps, cx_seps = \
+        find_features_of_lines(contours_sep_vers)
 
-    args=np.arange(len(slope_lines))
-    args_ver=args[slope_lines==1]
-    dist_x_ver=dist_x[slope_lines==1]
-    y_min_main_ver=y_min_main[slope_lines==1]
-    y_max_main_ver=y_max_main[slope_lines==1]
-    x_min_main_ver=x_min_main[slope_lines==1]
-    x_max_main_ver=x_max_main[slope_lines==1]
-    cx_main_ver=cx_main[slope_lines==1]
-    dist_y_ver=y_max_main_ver-y_min_main_ver
+    args=np.arange(len(slope_seps))
+    args_ver=args[slope_seps==1]
+    dist_x_ver=dist_x[slope_seps==1]
+    y_min_seps_ver=y_min_seps[slope_seps==1]
+    y_max_seps_ver=y_max_seps[slope_seps==1]
+    x_min_seps_ver=x_min_seps[slope_seps==1]
+    x_max_seps_ver=x_max_seps[slope_seps==1]
+    cx_seps_ver=cx_seps[slope_seps==1]
+    dist_y_ver=y_max_seps_ver-y_min_seps_ver
     len_y=separators_closeup.shape[0]/3.0
 
     _, thresh = cv2.threshold(horizontal, 0, 255, 0)
-    contours_line_hors, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    slope_lines, dist_x, x_min_main, x_max_main, cy_main, slope_lines_org, y_min_main, y_max_main, cx_main = \
-        find_features_of_lines(contours_line_hors)
+    contours_sep_hors, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    slope_seps, dist_x, x_min_seps, x_max_seps, cy_seps, slope_seps_org, y_min_seps, y_max_seps, cx_seps = \
+        find_features_of_lines(contours_sep_hors)
 
-    slope_lines_org_hor=slope_lines_org[slope_lines==0]
-    args=np.arange(len(slope_lines))
+    slope_seps_org_hor=slope_seps_org[slope_seps==0]
+    args=np.arange(len(slope_seps))
     len_x=separators_closeup.shape[1]/5.0
-    dist_y=np.abs(y_max_main-y_min_main)
+    dist_y=np.abs(y_max_seps-y_min_seps)
 
-    args_hor=args[slope_lines==0]
-    dist_x_hor=dist_x[slope_lines==0]
-    y_min_main_hor=y_min_main[slope_lines==0]
-    y_max_main_hor=y_max_main[slope_lines==0]
-    x_min_main_hor=x_min_main[slope_lines==0]
-    x_max_main_hor=x_max_main[slope_lines==0]
-    dist_y_hor=dist_y[slope_lines==0]
-    cy_main_hor=cy_main[slope_lines==0]
+    args_hor=args[slope_seps==0]
+    dist_x_hor=dist_x[slope_seps==0]
+    y_min_seps_hor=y_min_seps[slope_seps==0]
+    y_max_seps_hor=y_max_seps[slope_seps==0]
+    x_min_seps_hor=x_min_seps[slope_seps==0]
+    x_max_seps_hor=x_max_seps[slope_seps==0]
+    dist_y_hor=dist_y[slope_seps==0]
+    cy_seps_hor=cy_seps[slope_seps==0]
 
     args_hor=args_hor[dist_x_hor>=len_x/2.0]
-    x_max_main_hor=x_max_main_hor[dist_x_hor>=len_x/2.0]
-    x_min_main_hor=x_min_main_hor[dist_x_hor>=len_x/2.0]
-    cy_main_hor=cy_main_hor[dist_x_hor>=len_x/2.0]
-    y_min_main_hor=y_min_main_hor[dist_x_hor>=len_x/2.0]
-    y_max_main_hor=y_max_main_hor[dist_x_hor>=len_x/2.0]
+    x_max_seps_hor=x_max_seps_hor[dist_x_hor>=len_x/2.0]
+    x_min_seps_hor=x_min_seps_hor[dist_x_hor>=len_x/2.0]
+    cy_seps_hor=cy_seps_hor[dist_x_hor>=len_x/2.0]
+    y_min_seps_hor=y_min_seps_hor[dist_x_hor>=len_x/2.0]
+    y_max_seps_hor=y_max_seps_hor[dist_x_hor>=len_x/2.0]
     dist_y_hor=dist_y_hor[dist_x_hor>=len_x/2.0]
-    slope_lines_org_hor=slope_lines_org_hor[dist_x_hor>=len_x/2.0]
+    slope_seps_org_hor=slope_seps_org_hor[dist_x_hor>=len_x/2.0]
     dist_x_hor=dist_x_hor[dist_x_hor>=len_x/2.0]
 
-    matrix_of_lines_ch=np.zeros((len(cy_main_hor)+len(cx_main_ver),10))
-    matrix_of_lines_ch[:len(cy_main_hor),0]=args_hor
-    matrix_of_lines_ch[len(cy_main_hor):,0]=args_ver
-    matrix_of_lines_ch[len(cy_main_hor):,1]=cx_main_ver
-    matrix_of_lines_ch[:len(cy_main_hor),2]=x_min_main_hor+50#x_min_main_hor+150
-    matrix_of_lines_ch[len(cy_main_hor):,2]=x_min_main_ver
-    matrix_of_lines_ch[:len(cy_main_hor),3]=x_max_main_hor-50#x_max_main_hor-150
-    matrix_of_lines_ch[len(cy_main_hor):,3]=x_max_main_ver
-    matrix_of_lines_ch[:len(cy_main_hor),4]=dist_x_hor
-    matrix_of_lines_ch[len(cy_main_hor):,4]=dist_x_ver
-    matrix_of_lines_ch[:len(cy_main_hor),5]=cy_main_hor
-    matrix_of_lines_ch[:len(cy_main_hor),6]=y_min_main_hor
-    matrix_of_lines_ch[len(cy_main_hor):,6]=y_min_main_ver
-    matrix_of_lines_ch[:len(cy_main_hor),7]=y_max_main_hor
-    matrix_of_lines_ch[len(cy_main_hor):,7]=y_max_main_ver
-    matrix_of_lines_ch[:len(cy_main_hor),8]=dist_y_hor
-    matrix_of_lines_ch[len(cy_main_hor):,8]=dist_y_ver
-    matrix_of_lines_ch[len(cy_main_hor):,9]=1
+    matrix_of_seps_ch=np.zeros((len(cy_seps_hor)+len(cx_seps_ver),10))
+    matrix_of_seps_ch[:len(cy_seps_hor),0]=args_hor
+    matrix_of_seps_ch[len(cy_seps_hor):,0]=args_ver
+    matrix_of_seps_ch[len(cy_seps_hor):,1]=cx_seps_ver
+    matrix_of_seps_ch[:len(cy_seps_hor),2]=x_min_seps_hor+50#x_min_seps_hor+150
+    matrix_of_seps_ch[len(cy_seps_hor):,2]=x_min_seps_ver
+    matrix_of_seps_ch[:len(cy_seps_hor),3]=x_max_seps_hor-50#x_max_seps_hor-150
+    matrix_of_seps_ch[len(cy_seps_hor):,3]=x_max_seps_ver
+    matrix_of_seps_ch[:len(cy_seps_hor),4]=dist_x_hor
+    matrix_of_seps_ch[len(cy_seps_hor):,4]=dist_x_ver
+    matrix_of_seps_ch[:len(cy_seps_hor),5]=cy_seps_hor
+    matrix_of_seps_ch[:len(cy_seps_hor),6]=y_min_seps_hor
+    matrix_of_seps_ch[len(cy_seps_hor):,6]=y_min_seps_ver
+    matrix_of_seps_ch[:len(cy_seps_hor),7]=y_max_seps_hor
+    matrix_of_seps_ch[len(cy_seps_hor):,7]=y_max_seps_ver
+    matrix_of_seps_ch[:len(cy_seps_hor),8]=dist_y_hor
+    matrix_of_seps_ch[len(cy_seps_hor):,8]=dist_y_ver
+    matrix_of_seps_ch[len(cy_seps_hor):,9]=1
 
     if contours_h is not None:
-        _, dist_x_head, x_min_main_head, x_max_main_head, cy_main_head, _, y_min_main_head, y_max_main_head, _ = \
+        _, dist_x_head, x_min_head, x_max_head, cy_head, _, y_min_head, y_max_head, _ = \
             find_features_of_lines(contours_h)
-        matrix_l_n=np.zeros((matrix_of_lines_ch.shape[0]+len(cy_main_head),matrix_of_lines_ch.shape[1]))
-        matrix_l_n[:matrix_of_lines_ch.shape[0],:]=np.copy(matrix_of_lines_ch[:,:])
-        args_head=np.arange(len(cy_main_head)) + len(cy_main_hor)
+        matrix_l_n = np.zeros((len(cy_head), matrix_of_seps_ch.shape[1]))
+        args_head = np.arange(len(cy_head))
+        matrix_l_n[:, 0] = args_head
+        matrix_l_n[:, 2] = x_min_head+30
+        matrix_l_n[:, 3] = x_max_head-30
+        matrix_l_n[:, 4] = dist_x_head
+        matrix_l_n[:, 5] = y_min_head-3-8
+        matrix_l_n[:, 6] = y_min_head-5-8
+        matrix_l_n[:, 7] = y_max_head#y_min_head+1-8
+        matrix_l_n[:, 8] = 4
+        matrix_of_seps_ch = np.append(
+            matrix_of_seps_ch, matrix_l_n, axis=0)
 
-        matrix_l_n[matrix_of_lines_ch.shape[0]:,0]=args_head
-        matrix_l_n[matrix_of_lines_ch.shape[0]:,2]=x_min_main_head+30
-        matrix_l_n[matrix_of_lines_ch.shape[0]:,3]=x_max_main_head-30
-        matrix_l_n[matrix_of_lines_ch.shape[0]:,4]=dist_x_head
-        matrix_l_n[matrix_of_lines_ch.shape[0]:,5]=y_min_main_head-3-8
-        matrix_l_n[matrix_of_lines_ch.shape[0]:,6]=y_min_main_head-5-8
-        matrix_l_n[matrix_of_lines_ch.shape[0]:,7]=y_max_main_head#y_min_main_head+1-8
-        matrix_l_n[matrix_of_lines_ch.shape[0]:,8]=4
-        matrix_of_lines_ch=np.copy(matrix_l_n)
+    cy_seps_splitters=cy_seps_hor[(x_min_seps_hor<=.16*region_pre_p.shape[1]) &
+                                  (x_max_seps_hor>=.84*region_pre_p.shape[1])]
+    cy_seps_splitters = np.append(cy_seps_splitters, special_separators)
 
-    cy_main_splitters=cy_main_hor[(x_min_main_hor<=.16*region_pre_p.shape[1]) &
-                                  (x_max_main_hor>=.84*region_pre_p.shape[1])]
-    cy_main_splitters=np.array( list(cy_main_splitters)+list(special_separators))
     if contours_h is not None:
-        try:
-            cy_main_splitters_head=cy_main_head[(x_min_main_head<=.16*region_pre_p.shape[1]) &
-                                                (x_max_main_head>=.84*region_pre_p.shape[1])]
-            cy_main_splitters=np.array( list(cy_main_splitters)+list(cy_main_splitters_head))
-        except:
-            pass
-    args_cy_splitter=np.argsort(cy_main_splitters)
-    cy_main_splitters_sort=cy_main_splitters[args_cy_splitter]
+        cy_seps_splitters_head=cy_head[(x_min_head<=.16*region_pre_p.shape[1]) &
+                                       (x_max_head>=.84*region_pre_p.shape[1])]
+        cy_seps_splitters = np.append(cy_seps_splitters, cy_seps_splitters_head)
 
-    splitter_y_new=[]
-    splitter_y_new.append(0)
-    for i in range(len(cy_main_splitters_sort)):
-        splitter_y_new.append(  cy_main_splitters_sort[i] )
-    splitter_y_new.append(region_pre_p.shape[0])
-    splitter_y_new_diff=np.diff(splitter_y_new)/float(region_pre_p.shape[0])*100
+    cy_seps_splitters = np.sort(cy_seps_splitters)
+    splitter_y_new = [0] + list(cy_seps_splitters) + [region_pre_p.shape[0]]
+    splitter_y_new_diff = np.diff(splitter_y_new) / float(region_pre_p.shape[0]) * 100
 
     args_big_parts=np.arange(len(splitter_y_new_diff))[ splitter_y_new_diff>22 ]
 
@@ -1573,7 +1547,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
         peaks_neg_fin=peaks_neg_fin[peaks_neg_fin<=(vertical.shape[1]-500)]
         peaks_neg_fin_fin=peaks_neg_fin[:]
 
-    return num_col_fin, peaks_neg_fin_fin,matrix_of_lines_ch,splitter_y_new,separators_closeup_n
+    return num_col_fin, peaks_neg_fin_fin, matrix_of_seps_ch, splitter_y_new, separators_closeup_n
 
 def return_boxes_of_images_by_order_of_reading_new(
         splitter_y_new, regions_without_separators,
