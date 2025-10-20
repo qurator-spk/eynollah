@@ -18,7 +18,8 @@ Two Arabic/Persian terms form the name of the model suite: عين الله, whic
 
 See the flowchart below for the different stages and how they interact:
 
-![](https://user-images.githubusercontent.com/952378/100619946-1936f680-331e-11eb-9297-6e8b4cab3c16.png)
+<img width="810" height="691" alt="eynollah_flowchart" src="https://github.com/user-attachments/assets/42dd55bc-7b85-4b46-9afe-15ff712607f0" />
+
 
 
 ## Models
