@@ -22,7 +22,7 @@ from .utils import (
     is_image_filename,
     crop_image_inside_box
 )
-from .eynollah import PatchEncoder, Patches
+from .patch_encoder import PatchEncoder, Patches
 
 DPI_THRESHOLD = 298
 KERNEL = np.ones((5, 5), np.uint8)

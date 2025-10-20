@@ -1,15 +1,56 @@
+from dataclasses import dataclass
 import sys
+import os
 import click
 import logging
+from typing import Tuple, List
 from ocrd_utils import initLogging, getLevelName, getLogger
 from eynollah.eynollah import Eynollah, Eynollah_ocr
 from eynollah.sbb_binarize import SbbBinarizer
 from eynollah.image_enhancer import Enhancer
 from eynollah.mb_ro_on_layout import machine_based_reading_order_on_layout
+from eynollah.model_zoo import EynollahModelZoo
+
+@dataclass
+class EynollahCliCtx():
+    model_basedir: str
+    model_overrides: List[Tuple[str, str, str]]
 
 @click.group()
 def main():
     pass
+
+@main.command('list-models')
+@click.option(
+    "--model",
+    "-m",
+    'model_basedir',
+    help="directory of models",
+    type=click.Path(exists=True, file_okay=False),
+    # default=f"{os.environ['HOME']}/.local/share/ocrd-resources/ocrd-eynollah-segment",
+    required=True,
+)
+@click.option(
+    "--model-overrides",
+    "-mv",
+    help="override default versions of model categories, syntax is 'CATEGORY VARIANT PATH', e.g 'region light /path/to/model'. See eynollah list-models for the full list",
+    type=(str, str, str),
+    multiple=True,
+)
+@click.pass_context
+def list_models(
+    ctx,
+    model_basedir: str,
+    model_overrides: List[Tuple[str, str, str]],
+):
+    """
+        List all the models in the zoo
+    """
+    ctx.obj = EynollahCliCtx(
+        model_basedir=model_basedir,
+        model_overrides=model_overrides
+    )
+    print(EynollahModelZoo(basedir=ctx.obj.model_basedir, model_overrides=ctx.obj.model_overrides))
 
 @main.command()
 @click.option(
@@ -198,15 +239,17 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
 @click.option(
     "--model",
     "-m",
+    'model_basedir',
     help="directory of models",
     type=click.Path(exists=True, file_okay=False),
+    # default=f"{os.environ['HOME']}/.local/share/ocrd-resources/ocrd-eynollah-segment",
     required=True,
 )
 @click.option(
     "--model_version",
     "-mv",
-    help="override default versions of model categories",
-    type=(str, str),
+    help="override default versions of model categories, syntax is 'CATEGORY VARIANT PATH', e.g 'region light /path/to/model'. See eynollah list-models for the full list",
+    type=(str, str, str),
     multiple=True,
 )
 @click.option(
@@ -411,7 +454,7 @@ def layout(image, out, overwrite, dir_in, model, model_version, save_images, sav
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     eynollah = Eynollah(
         model,
-        model_versions=model_version,
+        model_overrides=model_version,
         extract_only_images=extract_only_images,
         enable_plotting=enable_plotting,
         allow_enhancement=allow_enhancement,

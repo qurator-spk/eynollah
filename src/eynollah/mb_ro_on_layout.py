@@ -23,7 +23,7 @@ from .utils.contour import (
     return_parent_contours,
 )
 from .utils import is_xml_filename
-from .eynollah import PatchEncoder, Patches
+from .patch_encoder import PatchEncoder, Patches
 
 DPI_THRESHOLD = 298
 KERNEL = np.ones((5, 5), np.uint8)
