@@ -2553,7 +2553,7 @@ class Eynollah:
                 con_inter_box_h = contours_only_text_parent_h[args_contours_box_head]
 
                 indexes_sorted, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
-                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, box[2])
+                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, box[2], box[0])
 
                 order_of_texts, id_of_texts = order_and_id_of_texts(
                     con_inter_box, con_inter_box_h,

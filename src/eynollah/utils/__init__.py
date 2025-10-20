@@ -1197,7 +1197,7 @@ def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col)
         textlines_con_changed.append(textlines_big_org_form)
     return textlines_con_changed
 
-def order_of_regions(textline_mask, contours_main, contours_head, y_ref):
+def order_of_regions(textline_mask, contours_main, contours_head, y_ref, x_ref):
     ##plt.imshow(textline_mask)
     ##plt.show()
     y = textline_mask.sum(axis=1) # horizontal projection profile
@@ -1208,6 +1208,8 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref):
     #z = gaussian_filter1d(y_padded, sigma_gaus)
     #peaks, _ = find_peaks(z, height=0)
     #peaks = peaks - 20
+    ##plt.plot(z)
+    ##plt.show()
     zneg_rev = np.max(y_padded) - y_padded
     zneg = np.zeros(len(zneg_rev) + 40)
     zneg[20 : len(zneg_rev) + 20] = zneg_rev
@@ -1250,6 +1252,22 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref):
         indexes_in, types_in, cxs_in, cys_in, typed_indexes_in = \
              matrix_of_orders[(matrix_of_orders[:, 3] >= top) &
                               (matrix_of_orders[:, 3] < bot)].T
+        # if indexes_in.size:
+        #     img = textline_mask.copy()
+        #     plt.imshow(img)
+        #     plt.gca().add_patch(patches.Rectangle((0, top-y_ref), img.shape[1], bot-top, alpha=0.5, color='gray'))
+        #     xrange = np.arange(0, img.shape[1], 50)
+        #     yrange = np.arange(0, img.shape[0], 50)
+        #     plt.gca().set_xticks(xrange, xrange + x_ref)
+        #     plt.gca().set_yticks(yrange, yrange + y_ref)
+        #     for idx, type_, cx, cy in zip(typed_indexes_in, types_in, cxs_in, cys_in):
+        #         cnt = (contours_main if type_ == 1 else contours_head)[idx]
+        #         col = 'red' if type_ == 1 else 'blue'
+        #         plt.scatter(cx - x_ref, cy - y_ref, 20, c=col, marker='o')
+        #         plt.gca().add_patch(patches.Polygon(cnt[:, 0] - [[x_ref, y_ref]], closed=False, fill=False, color=col))
+        #     plt.title("box contours centered in %d:%d (red=main / blue=heading)" % (top, bot))
+        #     plt.show()
+
         sorted_inside = np.argsort(cxs_in)
         final_indexers_sorted.extend(indexes_in[sorted_inside])
         final_types.extend(types_in[sorted_inside])
