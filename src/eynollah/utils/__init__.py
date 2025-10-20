@@ -1216,15 +1216,16 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref):
     peaks_neg, _ = find_peaks(zneg, height=0)
     peaks_neg = peaks_neg - 20 - 20
 
-    ##plt.plot(z)
-    ##plt.show()
-    cx_main, cy_main = find_center_of_contours(contours_main)
-    cx_head, cy_head = find_center_of_contours(contours_head)
-
-    peaks_neg_new = np.append(np.insert(peaks_neg, 0, 0), textline_mask.shape[0])
+    peaks_neg_new = np.array([0] +
+                             # peaks can be beyond box due to padding and smoothing
+                             [peak for peak in peaks_neg
+                              if 0 < peak and peak < textline_mask.shape[0]] +
+                             [textline_mask.shape[0]])
     # offset from bbox of mask
     peaks_neg_new += y_ref
 
+    cx_main, cy_main = find_center_of_contours(contours_main)
+    cx_head, cy_head = find_center_of_contours(contours_head)
     # assert not len(cy_main) or np.min(peaks_neg_new) <= np.min(cy_main) and np.max(cy_main) <= np.max(peaks_neg_new)
     # assert not len(cy_head) or np.min(peaks_neg_new) <= np.min(cy_head) and np.max(cy_head) <= np.max(peaks_neg_new)
 
