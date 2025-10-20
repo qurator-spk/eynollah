@@ -1919,54 +1919,50 @@ def return_boxes_of_images_by_order_of_reading_new(
                                     x_starting_all_between_nm_wc = x_starting[ind_all_lines_between_nm_wc]
                                     x_ending_all_between_nm_wc = x_ending[ind_all_lines_between_nm_wc]
 
-                                    x_diff_all_between_nm_wc = x_ending_all_between_nm_wc - x_starting_all_between_nm_wc
-                                    if len(x_diff_all_between_nm_wc)>0:
-                                        biggest=np.argmax(x_diff_all_between_nm_wc)
-
                                     columns_covered_by_mothers = set()
-                                    for dj in range(len(x_starting_all_between_nm_wc)):
+                                    for dj in range(len(ind_all_lines_between_nm_wc)):
                                         columns_covered_by_mothers.update(
                                             range(x_starting_all_between_nm_wc[dj],
                                                   x_ending_all_between_nm_wc[dj]))
                                     child_columns = set(range(i_s_nc, x_end_biggest_column))
                                     columns_not_covered = list(child_columns - columns_covered_by_mothers)
 
-                                    should_longest_line_be_extended=0
-                                    if (len(x_diff_all_between_nm_wc) > 0 and
-                                        set(list(range(x_starting_all_between_nm_wc[biggest],
-                                                        x_ending_all_between_nm_wc[biggest])) +
-                                            list(columns_not_covered)) != child_columns):
-                                        should_longest_line_be_extended=1
-                                        index_lines_so_close_to_top_separator = \
-                                            np.arange(len(y_all_between_nm_wc))[(y_all_between_nm_wc>y_column_nc[i_c]) &
-                                                                                (y_all_between_nm_wc<=(y_column_nc[i_c]+500))]
-                                        if len(index_lines_so_close_to_top_separator) > 0:
-                                            indexes_remained_after_deleting_closed_lines= \
-                                                np.array(list(set(list(range(len(y_all_between_nm_wc)))) -
-                                                              set(list(index_lines_so_close_to_top_separator))))
-                                            if len(indexes_remained_after_deleting_closed_lines) > 0:
+                                    if len(ind_all_lines_between_nm_wc):
+                                        biggest = np.argmax(x_ending_all_between_nm_wc -
+                                                            x_starting_all_between_nm_wc)
+                                        if columns_covered_by_mothers == set(
+                                                range(x_starting_all_between_nm_wc[biggest],
+                                                      x_ending_all_between_nm_wc[biggest])):
+                                            # biggest accounts for all columns alone,
+                                            # longest line should be extended
+                                            lines_so_close_to_top_separator = \
+                                                ((y_all_between_nm_wc > y_column_nc[i_c]) &
+                                                 (y_all_between_nm_wc <= y_column_nc[i_c] + 500))
+                                            if (np.count_nonzero(lines_so_close_to_top_separator) and
+                                                np.count_nonzero(lines_so_close_to_top_separator) <
+                                                len(ind_all_lines_between_nm_wc)):
                                                 y_all_between_nm_wc = \
-                                                    y_all_between_nm_wc[indexes_remained_after_deleting_closed_lines]
+                                                    y_all_between_nm_wc[~lines_so_close_to_top_separator]
                                                 x_starting_all_between_nm_wc = \
-                                                    x_starting_all_between_nm_wc[indexes_remained_after_deleting_closed_lines]
+                                                    x_starting_all_between_nm_wc[~lines_so_close_to_top_separator]
                                                 x_ending_all_between_nm_wc = \
-                                                    x_ending_all_between_nm_wc[indexes_remained_after_deleting_closed_lines]
+                                                    x_ending_all_between_nm_wc[~lines_so_close_to_top_separator]
 
-                                        y_all_between_nm_wc = np.append(y_all_between_nm_wc, y_column_nc[i_c])
-                                        x_starting_all_between_nm_wc = np.append(x_starting_all_between_nm_wc, i_s_nc)
-                                        x_ending_all_between_nm_wc = np.append(x_ending_all_between_nm_wc, x_end_biggest_column)
-
-                                    if len(x_diff_all_between_nm_wc) > 0:
-                                        try:
+                                            y_all_between_nm_wc = np.append(y_all_between_nm_wc, y_column_nc[i_c])
+                                            x_starting_all_between_nm_wc = np.append(x_starting_all_between_nm_wc, i_s_nc)
+                                            x_ending_all_between_nm_wc = np.append(x_ending_all_between_nm_wc, x_end_biggest_column)
+                                        else:
                                             y_all_between_nm_wc = np.append(y_all_between_nm_wc, y_column_nc[i_c])
                                             x_starting_all_between_nm_wc = np.append(x_starting_all_between_nm_wc, x_starting_all_between_nm_wc[biggest])
                                             x_ending_all_between_nm_wc = np.append(x_ending_all_between_nm_wc, x_ending_all_between_nm_wc[biggest])
-                                        except:
-                                            logger.exception("cannot append")
 
-                                    y_all_between_nm_wc = np.append(y_all_between_nm_wc, [y_column_nc[i_c]] * len(columns_not_covered))
-                                    x_starting_all_between_nm_wc = np.append(x_starting_all_between_nm_wc, np.array(columns_not_covered, int))
-                                    x_ending_all_between_nm_wc = np.append(x_ending_all_between_nm_wc, np.array(columns_not_covered, int) + 1)
+                                    if len(columns_not_covered):
+                                        y_all_between_nm_wc = np.append(
+                                            y_all_between_nm_wc, [y_column_nc[i_c]] * len(columns_not_covered))
+                                        x_starting_all_between_nm_wc = np.append(
+                                            x_starting_all_between_nm_wc, np.array(columns_not_covered, int))
+                                        x_ending_all_between_nm_wc = np.append(
+                                            x_ending_all_between_nm_wc, np.array(columns_not_covered, int) + 1)
 
                                     ind_args_between=np.arange(len(x_ending_all_between_nm_wc))
                                     for column in range(int(i_s_nc), int(x_end_biggest_column)):
