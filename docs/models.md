@@ -151,7 +151,7 @@ This model is used for the task of illustration detection only.
 
 Model card: [Reading Order Detection]()
 
-TODO
+The model extracts the reading order of text regions from the layout by classifying pairwise relationships between them. A sorting algorithm then determines the overall reading sequence.
 
 ## Heuristic methods
 
