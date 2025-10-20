@@ -8,40 +8,26 @@
 document layout analysis (segmentation) with output in PAGE-XML
 """
 
-# cannot use importlib.resources until we move to 3.9+ forimportlib.resources.files
-import sys
-
-if sys.version_info < (3, 10):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
-
 from difflib import SequenceMatcher as sq
 from PIL import Image, ImageDraw, ImageFont
 import math
 import os
-import sys
 import time
 from typing import Dict,  Union,List, Optional, Tuple
-import atexit
 import warnings
 from functools import partial
 from pathlib import Path
 from multiprocessing import cpu_count
 import gc
 import copy
-import json
 
 from concurrent.futures import ProcessPoolExecutor
-import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
 import shapely.affinity
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-from numba import cuda
 from skimage.morphology import skeletonize
-from ocrd import OcrdPage
 from ocrd_utils import getLogger, tf_disable_interactive_logs
 import statistics
 
@@ -53,10 +39,6 @@ try:
     import matplotlib.pyplot as plt
 except ImportError:
     plt = None
-try:
-    from transformers import TrOCRProcessor, VisionEncoderDecoderModel
-except ImportError:
-    TrOCRProcessor = VisionEncoderDecoderModel = None
 
 #os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 tf_disable_interactive_logs()
@@ -290,13 +272,6 @@ class Eynollah:
             if self.tr:
                 loadable.append(('ocr', 'tr'))
                 loadable.append(('ocr_tr_processor', 'tr'))
-                # TODO why here and why only for tr?
-                if torch.cuda.is_available():
-                    self.logger.info("Using GPU acceleration")
-                    self.device = torch.device("cuda:0")
-                else:
-                    self.logger.info("Using CPU processing")
-                    self.device = torch.device("cpu")
             else:
                 loadable.append('ocr')
                 loadable.append('num_to_char')
@@ -307,10 +282,16 @@ class Eynollah:
         if hasattr(self, 'executor') and getattr(self, 'executor'):
             self.executor.shutdown()
             self.executor = None
-        if hasattr(self, 'models') and getattr(self, 'models'):
-            for model_name in list(self.models):
-                if self.models[model_name]:
-                    del self.models[model_name]
+        self.model_zoo.shutdown()
+
+    @property
+    def device(self):
+        # TODO why here and why only for tr?
+        if torch.cuda.is_available():
+            self.logger.info("Using GPU acceleration")
+            return torch.device("cuda:0")
+        self.logger.info("Using CPU processing")
+        return torch.device("cpu")
 
     def cache_images(self, image_filename=None, image_pil=None, dpi=None):
         ret = {}

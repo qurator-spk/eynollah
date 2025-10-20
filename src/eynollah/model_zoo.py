@@ -2,7 +2,6 @@ from dataclasses import dataclass
 import json
 import logging
 from pathlib import Path
-from types import MappingProxyType
 from typing import Dict, Literal, Optional, Tuple,  List, Union
 from copy import deepcopy
 
@@ -11,6 +10,8 @@ from keras.models import Model, load_model
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 
 from eynollah.patch_encoder import PatchEncoder, Patches
+
+SomeEynollahModel = Union[VisionEncoderDecoderModel, TrOCRProcessor, Model]
 
 
 # Dict mapping model_category to dict mapping variant (default is '') to Path
@@ -134,13 +135,14 @@ class EynollahModelZoo():
     def __init__(
         self,
         basedir: str,
-        model_overrides: List[Tuple[str, str, str]],
+        model_overrides: Optional[List[Tuple[str, str, str]]]=None,
     ) -> None:
         self.model_basedir = Path(basedir)
         self.logger = logging.getLogger('eynollah.model_zoo')
         self.model_versions = deepcopy(DEFAULT_MODEL_VERSIONS)
         if model_overrides:
             self.override_models(*model_overrides)
+        self._loaded: Dict[Tuple[str, str], SomeEynollahModel] = {}
 
     def override_models(self, *model_overrides: Tuple[str, str, str]):
         """
@@ -202,7 +204,7 @@ class EynollahModelZoo():
         model_category: str,
         model_variant: str = '',
         model_filename: str = '',
-    ) -> Union[VisionEncoderDecoderModel, TrOCRProcessor, Model]:
+    ) -> SomeEynollahModel:
         """
         Load any model
         """
@@ -223,9 +225,16 @@ class EynollahModelZoo():
                 self.logger.exception(e)
                 model = load_model(model_path, compile=False, custom_objects={
                     "PatchEncoder": PatchEncoder, "Patches": Patches})
+        self._loaded[(model_category, model_variant)] = model
         return model # type: ignore
 
-    def _load_ocr_model(self, variant: str) -> Union[VisionEncoderDecoderModel, TrOCRProcessor, Model]:
+    def get_model(self, model_categeory, model_variant) -> SomeEynollahModel:
+        needle = (model_categeory, model_variant)
+        if needle not in self._loaded:
+            raise ValueError('Model/variant "{needle} not previously loaded with "load_model(..)"')
+        return self._loaded[needle]
+
+    def _load_ocr_model(self, variant: str) -> SomeEynollahModel:
         """
         Load OCR model
         """
@@ -257,4 +266,13 @@ class EynollahModelZoo():
             'basedir': str(self.model_basedir),
             'versions': self.model_versions,
         }, indent=2))
+
+    def shutdown(self):
+        """
+        Ensure that a loaded models is not referenced by ``self._loaded`` anymore
+        """
+        if hasattr(self, '_loaded') and getattr(self, '_loaded'):
+            for needle in self._loaded:
+                if self._loaded[needle]:
+                    del self._loaded[needle]
 

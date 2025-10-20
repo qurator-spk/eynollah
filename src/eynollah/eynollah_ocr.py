@@ -1,3 +1,41 @@
+# pyright: reportPossiblyUnboundVariable=false
+
+from logging import getLogger
+from typing import Optional
+from pathlib import Path
+import os
+import json
+import gc
+import sys
+import math
+import cv2
+import time
+
+from keras.layers import StringLookup
+
+from eynollah.utils.resize import resize_image
+from eynollah.utils.utils_ocr import break_curved_line_into_small_pieces_and_then_merge, decode_batch_predictions, fit_text_single_line, get_contours_and_bounding_boxes, get_orientation_moments, preprocess_and_resize_image_for_ocrcnn_model, return_textlines_split_if_needed, rotate_image_with_padding
+
+from .utils import is_image_filename
+
+import xml.etree.ElementTree as ET
+import tensorflow as tf
+from keras.models import load_model
+from PIL import Image, ImageDraw, ImageFont
+import numpy as np
+import torch
+
+# cannot use importlib.resources until we move to 3.9+ forimportlib.resources.files
+if sys.version_info < (3, 10):
+    import importlib_resources
+else:
+    import importlib.resources as importlib_resources
+
+try:
+    from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+except ImportError:
+    TrOCRProcessor = VisionEncoderDecoderModel = None
+
 class Eynollah_ocr:
     def __init__(
         self,
@@ -25,6 +63,7 @@ class Eynollah_ocr:
             else:
                 self.min_conf_value_of_textline_text = 0.3
             if tr_ocr:
+                assert TrOCRProcessor
                 self.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
                 self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                 if self.model_name:
