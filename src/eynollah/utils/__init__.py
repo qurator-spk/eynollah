@@ -463,22 +463,19 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
 
     interest_neg_fin = interest_neg[(interest_neg < grenze)]
     peaks_neg_fin = peaks_neg[(interest_neg < grenze)]
-    # interest_neg_fin=interest_neg[(interest_neg<grenze)]
 
     if not tables:
         if ( num_col_classifier - ( (len(interest_neg_fin))+1 ) ) >= 3:
-            index_sort_interest_neg_fin= np.argsort(interest_neg_fin)
-            peaks_neg_sorted = np.array(peaks_neg)[index_sort_interest_neg_fin]
-            interest_neg_fin_sorted = np.array(interest_neg_fin)[index_sort_interest_neg_fin]
+            # found too few columns here: ignore 'grenze' and take the deepest N peaks
+            sort_by_height = np.argsort(interest_neg)[:num_col_classifier]
+            peaks_neg_fin = peaks_neg[sort_by_height]
+            interest_neg_fin = interest_neg[sort_by_height]
+            # print(peaks_neg_fin, "peaks_neg[sorted_by_height]")
+            sort_by_pos = np.argsort(peaks_neg_fin)
+            peaks_neg_fin = peaks_neg_fin[sort_by_pos]
+            interest_neg_fin = interest_neg_fin[sort_by_pos]
 
-            if len(index_sort_interest_neg_fin)>=num_col_classifier:
-                peaks_neg_fin = list( peaks_neg_sorted[:num_col_classifier] )
-                interest_neg_fin = list( interest_neg_fin_sorted[:num_col_classifier] )
-            else:
-                peaks_neg_fin = peaks_neg[:]
-                interest_neg_fin = interest_neg[:]
-
-    num_col = (len(interest_neg_fin)) + 1
+    num_col = len(interest_neg_fin) + 1
 
     # print(peaks_neg_fin,'peaks_neg_fin')
     # print(num_col,'diz')
