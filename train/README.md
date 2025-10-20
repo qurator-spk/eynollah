@@ -41,19 +41,3 @@ each class will be defined with a RGB value and beside images, a text file of cl
 > Convert COCO GT or results for a single image to a segmentation map and write it to disk.
 * [`ocrd-segment-extract-pages`](https://github.com/OCR-D/ocrd_segment/blob/master/ocrd_segment/extract_pages.py)
 > Extract region classes and their colours in mask (pseg) images. Allows the color map as free dict parameter, and comes with a default that mimics PageViewer's coloring for quick debugging; it also warns when regions do overlap.
-
-### Train using Docker
-
-Build the Docker image:
-
-```bash
-cd train
-docker build -t model-training .
-```
-
-Run Docker image 
-
-```bash
-cd train
-docker run --gpus all -v $PWD:/entry_point_dir model-training
-```
