@@ -157,7 +157,7 @@ eynollah ocr \
 
 ### Reading Order Detection
 
-The machine-based reading-order module employs a pretrained model to identify the reading order from layouts represented in PAGE-XML files.
+The reading order detection module employs a pretrained model to identify the reading order from layouts represented in PAGE-XML files.
 
 The command-line interface for machine based reading order can be called like this:
 
@@ -169,17 +169,10 @@ eynollah machine-based-reading-order \
   -o <output directory> 
 ```
 
-#### Use as OCR-D processor
-
-Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) [processor](https://ocr-d.de/en/spec/cli),
-formally described in [`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json).
-
-Further documentation on using Eynollah with OCR-D can be found in [`ocrd.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/ocrd.md).
-
 ## How to cite
 
 ```bibtex
-@inproceedings{hip23eynollah,
+@inproceedings{hip23rezanezhad,
   title     = {Document Layout Analysis with Deep Learning and Heuristics},
   author    = {Rezanezhad, Vahid and Baierer, Konstantin and Gerber, Mike and Labusch, Kai and Neudecker, Clemens},
   booktitle = {Proceedings of the 7th International Workshop on Historical Document Imaging and Processing {HIP} 2023,

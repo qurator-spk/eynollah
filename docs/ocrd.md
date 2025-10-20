@@ -1,3 +1,8 @@
+## Use as OCR-D processor
+
+Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) [processor](https://ocr-d.de/en/spec/cli),
+formally described in [`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json).
+
 When using Eynollah in OCR-D, the source image file group with (preferably) RGB images should be used as input like this:
 
     ocrd-eynollah-segment -I OCR-D-IMG -O OCR-D-SEG -P models eynollah_layout_v0_5_0
