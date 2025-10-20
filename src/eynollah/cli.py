@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 import sys
-import os
 import click
 import logging
 from typing import Tuple, List
 from ocrd_utils import initLogging, getLevelName, getLogger
-from eynollah.eynollah import Eynollah, Eynollah_ocr
+from eynollah.eynollah import Eynollah
+from eynollah.eynollah_ocr import Eynollah_ocr
 from eynollah.sbb_binarize import SbbBinarizer
 from eynollah.image_enhancer import Enhancer
 from eynollah.mb_ro_on_layout import machine_based_reading_order_on_layout
