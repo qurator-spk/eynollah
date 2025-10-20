@@ -154,13 +154,17 @@ Model card: [Reading Order Detection]()
 
 The model extracts the reading order of text regions from the layout by classifying pairwise relationships between them. A sorting algorithm then determines the overall reading sequence.
 
+### OCR
+
+We have trained three OCR models: two CNN-RNN–based models and one transformer-based TrOCR model. The CNN-RNN models are generally faster and provide better results in most cases, though their performance decreases with heavily degraded images. The TrOCR model, on the other hand, is computationally expensive and slower during inference, but it can possibly produce better results on strongly degraded images.
 ## Heuristic methods
 
 Additionally, some heuristic methods are employed to further improve the model predictions: 
 
 * After border detection, the largest contour is determined by a bounding box, and the image cropped to these coordinates.
-* For text region detection, the image is scaled up to make it easier for the model to detect background space between text regions.
+* Unlike the non-light version, where the image is scaled up to help the model better detect the background spaces between text regions, the light version uses down-scaled images. In this case, introducing an artificial class along the boundaries of text regions and text lines has helped to isolate and separate the text regions more effectively. 
 * A minimum area is defined for text regions in relation to the overall image dimensions, so that very small regions that are noise can be filtered out. 
-* Deskewing is applied on the text region level (due to regions having different degrees of skew) in order to improve the textline segmentation result. 
-* After deskewing, a calculation of the pixel distribution on the X-axis allows the separation of textlines (foreground) and background pixels.
-* Finally, using the derived coordinates, bounding boxes are determined for each textline.
+* In the non-light version, deskewing is applied at the text-region level (since regions may have different degrees of skew) to improve text-line segmentation results. In contrast, the light version performs deskewing only at the page level to enhance margin detection and heuristic reading-order estimation. 
+* After deskewing, a calculation of the pixel distribution on the X-axis allows the separation of textlines (foreground) and background pixels (only in non-light version).
+* Finally, using the derived coordinates, bounding boxes are determined for each textline (only in non-light version).
+* As mentioned above, the reading order can be determined using a model; however, this approach is computationally expensive, time-consuming, and less accurate due to the limited amount of ground-truth data available for training. Therefore, our tool uses a heuristic reading-order detection method as the default. The heuristic approach relies on headers and separators to determine the reading order of text regions.
