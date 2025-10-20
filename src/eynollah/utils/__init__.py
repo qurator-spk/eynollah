@@ -1378,6 +1378,8 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     return peaks_neg_tot
 
 def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, label_seps, contours_h=None):
+    ncomps, ccomps = cv2.connectedComponents(region_pre_p.astype(np.uint8))
+
     separators_closeup = 1 * (region_pre_p == label_seps)
     separators_closeup[0:110] = 0
     separators_closeup[-150:] = 0
@@ -1398,10 +1400,19 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
         min_xe = cnt[:, 0, 0].min()
         max_ye = cnt[:, 0, 1].max()
         min_ye = cnt[:, 0, 1].min()
+        med_ye = int(np.median(cnt[:, 0, 1]))
         dist_xe = max_xe - min_xe
         dist_ye = max_ye - min_ye
         if dist_ye <= 50 and dist_xe >= 3 * dist_ye:
             cnts_hor_e.append(cnt)
+            labels = np.setdiff1d(np.unique(ccomps[med_ye]), [0])
+            if len(labels) == 1:
+                # mid line does not intersect with any other region
+                # so add it as extra splitter line
+                cnts_hor_e.append(np.array([[[0, med_ye]],
+                                            [[ccomps.shape[1], med_ye]],
+                                            [[ccomps.shape[1], med_ye + 1]],
+                                            [[0, med_ye + 1]]]))
 
     # delete horizontal contours (leaving only the edges)
     separators_closeup_n_binary = cv2.fillPoly(separators_closeup_n_binary, pts=cnts_hor_e, color=0)
