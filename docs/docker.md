@@ -32,12 +32,12 @@ Alternatively, just "log in" to the container once and use the commands there:
 
 ## Training with Docker
 
-Build the Docker image
+Build the Docker training image
 
     cd train
     docker build -t model-training .
 
-Run the Docker image
+Run the Docker training image
 
     cd train
     docker run --gpus all -v $PWD:/entry_point_dir model-training

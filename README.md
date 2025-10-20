@@ -52,24 +52,25 @@ pip install "eynollah[OCR]"
 make install EXTRAS=OCR
 ```
 
-With Docker, use
+### Docker
+
+Use
 
 ```
 docker pull ghcr.io/qurator-spk/eynollah:latest
 ```
 
-For additional documentation on using Eynollah and Docker, see [`docker.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/docker.md).
+When using Eynollah with Docker, see [`docker.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/docker.md).
 
 ## Models
 
 Pretrained models can be downloaded from [Zenodo](https://zenodo.org/records/17194824) or [Hugging Face](https://huggingface.co/SBB?search_models=eynollah). 
 
-For documentation on models, have a look at [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
+For model documentation and model cards, see [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
 
 ## Training
 
-To train your own model with Eynollah, see the documentation in [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md) and use the
-tools in the [`train`](https://github.com/qurator-spk/eynollah/tree/main/train) folder.
+To train your own model with Eynollah, see [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md) and use the tools in the [`train`](https://github.com/qurator-spk/eynollah/tree/main/train) folder.
 
 ## Usage
 
@@ -83,10 +84,7 @@ Eynollah supports five use cases:
 ### Layout Analysis
 
 The layout analysis module is responsible for detecting layout elements, identifying text lines, and determining reading 
-order using either heuristic methods or a [pretrained reading order detection model](https://github.com/qurator-spk/eynollah#machine-based-reading-order). 
-
-Reading order detection can be performed either as part of layout analysis based on image input, or, currently under 
-development, based on pre-existing layout analysis results in PAGE-XML format as input.
+order using heuristic methods or a [pretrained model](https://github.com/qurator-spk/eynollah#machine-based-reading-order).
 
 The command-line interface for layout analysis can be called like this:
 
@@ -156,6 +154,8 @@ eynollah ocr \
 ```
 
 ### Reading Order Detection
+Reading order detection can be performed either as part of layout analysis based on image input, or, currently under 
+development, based on pre-existing layout analysis data in PAGE-XML format as input.
 
 The reading order detection module employs a pretrained model to identify the reading order from layouts represented in PAGE-XML files.
 
@@ -168,6 +168,10 @@ eynollah machine-based-reading-order \
   -m <path to directory containing model files> \
   -o <output directory> 
 ```
+
+## Use as OCR-D processor
+
+See [`ocrd.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
 
 ## How to cite
 
