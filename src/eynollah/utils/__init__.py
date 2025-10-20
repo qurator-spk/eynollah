@@ -1506,15 +1506,33 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     if contours_h is not None:
         _, dist_x_head, x_min_head, x_max_head, cy_head, _, y_min_head, y_max_head, _ = \
             find_features_of_lines(contours_h)
+        # matrix_l_n = np.zeros((len(cy_head), matrix_of_seps_ch.shape[1]))
+        # args_head = np.arange(len(cy_head))
+        # matrix_l_n[:, 0] = args_head
+        # matrix_l_n[:, 2] = x_min_head+30
+        # matrix_l_n[:, 3] = x_max_head-30
+        # matrix_l_n[:, 4] = dist_x_head
+        # matrix_l_n[:, 5] = y_min_head-3-8
+        # matrix_l_n[:, 6] = y_min_head-5-8
+        # matrix_l_n[:, 7] = y_max_head#y_min_head+1-8
+        # matrix_l_n[:, 8] = 4
+        # split at toplines (y_min_head) and baselines (y_max_head) instead of center (cy_head):
+        cy_head = np.stack((y_min_head, y_max_head)).T.flatten()
+        y_min_head, y_max_head = (np.stack((y_min_head - 2, y_max_head - 2)).T.flatten(),
+                                  np.stack((y_min_head + 2, y_max_head + 2)).T.flatten())
+        x_min_head = np.repeat(x_min_head, 2)
+        x_max_head = np.repeat(x_max_head, 2)
+        dist_x_head = np.repeat(dist_x_head, 2)
         matrix_l_n = np.zeros((len(cy_head), matrix_of_seps_ch.shape[1]))
         args_head = np.arange(len(cy_head))
         matrix_l_n[:, 0] = args_head
-        matrix_l_n[:, 2] = x_min_head+30
-        matrix_l_n[:, 3] = x_max_head-30
+        # +/- 30px to avoid crossing col peaks by accident
+        matrix_l_n[:, 2] = x_min_head + 30
+        matrix_l_n[:, 3] = x_max_head - 30
         matrix_l_n[:, 4] = dist_x_head
-        matrix_l_n[:, 5] = y_min_head-3-8
-        matrix_l_n[:, 6] = y_min_head-5-8
-        matrix_l_n[:, 7] = y_max_head#y_min_head+1-8
+        matrix_l_n[:, 5] = cy_head
+        matrix_l_n[:, 6] = y_min_head
+        matrix_l_n[:, 7] = y_max_head
         matrix_l_n[:, 8] = 4
         matrix_of_seps_ch = np.append(
             matrix_of_seps_ch, matrix_l_n, axis=0)
