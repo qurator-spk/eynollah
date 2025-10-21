@@ -12,7 +12,7 @@ from difflib import SequenceMatcher as sq
 import math
 import os
 import time
-from typing import Dict, Type,  Union,List, Optional, Tuple
+from typing import List, Optional, Tuple
 import warnings
 from functools import partial
 from pathlib import Path
