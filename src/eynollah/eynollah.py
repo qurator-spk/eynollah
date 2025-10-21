@@ -9,11 +9,10 @@ document layout analysis (segmentation) with output in PAGE-XML
 """
 
 from difflib import SequenceMatcher as sq
-from PIL import Image, ImageDraw, ImageFont
 import math
 import os
 import time
-from typing import Dict,  Union,List, Optional, Tuple
+from typing import Dict, Type,  Union,List, Optional, Tuple
 import warnings
 from functools import partial
 from pathlib import Path
@@ -32,7 +31,7 @@ from ocrd_utils import getLogger, tf_disable_interactive_logs
 import statistics
 
 try:
-    import torch
+    import torch # type: ignore
 except ImportError:
     torch = None
 try:
@@ -43,13 +42,8 @@ except ImportError:
 #os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 tf_disable_interactive_logs()
 import tensorflow as tf
-from keras.models import load_model
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
-# use tf1 compatibility for keras backend
-from tensorflow.compat.v1.keras.backend import set_session
-from tensorflow.keras import layers
-from tensorflow.keras.layers import StringLookup
 
 from .model_zoo import EynollahModelZoo
 from .utils.contour import (
@@ -280,6 +274,7 @@ class Eynollah:
 
     def __del__(self):
         if hasattr(self, 'executor') and getattr(self, 'executor'):
+            assert self.executor
             self.executor.shutdown()
             self.executor = None
         self.model_zoo.shutdown()
@@ -287,6 +282,7 @@ class Eynollah:
     @property
     def device(self):
         # TODO why here and why only for tr?
+        assert torch
         if torch.cuda.is_available():
             self.logger.info("Using GPU acceleration")
             return torch.device("cuda:0")
@@ -689,8 +685,8 @@ class Eynollah:
 
         self.img_hight_int = int(self.image.shape[0] * scale)
         self.img_width_int = int(self.image.shape[1] * scale)
-        self.scale_y = self.img_hight_int / float(self.image.shape[0])
-        self.scale_x = self.img_width_int / float(self.image.shape[1])
+        self.scale_y: float = self.img_hight_int / float(self.image.shape[0])
+        self.scale_x: float = self.img_width_int / float(self.image.shape[1])
 
         self.image = resize_image(self.image, self.img_hight_int, self.img_width_int)
 
@@ -1755,6 +1751,7 @@ class Eynollah:
             return [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_light")
         with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
+            assert self.executor
             results = self.executor.map(partial(do_work_of_slopes_new_light,
                                                 textline_mask_tot_ea=textline_mask_tot_shared,
                                                 slope_deskew=slope_deskew,
@@ -1771,6 +1768,7 @@ class Eynollah:
             return [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new")
         with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
+            assert self.executor
             results = self.executor.map(partial(do_work_of_slopes_new,
                                                 textline_mask_tot_ea=textline_mask_tot_shared,
                                                 slope_deskew=slope_deskew,
@@ -1791,6 +1789,7 @@ class Eynollah:
         self.logger.debug("enter get_slopes_and_deskew_new_curved")
         with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
             with share_ndarray(mask_texts_only) as mask_texts_only_shared:
+                assert self.executor
                 results = self.executor.map(partial(do_work_of_slopes_new_curved,
                                             textline_mask_tot_ea=textline_mask_tot_shared,
                                             mask_texts_only=mask_texts_only_shared,

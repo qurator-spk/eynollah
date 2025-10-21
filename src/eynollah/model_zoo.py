@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Literal, Optional, Tuple,  List, Union
+from typing import Dict, Literal, Optional, Tuple,  List, Type, TypeVar, Union
 from copy import deepcopy
 
 from keras.layers import StringLookup
@@ -12,7 +12,7 @@ from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 from eynollah.patch_encoder import PatchEncoder, Patches
 
 SomeEynollahModel = Union[VisionEncoderDecoderModel, TrOCRProcessor, Model, List]
-
+T = TypeVar('T')
 
 # Dict mapping model_category to dict mapping variant (default is '') to Path
 DEFAULT_MODEL_VERSIONS: Dict[str, Dict[str, str]] = {
@@ -149,7 +149,10 @@ class EynollahModelZoo():
             self.override_models(*model_overrides)
         self._loaded: Dict[str, SomeEynollahModel] = {}
 
-    def override_models(self, *model_overrides: Tuple[str, str, str]):
+    def override_models(
+        self,
+        *model_overrides: Tuple[str, str, str],
+    ):
         """
         Override the default model versions
         """
@@ -235,10 +238,13 @@ class EynollahModelZoo():
         self._loaded[model_category] = model
         return model # type: ignore
 
-    def get(self, model_category) -> SomeEynollahModel:
+    def get(self, model_category: str, model_type: Optional[Type[T]]=None) -> T:
         if model_category not in self._loaded:
             raise ValueError(f'Model "{model_category} not previously loaded with "load_model(..)"')
-        return self._loaded[model_category]
+        ret = self._loaded[model_category]
+        if model_type:
+            assert isinstance(ret, model_type)
+        return ret # type: ignore # FIXME: convince typing that we're returning generic type
 
     def _load_ocr_model(self, variant: str) -> SomeEynollahModel:
         """

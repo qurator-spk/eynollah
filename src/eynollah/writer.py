@@ -2,7 +2,7 @@
 # pylint: disable=import-error
 from pathlib import Path
 import os.path
-import xml.etree.ElementTree as ET
+from typing import Optional
 from .utils.xml import create_page_xml, xml_reading_order
 from .utils.counter import EynollahIdCounter
 
@@ -10,7 +10,6 @@ from ocrd_utils import getLogger
 from ocrd_models.ocrd_page import (
         BorderType,
         CoordsType,
-        PcGtsType,
         TextLineType,
         TextEquivType,
         TextRegionType,
@@ -32,10 +31,10 @@ class EynollahXmlWriter:
         self.curved_line = curved_line
         self.textline_light = textline_light
         self.pcgts = pcgts
-        self.scale_x = None # XXX set outside __init__
-        self.scale_y = None # XXX set outside __init__
-        self.height_org = None # XXX set outside __init__
-        self.width_org = None # XXX set outside __init__
+        self.scale_x: Optional[float] = None # XXX set outside __init__
+        self.scale_y: Optional[float] = None # XXX set outside __init__
+        self.height_org: Optional[int] = None # XXX set outside __init__
+        self.width_org: Optional[int] = None # XXX set outside __init__
 
     @property
     def image_filename_stem(self):
@@ -135,6 +134,7 @@ class EynollahXmlWriter:
         # create the file structure
         pcgts = self.pcgts if self.pcgts else create_page_xml(self.image_filename, self.height_org, self.width_org)
         page = pcgts.get_Page()
+        assert page
         page.set_Border(BorderType(Coords=CoordsType(points=self.calculate_page_coords(cont_page))))
 
         counter = EynollahIdCounter()
@@ -152,6 +152,7 @@ class EynollahXmlWriter:
                 Coords=CoordsType(points=self.calculate_polygon_coords(region_contour, page_coord,
                                                                        skip_layout_reading_order))
             )
+            assert textregion.Coords
             if conf_contours_textregions:
                 textregion.Coords.set_conf(conf_contours_textregions[mm])
             page.add_TextRegion(textregion)
@@ -168,6 +169,7 @@ class EynollahXmlWriter:
                 id=counter.next_region_id, type_='heading',
                 Coords=CoordsType(points=self.calculate_polygon_coords(region_contour, page_coord))
             )
+            assert textregion.Coords
             if conf_contours_textregions_h:
                 textregion.Coords.set_conf(conf_contours_textregions_h[mm])
             page.add_TextRegion(textregion)
