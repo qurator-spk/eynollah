@@ -71,8 +71,7 @@ $(OCR_MODELFILE):
 	$(WGET) $@ $(OCR_MODEL)
 
 $(BIN_MODELNAME): $(BIN_MODELFILE)
-	mkdir $@
-	unzip -d $@ $<
+	tar zxf $<
 $(SEG_MODELNAME): $(SEG_MODELFILE)
 	tar zxf $<
 $(OCR_MODELNAME): $(OCR_MODELFILE)
