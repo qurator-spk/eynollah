@@ -6,21 +6,23 @@ EXTRAS ?=
 DOCKER_BASE_IMAGE ?= docker.io/ocrd/core-cuda-tf2:latest
 DOCKER_TAG ?= ocrd/eynollah
 DOCKER ?= docker
+WGET = wget -O
 
 #SEG_MODEL := https://qurator-data.de/eynollah/2021-04-25/models_eynollah.tar.gz
 #SEG_MODEL := https://qurator-data.de/eynollah/2022-04-05/models_eynollah_renamed.tar.gz
 # SEG_MODEL := https://qurator-data.de/eynollah/2022-04-05/models_eynollah.tar.gz
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz
-SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1
+#SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1
+SEG_MODEL := https://zenodo.org/records/17295988/files/models_layout_v0_6_0.tar.gz?download=1
 SEG_MODELFILE = $(notdir $(patsubst %?download=1,%,$(SEG_MODEL)))
 SEG_MODELNAME = $(SEG_MODELFILE:%.tar.gz=%)
 
-BIN_MODEL := https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2021_03_09.zip
+BIN_MODEL := https://zenodo.org/records/17295988/files/models_binarization_v0_6_0.tar.gz?download=1
 BIN_MODELFILE = $(notdir $(BIN_MODEL))
 BIN_MODELNAME := default-2021-03-09
 
-OCR_MODEL := https://zenodo.org/records/17236998/files/models_ocr_v0_5_1.tar.gz?download=1
+OCR_MODEL := https://zenodo.org/records/17295988/files/models_ocr_v0_6_0.tar.gz?download=1
 OCR_MODELFILE = $(notdir $(patsubst %?download=1,%,$(OCR_MODEL)))
 OCR_MODELNAME = $(OCR_MODELFILE:%.tar.gz=%)
 
@@ -55,18 +57,18 @@ help:
 # END-EVAL
 
 
-# Download and extract models to $(PWD)/models_layout_v0_5_0
+# Download and extract models to $(PWD)/models_layout_v0_6_0
 models: $(BIN_MODELNAME) $(SEG_MODELNAME) $(OCR_MODELNAME)
 
 # do not download these files if we already have the directories
 .INTERMEDIATE: $(BIN_MODELFILE) $(SEG_MODELFILE) $(OCR_MODELFILE)
 
 $(BIN_MODELFILE):
-	wget -O $@ $(BIN_MODEL)
+	$(WGET) $@ $(BIN_MODEL)
 $(SEG_MODELFILE):
-	wget -O $@ $(SEG_MODEL)
+	$(WGET) $@ $(SEG_MODEL)
 $(OCR_MODELFILE):
-	wget -O $@ $(OCR_MODEL)
+	$(WGET) $@ $(OCR_MODEL)
 
 $(BIN_MODELNAME): $(BIN_MODELFILE)
 	mkdir $@
