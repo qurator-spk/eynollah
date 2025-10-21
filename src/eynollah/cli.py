@@ -121,17 +121,38 @@ def machine_based_reading_order(input, dir_in, out, model, log_level):
     required=True,
 )
 @click.option(
+    '-M',
+    '--mode',
+    type=click.Choice(['single', 'multi']),
+    default='single',
+    help="Whether to use the (faster) single-model binarization or the (slightly better) multi-model binarization"
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
-def binarization(patches, model_dir, input_image, dir_in, output, log_level):
+def binarization(
+    patches,
+    model_dir,
+    input_image,
+    mode,
+    dir_in,
+    output,
+    log_level,
+):
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     binarizer = SbbBinarizer(model_dir)
     if log_level:
         binarizer.log.setLevel(getLevelName(log_level))
-    binarizer.run(image_path=input_image, use_patches=patches, output=output, dir_in=dir_in)
+    binarizer.run(
+        image_path=input_image,
+        use_patches=patches,
+        mode=mode,
+        output=output,
+        dir_in=dir_in
+    )
 
 
 @main.command()

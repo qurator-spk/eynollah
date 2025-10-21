@@ -25,6 +25,19 @@ DEFAULT_MODEL_VERSIONS: Dict[str, Dict[str, str]] = {
         '': "eynollah-binarization_20210425"
     },
 
+    "binarization_multi_1": {
+        '': "saved_model_2020_01_16/model_bin1",
+    },
+    "binarization_multi_2": {
+        '': "saved_model_2020_01_16/model_bin2",
+    },
+    "binarization_multi_3": {
+        '': "saved_model_2020_01_16/model_bin3",
+    },
+    "binarization_multi_4": {
+        '': "saved_model_2020_01_16/model_bin4",
+    },
+
     "col_classifier": {
         '': "eynollah-column-classifier_20210425",
     },
