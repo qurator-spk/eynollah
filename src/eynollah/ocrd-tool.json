@@ -83,10 +83,10 @@
       },
       "resources": [
         {
-          "url": "https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1",
-          "name": "models_layout_v0_5_0",
+          "url": "https://zenodo.org/records/17295988/files/models_layout_v0_6_0.tar.gz?download=1",
+          "name": "models_layout_v0_6_0",
           "type": "archive",
-          "path_in_archive": "models_layout_v0_5_0",
+          "path_in_archive": "models_layout_v0_6_0",
           "size": 3525684179,
           "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization, image enhancement",
           "version_range": ">= v0.5.0"

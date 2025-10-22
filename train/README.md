@@ -22,14 +22,14 @@ Download our pretrained weights and add them to a `train/pretrained_model` folde
 
 ```sh
 cd train
-wget -O pretrained_model.tar.gz https://zenodo.org/records/17243320/files/pretrained_model_v0_5_1.tar.gz?download=1
+wget -O pretrained_model.tar.gz "https://zenodo.org/records/17295988/files/pretrained_model_v0_6_0.tar.gz?download=1"
 tar xf pretrained_model.tar.gz
 ```
 
 ### Binarization training data
 
 A small sample of training data for binarization experiment can be found [on
-zenodo](https://zenodo.org/records/17243320/files/training_data_sample_binarization_v0_5_1.tar.gz?download=1),
+zenodo](https://zenodo.org/records/17295988/files/training_data_sample_binarization_v0_6_0.tar.gz?download=1),
 which contains `images` and `labels` folders.
 
 ### Helpful tools

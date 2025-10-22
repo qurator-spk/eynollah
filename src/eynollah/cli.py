@@ -1,15 +1,23 @@
+from dataclasses import dataclass
 import sys
 import click
 import logging
+from typing import Tuple, List
 from ocrd_utils import initLogging, getLevelName, getLogger
-from eynollah.eynollah import Eynollah, Eynollah_ocr
+from eynollah.eynollah import Eynollah
+from eynollah.eynollah_ocr import Eynollah_ocr
 from eynollah.sbb_binarize import SbbBinarizer
 from eynollah.image_enhancer import Enhancer
 from eynollah.mb_ro_on_layout import machine_based_reading_order_on_layout
+from eynollah.model_zoo import EynollahModelZoo
+
+from .cli_models import models_cli
 
 @click.group()
 def main():
     pass
+
+main.add_command(models_cli, 'models')
 
 @main.command()
 @click.option(
@@ -80,17 +88,37 @@ def machine_based_reading_order(input, dir_in, out, model, log_level):
     required=True,
 )
 @click.option(
+    '-M',
+    '--mode',
+    type=click.Choice(['single', 'multi']),
+    default='single',
+    help="Whether to use the (faster) single-model binarization or the (slightly better) multi-model binarization"
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
-def binarization(patches, model_dir, input_image, dir_in, output, log_level):
+def binarization(
+    patches,
+    model_dir,
+    input_image,
+    mode,
+    dir_in,
+    output,
+    log_level,
+):
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    binarizer = SbbBinarizer(model_dir)
+    binarizer = SbbBinarizer(model_dir, mode=mode)
     if log_level:
         binarizer.log.setLevel(getLevelName(log_level))
-    binarizer.run(image_path=input_image, use_patches=patches, output=output, dir_in=dir_in)
+    binarizer.run(
+        image_path=input_image,
+        use_patches=patches,
+        output=output,
+        dir_in=dir_in
+    )
 
 
 @main.command()
@@ -198,15 +226,17 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
 @click.option(
     "--model",
     "-m",
+    'model_basedir',
     help="directory of models",
     type=click.Path(exists=True, file_okay=False),
+    # default=f"{os.environ['HOME']}/.local/share/ocrd-resources/ocrd-eynollah-segment",
     required=True,
 )
 @click.option(
     "--model_version",
     "-mv",
-    help="override default versions of model categories",
-    type=(str, str),
+    help="override default versions of model categories, syntax is 'CATEGORY VARIANT PATH', e.g 'region light /path/to/model'. See eynollah list-models for the full list",
+    type=(str, str, str),
     multiple=True,
 )
 @click.option(
@@ -380,7 +410,43 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
     help="Setup a basic console logger",
 )
 
-def layout(image, out, overwrite, dir_in, model, model_version, save_images, save_layout, save_deskewed, save_all, extract_only_images, save_page, enable_plotting, allow_enhancement, curved_line, textline_light, full_layout, tables, right2left, input_binary, allow_scaling, headers_off, light_version, reading_order_machine_based, do_ocr, transformer_ocr, batch_size_ocr, num_col_upper, num_col_lower, threshold_art_class_textline, threshold_art_class_layout, skip_layout_and_reading_order, ignore_page_extraction, log_level, setup_logging):
+def layout(
+    image,
+    out,
+    overwrite,
+    dir_in,
+    model_basedir,
+    model_version,
+    save_images,
+    save_layout,
+    save_deskewed,
+    save_all,
+    extract_only_images,
+    save_page,
+    enable_plotting,
+    allow_enhancement,
+    curved_line,
+    textline_light,
+    full_layout,
+    tables,
+    right2left,
+    input_binary,
+    allow_scaling,
+    headers_off,
+    light_version,
+    reading_order_machine_based,
+    do_ocr,
+    transformer_ocr,
+    batch_size_ocr,
+    num_col_upper,
+    num_col_lower,
+    threshold_art_class_textline,
+    threshold_art_class_layout,
+    skip_layout_and_reading_order,
+    ignore_page_extraction,
+    log_level,
+    setup_logging,
+):
     if setup_logging:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO)
@@ -410,8 +476,8 @@ def layout(image, out, overwrite, dir_in, model, model_version, save_images, sav
     assert not extract_only_images or not headers_off, "Image extraction -eoi can not be set alongside headers_off -ho"
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     eynollah = Eynollah(
-        model,
-        model_versions=model_version,
+        model_basedir,
+        model_overrides=model_version,
         extract_only_images=extract_only_images,
         enable_plotting=enable_plotting,
         allow_enhancement=allow_enhancement,

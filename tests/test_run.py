@@ -16,9 +16,12 @@ from ocrd_models.constants import NAMESPACES as NS
 
 testdir = Path(__file__).parent.resolve()
 
-MODELS_LAYOUT = environ.get('MODELS_LAYOUT', str(testdir.joinpath('..', 'models_layout_v0_5_0').resolve()))
-MODELS_OCR = environ.get('MODELS_OCR', str(testdir.joinpath('..', 'models_ocr_v0_5_1').resolve()))
+MODELS_LAYOUT = environ.get('MODELS_LAYOUT', str(testdir.joinpath('..', 'models_layout_v0_6_0').resolve()))
+MODELS_OCR = environ.get('MODELS_OCR', str(testdir.joinpath('..', 'models_ocr_v0_6_0').resolve()))
 MODELS_BIN = environ.get('MODELS_BIN', str(testdir.joinpath('..', 'default-2021-03-09').resolve()))
+
+def only_eynollah(logrec):
+		return logrec.name.startswith('eynollah')
 
 @pytest.mark.parametrize(
     "options",
@@ -50,8 +53,6 @@ def test_run_eynollah_layout_filename(tmp_path, pytestconfig, caplog, options):
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'eynollah'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
         result = runner.invoke(layout_cli, args + options, catch_exceptions=False)
@@ -85,8 +86,6 @@ def test_run_eynollah_layout_filename2(tmp_path, pytestconfig, caplog, options):
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'eynollah'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
         result = runner.invoke(layout_cli, args + options, catch_exceptions=False)
@@ -116,8 +115,6 @@ def test_run_eynollah_layout_directory(tmp_path, pytestconfig, caplog):
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'eynollah'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
         result = runner.invoke(layout_cli, args, catch_exceptions=False)
@@ -144,8 +141,6 @@ def test_run_eynollah_binarization_filename(tmp_path, pytestconfig, caplog, opti
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'SbbBinarizer'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
         result = runner.invoke(binarization_cli, args + options, catch_exceptions=False)
@@ -170,8 +165,6 @@ def test_run_eynollah_binarization_directory(tmp_path, pytestconfig, caplog):
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'SbbBinarizer'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
         result = runner.invoke(binarization_cli, args, catch_exceptions=False)
@@ -197,8 +190,6 @@ def test_run_eynollah_enhancement_filename(tmp_path, pytestconfig, caplog, optio
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'enhancement'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
         result = runner.invoke(enhancement_cli, args + options, catch_exceptions=False)
@@ -223,8 +214,6 @@ def test_run_eynollah_enhancement_directory(tmp_path, pytestconfig, caplog):
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'enhancement'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
         result = runner.invoke(enhancement_cli, args, catch_exceptions=False)
@@ -244,8 +233,6 @@ def test_run_eynollah_mbreorder_filename(tmp_path, pytestconfig, caplog):
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'mbreorder'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
         result = runner.invoke(mbreorder_cli, args, catch_exceptions=False)
@@ -273,8 +260,6 @@ def test_run_eynollah_mbreorder_directory(tmp_path, pytestconfig, caplog):
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'mbreorder'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
         result = runner.invoke(mbreorder_cli, args, catch_exceptions=False)
@@ -306,8 +291,6 @@ def test_run_eynollah_ocr_filename(tmp_path, pytestconfig, caplog, options):
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.DEBUG)
-    def only_eynollah(logrec):
-        return logrec.name == 'eynollah'
     runner = CliRunner()
     if "-doit" in options:
         options.insert(options.index("-doit") + 1, str(outrenderfile.parent))
@@ -339,8 +322,6 @@ def test_run_eynollah_ocr_directory(tmp_path, pytestconfig, caplog):
     if pytestconfig.getoption('verbose') > 0:
         args.extend(['-l', 'DEBUG'])
     caplog.set_level(logging.INFO)
-    def only_eynollah(logrec):
-        return logrec.name == 'eynollah'
     runner = CliRunner()
     with caplog.filtering(only_eynollah):
         result = runner.invoke(ocr_cli, args, catch_exceptions=False)

@@ -55,7 +55,7 @@ make install EXTRAS=OCR
 
 ## Models
 
-Pretrained models can be downloaded from [zenodo](https://zenodo.org/records/17194824) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
+Pretrained models can be downloaded from [zenodo](https://doi.org/10.5281/zenodo.17194823) or [huggingface](https://huggingface.co/SBB?search_models=eynollah). 
 
 For documentation on models, have a look at [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md). 
 Model cards are also provided for our trained models.
@@ -162,7 +162,7 @@ formally described in [`ocrd-tool.json`](https://github.com/qurator-spk/eynollah
 
 In this case, the source image file group with (preferably) RGB images should be used as input like this:
 
-    ocrd-eynollah-segment -I OCR-D-IMG -O OCR-D-SEG -P models eynollah_layout_v0_5_0
+    ocrd-eynollah-segment -I OCR-D-IMG -O OCR-D-SEG -P models eynollah_layout_v0_6_0
 
 If the input file group is PAGE-XML (from a previous OCR-D workflow step), Eynollah behaves as follows:
 - existing regions are kept and ignored (i.e. in effect they might overlap segments from Eynollah results)
@@ -174,7 +174,7 @@ If the input file group is PAGE-XML (from a previous OCR-D workflow step), Eynol
   (because some other preprocessing step was in effect like `denoised`), then
   the output PAGE-XML will be based on that as new top-level (`@imageFilename`)
 
-      ocrd-eynollah-segment -I OCR-D-XYZ -O OCR-D-SEG -P models eynollah_layout_v0_5_0
+      ocrd-eynollah-segment -I OCR-D-XYZ -O OCR-D-SEG -P models eynollah_layout_v0_6_0
 
 In general, it makes more sense to add other workflow steps **after** Eynollah.
 
