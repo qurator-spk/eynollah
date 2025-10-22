@@ -165,7 +165,7 @@ This model is trained on data where most of the samples are in Fraktur german sc
 |      Dataset          |  Input |     CER    |    WER    |
 |-----------------------|:-------|:-----------|:----------|
 | OCR-D-GT-Archiveform  |  BIN   |   0.02147  |  0.05685  |
-| OCR-D-GT-Archiveform  |  RGB   |            |           |
+| OCR-D-GT-Archiveform  |  RGB   |   0.01636  |  0.06285  |
 
 #### CNN-RNN model: 	model_eynollah_ocr_cnnrnn_20250904 (Default)
 
@@ -186,7 +186,7 @@ This transformer OCR model is trained on the same data as model_eynollah_ocr_tro
 |      Dataset          |  Input      |     CER    |    WER    |
 |-----------------------|:------------|:-----------|:----------|
 | OCR-D-GT-Archiveform  |  BIN        |   0.01841  |  0.05589  |
-| OCR-D-GT-Archiveform  |  RGB        |            |           |
+| OCR-D-GT-Archiveform  |  RGB        |   0.01552  |  0.06177  |
 | BLN600                |  RGB        |   0.06347  |  0.13853  |
 
 ## Heuristic methods
