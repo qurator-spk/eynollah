@@ -24,7 +24,7 @@ def resize_image(img_in, input_height, input_width):
 
 class SbbBinarizer:
 
-    def __init__(self, model_dir, mode='single', logger=None):
+    def __init__(self, model_dir: str, mode: str, logger=None):
         if mode not in ('single', 'multi'):
             raise ValueError(f"'mode' must be either 'multi' or 'single', not {mode}")
         self.log = logger if logger else logging.getLogger('SbbBinarizer')

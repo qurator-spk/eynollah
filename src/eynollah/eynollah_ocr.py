@@ -18,7 +18,11 @@ from keras.models import load_model
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 from eynollah.model_zoo import EynollahModelZoo
-import torch
+try:
+    import torch
+except ImportError:
+    torch = None
+
 
 from .utils import is_image_filename
 from .utils.resize import resize_image

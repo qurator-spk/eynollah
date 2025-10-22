@@ -11,46 +11,13 @@ from eynollah.image_enhancer import Enhancer
 from eynollah.mb_ro_on_layout import machine_based_reading_order_on_layout
 from eynollah.model_zoo import EynollahModelZoo
 
-@dataclass
-class EynollahCliCtx():
-    model_basedir: str
-    model_overrides: List[Tuple[str, str, str]]
+from .cli_models import models_cli
 
 @click.group()
 def main():
     pass
 
-@main.command('list-models')
-@click.option(
-    "--model",
-    "-m",
-    'model_basedir',
-    help="directory of models",
-    type=click.Path(exists=True, file_okay=False),
-    # default=f"{os.environ['HOME']}/.local/share/ocrd-resources/ocrd-eynollah-segment",
-    required=True,
-)
-@click.option(
-    "--model-overrides",
-    "-mv",
-    help="override default versions of model categories, syntax is 'CATEGORY VARIANT PATH', e.g 'region light /path/to/model'. See eynollah list-models for the full list",
-    type=(str, str, str),
-    multiple=True,
-)
-@click.pass_context
-def list_models(
-    ctx,
-    model_basedir: str,
-    model_overrides: List[Tuple[str, str, str]],
-):
-    """
-        List all the models in the zoo
-    """
-    ctx.obj = EynollahCliCtx(
-        model_basedir=model_basedir,
-        model_overrides=model_overrides
-    )
-    print(EynollahModelZoo(basedir=ctx.obj.model_basedir, model_overrides=ctx.obj.model_overrides))
+main.add_command(models_cli, 'models')
 
 @main.command()
 @click.option(
@@ -143,13 +110,12 @@ def binarization(
     log_level,
 ):
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    binarizer = SbbBinarizer(model_dir)
+    binarizer = SbbBinarizer(model_dir, mode=mode)
     if log_level:
         binarizer.log.setLevel(getLevelName(log_level))
     binarizer.run(
         image_path=input_image,
         use_patches=patches,
-        mode=mode,
         output=output,
         dir_in=dir_in
     )
