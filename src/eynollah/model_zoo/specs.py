@@ -26,7 +26,7 @@ class EynollahModelSpecSet():
     specs: List[EynollahModelSpec]
 
     def __init__(self, specs: List[EynollahModelSpec]) -> None:
-        self.specs = specs
+        self.specs = sorted(specs, key=lambda x: x.category + '0' + x.variant)
         self.categories: Set[str] = set([spec.category for spec in self.specs])
         self.variants: Dict[str, Set[str]] = {
             spec.category: set([x.variant for x in self.specs if x.category == spec.category])

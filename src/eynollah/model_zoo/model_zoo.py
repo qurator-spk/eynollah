@@ -166,7 +166,7 @@ class EynollahModelZoo:
                     else f'No, download {spec.dist_url}',
                     # self.model_path(spec.category, spec.variant),
                 ]
-                for spec in sorted(self.specs.specs, key=lambda x: x.category + '0' + x.variant)
+                for spec in self.specs.specs
             ],
             headers=[
                 'Type',
