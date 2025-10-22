@@ -24,61 +24,52 @@ jobs:
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
         df -h
     - uses: actions/checkout@v4
-    - uses: actions/cache/restore@v4
-      id: seg_model_cache
+
+    - name: Lint with ruff
+      uses: astral-sh/ruff-action@v3
       with:
-        path: models_layout_v0_5_0
-        key: seg-models
-    - uses: actions/cache/restore@v4
-      id: ocr_model_cache
+        src: "./src"
+
+    - name: Try to restore models_eynollah
+			uses: actions/cache/restore@v4
+      id: all_model_cache
       with:
-        path: models_ocr_v0_5_1
-        key: ocr-models
-    - uses: actions/cache/restore@v4
-      id: bin_model_cache
-      with:
-        path: default-2021-03-09
-        key: bin-models
+        path: models_eynollah
+        key: models_eynollah
+
     - name: Download models
-      if: steps.seg_model_cache.outputs.cache-hit != 'true' || steps.bin_model_cache.outputs.cache-hit != 'true' || steps.ocr_model_cache.outputs.cache-hit != true
-      run: make models
+      if: steps.all_model_cache.outputs.cache-hit != 'true'
+      run: |
+				make models
+				ls -la models_eynollah
+
     - uses: actions/cache/save@v4
-      if: steps.seg_model_cache.outputs.cache-hit != 'true'
+      if: steps.all_model_cache.outputs.cache-hit != 'true'
       with:
-        path: models_layout_v0_5_0
-        key: seg-models
-    - uses: actions/cache/save@v4
-      if: steps.ocr_model_cache.outputs.cache-hit != 'true'
-      with:
-        path: models_ocr_v0_5_1
-        key: ocr-models
-    - uses: actions/cache/save@v4
-      if: steps.bin_model_cache.outputs.cache-hit != 'true'
-      with:
-        path: default-2021-03-09
-        key: bin-models
+        path: models_eynollah
+        key: models_eynollah
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         make install-dev EXTRAS=OCR,plotting
         make deps-test EXTRAS=OCR,plotting
-        ls -l models_*
-    - name: Lint with ruff
-      uses: astral-sh/ruff-action@v3
-      with:
-        src: "./src"
+
     - name: Test with pytest
       run: make coverage PYTEST_ARGS="-vv --junitxml=pytest.xml"
+
     - name: Get coverage results
       run: |
         coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
         coverage html
         coverage json
         coverage xml
+
     - name: Store coverage results
       uses: actions/upload-artifact@v4
       with:
@@ -88,12 +79,15 @@ jobs:
             pytest.xml
             coverage.xml
             coverage.json
+
     - name: Upload coverage results
       uses: codecov/codecov-action@v4
       with:
         files: coverage.xml
         fail_ci_if_error: false
+
     - name: Test standalone CLI
       run: make smoke-test
+
     - name: Test OCR-D CLI
       run: make ocrd-test
