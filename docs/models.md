@@ -189,6 +189,16 @@ This transformer OCR model is trained on the same data as model_eynollah_ocr_tro
 | OCR-D-GT-Archiveform  |  RGB        |   0.01552  |  0.06177  |
 | BLN600                |  RGB        |   0.06347  |  0.13853  |
 
+##### Qualitative evaluation of the models
+
+###### CNN-RNN model: model_eynollah_ocr_cnnrnn_20250805
+
+
+###### CNN-RNN model: 	model_eynollah_ocr_cnnrnn_20250904 (Default)
+
+
+###### Transformer OCR model: model_eynollah_ocr_trocr_20250919
+
 ## Heuristic methods
 
 Additionally, some heuristic methods are employed to further improve the model predictions: 
