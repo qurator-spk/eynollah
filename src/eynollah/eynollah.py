@@ -265,7 +265,7 @@ class Eynollah:
         if self.ocr:
             if self.tr:
                 loadable.append(('ocr', 'tr'))
-                loadable.append(('trocr_processor', 'tr'))
+                loadable.append(('trocr_processor', ''))
             else:
                 loadable.append('ocr')
                 loadable.append('num_to_char')
