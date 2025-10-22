@@ -199,7 +199,7 @@ class Eynollah_ocr:
                                             indexer_b_s = 0
                                             
                                             pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
-                                            generated_ids_merged = self.model_ocr.generate(
+                                            generated_ids_merged = self.model_zoo.get('ocr').generate(
                                                 pixel_values_merged.to(self.device))
                                             generated_text_merged = self.model_zoo.get('processor').batch_decode(
                                                 generated_ids_merged, skip_special_tokens=True)
@@ -222,7 +222,7 @@ class Eynollah_ocr:
                                                 indexer_b_s = 0
                                                 
                                                 pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
-                                                generated_ids_merged = self.model_ocr.generate(
+                                                generated_ids_merged = self.model_zoo.get('ocr').generate(
                                                     pixel_values_merged.to(self.device))
                                                 generated_text_merged = self.model_zoo.get('processor').batch_decode(
                                                     generated_ids_merged, skip_special_tokens=True)
@@ -242,7 +242,7 @@ class Eynollah_ocr:
                                                 indexer_b_s = 0
                                                 
                                                 pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
-                                                generated_ids_merged = self.model_ocr.generate(
+                                                generated_ids_merged = self.model_zoo.get('ocr').generate(
                                                     pixel_values_merged.to(self.device))
                                                 generated_text_merged = self.model_zoo.get('processor').batch_decode(
                                                     generated_ids_merged, skip_special_tokens=True)
@@ -260,7 +260,7 @@ class Eynollah_ocr:
                                                 indexer_b_s = 0
                                                 
                                                 pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
-                                                generated_ids_merged = self.model_ocr.generate(
+                                                generated_ids_merged = self.model_zoo.get('ocr').generate(
                                                     pixel_values_merged.to(self.device))
                                                 generated_text_merged = self.model_zoo.get('processor').batch_decode(
                                                     generated_ids_merged, skip_special_tokens=True)
@@ -277,7 +277,7 @@ class Eynollah_ocr:
                     indexer_b_s = 0
                     
                     pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
-                    generated_ids_merged = self.model_ocr.generate(pixel_values_merged.to(self.device))
+                    generated_ids_merged = self.model_zoo.get('ocr').generate(pixel_values_merged.to(self.device))
                     generated_text_merged = self.model_zoo.get('processor').batch_decode(generated_ids_merged, skip_special_tokens=True)
                     
                     extracted_texts = extracted_texts + generated_text_merged
@@ -753,10 +753,10 @@ class Eynollah_ocr:
                             
 
                         self.logger.debug("processing next %d lines", len(imgs))
-                        preds = self.prediction_model.predict(imgs, verbose=0)
+                        preds = self.model_zoo.get('ocr').predict(imgs, verbose=0)
                         
                         if len(indices_ver)>0:
-                            preds_flipped = self.prediction_model.predict(imgs_ver_flipped, verbose=0)
+                            preds_flipped = self.model_zoo.get('ocr').predict(imgs_ver_flipped, verbose=0)
                             preds_max_fliped = np.max(preds_flipped, axis=2 )
                             preds_max_args_flipped = np.argmax(preds_flipped, axis=2 )
                             pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=self.end_character
@@ -786,10 +786,10 @@ class Eynollah_ocr:
                                 preds[indices_to_be_replaced,:,:] = \
                                     preds_flipped[indices_where_flipped_conf_value_is_higher, :, :]
                         if dir_in_bin is not None:
-                            preds_bin = self.prediction_model.predict(imgs_bin, verbose=0)
+                            preds_bin = self.model_zoo.get('ocr').predict(imgs_bin, verbose=0)
                             
                             if len(indices_ver)>0:
-                                preds_flipped = self.prediction_model.predict(imgs_bin_ver_flipped, verbose=0)
+                                preds_flipped = self.model_zoo.get('ocr').predict(imgs_bin_ver_flipped, verbose=0)
                                 preds_max_fliped = np.max(preds_flipped, axis=2 )
                                 preds_max_args_flipped = np.argmax(preds_flipped, axis=2 )
                                 pred_max_not_unk_mask_bool_flipped = preds_max_args_flipped[:,:]!=self.end_character
@@ -821,7 +821,7 @@ class Eynollah_ocr:
                             
                             preds = (preds + preds_bin) / 2.
 
-                        pred_texts = decode_batch_predictions(preds, self.num_to_char)
+                        pred_texts = decode_batch_predictions(preds, self.model_zoo.get('num_to_char'))
                         
                         preds_max = np.max(preds, axis=2 )
                         preds_max_args = np.argmax(preds, axis=2 )
