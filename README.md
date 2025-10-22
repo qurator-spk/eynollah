@@ -140,6 +140,16 @@ eynollah binarization \
 
 ### OCR
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/71054636-51c6-4117-b3cf-361c5cda3528" alt="Input Image" width="45%">
+  <img src="https://github.com/user-attachments/assets/cfb3ce38-007a-4037-b547-21324a7d56dd" alt="Output Image" width="45%">
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/343b2ed8-d818-4d4a-b301-f304cbbebfcd" alt="Input Image" width="45%">
+  <img src="https://github.com/user-attachments/assets/accb5ba7-e37f-477e-84aa-92eafa0d136e" alt="Output Image" width="45%">
+</p>
+
 The OCR module performs text recognition using either a CNN-RNN model or a Transformer model.
 
 The command-line interface for OCR can be called like this:
