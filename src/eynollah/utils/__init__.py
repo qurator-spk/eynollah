@@ -33,226 +33,229 @@ def pairwise(iterable):
         a = b
 
 def return_x_start_end_mothers_childs_and_type_of_reading_order(
-        x_min_hor_some, x_max_hor_some, cy_hor_some, peak_points, cy_hor_diff):
+        x_min_hor_some, x_max_hor_some, cy_hor_some, peak_points, y_max_hor_some):
+    """
+    Analyse which separators overlap multiple column candidates,
+    and how they overlap each other.
+
+    Ignore separators not spanning multiple columns.
+
+    For the separators to be returned, try to join them when they are directly
+    adjacent horizontally but nearby vertically (and thus mutually compatible).
+    Also, mark any separators that already span the full width.
+
+    Furthermore, identify which pairs of (unjoined) separators span subsets of columns
+    of each other (disregarding vertical positions). Referring, respectively, to the
+    superset separators as  "mothers" and to the subset separators as "children",
+    retrieve information on which columns are spanned by separators with no mother,
+    and which columns are spanned by their children (if any).
+
+    Moreover, determine if there is any (column) overlap among the multi-span separators
+    with no mother, specifically (and thus, no simple box separation is possible).
+
+    Arguments:
+        * the x start column index of the raw separators
+        * the x end column index of the raw separators
+        * the y center coordinate of the raw separators
+        * the x column coordinates
+        * the y end coordinate of the raw separators
+
+    Returns:
+        a tuple of:
+        * whether any top-level (no-mother) multi-span separators overlap each other
+        * the x start column index of the resulting multi-span separators
+        * the x end column index of the resulting multi-span separators
+        * the y center coordinate of the resulting multi-span separators
+        * the y end coordinate of the resulting multi-span separators
+        * the y center (for 1 representative) of the top-level (no-mother) multi-span separators
+        * the x start column index of the top-level (no-mother) multi-span separators
+        * the x end column index of the top-level (no-mother) multi-span separators
+        * whether any multi-span separators have super-spans of other (child) multi-span separators
+        * the y center (for 1 representative) of the top-level (no-mother) multi-span separators
+          which have super-spans of other (child) multi-span separators
+        * the x start column index of the top-level multi-span separators
+          which have super-spans of other (child) multi-span separators
+        * the x end column index of the top-level multi-span separators
+          which have super-spans of other (child) multi-span separators
+        * indexes of multi-span separators with full-width span
+    """
 
     x_start=[]
     x_end=[]
-    kind=[]#if covers 2 and more than 2 columns set it to 1 otherwise 0
     len_sep=[]
-    y_sep=[]
-    y_diff=[]
+    y_mid=[]
+    y_max=[]
     new_main_sep_y=[]
-
     indexer=0
     for i in range(len(x_min_hor_some)):
-        starting=x_min_hor_some[i]-peak_points
-        starting=starting[starting>=0]
-        min_start=np.argmin(starting)
-        ending=peak_points-x_max_hor_some[i]
-        len_ending_neg=len(ending[ending<=0])
-
-        ending=ending[ending>0]
-        max_end=np.argmin(ending)+len_ending_neg
+        #print(indexer, "%d:%d" % (x_min_hor_some[i], x_max_hor_some[i]), cy_hor_some[i])
+        starting = x_min_hor_some[i] - peak_points
+        min_start = np.flatnonzero(starting >= 0)[-1] # last left-of
+        ending = x_max_hor_some[i] - peak_points
+        max_end = np.flatnonzero(ending < 0)[0] # first right-of
+        #print(indexer, "%d:%d" % (min_start, max_end))
 
         if (max_end-min_start)>=2:
+            # column range of separator spans more than one column candidate
             if (max_end-min_start)==(len(peak_points)-1):
+                # all columns (i.e. could be true new y splitter)
                 new_main_sep_y.append(indexer)
 
             #print((max_end-min_start),len(peak_points),'(max_end-min_start)')
-            y_sep.append(cy_hor_some[i])
-            y_diff.append(cy_hor_diff[i])
+            y_mid.append(cy_hor_some[i])
+            y_max.append(y_max_hor_some[i])
             x_end.append(max_end)
-
-            x_start.append( min_start)
-
+            x_start.append(min_start)
             len_sep.append(max_end-min_start)
-            if max_end==min_start+1:
-                kind.append(0)
-            else:
-                kind.append(1)
-
             indexer+=1
+    #print(x_start,'x_start')
+    #print(x_end,'x_end')
 
     x_start_returned = np.array(x_start, dtype=int)
     x_end_returned = np.array(x_end, dtype=int)
-    y_sep_returned = np.array(y_sep, dtype=int)
-    y_diff_returned = np.array(y_diff, dtype=int)
-
-    all_args_uniq = contours_in_same_horizon(y_sep_returned)
-    args_to_be_unified=[]
-    y_unified=[]
-    y_diff_unified=[]
-    x_s_unified=[]
-    x_e_unified=[]
-    if len(all_args_uniq)>0:
-        #print('burda')
-        if type(all_args_uniq[0]) is list:
-            for dd in range(len(all_args_uniq)):
-                if len(all_args_uniq[dd])==2:
-                    x_s_same_hor=np.array(x_start_returned)[all_args_uniq[dd]]
-                    x_e_same_hor=np.array(x_end_returned)[all_args_uniq[dd]]
-                    y_sep_same_hor=np.array(y_sep_returned)[all_args_uniq[dd]]
-                    y_diff_same_hor=np.array(y_diff_returned)[all_args_uniq[dd]]
-                    #print('burda2')
-                    if (x_s_same_hor[0]==x_e_same_hor[1]-1 or
-                        x_s_same_hor[1]==x_e_same_hor[0]-1 and
-                        x_s_same_hor[0]!=x_s_same_hor[1] and
-                        x_e_same_hor[0]!=x_e_same_hor[1]):
-                        #print('burda3')
-                        for arg_in in all_args_uniq[dd]:
-                            #print(arg_in,'arg_in')
-                            args_to_be_unified.append(arg_in)
-                        y_selected=np.min(y_sep_same_hor)
-                        y_diff_selected=np.max(y_diff_same_hor)
-                        x_s_selected=np.min(x_s_same_hor)
-                        x_e_selected=np.max(x_e_same_hor)
-
-                        x_s_unified.append(x_s_selected)
-                        x_e_unified.append(x_e_selected)
-                        y_unified.append(y_selected)
-                        y_diff_unified.append(y_diff_selected)
-                    #print(x_s_same_hor,'x_s_same_hor')
-                    #print(x_e_same_hor[:]-1,'x_e_same_hor')
-                    #print('#############################')
-    #print(x_s_unified,'y_selected')
-    #print(x_e_unified,'x_s_selected')
-    #print(y_unified,'x_e_same_hor')
-
-    args_lines_not_unified=list( set(range(len(y_sep_returned)))-set(args_to_be_unified) )
-    #print(args_lines_not_unified,'args_lines_not_unified')
-
-    x_start_returned_not_unified=list( np.array(x_start_returned)[args_lines_not_unified] )
-    x_end_returned_not_unified=list( np.array(x_end_returned)[args_lines_not_unified] )
-    y_sep_returned_not_unified=list (np.array(y_sep_returned)[args_lines_not_unified] )
-    y_diff_returned_not_unified=list (np.array(y_diff_returned)[args_lines_not_unified] )
-
-    for dv in range(len(y_unified)):
-        y_sep_returned_not_unified.append(y_unified[dv])
-        y_diff_returned_not_unified.append(y_diff_unified[dv])
-        x_start_returned_not_unified.append(x_s_unified[dv])
-        x_end_returned_not_unified.append(x_e_unified[dv])
-
-    #print(y_sep_returned,'y_sep_returned')
+    y_mid_returned = np.array(y_mid, dtype=int)
+    y_max_returned = np.array(y_max, dtype=int)
+    #print(y_mid_returned,'y_mid_returned')
     #print(x_start_returned,'x_start_returned')
     #print(x_end_returned,'x_end_returned')
 
-    x_start_returned = np.array(x_start_returned_not_unified, dtype=int)
-    x_end_returned = np.array(x_end_returned_not_unified, dtype=int)
-    y_sep_returned = np.array(y_sep_returned_not_unified, dtype=int)
-    y_diff_returned = np.array(y_diff_returned_not_unified, dtype=int)
+    # join/elongate separators if follow-up x and similar y
+    sep_pairs = contours_in_same_horizon(y_mid_returned)
+    if len(sep_pairs):
+        #print('burda')
+        args_to_be_unified = set()
+        y_mid_unified = []
+        y_max_unified = []
+        x_start_unified = []
+        x_end_unified = []
+        for pair in sep_pairs:
+            if (not np.array_equal(*x_start_returned[pair]) and
+                not np.array_equal(*x_end_returned[pair]) and
+                # immediately adjacent columns?
+                np.diff(x_end_returned[pair] -
+                        x_start_returned[pair])[0] in [1, -1]):
 
-    #print(y_sep_returned,'y_sep_returned2')
+                args_to_be_unified.union(set(pair))
+                y_mid_unified.append(np.min(y_mid_returned[pair]))
+                y_max_unified.append(np.max(y_max_returned[pair]))
+                x_start_unified.append(np.min(x_start_returned[pair]))
+                x_end_unified.append(np.max(x_end_returned[pair]))
+                #print(pair,'pair')
+                #print(x_start_returned[pair],'x_s_same_hor')
+                #print(x_end_returned[pair],'x_e_same_hor')
+        #print(y_mid_unified,'y_mid_unified')
+        #print(y_max_unified,'y_max_unified')
+        #print(x_start_unified,'x_s_unified')
+        #print(x_end_unified,'x_e_selected')
+        #print('#############################')
+
+        if len(y_mid_unified):
+            args_lines_not_unified = np.setdiff1d(np.arange(len(y_mid_returned)),
+                                                  list(args_to_be_unified), assume_unique=True)
+            #print(args_lines_not_unified,'args_lines_not_unified')
+            x_start_returned = np.append(x_start_returned[args_lines_not_unified],
+                                         x_start_unified, axis=0)
+            x_end_returned = np.append(x_end_returned[args_lines_not_unified],
+                                       x_end_unified, axis=0)
+            y_mid_returned = np.append(y_mid_returned[args_lines_not_unified],
+                                       y_mid_unified, axis=0)
+            y_max_returned = np.append(y_max_returned[args_lines_not_unified],
+                                        y_max_unified, axis=0)
+    #print(y_mid_returned,'y_mid_returned2')
     #print(x_start_returned,'x_start_returned2')
     #print(x_end_returned,'x_end_returned2')
-    #print(new_main_sep_y,'new_main_sep_y')
 
+    #print(new_main_sep_y,'new_main_sep_y')
     #print(x_start,'x_start')
     #print(x_end,'x_end')
-    if len(new_main_sep_y)>0:
+    x_start = np.array(x_start)
+    x_end = np.array(x_end)
+    y_mid = np.array(y_mid)
+    if len(new_main_sep_y):
+        # some full-width multi-span separators exist, so
+        # restrict the y range of separators to search for
+        # mutual overlaps to only those within the largest
+        # y strip between adjacent multi-span separators
+        # that involve at least one such full-width seps.
+        # (does not affect the separators to be returned)
+        min_ys=np.min(y_mid)
+        max_ys=np.max(y_mid)
+        #print(min_ys,'min_ys')
+        #print(max_ys,'max_ys')
 
-        min_ys=np.min(y_sep)
-        max_ys=np.max(y_sep)
+        y_mains0 = list(y_mid[new_main_sep_y])
+        y_mains = [min_ys] + y_mains0 + [max_ys]
 
-        y_mains=[]
-        y_mains.append(min_ys)
-        y_mains_sep_ohne_grenzen=[]
+        y_mains = np.sort(y_mains)
+        argm = np.argmax(np.diff(y_mains))
+        y_mid_new = y_mains[argm]
+        y_mid_next_new = y_mains[argm + 1]
 
-        for ii in range(len(new_main_sep_y)):
-            y_mains.append(y_sep[new_main_sep_y[ii]])
-            y_mains_sep_ohne_grenzen.append(y_sep[new_main_sep_y[ii]])
-
-        y_mains.append(max_ys)
-
-        y_mains_sorted=np.sort(y_mains)
-        diff=np.diff(y_mains_sorted)
-        argm=np.argmax(diff)
-
-        y_min_new=y_mains_sorted[argm]
-        y_max_new=y_mains_sorted[argm+1]
-
-        #print(y_min_new,'y_min_new')
-        #print(y_max_new,'y_max_new')
-        #print(y_sep[new_main_sep_y[0]],y_sep,'yseps')
+        #print(y_mid_new,argm,'y_mid_new')
+        #print(y_mid_next_new,argm+1,'y_mid_next_new')
+        #print(y_mid[new_main_sep_y],new_main_sep_y,'yseps')
         x_start=np.array(x_start)
         x_end=np.array(x_end)
-        kind=np.array(kind)
-        y_sep=np.array(y_sep)
-        if (y_min_new in y_mains_sep_ohne_grenzen and
-            y_max_new in y_mains_sep_ohne_grenzen):
-            x_start=x_start[(y_sep>y_min_new) & (y_sep<y_max_new)]
-            x_end=x_end[(y_sep>y_min_new) & (y_sep<y_max_new)]
-            kind=kind[(y_sep>y_min_new) & (y_sep<y_max_new)]
-            y_sep=y_sep[(y_sep>y_min_new) & (y_sep<y_max_new)]
-        elif (y_min_new in y_mains_sep_ohne_grenzen and
-              y_max_new not in y_mains_sep_ohne_grenzen):
-            #print('burda')
-            x_start=x_start[(y_sep>y_min_new) & (y_sep<=y_max_new)]
-            #print('burda1')
-            x_end=x_end[(y_sep>y_min_new) & (y_sep<=y_max_new)]
-            #print('burda2')
-            kind=kind[(y_sep>y_min_new) & (y_sep<=y_max_new)]
-            y_sep=y_sep[(y_sep>y_min_new) & (y_sep<=y_max_new)]
-        elif (y_min_new not in y_mains_sep_ohne_grenzen and
-              y_max_new in y_mains_sep_ohne_grenzen):
-            x_start=x_start[(y_sep>=y_min_new) & (y_sep<y_max_new)]
-            x_end=x_end[(y_sep>=y_min_new) & (y_sep<y_max_new)]
-            kind=kind[(y_sep>=y_min_new) & (y_sep<y_max_new)]
-            y_sep=y_sep[(y_sep>=y_min_new) & (y_sep<y_max_new)]
+        y_mid=np.array(y_mid)
+        # iff either boundary is itself not a full-width separator,
+        # then include it in the range of separators to be kept
+        if y_mid_new in y_mains0:
+            where = y_mid > y_mid_new
         else:
-            x_start=x_start[(y_sep>=y_min_new) & (y_sep<=y_max_new)]
-            x_end=x_end[(y_sep>=y_min_new) & (y_sep<=y_max_new)]
-            kind=kind[(y_sep>=y_min_new) & (y_sep<=y_max_new)]
-            y_sep=y_sep[(y_sep>=y_min_new) & (y_sep<=y_max_new)]
+            where = y_mid >= y_mid_new
+        if y_mid_next_new in y_mains0:
+            where &= y_mid < y_mid_next_new
+        else:
+            where &= y_mid <= y_mid_next_new
+        x_start = x_start[where]
+        x_end = x_end[where]
+        y_mid = y_mid[where]
     #print(x_start,'x_start')
     #print(x_end,'x_end')
-    #print(len_sep)
 
+    # remove redundant separators that span the same columns
+    # (keeping only 1 representative each)
     deleted = set()
-    for i in range(len(x_start)-1):
-        nodes_i=set(range(x_start[i],x_end[i]+1))
-        for j in range(i+1,len(x_start)):
-            if nodes_i==set(range(x_start[j],x_end[j]+1)):
-                deleted.add(j)
-    #print(np.unique(deleted))
-
+    for index_i in range(len(x_start) - 1):
+        nodes_i = set(range(x_start[index_i], x_end[index_i] + 1))
+        #print(nodes_i, "nodes_i")
+        for index_j in range(index_i + 1, len(x_start)):
+            nodes_j = set(range(x_start[index_j], x_end[index_j] + 1))
+            #print(nodes_j, "nodes_j")
+            if nodes_i == nodes_j:
+                deleted.add(index_j)
+    #print(deleted,"deleted")
     remained_sep_indexes = set(range(len(x_start))) - deleted
     #print(remained_sep_indexes,'remained_sep_indexes')
-    mother=[]#if it has mother
-    child=[]
+
+    # determine which separators span which columns
+    mother = [] # whether the respective separator has a mother separator
+    child = [] # whether the respective separator has a child separator
     for index_i in remained_sep_indexes:
         have_mother=0
         have_child=0
-        nodes_ind=set(range(x_start[index_i],x_end[index_i]+1))
+        nodes_i = set(range(x_start[index_i], x_end[index_i] + 1))
         for index_j in remained_sep_indexes:
-            nodes_ind_j=set(range(x_start[index_j],x_end[index_j]+1))
-            if nodes_ind<nodes_ind_j:
+            nodes_j = set(range(x_start[index_j], x_end[index_j] + 1))
+            if nodes_i < nodes_j:
                 have_mother=1
-            if nodes_ind>nodes_ind_j:
+            if nodes_i > nodes_j:
                 have_child=1
         mother.append(have_mother)
         child.append(have_child)
-
-    #print(mother,'mother')
-    #print(len(remained_sep_indexes))
-    #print(len(remained_sep_indexes),len(x_start),len(x_end),len(y_sep),'lens')
-    y_lines_without_mother=[]
-    x_start_without_mother=[]
-    x_end_without_mother=[]
-
-    y_lines_with_child_without_mother=[]
-    x_start_with_child_without_mother=[]
-    x_end_with_child_without_mother=[]
+    #print(mother, "mother")
+    #print(child, "child")
 
     mother = np.array(mother)
     child = np.array(child)
     #print(mother,'mother')
     #print(child,'child')
     remained_sep_indexes = np.array(list(remained_sep_indexes))
-    x_start = np.array(x_start)
-    x_end = np.array(x_end)
-    y_sep = np.array(y_sep)
+    #print(len(remained_sep_indexes))
+    #print(len(remained_sep_indexes),len(x_start),len(x_end),len(y_mid),'lens')
 
-    if len(remained_sep_indexes)>1:
+    reading_order_type = 0
+    if len(remained_sep_indexes):
         #print(np.array(remained_sep_indexes),'np.array(remained_sep_indexes)')
         #print(np.array(mother),'mother')
         remained_sep_indexes_without_mother = remained_sep_indexes[mother==0]
@@ -262,52 +265,53 @@ def return_x_start_end_mothers_childs_and_type_of_reading_order(
 
         x_end_with_child_without_mother = x_end[remained_sep_indexes_with_child_without_mother]
         x_start_with_child_without_mother = x_start[remained_sep_indexes_with_child_without_mother]
-        y_lines_with_child_without_mother = y_sep[remained_sep_indexes_with_child_without_mother]
+        y_mid_with_child_without_mother = y_mid[remained_sep_indexes_with_child_without_mother]
 
-        reading_order_type=0
         x_end_without_mother = x_end[remained_sep_indexes_without_mother]
         x_start_without_mother = x_start[remained_sep_indexes_without_mother]
-        y_lines_without_mother = y_sep[remained_sep_indexes_without_mother]
+        y_mid_without_mother = y_mid[remained_sep_indexes_without_mother]
 
         if len(remained_sep_indexes_without_mother)>=2:
             for i in range(len(remained_sep_indexes_without_mother)-1):
-                nodes_i=set(range(x_start[remained_sep_indexes_without_mother[i]],
-                                  x_end[remained_sep_indexes_without_mother[i]]
-                                  # + 1
-                                  ))
-                for j in range(i+1,len(remained_sep_indexes_without_mother)):
-                    nodes_j=set(range(x_start[remained_sep_indexes_without_mother[j]],
-                                      x_end[remained_sep_indexes_without_mother[j]]
-                                      # + 1
-                                      ))
+                index_i = remained_sep_indexes_without_mother[i]
+                nodes_i = set(range(x_start[index_i], x_end[index_i])) #  + 1
+                #print(index_i, nodes_i, "nodes_i without mother")
+                for j in range(i + 1, len(remained_sep_indexes_without_mother)):
+                    index_j = remained_sep_indexes_without_mother[j]
+                    nodes_j = set(range(x_start[index_j], x_end[index_j])) #  + 1
+                    #print(index_j, nodes_j, "nodes_j without mother")
                     if nodes_i - nodes_j != nodes_i:
+                        #print("type=1")
                         reading_order_type = 1
     else:
-        reading_order_type = 0
-    #print(reading_order_type,'javab')
-    #print(y_lines_with_child_without_mother,'y_lines_with_child_without_mother')
+        y_mid_without_mother = np.zeros(0, int)
+        x_start_without_mother = np.zeros(0, int)
+        x_end_without_mother = np.zeros(0, int)
+        y_mid_with_child_without_mother = np.zeros(0, int)
+        x_start_with_child_without_mother = np.zeros(0, int)
+        x_end_with_child_without_mother = np.zeros(0, int)
+
+    #print(reading_order_type,'reading_order_type')
+    #print(y_mid_with_child_without_mother,'y_mid_with_child_without_mother')
     #print(x_start_with_child_without_mother,'x_start_with_child_without_mother')
     #print(x_end_with_child_without_mother,'x_end_with_hild_without_mother')
 
     len_sep_with_child = len(child[child==1])
-
     #print(len_sep_with_child,'len_sep_with_child')
     there_is_sep_with_child = 0
     if len_sep_with_child >= 1:
         there_is_sep_with_child = 1
-    #print(all_args_uniq,'all_args_uniq')
-    #print(args_to_be_unified,'args_to_be_unified')
 
     return (reading_order_type,
             x_start_returned,
             x_end_returned,
-            y_sep_returned,
-            y_diff_returned,
-            y_lines_without_mother,
+            y_mid_returned,
+            y_max_returned,
+            y_mid_without_mother,
             x_start_without_mother,
             x_end_without_mother,
             there_is_sep_with_child,
-            y_lines_with_child_without_mother,
+            y_mid_with_child_without_mother,
             x_start_with_child_without_mother,
             x_end_with_child_without_mother,
             new_main_sep_y)

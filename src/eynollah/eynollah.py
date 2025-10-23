@@ -2507,6 +2507,7 @@ class Eynollah:
                          My_main[ii] < box[3])):
                         arg_text_con_main[ii] = jj
                         check_if_textregion_located_in_a_box = True
+                        #print("main/matched", (mx_main[ii], Mx_main[ii], my_main[ii], My_main[ii]), "\tin", box, only_centers)
                         break
                 if not check_if_textregion_located_in_a_box:
                     dists_tr_from_box = np.linalg.norm(c_boxes - np.array([[cy_main[ii]], [cx_main[ii]]]), axis=0)
@@ -2514,6 +2515,7 @@ class Eynollah:
                                          (boxes[:, 0] <= cx_main[ii]) & (cx_main[ii] < boxes[:, 1]))
                     ind_min = np.argmin(np.ma.masked_array(dists_tr_from_box, ~pcontained_in_box))
                     arg_text_con_main[ii] = ind_min
+                    #print("main/fallback", (mx_main[ii], Mx_main[ii], my_main[ii], My_main[ii]), "\tin", boxes[ind_min], only_centers)
             args_contours_main = np.arange(len(contours_only_text_parent))
             order_by_con_main = np.zeros_like(arg_text_con_main)
 
@@ -2531,6 +2533,7 @@ class Eynollah:
                          My_head[ii] < box[3])):
                         arg_text_con_head[ii] = jj
                         check_if_textregion_located_in_a_box = True
+                        #print("head/matched", (mx_head[ii], Mx_head[ii], my_head[ii], My_head[ii]), "\tin", box, only_centers)
                         break
                 if not check_if_textregion_located_in_a_box:
                     dists_tr_from_box = np.linalg.norm(c_boxes - np.array([[cy_head[ii]], [cx_head[ii]]]), axis=0)
@@ -2538,6 +2541,7 @@ class Eynollah:
                                          (boxes[:, 0] <= cx_head[ii]) & (cx_head[ii] < boxes[:, 1]))
                     ind_min = np.argmin(np.ma.masked_array(dists_tr_from_box, ~pcontained_in_box))
                     arg_text_con_head[ii] = ind_min
+                    #print("head/fallback", (mx_head[ii], Mx_head[ii], my_head[ii], My_head[ii]), "\tin", boxes[ind_min], only_centers)
             args_contours_head = np.arange(len(contours_only_text_parent_h))
             order_by_con_head = np.zeros_like(arg_text_con_head)
 
@@ -2587,7 +2591,7 @@ class Eynollah:
         try:
             results = match_boxes(False)
         except Exception as why:
-            self.logger.error(why)
+            self.logger.exception(why)
             results = match_boxes(True)
 
         self.logger.debug("exit do_order_of_regions")
@@ -2976,7 +2980,7 @@ class Eynollah:
                                      max(self.num_col_lower or num_col_classifier,
                                          num_col_classifier))
         except Exception as why:
-            self.logger.error(why)
+            self.logger.exception(why)
             num_col = None
         #print("inside graphics 3 ", time.time() - t_in_gr)
         return (num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines,
@@ -3044,7 +3048,7 @@ class Eynollah:
             if not num_column_is_classified:
                 num_col_classifier = num_col + 1
         except Exception as why:
-            self.logger.error(why)
+            self.logger.exception(why)
             num_col = None
         return (num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines,
                 text_regions_p_1, cont_page, table_prediction)
