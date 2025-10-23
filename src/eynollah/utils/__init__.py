@@ -1551,23 +1551,23 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
                                        (x_max_head>=.84*region_pre_p.shape[1])]
         cy_seps_splitters = np.append(cy_seps_splitters, cy_seps_splitters_head)
 
-    cy_seps_splitters = np.sort(cy_seps_splitters)
+    cy_seps_splitters = np.sort(cy_seps_splitters).astype(int)
     splitter_y_new = [0] + list(cy_seps_splitters) + [region_pre_p.shape[0]]
-    splitter_y_new_diff = np.diff(splitter_y_new) / float(region_pre_p.shape[0]) * 100
-
-    args_big_parts=np.arange(len(splitter_y_new_diff))[ splitter_y_new_diff>22 ]
+    big_part = 22 * region_pre_p.shape[0] // 100 # percent height
 
     regions_without_separators=return_regions_without_separators(region_pre_p)
-    length_y_threshold=regions_without_separators.shape[0]/4.0
 
     num_col_fin=0
     peaks_neg_fin_fin=[]
-    for itiles in args_big_parts:
-        regions_without_separators_tile=regions_without_separators[int(splitter_y_new[itiles]):
-                                                                   int(splitter_y_new[itiles+1]),:]
+    num_big_parts = 0
+    for top, bot in pairwise(splitter_y_new):
+        if bot - top < big_part:
+            continue
+        num_big_parts += 1
         try:
-            num_col, peaks_neg_fin = find_num_col(regions_without_separators_tile,
+            num_col, peaks_neg_fin = find_num_col(regions_without_separators[top: bot],
                                                   num_col_classifier, tables, multiplier=7.0)
+            #print("big part %d:%d has %d columns" % (top, bot, num_col), peaks_neg_fin)
         except:
             num_col = 0
             peaks_neg_fin = []
@@ -1575,7 +1575,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
             num_col_fin=num_col
             peaks_neg_fin_fin=peaks_neg_fin
 
-    if len(args_big_parts)==1 and (len(peaks_neg_fin_fin)+1)<num_col_classifier:
+    if num_big_parts == 1 and len(peaks_neg_fin_fin) + 1 < num_col_classifier:
         peaks_neg_fin=find_num_col_by_vertical_lines(vertical)
         peaks_neg_fin=peaks_neg_fin[peaks_neg_fin>=500]
         peaks_neg_fin=peaks_neg_fin[peaks_neg_fin<=(vertical.shape[1]-500)]
