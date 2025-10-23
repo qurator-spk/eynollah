@@ -31,7 +31,7 @@ jobs:
         src: "./src"
 
     - name: Try to restore models_eynollah
-			uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v4
       id: all_model_cache
       with:
         path: models_eynollah
@@ -40,8 +40,8 @@ jobs:
     - name: Download models
       if: steps.all_model_cache.outputs.cache-hit != 'true'
       run: |
-				make models
-				ls -la models_eynollah
+        make models
+        ls -la models_eynollah
 
     - uses: actions/cache/save@v4
       if: steps.all_model_cache.outputs.cache-hit != 'true'

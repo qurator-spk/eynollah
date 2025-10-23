@@ -14,17 +14,9 @@ WGET = wget -O
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz
 #SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1
-SEG_MODEL := https://zenodo.org/records/17295988/files/models_layout_v0_6_0.tar.gz?download=1
-SEG_MODELFILE = $(notdir $(patsubst %?download=1,%,$(SEG_MODEL)))
-SEG_MODELNAME = $(SEG_MODELFILE:%.tar.gz=%)
-
-BIN_MODEL := https://zenodo.org/records/17295988/files/models_binarization_v0_6_0.tar.gz?download=1
-BIN_MODELFILE = $(notdir $(BIN_MODEL))
-BIN_MODELNAME := default-2021-03-09
-
-OCR_MODEL := https://zenodo.org/records/17295988/files/models_ocr_v0_6_0.tar.gz?download=1
-OCR_MODELFILE = $(notdir $(patsubst %?download=1,%,$(OCR_MODEL)))
-OCR_MODELNAME = $(OCR_MODELFILE:%.tar.gz=%)
+EYNOLLAH_MODELS_URL := https://zenodo.org/records/17295988/files/models_all_v0_7_0.zip
+EYNOLLAH_MODELS_ZIP = $(notdir $(SEG_MODEL))
+EYNOLLAH_MODELS_DIR = $(SEG_MODELFILE:%.zip=%)
 
 PYTEST_ARGS ?= -vv --isolate
 
@@ -49,33 +41,23 @@ help:
 	@echo "    EXTRAS       comma-separated list of features (like 'OCR,plotting') for 'install' [$(EXTRAS)]"
 	@echo "    DOCKER_TAG   Docker image tag for 'docker' [$(DOCKER_TAG)]"
 	@echo "    PYTEST_ARGS  pytest args for 'test' (Set to '-s' to see log output during test execution, '-vv' to see individual tests. [$(PYTEST_ARGS)]"
-	@echo "    SEG_MODEL    URL of 'models' archive to download for segmentation 'test' [$(SEG_MODEL)]"
-	@echo "    BIN_MODEL    URL of 'models' archive to download for binarization 'test' [$(BIN_MODEL)]"
-	@echo "    OCR_MODEL    URL of 'models' archive to download for binarization 'test' [$(OCR_MODEL)]"
+	@echo "    ALL_MODELS   URL of archive of all models [$(ALL_MODELS)]"
 	@echo ""
 
 # END-EVAL
 
 
 # Download and extract models to $(PWD)/models_layout_v0_6_0
-models: $(BIN_MODELNAME) $(SEG_MODELNAME) $(OCR_MODELNAME)
+models: $(EYNOLLAH_MODELS_DIR)
 
 # do not download these files if we already have the directories
-.INTERMEDIATE: $(BIN_MODELFILE) $(SEG_MODELFILE) $(OCR_MODELFILE)
+.INTERMEDIATE: $(EYNOLLAH_MODELS_ZIP)
 
-$(BIN_MODELFILE):
-	$(WGET) $@ $(BIN_MODEL)
-$(SEG_MODELFILE):
-	$(WGET) $@ $(SEG_MODEL)
-$(OCR_MODELFILE):
-	$(WGET) $@ $(OCR_MODEL)
+$(EYNOLLAH_MODELS_ZIP):
+	$(WGET) $@ $(EYNOLLAH_MODELS_URL)
 
-$(BIN_MODELNAME): $(BIN_MODELFILE)
-	tar zxf $<
-$(SEG_MODELNAME): $(SEG_MODELFILE)
-	tar zxf $<
-$(OCR_MODELNAME): $(OCR_MODELFILE)
-	tar zxf $<
+$(EYNOLLAH_MODELS_DIR): $(EYNOLLAH_MODELS_ZIP)
+	unzip $<
 
 build:
 	$(PIP) install build
@@ -89,13 +71,8 @@ install:
 install-dev:
 	$(PIP) install -e .$(and $(EXTRAS),[$(EXTRAS)])
 
-ifeq (OCR,$(findstring OCR, $(EXTRAS)))
-deps-test: $(OCR_MODELNAME)
-endif
-deps-test: $(BIN_MODELNAME) $(SEG_MODELNAME)
+deps-test: $(EYNOLLAH_MODELS_ZIP)
 	$(PIP) install -r requirements-test.txt
-ifeq (OCR,$(findstring OCR, $(EXTRAS)))
-	ln -rs $(OCR_MODELNAME)/* $(SEG_MODELNAME)/
 endif
 
 smoke-test: TMPDIR != mktemp -d

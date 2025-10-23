@@ -85,9 +85,9 @@ def package(
             copies.add((src, dist_dir))
             mkdirs.add(dist_dir)
     for dir in mkdirs:
-        print(f"mkdir -p {dir}")
+        print(f"mkdir -vp {dir}")
     for (src, dst) in copies:
-        print(f"cp -r {src} {dst}")
+        print(f"cp -vr {src} {dst}")
     for dir in mkdirs:
         zip_path = Path(f'../{dir.parent.name}.zip')
-        print(f"(cd {dir}/..; zip -r {zip_path} models_eynollah)")
+        print(f"(cd {dir}/..; zip -vr {zip_path} models_eynollah)")

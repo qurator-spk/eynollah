@@ -16,11 +16,111 @@ from ocrd_models.constants import NAMESPACES as NS
 
 testdir = Path(__file__).parent.resolve()
 
-MODELS_OCR = environ.get('MODELS_OCR', str(testdir.joinpath('..', 'models_ocr_v0_6_0').resolve()))
-MODELS_BIN = environ.get('MODELS_BIN', str(testdir.joinpath('..', 'default-2021-03-09').resolve()))
+MODELS_LAYOUT = environ.get('MODELS_LAYOUT', str(testdir.joinpath('..', 'models_layout_v0_6_0').resolve()))
 
 def only_eynollah(logrec):
 		return logrec.name.startswith('eynollah')
+
+@pytest.mark.parametrize(
+    "options",
+    [
+            [], # defaults
+            #["--allow_scaling", "--curved-line"],
+            ["--allow_scaling", "--curved-line", "--full-layout"],
+            ["--allow_scaling", "--curved-line", "--full-layout", "--reading_order_machine_based"],
+            ["--allow_scaling", "--curved-line", "--full-layout", "--reading_order_machine_based",
+             "--textline_light", "--light_version"],
+            # -ep ...
+            # -eoi ...
+            # FIXME: find out whether OCR extra was installed, otherwise skip these
+            ["--do_ocr"],
+            ["--do_ocr", "--light_version", "--textline_light"],
+            ["--do_ocr", "--transformer_ocr"],
+            #["--do_ocr", "--transformer_ocr", "--light_version", "--textline_light"],
+            ["--do_ocr", "--transformer_ocr", "--light_version", "--textline_light", "--full-layout"],
+            # --skip_layout_and_reading_order
+    ], ids=str)
+def test_run_eynollah_layout_filename(tmp_path, pytestconfig, caplog, options):
+    infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
+    outfile = tmp_path / 'kant_aufklaerung_1784_0020.xml'
+    args = [
+        '-m', MODELS_LAYOUT,
+        '-i', str(infile),
+        '-o', str(outfile.parent),
+    ]
+    if pytestconfig.getoption('verbose') > 0:
+        args.extend(['-l', 'DEBUG'])
+    caplog.set_level(logging.INFO)
+    runner = CliRunner()
+    with caplog.filtering(only_eynollah):
+        result = runner.invoke(layout_cli, args + options, catch_exceptions=False)
+    assert result.exit_code == 0, result.stdout
+    logmsgs = [logrec.message for logrec in caplog.records]
+    assert str(infile) in logmsgs
+    assert outfile.exists()
+    tree = page_from_file(str(outfile)).etree
+    regions = tree.xpath("//page:TextRegion", namespaces=NS)
+    assert len(regions) >= 2, "result is inaccurate"
+    regions = tree.xpath("//page:SeparatorRegion", namespaces=NS)
+    assert len(regions) >= 2, "result is inaccurate"
+    lines = tree.xpath("//page:TextLine", namespaces=NS)
+    assert len(lines) == 31, "result is inaccurate" # 29 paragraph lines, 1 page and 1 catch-word line
+
+@pytest.mark.parametrize(
+    "options",
+    [
+            ["--tables"],
+            ["--tables", "--full-layout"],
+            ["--tables", "--full-layout", "--textline_light", "--light_version"],
+    ], ids=str)
+def test_run_eynollah_layout_filename2(tmp_path, pytestconfig, caplog, options):
+    infile = testdir.joinpath('resources/euler_rechenkunst01_1738_0025.tif')
+    outfile = tmp_path / 'euler_rechenkunst01_1738_0025.xml'
+    args = [
+        '-m', MODELS_LAYOUT,
+        '-i', str(infile),
+        '-o', str(outfile.parent),
+    ]
+    if pytestconfig.getoption('verbose') > 0:
+        args.extend(['-l', 'DEBUG'])
+    caplog.set_level(logging.INFO)
+    runner = CliRunner()
+    with caplog.filtering(only_eynollah):
+        result = runner.invoke(layout_cli, args + options, catch_exceptions=False)
+    assert result.exit_code == 0, result.stdout
+    logmsgs = [logrec.message for logrec in caplog.records]
+    assert str(infile) in logmsgs
+    assert outfile.exists()
+    tree = page_from_file(str(outfile)).etree
+    regions = tree.xpath("//page:TextRegion", namespaces=NS)
+    assert len(regions) >= 2, "result is inaccurate"
+    regions = tree.xpath("//page:TableRegion", namespaces=NS)
+    # model/decoding is not very precise, so (depending on mode) we can get fractures/splits/FP
+    assert len(regions) >= 1, "result is inaccurate"
+    regions = tree.xpath("//page:SeparatorRegion", namespaces=NS)
+    assert len(regions) >= 2, "result is inaccurate"
+    lines = tree.xpath("//page:TextLine", namespaces=NS)
+    assert len(lines) >= 2, "result is inaccurate" # mostly table (if detected correctly), but 1 page and 1 catch-word line
+
+def test_run_eynollah_layout_directory(tmp_path, pytestconfig, caplog):
+    indir = testdir.joinpath('resources')
+    outdir = tmp_path
+    args = [
+        '-m', MODELS_LAYOUT,
+        '-di', str(indir),
+        '-o', str(outdir),
+    ]
+    if pytestconfig.getoption('verbose') > 0:
+        args.extend(['-l', 'DEBUG'])
+    caplog.set_level(logging.INFO)
+    runner = CliRunner()
+    with caplog.filtering(only_eynollah):
+        result = runner.invoke(layout_cli, args, catch_exceptions=False)
+    assert result.exit_code == 0, result.stdout
+    logmsgs = [logrec.message for logrec in caplog.records]
+    assert len([logmsg for logmsg in logmsgs if logmsg.startswith('Job done in')]) == 2
+    assert any(logmsg for logmsg in logmsgs if logmsg.startswith('All jobs done in'))
+    assert len(list(outdir.iterdir())) == 2
 
 @pytest.mark.parametrize(
     "options",
