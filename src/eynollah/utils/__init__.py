@@ -485,9 +485,12 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
     # print(peaks_neg,'peaks_neg')
     # fig, (ax1, ax2) = plt.subplots(2, sharex=True)
     # ax1.imshow(regions_without_separators, aspect="auto")
-    # ax2.plot(z)
-    # ax2.scatter(peaks_neg, z[peaks_neg])
-    # ax2.axhline(grenze, label="grenze")
+    # ax2.plot(z, color='red', label='z')
+    # ax2.plot(zneg[20:], color='blue', label='zneg')
+    # ax2.scatter(peaks_neg, z[peaks_neg], color='red')
+    # ax2.scatter(peaks_neg, zneg[20:][peaks_neg], color='blue')
+    # ax2.axhline(min_peaks_pos, color='red', label="min_peaks_pos")
+    # ax2.axhline(grenze, color='blue', label="grenze")
     # ax2.text(0, grenze, "grenze")
     # plt.show()
 
@@ -816,6 +819,12 @@ def find_num_col_by_vertical_lines(regions_without_separators, multiplier=3.8):
     peaks, _ = find_peaks(z, height=0)
 
     # print(peaks,'peaksnew')
+    # fig, (ax1, ax2) = plt.subplots(2, sharex=True, suptitle='find_num_col_by_vertical_lines')
+    # ax1.imshow(regions_without_separators, aspect="auto")
+    # ax2.plot(z)
+    # ax2.scatter(peaks, z[peaks])
+    # ax2.set_title('find_peaks(regions_without_separators.sum(axis=0), height=0)')
+    # plt.show()
     return peaks
 
 def return_regions_without_separators(regions_pre):
