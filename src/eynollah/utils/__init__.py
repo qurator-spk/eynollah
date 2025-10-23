@@ -1315,47 +1315,42 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
                                                                             float(num_col_classifier))
     if len_lines_bigger_than_x_width_smaller_than_acolumn_width_per_column < 10:
         args_hor=np.arange(len(slope_lines_hor))
-        all_args_uniq=contours_in_same_horizon(cy_main_hor)
-        #print(all_args_uniq,'all_args_uniq')
-        if len(all_args_uniq)>0:
-            if type(all_args_uniq[0]) is list:
-                special_separators=[]
-                contours_new=[]
-                for dd in range(len(all_args_uniq)):
-                    merged_all=None
-                    some_args=args_hor[all_args_uniq[dd]]
-                    some_cy=cy_main_hor[all_args_uniq[dd]]
-                    some_x_min=x_min_main_hor[all_args_uniq[dd]]
-                    some_x_max=x_max_main_hor[all_args_uniq[dd]]
+        sep_pairs=contours_in_same_horizon(cy_main_hor)
+        if len(sep_pairs):
+            special_separators=[]
+            contours_new=[]
+            for pair in sep_pairs:
+                merged_all=None
+                some_args=args_hor[pair]
+                some_cy=cy_main_hor[pair]
+                some_x_min=x_min_main_hor[pair]
+                some_x_max=x_max_main_hor[pair]
 
-                    #img_in=np.zeros(separators_closeup_n[:,:,2].shape)
-                    #print(img_p_in_ver.shape[1],some_x_max-some_x_min,'xdiff')
-                    diff_x_some=some_x_max-some_x_min
-                    for jv in range(len(some_args)):
-                        img_p_in=cv2.fillPoly(img_in_hor, pts=[contours_lines_hor[some_args[jv]]], color=(1,1,1))
-                        if any(i_diff>(img_p_in_ver.shape[1]/float(3.3)) for i_diff in diff_x_some):
-                            img_p_in[int(np.mean(some_cy))-5:
-                                     int(np.mean(some_cy))+5,
-                                     int(np.min(some_x_min)):
-                                     int(np.max(some_x_max)) ]=1
-                    sum_dis=dist_x_hor[some_args].sum()
-                    diff_max_min_uniques=np.max(x_max_main_hor[some_args])-np.min(x_min_main_hor[some_args])
+                #img_in=np.zeros(separators_closeup_n[:,:,2].shape)
+                #print(img_p_in_ver.shape[1],some_x_max-some_x_min,'xdiff')
+                diff_x_some=some_x_max-some_x_min
+                for jv in range(len(some_args)):
+                    img_p_in=cv2.fillPoly(img_in_hor, pts=[contours_lines_hor[some_args[jv]]], color=(1,1,1))
+                    if any(i_diff>(img_p_in_ver.shape[1]/float(3.3)) for i_diff in diff_x_some):
+                        img_p_in[int(np.mean(some_cy))-5:
+                                 int(np.mean(some_cy))+5,
+                                 int(np.min(some_x_min)):
+                                 int(np.max(some_x_max)) ]=1
+                sum_dis=dist_x_hor[some_args].sum()
+                diff_max_min_uniques=np.max(x_max_main_hor[some_args])-np.min(x_min_main_hor[some_args])
 
-                    if (diff_max_min_uniques > sum_dis and
-                        sum_dis / float(diff_max_min_uniques) > 0.85 and
-                        diff_max_min_uniques / float(img_p_in_ver.shape[1]) > 0.85 and
-                        np.std(dist_x_hor[some_args]) < 0.55 * np.mean(dist_x_hor[some_args])):
-                        # print(dist_x_hor[some_args],
-                        #       dist_x_hor[some_args].sum(),
-                        #       np.min(x_min_main_hor[some_args]),
-                        #       np.max(x_max_main_hor[some_args]),'jalibdi')
-                        # print(np.mean( dist_x_hor[some_args] ),
-                        #       np.std( dist_x_hor[some_args] ),
-                        #       np.var( dist_x_hor[some_args] ),'jalibdiha')
-                        special_separators.append(np.mean(cy_main_hor[some_args]))
-            else:
-                img_p_in=img_in_hor
-                special_separators=[]
+                if (diff_max_min_uniques > sum_dis and
+                    sum_dis / float(diff_max_min_uniques) > 0.85 and
+                    diff_max_min_uniques / float(img_p_in_ver.shape[1]) > 0.85 and
+                    np.std(dist_x_hor[some_args]) < 0.55 * np.mean(dist_x_hor[some_args])):
+                    # print(dist_x_hor[some_args],
+                    #       dist_x_hor[some_args].sum(),
+                    #       np.min(x_min_main_hor[some_args]),
+                    #       np.max(x_max_main_hor[some_args]),'jalibdi')
+                    # print(np.mean( dist_x_hor[some_args] ),
+                    #       np.std( dist_x_hor[some_args] ),
+                    #       np.var( dist_x_hor[some_args] ),'jalibdiha')
+                    special_separators.append(np.mean(cy_main_hor[some_args]))
         else:
             img_p_in=img_in_hor
             special_separators=[]
