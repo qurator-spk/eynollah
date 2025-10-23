@@ -274,11 +274,11 @@ def return_x_start_end_mothers_childs_and_type_of_reading_order(
         if len(remained_sep_indexes_without_mother)>=2:
             for i in range(len(remained_sep_indexes_without_mother)-1):
                 index_i = remained_sep_indexes_without_mother[i]
-                nodes_i = set(range(x_start[index_i], x_end[index_i])) #  + 1
+                nodes_i = set(range(x_start[index_i], x_end[index_i] + 1))
                 #print(index_i, nodes_i, "nodes_i without mother")
                 for j in range(i + 1, len(remained_sep_indexes_without_mother)):
                     index_j = remained_sep_indexes_without_mother[j]
-                    nodes_j = set(range(x_start[index_j], x_end[index_j])) #  + 1
+                    nodes_j = set(range(x_start[index_j], x_end[index_j] + 1))
                     #print(index_j, nodes_j, "nodes_j without mother")
                     if nodes_i - nodes_j != nodes_i:
                         #print("type=1")
