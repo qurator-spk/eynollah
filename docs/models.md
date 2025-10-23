@@ -191,13 +191,27 @@ This transformer OCR model is trained on the same data as model_eynollah_ocr_tro
 
 ##### Qualitative evaluation of the models
 
-###### CNN-RNN model: model_eynollah_ocr_cnnrnn_20250805
+| <img width="1600" src="https://github.com/user-attachments/assets/120fec0c-c370-46a6-b132-b0af800607cf"> | <img width="1000" src="https://github.com/user-attachments/assets/d84e6819-0a2a-4b3a-bb7d-ceac941babc4"> | <img width="1000" src="https://github.com/user-attachments/assets/bdd27cdb-bbec-4223-9a86-de7a27c6d018"> | <img width="1000" src="https://github.com/user-attachments/assets/1a507c75-75de-4da3-9545-af3746b9a207"> |
+|:---:|:---:|:---:|:---:|
+| Image | cnnrnn_20250805 | cnnrnn_20250904 | trocr_20250919 |
 
 
-###### CNN-RNN model: 	model_eynollah_ocr_cnnrnn_20250904 (Default)
+
+| <img width="2000" src="https://github.com/user-attachments/assets/9bc13d48-2a92-45fc-88db-c07ffadba067"> | <img width="1000" src="https://github.com/user-attachments/assets/2b294aeb-1362-4d6e-b70f-8aeffd94c5e7"> | <img width="1000" src="https://github.com/user-attachments/assets/9911317e-632e-4e6a-8839-1fb7e783da11"> | <img width="1000" src="https://github.com/user-attachments/assets/2c5626d9-0d23-49d3-80f5-a95f629c9c76"> |
+|:---:|:---:|:---:|:---:|
+| Image | cnnrnn_20250805 | cnnrnn_20250904 | trocr_20250919 |
 
 
-###### Transformer OCR model: model_eynollah_ocr_trocr_20250919
+| <img width="2000" src="https://github.com/user-attachments/assets/d54d8510-5c6a-4ab0-9ba7-f6ec4ad452c6"> | <img width="1000" src="https://github.com/user-attachments/assets/a418b25b-00dc-493a-b3a3-b325b9b0cb85"> | <img width="1000" src="https://github.com/user-attachments/assets/df6e2b9e-a821-4b4c-8868-0c765700c341"> | <img width="1000" src="https://github.com/user-attachments/assets/b90277f5-40f4-4c99-80a2-da400f7d3640"> |
+|:---:|:---:|:---:|:---:|
+| Image | cnnrnn_20250805 | cnnrnn_20250904 | trocr_20250919 |
+
+
+| <img width="2000" src="https://github.com/user-attachments/assets/7ec49211-099f-4c21-9e60-47bfdf21f1b6"> | <img width="1000" src="https://github.com/user-attachments/assets/00ef9785-8885-41b3-bf6e-21eab743df71"> | <img width="1000" src="https://github.com/user-attachments/assets/13eb9f62-4d5a-46dc-befc-b02eb4f31fc1"> | <img width="1000" src="https://github.com/user-attachments/assets/a5c078d1-6d15-4d12-9040-526d7063d459"> |
+|:---:|:---:|:---:|:---:|
+| Image | cnnrnn_20250805 | cnnrnn_20250904 | trocr_20250919 |
+
+
 
 ## Heuristic methods
 
