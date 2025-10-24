@@ -1628,7 +1628,8 @@ def return_boxes_of_images_by_order_of_reading_new(
     boxes=[]
     peaks_neg_tot_tables = []
     splitter_y_new = np.array(splitter_y_new, dtype=int)
-    width_tot = regions_without_separators.shape[1]
+    height_tot, width_tot = regions_without_separators.shape
+    big_part = 22 * height_tot // 100 # percent height
     for top, bot in pairwise(splitter_y_new):
         # print("%d:%d" % (top, bot), 'i')
         # dbg_plt([0, None, top, bot], "image cut for y split %d:%d" % (top, bot))
@@ -1644,12 +1645,17 @@ def return_boxes_of_images_by_order_of_reading_new(
             try:
                 num_col, peaks_neg_fin = find_num_col(
                     regions_without_separators[top:bot],
-                    num_col_classifier, tables, multiplier=6. if erosion_hurts else 7.)
+                    # we do not expect to get all columns in small parts (headings etc.):
+                    num_col_classifier if bot - top >= big_part else 1,
+                    tables, multiplier=6. if erosion_hurts else 7.)
             except:
                 peaks_neg_fin=[]
                 num_col = 0
             try:
-                if (len(peaks_neg_fin)+1)<num_col_classifier or num_col_classifier==6:
+                if ((len(peaks_neg_fin) + 1 < num_col_classifier or
+                    num_col_classifier == 6) and
+                    # we do not expect to get all columns in small parts (headings etc.):
+                    bot - top >= big_part):
                     # found too few columns here
                     #print('burda')
                     peaks_neg_fin_org = np.copy(peaks_neg_fin)
