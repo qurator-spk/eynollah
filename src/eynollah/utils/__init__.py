@@ -33,7 +33,7 @@ def pairwise(iterable):
         a = b
 
 def return_x_start_end_mothers_childs_and_type_of_reading_order(
-        x_min_hor_some, x_max_hor_some, cy_hor_some, peak_points, y_max_hor_some):
+        peak_points, x_min_hor_some, x_max_hor_some, cy_hor_some, y_max_hor_some):
     """
     Analyse which separators overlap multiple column candidates,
     and how they overlap each other.
@@ -54,10 +54,10 @@ def return_x_start_end_mothers_childs_and_type_of_reading_order(
     with no mother, specifically (and thus, no simple box separation is possible).
 
     Arguments:
+        * the x column coordinates
         * the x start column index of the raw separators
         * the x end column index of the raw separators
         * the y center coordinate of the raw separators
-        * the x column coordinates
         * the y end coordinate of the raw separators
 
     Returns:
@@ -1736,7 +1736,7 @@ def return_boxes_of_images_by_order_of_reading_new(
             there_is_sep_with_child, \
             y_mid_with_child_without_mother, x_start_with_child_without_mother, x_end_with_child_without_mother, \
             new_main_sep_y = return_x_start_end_mothers_childs_and_type_of_reading_order(
-                x_min_hor_some, x_max_hor_some, cy_hor_some, peaks_neg_tot, y_max_hor_some)
+                peaks_neg_tot, x_min_hor_some, x_max_hor_some, cy_hor_some, y_max_hor_some)
 
         # show multi-column separators
         # dbg_plt([0, None, top, bot], "multi-column separators in current split", 
