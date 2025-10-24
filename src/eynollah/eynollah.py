@@ -2669,45 +2669,35 @@ class Eynollah:
 
         return layout_org, contours_new
 
-    def delete_separator_around(self, spliter_y,peaks_neg,image_by_region, pixel_line, pixel_table):
+    def delete_separator_around(self, splitter_y, peaks_neg, image_by_region, label_seps, label_table):
         # format of subboxes: box=[x1, x2 , y1, y2]
         pix_del = 100
-        if len(image_by_region.shape)==3:
-            for i in range(len(spliter_y)-1):
-                for j in range(1,len(peaks_neg[i])-1):
-                    ys = slice(int(spliter_y[i]),
-                               int(spliter_y[i+1]))
-                    xs = slice(peaks_neg[i][j] - pix_del,
-                               peaks_neg[i][j] + pix_del)
-                    image_by_region[ys,xs,0][image_by_region[ys,xs,0]==pixel_line] = 0
-                    image_by_region[ys,xs,0][image_by_region[ys,xs,1]==pixel_line] = 0
-                    image_by_region[ys,xs,0][image_by_region[ys,xs,2]==pixel_line] = 0
-
-                    image_by_region[ys,xs,0][image_by_region[ys,xs,0]==pixel_table] = 0
-                    image_by_region[ys,xs,0][image_by_region[ys,xs,1]==pixel_table] = 0
-                    image_by_region[ys,xs,0][image_by_region[ys,xs,2]==pixel_table] = 0
-        else:
-            for i in range(len(spliter_y)-1):
-                for j in range(1,len(peaks_neg[i])-1):
-                    ys = slice(int(spliter_y[i]),
-                               int(spliter_y[i+1]))
-                    xs = slice(peaks_neg[i][j] - pix_del,
-                               peaks_neg[i][j] + pix_del)
-                    image_by_region[ys,xs][image_by_region[ys,xs]==pixel_line] = 0
-                    image_by_region[ys,xs][image_by_region[ys,xs]==pixel_table] = 0
+        for i in range(len(splitter_y)-1):
+            for j in range(1,len(peaks_neg[i])-1):
+                where = np.index_exp[splitter_y[i]:
+                                     splitter_y[i+1],
+                                     peaks_neg[i][j] - pix_del:
+                                     peaks_neg[i][j] + pix_del,
+                                     :]
+                if image_by_region.ndim < 3:
+                    where = where[:2]
+                else:
+                    print("image_by_region ndim is 3!") # rs
+                image_by_region[where][image_by_region[where] == label_seps] = 0
+                image_by_region[where][image_by_region[where] == label_table] = 0
         return image_by_region
 
     def add_tables_heuristic_to_layout(
             self, image_regions_eraly_p, boxes,
-            slope_mean_hor, spliter_y, peaks_neg_tot, image_revised,
-            num_col_classifier, min_area, pixel_line):
+            slope_mean_hor, splitter_y, peaks_neg_tot, image_revised,
+            num_col_classifier, min_area, label_seps):
 
-        pixel_table =10
-        image_revised_1 = self.delete_separator_around(spliter_y, peaks_neg_tot, image_revised, pixel_line, pixel_table)
+        label_table =10
+        image_revised_1 = self.delete_separator_around(splitter_y, peaks_neg_tot, image_revised, label_seps, label_table)
 
         try:
-            image_revised_1[:,:30][image_revised_1[:,:30]==pixel_line] = 0
-            image_revised_1[:,-30:][image_revised_1[:,-30:]==pixel_line] = 0
+            image_revised_1[:,:30][image_revised_1[:,:30]==label_seps] = 0
+            image_revised_1[:,-30:][image_revised_1[:,-30:]==label_seps] = 0
         except:
             pass
         boxes = np.array(boxes, dtype=int) # to be on the safe side
@@ -2718,7 +2708,7 @@ class Eynollah:
             _, thresh = cv2.threshold(image_col, 0, 255, 0)
             contours,hirarchy=cv2.findContours(thresh.copy(), cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
-            if indiv==pixel_table:
+            if indiv==label_table:
                 main_contours = filter_contours_area_of_image_tables(thresh, contours, hirarchy,
                                                                      max_area=1, min_area=0.001)
             else:
@@ -2734,11 +2724,11 @@ class Eynollah:
                 box_xs = slice(*boxes[i][0:2])
                 image_box = img_comm[box_ys, box_xs]
                 try:
-                    image_box_tabels_1 = (image_box == pixel_table) * 1
+                    image_box_tabels_1 = (image_box == label_table) * 1
                     contours_tab,_=return_contours_of_image(image_box_tabels_1)
                     contours_tab=filter_contours_area_of_image_tables(image_box_tabels_1,contours_tab,_,1,0.003)
-                    image_box_tabels_1 = (image_box == pixel_line).astype(np.uint8) * 1
-                    image_box_tabels_and_m_text = ( (image_box == pixel_table) |
+                    image_box_tabels_1 = (image_box == label_seps).astype(np.uint8) * 1
+                    image_box_tabels_and_m_text = ( (image_box == label_table) |
                                                     (image_box == 1) ).astype(np.uint8) * 1
 
                     image_box_tabels_1 = cv2.dilate(image_box_tabels_1, KERNEL, iterations=5)
@@ -2800,7 +2790,7 @@ class Eynollah:
                     y_up_tabs=[]
 
                 for ii in range(len(y_up_tabs)):
-                    image_box[y_up_tabs[ii]:y_down_tabs[ii]] = pixel_table
+                    image_box[y_up_tabs[ii]:y_down_tabs[ii]] = label_table
 
                 image_revised_last[box_ys, box_xs] = image_box
         else:
@@ -2811,14 +2801,14 @@ class Eynollah:
                 image_revised_last[box_ys, box_xs] = image_box
 
         if num_col_classifier==1:
-            img_tables_col_1 = (image_revised_last == pixel_table).astype(np.uint8)
+            img_tables_col_1 = (image_revised_last == label_table).astype(np.uint8)
             contours_table_col1, _ = return_contours_of_image(img_tables_col_1)
 
             _,_ ,_ , _, y_min_tab_col1 ,y_max_tab_col1, _= find_new_features_of_contours(contours_table_col1)
 
             if len(y_min_tab_col1)>0:
                 for ijv in range(len(y_min_tab_col1)):
-                    image_revised_last[int(y_min_tab_col1[ijv]):int(y_max_tab_col1[ijv])] = pixel_table
+                    image_revised_last[int(y_min_tab_col1[ijv]):int(y_max_tab_col1[ijv])] = label_table
         return image_revised_last
 
     def get_tables_from_model(self, img, num_col_classifier):
@@ -3153,14 +3143,14 @@ class Eynollah:
             text_regions_p_1_n = None
             textline_mask_tot_d = None
             regions_without_separators_d = None
-        pixel_lines = 3
+        label_seps = 3
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-            _, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(
-                text_regions_p, num_col_classifier, self.tables, pixel_lines)
+            _, _, matrix_of_seps_ch, splitter_y_new, _ = find_number_of_columns_in_document(
+                text_regions_p, num_col_classifier, self.tables, label_seps)
 
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            _, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
-                text_regions_p_1_n, num_col_classifier, self.tables, pixel_lines)
+            _, _, matrix_of_seps_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
+                text_regions_p_1_n, num_col_classifier, self.tables, label_seps)
         #print(time.time()-t_0_box,'time box in 2')
         self.logger.info("num_col_classifier: %s", num_col_classifier)
 
@@ -3175,7 +3165,7 @@ class Eynollah:
         t1 = time.time()
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
             boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(
-                splitter_y_new, regions_without_separators, matrix_of_lines_ch,
+                splitter_y_new, regions_without_separators, matrix_of_seps_ch,
                 num_col_classifier, erosion_hurts, self.tables, self.right2left)
             boxes_d = None
             self.logger.debug("len(boxes): %s", len(boxes))
@@ -3187,17 +3177,17 @@ class Eynollah:
                 else:
                     text_regions_p_tables = np.copy(text_regions_p)
                     text_regions_p_tables[(table_prediction == 1)] = 10
-                    pixel_line = 3
+                    label_seps = 3
                     img_revised_tab2 = self.add_tables_heuristic_to_layout(
                         text_regions_p_tables, boxes, 0, splitter_y_new, peaks_neg_tot_tables, text_regions_p_tables,
-                        num_col_classifier , 0.000005, pixel_line)
+                        num_col_classifier , 0.000005, label_seps)
                     #print(time.time()-t_0_box,'time box in 3.2')
                     img_revised_tab2, contoures_tables = self.check_iou_of_bounding_box_and_contour_for_tables(
                         img_revised_tab2, table_prediction, 10, num_col_classifier)
                     #print(time.time()-t_0_box,'time box in 3.3')
         else:
             boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(
-                splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d,
+                splitter_y_new_d, regions_without_separators_d, matrix_of_seps_ch_d,
                 num_col_classifier, erosion_hurts, self.tables, self.right2left)
             boxes = None
             self.logger.debug("len(boxes): %s", len(boxes_d))
@@ -3210,11 +3200,11 @@ class Eynollah:
                     text_regions_p_tables = np.round(text_regions_p_tables)
                     text_regions_p_tables[(text_regions_p_tables != 3) & (table_prediction_n == 1)] = 10
 
-                    pixel_line = 3
+                    label_seps = 3
                     img_revised_tab2 = self.add_tables_heuristic_to_layout(
                         text_regions_p_tables, boxes_d, 0, splitter_y_new_d,
                         peaks_neg_tot_tables_d, text_regions_p_tables,
-                        num_col_classifier, 0.000005, pixel_line)
+                        num_col_classifier, 0.000005, label_seps)
                     img_revised_tab2_d,_ = self.check_iou_of_bounding_box_and_contour_for_tables(
                         img_revised_tab2, table_prediction_n, 10, num_col_classifier)
 
@@ -3333,14 +3323,14 @@ class Eynollah:
                 regions_without_separators = (text_regions_p[:,:] == 1)*1
                 regions_without_separators[table_prediction == 1] = 1
 
-                pixel_lines=3
+                label_seps=3
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     num_col, _, matrix_of_lines_ch, splitter_y_new, _ = find_number_of_columns_in_document(
-                        text_regions_p, num_col_classifier, self.tables, pixel_lines)
+                        text_regions_p, num_col_classifier, self.tables, label_seps)
 
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                     num_col_d, _, matrix_of_lines_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
-                        text_regions_p_1_n, num_col_classifier, self.tables, pixel_lines)
+                        text_regions_p_1_n, num_col_classifier, self.tables, label_seps)
 
                 if num_col_classifier>=3:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
@@ -3359,10 +3349,10 @@ class Eynollah:
                         num_col_classifier, erosion_hurts, self.tables, self.right2left)
                     text_regions_p_tables = np.copy(text_regions_p)
                     text_regions_p_tables[:,:][(table_prediction[:,:]==1)] = 10
-                    pixel_line = 3
+                    label_seps = 3
                     img_revised_tab2 = self.add_tables_heuristic_to_layout(
                         text_regions_p_tables, boxes, 0, splitter_y_new, peaks_neg_tot_tables, text_regions_p_tables,
-                        num_col_classifier , 0.000005, pixel_line)
+                        num_col_classifier , 0.000005, label_seps)
 
                     img_revised_tab2,contoures_tables = self.check_iou_of_bounding_box_and_contour_for_tables(
                         img_revised_tab2, table_prediction, 10, num_col_classifier)
@@ -3374,11 +3364,11 @@ class Eynollah:
                     text_regions_p_tables = np.round(text_regions_p_tables)
                     text_regions_p_tables[(text_regions_p_tables != 3) & (table_prediction_n == 1)] = 10
 
-                    pixel_line = 3
+                    label_seps = 3
                     img_revised_tab2 = self.add_tables_heuristic_to_layout(
                         text_regions_p_tables, boxes_d, 0, splitter_y_new_d,
                         peaks_neg_tot_tables_d, text_regions_p_tables,
-                        num_col_classifier, 0.000005, pixel_line)
+                        num_col_classifier, 0.000005, label_seps)
 
                     img_revised_tab2_d,_ = self.check_iou_of_bounding_box_and_contour_for_tables(
                         img_revised_tab2, table_prediction_n, 10, num_col_classifier)
@@ -4721,12 +4711,12 @@ class Eynollah:
                         regions_without_separators_d = cv2.erode(regions_without_separators_d[:, :], KERNEL, iterations=6)
 
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                    boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(
+                    boxes, _ = return_boxes_of_images_by_order_of_reading_new(
                         splitter_y_new, regions_without_separators, matrix_of_lines_ch,
                         num_col_classifier, erosion_hurts, self.tables, self.right2left,
                         logger=self.logger)
                 else:
-                    boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(
+                    boxes_d, _ = return_boxes_of_images_by_order_of_reading_new(
                         splitter_y_new_d, regions_without_separators_d, matrix_of_lines_ch_d,
                         num_col_classifier, erosion_hurts, self.tables, self.right2left,
                         logger=self.logger)
