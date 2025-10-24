@@ -1387,8 +1387,6 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     return peaks_neg_tot
 
 def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, label_seps, contours_h=None):
-    ncomps, ccomps = cv2.connectedComponents(region_pre_p.astype(np.uint8))
-
     separators_closeup = 1 * (region_pre_p == label_seps)
     separators_closeup[0:110] = 0
     separators_closeup[-150:] = 0
@@ -1414,14 +1412,6 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
         dist_ye = max_ye - min_ye
         if dist_ye <= 50 and dist_xe >= 3 * dist_ye:
             cnts_hor_e.append(cnt)
-            labels = np.setdiff1d(np.unique(ccomps[med_ye]), [0])
-            if len(labels) == 1:
-                # mid line does not intersect with any other region
-                # so add it as extra splitter line
-                cnts_hor_e.append(np.array([[[0, med_ye]],
-                                            [[ccomps.shape[1], med_ye]],
-                                            [[ccomps.shape[1], med_ye + 1]],
-                                            [[0, med_ye + 1]]]))
 
     # delete horizontal contours (leaving only the edges)
     separators_closeup_n_binary = cv2.fillPoly(separators_closeup_n_binary, pts=cnts_hor_e, color=0)
@@ -1493,7 +1483,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     slope_seps_org_hor=slope_seps_org_hor[dist_x_hor>=len_x/2.0]
     dist_x_hor=dist_x_hor[dist_x_hor>=len_x/2.0]
 
-    matrix_of_seps_ch=np.zeros((len(cy_seps_hor)+len(cx_seps_ver),10))
+    matrix_of_seps_ch = np.zeros((len(cy_seps_hor)+len(cx_seps_ver), 10), dtype=int)
     matrix_of_seps_ch[:len(cy_seps_hor),0]=args_hor
     matrix_of_seps_ch[len(cy_seps_hor):,0]=args_ver
     matrix_of_seps_ch[len(cy_seps_hor):,1]=cx_seps_ver
@@ -1515,34 +1505,17 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     if contours_h is not None:
         _, dist_x_head, x_min_head, x_max_head, cy_head, _, y_min_head, y_max_head, _ = \
             find_features_of_lines(contours_h)
-        # matrix_l_n = np.zeros((len(cy_head), matrix_of_seps_ch.shape[1]))
-        # args_head = np.arange(len(cy_head))
-        # matrix_l_n[:, 0] = args_head
-        # matrix_l_n[:, 2] = x_min_head+30
-        # matrix_l_n[:, 3] = x_max_head-30
-        # matrix_l_n[:, 4] = dist_x_head
-        # matrix_l_n[:, 5] = y_min_head-3-8
-        # matrix_l_n[:, 6] = y_min_head-5-8
-        # matrix_l_n[:, 7] = y_max_head#y_min_head+1-8
-        # matrix_l_n[:, 8] = 4
-        # split at toplines (y_min_head) and baselines (y_max_head) instead of center (cy_head):
-        cy_head = np.stack((y_min_head, y_max_head)).T.flatten()
-        y_min_head, y_max_head = (np.stack((y_min_head - 2, y_max_head - 2)).T.flatten(),
-                                  np.stack((y_min_head + 2, y_max_head + 2)).T.flatten())
-        x_min_head = np.repeat(x_min_head, 2)
-        x_max_head = np.repeat(x_max_head, 2)
-        dist_x_head = np.repeat(dist_x_head, 2)
-        matrix_l_n = np.zeros((len(cy_head), matrix_of_seps_ch.shape[1]))
+        matrix_l_n = np.zeros((len(cy_head), matrix_of_seps_ch.shape[1]), dtype=int)
         args_head = np.arange(len(cy_head))
         matrix_l_n[:, 0] = args_head
-        # +/- 30px to avoid crossing col peaks by accident
-        matrix_l_n[:, 2] = x_min_head + 30
-        matrix_l_n[:, 3] = x_max_head - 30
+        matrix_l_n[:, 2] = x_min_head
+        matrix_l_n[:, 3] = x_max_head
         matrix_l_n[:, 4] = dist_x_head
         matrix_l_n[:, 5] = cy_head
         matrix_l_n[:, 6] = y_min_head
         matrix_l_n[:, 7] = y_max_head
-        matrix_l_n[:, 8] = 4
+        matrix_l_n[:, 8] = y_max_head - y_min_head
+        matrix_l_n[:, 9] = 2 # mark as heading (so it can be split into 2 horizontal separators as needed)
         matrix_of_seps_ch = np.append(
             matrix_of_seps_ch, matrix_l_n, axis=0)
 
@@ -1551,9 +1524,12 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     cy_seps_splitters = np.append(cy_seps_splitters, special_separators)
 
     if contours_h is not None:
-        cy_seps_splitters_head=cy_head[(x_min_head<=.16*region_pre_p.shape[1]) &
-                                       (x_max_head>=.84*region_pre_p.shape[1])]
-        cy_seps_splitters = np.append(cy_seps_splitters, cy_seps_splitters_head)
+        y_min_splitters_head = y_min_head[(x_min_head<=.16*region_pre_p.shape[1]) &
+                                          (x_max_head>=.84*region_pre_p.shape[1])]
+        y_max_splitters_head = y_max_head[(x_min_head<=.16*region_pre_p.shape[1]) &
+                                          (x_max_head>=.84*region_pre_p.shape[1])]
+        cy_seps_splitters = np.append(cy_seps_splitters, y_min_splitters_head)
+        cy_seps_splitters = np.append(cy_seps_splitters, y_max_splitters_head)
 
     cy_seps_splitters = np.sort(cy_seps_splitters).astype(int)
     splitter_y_new = [0] + list(cy_seps_splitters) + [region_pre_p.shape[0]]
@@ -1713,23 +1689,80 @@ def return_boxes_of_images_by_order_of_reading_new(
         #num_col, peaks_neg_fin = find_num_col(
         #    regions_without_separators[top:bot,:],
         #    multiplier=7.0)
-        x_min_hor_some=matrix_new[:,2][ (matrix_new[:,9]==0) ]
-        x_max_hor_some=matrix_new[:,3][ (matrix_new[:,9]==0) ]
-        cy_hor_some=matrix_new[:,5][ (matrix_new[:,9]==0) ]
-        y_max_hor_some=matrix_new[:,7][ (matrix_new[:,9]==0) ]
-
-        if right2left_readingorder:
-            x_max_hor_some_new = width_tot - x_min_hor_some
-            x_min_hor_some_new = width_tot - x_max_hor_some
-            x_min_hor_some =list(np.copy(x_min_hor_some_new))
-            x_max_hor_some =list(np.copy(x_max_hor_some_new))
-
         peaks_neg_tot = np.array([0] + peaks_neg_fin + [width_tot])
         #print(peaks_neg_tot,'peaks_neg_tot')
         peaks_neg_tot_tables.append(peaks_neg_tot)
 
         all_columns = set(range(len(peaks_neg_tot) - 1))
         #print("all_columns", all_columns)
+
+        # elongate horizontal separators+headings as much as possible without overlap
+        args_nonver = matrix_new[:, 9] != 1
+        regions_with_separators = np.copy(regions_without_separators[top:bot])
+        for xmin, xmax, ymin, ymax in matrix_new[:, [2, 3, 6, 7]]:
+            regions_with_separators[ymin - top: ymax - top, xmin: xmax] = 6
+        # def dbg_imshow(box, title):
+        #     xmin, xmax, ymin, ymax = box
+        #     plt.imshow(regions_with_separators, extent=[0, width_tot, bot, top])
+        #     plt.gca().add_patch(patches.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+        #                                           fill=False, linewidth=1, edgecolor='r'))
+        #     plt.title(title + " at %d:%d, %d:%d" % (ymin, ymax, xmin, xmax))
+        #     plt.show()
+        for i in np.flatnonzero(args_nonver):
+            xmin, xmax, ymin, ymax, typ = matrix_new[i, [2, 3, 6, 7, 9]]
+            cut = regions_with_separators[ymin - top: ymax - top]
+            # dbg_imshow([xmin, xmax, ymin, ymax], "separator %d (%s)" % (i, "heading" if typ else "horizontal"))
+            starting = xmin - peaks_neg_tot
+            min_start = np.flatnonzero(starting >= 0)[-1] # last left-of
+            ending = xmax - peaks_neg_tot
+            max_end = np.flatnonzero(ending < 0)[0] # first right-of
+            # skip elongation unless this is already a multi-column separator/heading:
+            if not max_end - min_start > 1:
+                continue
+            # is there anything left of min_start?
+            for j in range(min_start):
+                # dbg_imshow([peaks_neg_tot[j], xmin, ymin, ymax], "start of %d candidate %d" % (i, j))
+                if not np.any(cut[:, peaks_neg_tot[j]: xmin]):
+                    # print("elongated sep", i, "typ", typ, "start", xmin, "to", j, peaks_neg_tot[j])
+                    matrix_new[i, 2] = peaks_neg_tot[j] + 1 # elongate to start of this column
+                    break
+            # is there anything right of max_end?
+            for j in range(len(peaks_neg_tot) - 1, max_end, -1):
+                # dbg_imshow([xmax, peaks_neg_tot[j], ymin, ymax], "end of %d candidate %d" % (i, j))
+                if not np.any(cut[:, xmax: peaks_neg_tot[j]]):
+                    # print("elongated sep", i, "typ", typ, "end", xmax, "to", j, peaks_neg_tot[j])
+                    matrix_new[i, 3] = peaks_neg_tot[j] - 1 # elongate to end of this column
+                    break
+
+        args_hor = matrix_new[:, 9] == 0
+        x_min_hor_some = matrix_new[:, 2][args_hor]
+        x_max_hor_some = matrix_new[:, 3][args_hor]
+        y_max_hor_some = matrix_new[:, 7][args_hor]
+        cy_hor_some = matrix_new[:, 5][args_hor]
+
+        args_head = matrix_new[:, 9] == 2
+        x_min_hor_head = matrix_new[:, 2][args_head]
+        x_max_hor_head = matrix_new[:, 3][args_head]
+        y_min_hor_head = matrix_new[:, 6][args_head]
+        y_max_hor_head = matrix_new[:, 7][args_head]
+        cy_hor_head = matrix_new[:, 5][args_head]
+
+        # split headings at toplines (y_min_head) and baselines (y_max_head)
+        # instead of merely adding their center (cy_head) as horizontal separator
+        # (x +/- 30px to avoid crossing col peaks by accident)
+        x_min_hor_some = np.append(x_min_hor_some, np.tile(x_min_hor_head + 30, 2))
+        x_max_hor_some = np.append(x_max_hor_some, np.tile(x_max_hor_head - 30, 2))
+        y_max_hor_some = np.append(y_max_hor_some, # baselines
+                                   np.concatenate((y_min_hor_head + 2,
+                                                   y_max_hor_head + 2)))
+        cy_hor_some = np.append(cy_hor_some, # toplines
+                                np.concatenate((y_min_hor_head - 2,
+                                                y_max_hor_head - 2)))
+
+        if right2left_readingorder:
+            x_max_hor_some = width_tot - x_min_hor_some
+            x_min_hor_some = width_tot - x_max_hor_some
+
 
         reading_order_type, x_starting, x_ending, y_mid, y_max, \
             y_mid_without_mother, x_start_without_mother, x_end_without_mother, \
