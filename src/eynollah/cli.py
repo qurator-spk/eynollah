@@ -80,17 +80,27 @@ def machine_based_reading_order(input, dir_in, out, model, log_level):
     required=True,
 )
 @click.option(
+    "--overwrite",
+    "-O",
+    help="overwrite (instead of skipping) if output xml exists",
+    is_flag=True,
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
-def binarization(patches, model_dir, input_image, dir_in, output, log_level):
+def binarization(patches, model_dir, input_image, dir_in, output, overwrite, log_level):
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     binarizer = SbbBinarizer(model_dir)
     if log_level:
-        binarizer.log.setLevel(getLevelName(log_level))
-    binarizer.run(image_path=input_image, use_patches=patches, output=output, dir_in=dir_in)
+        binarizer.logger.setLevel(getLevelName(log_level))
+    binarizer.run(overwrite=overwrite,
+                  use_patches=patches,
+                  image_path=input_image,
+                  output=output,
+                  dir_in=dir_in)
 
 
 @main.command()
