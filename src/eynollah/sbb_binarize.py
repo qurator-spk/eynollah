@@ -27,7 +27,7 @@ class SbbBinarizer:
     def __init__(self, model_dir: str, mode: str, logger=None):
         if mode not in ('single', 'multi'):
             raise ValueError(f"'mode' must be either 'multi' or 'single', not {mode}")
-        self.log = logger if logger else logging.getLogger('SbbBinarizer')
+        self.log = logger if logger else logging.getLogger('eynollah.binarization')
         self.model_zoo = EynollahModelZoo(basedir=model_dir)
         self.models = self.setup_models(mode)
         self.session = self.start_new_session()
@@ -51,8 +51,7 @@ class SbbBinarizer:
         self.session.close()
         del self.session
 
-    def predict(self, img, use_patches, n_batch_inference=5):
-        model = self.model_zoo.get('binarization', Model)
+    def predict(self, model, img, use_patches, n_batch_inference=5):
         model_height = model.layers[len(model.layers)-1].output_shape[1]
         model_width = model.layers[len(model.layers)-1].output_shape[2]
         

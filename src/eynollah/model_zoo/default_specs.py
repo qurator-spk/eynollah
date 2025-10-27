@@ -21,8 +21,8 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
 
     EynollahModelSpec(
         category="binarization",
-        variant='',
-        filename="models_eynollah/eynollah-binarization-hybrid_20230504",
+        variant='hybrid',
+        filename="models_eynollah/eynollah-binarization-hybrid_20230504/model_bin_hybrid_trans_cnn_sbb_ens",
         dists=['layout', 'binarization', ],
         dist_url=dist_url("binarization"),
         type=KerasModel,
@@ -39,7 +39,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
     
     EynollahModelSpec(
         category="binarization",
-        variant='augment',
+        variant='',
         filename="models_eynollah/eynollah-binarization_20210425",
         dists=['binarization'],
         dist_url=dist_url("binarization"),
