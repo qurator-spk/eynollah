@@ -16,8 +16,7 @@ from ocrd_models.constants import NAMESPACES as NS
 
 testdir = Path(__file__).parent.resolve()
 
-MODELS_OCR = environ.get('MODELS_OCR', str(testdir.joinpath('..', 'models_ocr_v0_6_0').resolve()))
-MODELS_BIN = environ.get('MODELS_BIN', str(testdir.joinpath('..', 'default-2021-03-09').resolve()))
+MODELS_DIR = environ.get('EYNOLLAH_MODELS_DIR', str(testdir.joinpath('..').resolve()))
 
 def only_eynollah(logrec):
 		return logrec.name.startswith('eynollah')
@@ -32,7 +31,7 @@ def test_run_eynollah_binarization_filename(tmp_path, pytestconfig, caplog, opti
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     args = [
-        '-m', MODELS_BIN,
+        '-m', MODELS_DIR,
         '-i', str(infile),
         '-o', str(outfile),
     ]
@@ -56,7 +55,7 @@ def test_run_eynollah_binarization_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
-        '-m', MODELS_BIN,
+        '-m', MODELS_DIR,
         '-di', str(indir),
         '-o', str(outdir),
     ]
@@ -81,7 +80,7 @@ def test_run_eynollah_enhancement_filename(tmp_path, pytestconfig, caplog, optio
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     args = [
-        '-m', MODELS_LAYOUT,
+        '-m', MODELS_DIR,
         '-i', str(infile),
         '-o', str(outfile.parent),
     ]
@@ -105,7 +104,7 @@ def test_run_eynollah_enhancement_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
-        '-m', MODELS_LAYOUT,
+        '-m', MODELS_DIR,
         '-di', str(indir),
         '-o', str(outdir),
     ]
@@ -124,7 +123,7 @@ def test_run_eynollah_mbreorder_filename(tmp_path, pytestconfig, caplog):
     infile = testdir.joinpath('resources/kant_aufklaerung_1784_0020.xml')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.xml')
     args = [
-        '-m', MODELS_LAYOUT,
+        '-m', MODELS_DIR,
         '-i', str(infile),
         '-o', str(outfile.parent),
     ]
@@ -151,7 +150,7 @@ def test_run_eynollah_mbreorder_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
-        '-m', MODELS_LAYOUT,
+        '-m', MODELS_DIR,
         '-di', str(indir),
         '-o', str(outdir),
     ]
@@ -181,7 +180,7 @@ def test_run_eynollah_ocr_filename(tmp_path, pytestconfig, caplog, options):
     outrenderfile = tmp_path.joinpath('render').joinpath('kant_aufklaerung_1784_0020.png')
     outrenderfile.parent.mkdir()
     args = [
-        '-m', MODELS_OCR,
+        '-m', MODELS_DIR,
         '-i', str(infile),
         '-dx', str(infile.parent),
         '-o', str(outfile.parent),
@@ -212,7 +211,7 @@ def test_run_eynollah_ocr_directory(tmp_path, pytestconfig, caplog):
     indir = testdir.joinpath('resources')
     outdir = tmp_path
     args = [
-        '-m', MODELS_OCR,
+        '-m', MODELS_DIR,
         '-di', str(indir),
         '-dx', str(indir),
         '-o', str(outdir),
