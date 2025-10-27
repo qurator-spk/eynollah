@@ -9,7 +9,6 @@ from keras.models import Model as KerasModel
 from keras.models import load_model
 from tabulate import tabulate
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
-
 from ..patch_encoder import PatchEncoder, Patches
 from .specs import EynollahModelSpecSet
 from .default_specs import DEFAULT_MODEL_SPECS
@@ -100,7 +99,7 @@ class EynollahModelZoo:
         elif model_category == 'characters':
             model = self._load_characters()
         elif model_category == 'trocr_processor':
-            return TrOCRProcessor.from_pretrained(self.model_path(...))
+            model = TrOCRProcessor.from_pretrained(model_path)
         else:
             try:
                 model = load_model(model_path, compile=False)
@@ -184,6 +183,5 @@ class EynollahModelZoo:
         Ensure that a loaded models is not referenced by ``self._loaded`` anymore
         """
         if hasattr(self, '_loaded') and getattr(self, '_loaded'):
-            for needle in self._loaded:
-                if self._loaded[needle]:
-                    del self._loaded[needle]
+            for needle in self._loaded.keys():
+                del self._loaded[needle]

@@ -63,8 +63,11 @@ class Eynollah_ocr:
         logger: Optional[Logger]=None,
     ):
         self.tr_ocr = tr_ocr
+        # For generating textline-image pairs for traning, move to generate_gt_for_training
         self.export_textline_images_and_text = export_textline_images_and_text
+        # masking for OCR and GT generation, relevant for skewed lines and bounding boxes
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
+        # prefix or dataset
         self.pref_of_dataset = pref_of_dataset
         self.logger = logger if logger else getLogger('eynollah')
         self.model_zoo = EynollahModelZoo(basedir=dir_models)
@@ -103,6 +106,7 @@ class Eynollah_ocr:
 
     def run(self, overwrite: bool = False,
             dir_in: Optional[str] = None,
+            # Prediction with RGB and binarized images for selected pages, should not be the default
             dir_in_bin: Optional[str] = None,
             image_filename: Optional[str] = None,
             dir_xmls: Optional[str] = None,

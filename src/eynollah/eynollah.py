@@ -45,7 +45,7 @@ import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
 
-from .model_zoo import EynollahModelZoo
+from .model_zoo import (EynollahModelZoo, KerasModel, TrOCRProcessor)
 from .utils.contour import (
     filter_contours_area_of_image,
     filter_contours_area_of_image_tables,
@@ -178,6 +178,7 @@ class Eynollah:
         self.full_layout = full_layout
         self.tables = tables
         self.right2left = right2left
+        # --input-binary sensible if image is very dark, if layout is not working.
         self.input_binary = input_binary
         self.allow_scaling = allow_scaling
         self.headers_off = headers_off
@@ -3651,7 +3652,15 @@ class Eynollah:
             pass
 
     def return_ocr_of_textline_without_common_section(
-            self, textline_image, model_ocr, processor, device, width_textline, h2w_ratio,ind_tot):
+        self,
+        textline_image,
+        model_ocr: KerasModel,
+        processor: TrOCRProcessor,
+        device,
+        width_textline,
+        h2w_ratio,
+        ind_tot,
+    ):
 
         if h2w_ratio > 0.05:
             pixel_values = processor(textline_image, return_tensors="pt").pixel_values

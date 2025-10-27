@@ -73,7 +73,6 @@ install-dev:
 
 deps-test: $(EYNOLLAH_MODELS_ZIP)
 	$(PIP) install -r requirements-test.txt
-endif
 
 smoke-test: TMPDIR != mktemp -d
 smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif
