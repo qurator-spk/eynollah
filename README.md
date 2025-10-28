@@ -11,6 +11,11 @@
 
 ![](https://user-images.githubusercontent.com/952378/102350683-8a74db80-3fa5-11eb-8c7e-f743f7d6eae2.jpg)
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/42df2582-4579-415e-92f1-54858a02c830" alt="Input Image" width="45%">
+  <img src="https://github.com/user-attachments/assets/77fc819e-6302-4fc9-967c-ee11d10d863e" alt="Output Image" width="45%">
+</p>
+
 ## Features
 * Document layout analysis using pixelwise segmentation models with support for 10 distinct segmentation classes: 
   * background, [page border](https://ocr-d.de/en/gt-guidelines/trans/lyRand.html), [text region](https://ocr-d.de/en/gt-guidelines/trans/lytextregion.html#textregionen__textregion_), [text line](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_TextLineType.html), [header](https://ocr-d.de/en/gt-guidelines/trans/lyUeberschrift.html), [image](https://ocr-d.de/en/gt-guidelines/trans/lyBildbereiche.html), [separator](https://ocr-d.de/en/gt-guidelines/trans/lySeparatoren.html), [marginalia](https://ocr-d.de/en/gt-guidelines/trans/lyMarginalie.html), [initial](https://ocr-d.de/en/gt-guidelines/trans/lyInitiale.html), [table](https://ocr-d.de/en/gt-guidelines/trans/lyTabellen.html)
@@ -98,24 +103,35 @@ eynollah layout \
 
 The following options can be used to further configure the processing:
 
-| option            | description                                                                    |
-|-------------------|:-------------------------------------------------------------------------------|
-| `-fl`             | full layout analysis including all steps and segmentation classes              |
-| `-light`          | lighter and faster but simpler method for main region detection and deskewing  |
-| `-tll`            | this indicates the light textline and should be passed with light version      |
-| `-tab`            | apply table detection                                                          |
-| `-ae`             | apply enhancement (the resulting image is saved to the output directory)       |
-| `-as`             | apply scaling                                                                  |
-| `-cl`             | apply contour detection for curved text lines instead of bounding boxes        |
-| `-ib`             | apply binarization (the resulting image is saved to the output directory)      |
-| `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`) |
-| `-eoi`            | extract only images to output directory (other processing will not be done)    |
-| `-ho`             | ignore headers for reading order dectection                                    |
-| `-si <directory>` | save image regions detected to this directory                                  |
-| `-sd <directory>` | save deskewed image to this directory                                          |
-| `-sl <directory>` | save layout prediction as plot to this directory                               |
-| `-sp <directory>` | save cropped page image to this directory                                      |
-| `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory               |
+| option            | description                                                                                 |
+|-------------------|:-------------------------------------------------------------------------------             |
+| `-fl`             | full layout analysis including all steps and segmentation classes (recommended)             |
+| `-light`          | lighter and faster but simpler method for main region detection and deskewing (recommended) |
+| `-tll`            | this indicates the light textline and should be passed with light version (recommended)     |
+| `-tab`            | apply table detection                                                                       |
+| `-ae`             | apply enhancement (the resulting image is saved to the output directory)                    |
+| `-as`             | apply scaling                                                                               |
+| `-cl`             | apply contour detection for curved text lines instead of bounding boxes                     |
+| `-ib`             | apply binarization (the resulting image is saved to the output directory)                   |
+| `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`)              |
+| `-eoi`            | extract only images to output directory (other processing will not be done)                 |
+| `-ho`             | ignore headers for reading order dectection                                                 |
+| `-si <directory>` | save image regions detected to this directory                                               |
+| `-sd <directory>` | save deskewed image to this directory                                                       |
+| `-sl <directory>` | save layout prediction as plot to this directory                                            |
+| `-sp <directory>` | save cropped page image to this directory                                                   |
+| `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory                            |
+| `-thart`          | threshold of artifical class in the case of textline detection. The default value is 0.1    |
+| `-tharl`          | threshold of artifical class in the case of layout detection. The default value is 0.1      |
+| `-ocr`            | do ocr                                                                                      |
+| `-tr`             | apply transformer ocr. Default model is a CNN-RNN model                                     |
+| `-bs_ocr`         | ocr inference batch size. Default bs for trocr and cnn_rnn models are 2 and 8 respectively  |
+| `-ncu`            | upper limit of columns in document image                                                    |
+| `-ncl`            | lower limit of columns in document image                                                    |
+| `-slro`           | skip layout detection and reading order                                                     |
+| `-romb`           | apply machine based reading order detection                                                 |
+| `-ipe`            | ignore page extraction                                                                      |
+
 
 If no further option is set, the tool performs layout detection of main regions (background, text, images, separators 
 and marginals).
@@ -133,7 +149,7 @@ The command-line interface for binarization can be called like this:
 eynollah binarization \
   -i <single image file> | -di <directory containing image files> \
   -o <output directory> \
-  -m <directory containing model files> \
+  -m <directory containing model files> 
 ```
 
 ### Image Enhancement
@@ -141,7 +157,17 @@ TODO
 
 ### OCR
 
-The OCR module performs text recognition using either CNN-RNN or TrOCR models.
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/71054636-51c6-4117-b3cf-361c5cda3528" alt="Input Image" width="45%">
+  <img src="https://github.com/user-attachments/assets/cfb3ce38-007a-4037-b547-21324a7d56dd" alt="Output Image" width="45%">
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/343b2ed8-d818-4d4a-b301-f304cbbebfcd" alt="Input Image" width="45%">
+  <img src="https://github.com/user-attachments/assets/accb5ba7-e37f-477e-84aa-92eafa0d136e" alt="Output Image" width="45%">
+</p>
+
+The OCR module performs text recognition using either a CNN-RNN model or a Transformer model.
 
 The command-line interface for OCR can be called like this:
 
@@ -150,8 +176,23 @@ eynollah ocr \
   -i <single image file> | -di <directory containing image files> \
   -dx <directory of xmls> \
   -o <output directory> \
-  -m <directory containing model files> | --model_name <path to specific model> \
+  -m <directory containing model files> | --model_name <path to specific model>
 ```
+
+The following options can be used to further configure the ocr processing:
+
+| option            | description                                                                                 |
+|-------------------|:-------------------------------------------------------------------------------             |
+| `-dib`            | directory of bins(files type must be '.png'). Prediction with both RGB and bins.            |
+| `-doit`           | Directory containing output images rendered with the predicted text                         |
+| `--model_name`    | Specific model file path to use for OCR                                                     |
+| `-trocr`          | transformer ocr will be applied, otherwise cnn_rnn model                                    |
+| `-etit`           | textlines images and text in xml will be exported into output dir (OCR training data)       |
+| `-nmtc`           | cropped textline images will not be masked with textline contour                            |
+| `-bs`             | ocr inference batch size. Default bs for trocr and cnn_rnn models are 2 and 8 respectively  |
+| `-ds_pref`        | add an abbrevation of dataset name to generated training data                               |
+| `-min_conf`       | minimum OCR confidence value. OCRs with textline conf lower than this will be ignored       |
+
 
 ### Reading Order Detection
 Reading order detection can be performed either as part of layout analysis based on image input, or, currently under 
