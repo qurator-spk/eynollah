@@ -11,11 +11,6 @@
 
 ![](https://user-images.githubusercontent.com/952378/102350683-8a74db80-3fa5-11eb-8c7e-f743f7d6eae2.jpg)
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/42df2582-4579-415e-92f1-54858a02c830" alt="Input Image" width="45%">
-  <img src="https://github.com/user-attachments/assets/77fc819e-6302-4fc9-967c-ee11d10d863e" alt="Output Image" width="45%">
-</p>
-
 ## Features
 * Document layout analysis using pixelwise segmentation models with support for 10 distinct segmentation classes: 
   * background, [page border](https://ocr-d.de/en/gt-guidelines/trans/lyRand.html), [text region](https://ocr-d.de/en/gt-guidelines/trans/lytextregion.html#textregionen__textregion_), [text line](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_TextLineType.html), [header](https://ocr-d.de/en/gt-guidelines/trans/lyUeberschrift.html), [image](https://ocr-d.de/en/gt-guidelines/trans/lyBildbereiche.html), [separator](https://ocr-d.de/en/gt-guidelines/trans/lySeparatoren.html), [marginalia](https://ocr-d.de/en/gt-guidelines/trans/lyMarginalie.html), [initial](https://ocr-d.de/en/gt-guidelines/trans/lyInitiale.html), [table](https://ocr-d.de/en/gt-guidelines/trans/lyTabellen.html)
