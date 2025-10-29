@@ -14,7 +14,7 @@ WGET = wget -O
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz
 #SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1
-EYNOLLAH_MODELS_URL := https://zenodo.org/records/17295988/files/models_all_v0_7_0.zip
+EYNOLLAH_MODELS_URL := https://zenodo.org/records/17417471/files/models_all_v0_7_0.zip
 EYNOLLAH_MODELS_ZIP = $(notdir $(EYNOLLAH_MODELS_URL))
 EYNOLLAH_MODELS_DIR = $(EYNOLLAH_MODELS_ZIP:%.zip=%)
 
@@ -45,7 +45,6 @@ help:
 	@echo ""
 
 # END-EVAL
-
 
 # Download and extract models to $(PWD)/models_layout_v0_6_0
 models: $(EYNOLLAH_MODELS_DIR)
