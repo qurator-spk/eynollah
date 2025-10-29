@@ -1,16 +1,13 @@
-from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Set, Tuple
+from typing import Set, Tuple
 import click
 
 from eynollah.model_zoo.default_specs import MODELS_VERSION
-from .model_zoo import EynollahModelZoo
 
 @click.group()
+@click.pass_context
 def models_cli(
     ctx,
-    model_basedir: str,
-    model_overrides: List[Tuple[str, str, str]],
 ):
     """
     Organize models for the various runners in eynollah.
@@ -26,6 +23,8 @@ def list_models(
     """
     List all the models in the zoo
     """
+    print(f"Model basedir: {ctx.obj.model_zoo.model_basedir}")
+    print(f"Model overrides: {ctx.obj.model_zoo.model_overrides}")
     print(ctx.obj.model_zoo)
 
 

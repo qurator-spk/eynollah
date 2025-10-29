@@ -32,10 +32,17 @@ class EynollahModelZoo:
     ) -> None:
         self.model_basedir = Path(basedir)
         self.logger = logging.getLogger('eynollah.model_zoo')
+        if not self.model_basedir.exists():
+            self.logger.warning(f"Model basedir does not exist: {basedir}. Set eynollah --model-basedir to the correct directory.")
         self.specs = deepcopy(DEFAULT_MODEL_SPECS)
+        self._overrides = []
         if model_overrides:
             self.override_models(*model_overrides)
         self._loaded: Dict[str, AnyModel] = {}
+
+    @property
+    def model_overrides(self):
+        return self._overrides
 
     def override_models(
         self,
@@ -48,6 +55,7 @@ class EynollahModelZoo:
             spec = self.specs.get(model_category, model_variant)
             self.logger.warning("Overriding filename for model spec %s to %s", spec, model_filename)
             self.specs.get(model_category, model_variant).filename = model_filename
+        self._overrides += model_overrides
 
     def model_path(
         self,
@@ -164,7 +172,7 @@ class EynollahModelZoo:
         return tabulate(
             [
                 [
-                    spec.type.__name__,
+                    spec.type,
                     spec.category,
                     spec.variant,
                     spec.help,

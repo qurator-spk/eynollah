@@ -15,7 +15,7 @@ class EynollahModelSpec():
     dists: List[str]
     # URL to the smallest model distribution containing this model (link to Zenodo)
     dist_url: str
-    type: Type[AnyModel]
+    type: str
     variant: str = ''
     help: str = ''
 

@@ -1,9 +1,11 @@
 from dataclasses import dataclass
+import os
 import sys
 import click
 import logging
 from ocrd_utils import initLogging, getLevelName, getLogger
-from eynollah.model_zoo import EynollahModelZoo
+
+from .model_zoo import EynollahModelZoo
 
 from .cli_models import models_cli
 
@@ -11,15 +13,13 @@ from .cli_models import models_cli
 class EynollahCliCtx:
     model_zoo: EynollahModelZoo
 
-
 @click.group()
 @click.option(
     "--model-basedir",
     "-m",
     help="directory of models",
     type=click.Path(exists=True, file_okay=False),
-    # default=f"{os.environ['HOME']}/.local/share/ocrd-resources/ocrd-eynollah-segment",
-    required=True,
+    default=f'{os.getcwd()}/models_eynollah',
 )
 @click.option(
     "--model-overrides",

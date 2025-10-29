@@ -1,5 +1,5 @@
 from .specs import EynollahModelSpec, EynollahModelSpecSet
-from .types import KerasModel, TrOCRProcessor, List
+from .types import KerasModel
 
 # NOTE: This needs to change whenever models/versions change
 ZENODO = "https://zenodo.org/records/17295988/files"
@@ -16,7 +16,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-enhancement_20210425",
         dists=['enhancement', 'layout', 'ci'],
         dist_url=dist_url("enhancement"),
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -25,7 +25,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-binarization-hybrid_20230504/model_bin_hybrid_trans_cnn_sbb_ens",
         dists=['layout', 'binarization', ],
         dist_url=dist_url("binarization"),
-        type=KerasModel,
+        type='Keras',
     ),
     
     EynollahModelSpec(
@@ -34,7 +34,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-binarization_20210309",
         dists=['binarization'],
         dist_url=dist_url("binarization"),
-        type=KerasModel,
+        type='Keras',
     ),
     
     EynollahModelSpec(
@@ -43,7 +43,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-binarization_20210425",
         dists=['binarization'],
         dist_url=dist_url("binarization"),
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -52,7 +52,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-binarization-multi_2020_01_16/model_bin1",
         dist_url=dist_url("binarization"),
         dists=['binarization'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -61,7 +61,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-binarization-multi_2020_01_16/model_bin2",
         dist_url=dist_url("binarization"),
         dists=['binarization'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -70,7 +70,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-binarization-multi_2020_01_16/model_bin3",
         dist_url=dist_url("binarization"),
         dists=['binarization'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -79,7 +79,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-binarization-multi_2020_01_16/model_bin4",
         dist_url=dist_url("binarization"),
         dists=['binarization'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -88,7 +88,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-column-classifier_20210425",
         dist_url=dist_url("layout"),
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -97,7 +97,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/model_eynollah_page_extraction_20250915",
         dist_url=dist_url("layout"),
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -106,7 +106,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-main-regions-ensembled_20210425",
         dist_url=dist_url("layout"),
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -115,7 +115,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18",
         dist_url=dist_url("layout"),
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -125,7 +125,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         dist_url=dist_url("layout"),
         help="early layout",
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -135,7 +135,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         dist_url=dist_url("layout"),
         help="early layout, non-light, 2nd part",
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -150,7 +150,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         dist_url=dist_url("layout"),
         dists=['layout'],
         help="early layout, light, 1-or-2-column",
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -166,7 +166,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         dist_url=dist_url("layout"),
         help="full layout / no patches",
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     # FIXME: Why is region_fl and region_fl_np the same model?
@@ -186,7 +186,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         dist_url=dist_url("layout"),
         help="full layout / with patches",
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -200,7 +200,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/model_eynollah_reading_order_20250824",
         dist_url=dist_url("reading_order"),
         dists=['layout', 'reading_order'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -215,7 +215,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/modelens_textline_0_1__2_4_16092024",
         dist_url=dist_url("layout"),
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -225,7 +225,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/modelens_textline_0_1__2_4_16092024",
         dist_url=dist_url("layout"),
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -234,7 +234,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/eynollah-tables_20210319",
         dist_url=dist_url("layout"),
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -243,7 +243,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/modelens_table_0t4_201124",
         dist_url=dist_url("layout"),
         dists=['layout'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -252,7 +252,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/model_eynollah_ocr_cnnrnn_20250930",
         dist_url=dist_url("ocr"),
         dists=['layout', 'ocr'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -262,7 +262,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         help="slightly better at degraded Fraktur",
         dist_url=dist_url("ocr"),
         dists=['ocr'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -271,7 +271,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="characters_org.txt",
         dist_url=dist_url("ocr"),
         dists=['ocr'],
-        type=KerasModel,
+        type='decoder',
     ),
 
     EynollahModelSpec(
@@ -280,7 +280,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="characters_org.txt",
         dist_url=dist_url("ocr"),
         dists=['ocr'],
-        type=list,
+        type='List[str]',
     ),
 
     EynollahModelSpec(
@@ -290,7 +290,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         dist_url=dist_url("trocr"),
         help='much slower transformer-based',
         dists=['trocr'],
-        type=KerasModel,
+        type='Keras',
     ),
 
     EynollahModelSpec(
@@ -299,7 +299,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/microsoft/trocr-base-printed",
         dist_url=dist_url("trocr"),
         dists=['trocr'],
-        type=KerasModel,
+        type='TrOCRProcessor',
     ),
 
     EynollahModelSpec(
@@ -308,7 +308,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/microsoft/trocr-base-handwritten",
         dist_url=dist_url("trocr"),
         dists=['trocr'],
-        type=TrOCRProcessor,
+        type='TrOCRProcessor',
     ),
 
 ])
