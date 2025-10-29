@@ -322,8 +322,7 @@ class SbbBinarizer:
                 image = cv2.imread(image_path)
             img_last = 0
             for n, (model_file, model) in enumerate(self.models.items()):
-                self.log.info('Predicting with model %s [%s/%s]' % (model_file, n + 1, len(self.models.keys())))
-
+                self.log.info('Predicting %s with model %s [%s/%s]', image_path if image_path else '[image]', model_file, n + 1, len(self.models.keys()))
                 res = self.predict(model, image, use_patches)
 
                 img_fin = np.zeros((res.shape[0], res.shape[1], 3))
@@ -348,11 +347,11 @@ class SbbBinarizer:
             ls_imgs = list(filter(is_image_filename, os.listdir(dir_in)))
             for image_name in ls_imgs:
                 image_stem = image_name.split('.')[0]
-                print(image_name,'image_name')
+                # print(image_name,'image_name')
                 image = cv2.imread(os.path.join(dir_in,image_name) )
                 img_last = 0
                 for n, (model_file, model) in enumerate(self.models.items()):
-                    self.log.info('Predicting with model %s [%s/%s]' % (model_file, n + 1, len(self.models.keys())))
+                    self.log.info('Predicting %s with model %s [%s/%s]', image_name, model_file, n + 1, len(self.models.keys()))
 
                     res = self.predict(model, image, use_patches)
 

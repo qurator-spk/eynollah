@@ -84,10 +84,13 @@ class EynollahModelZoo:
         self,
         model_category: str,
         model_variant: str = '',
+        model_path_override: Optional[str] = None,
     ) -> AnyModel:
         """
         Load any model
         """
+        if model_path_override:
+            self.override_models((model_category, model_variant, model_path_override))
         model_path = self.model_path(model_category, model_variant)
         if model_path.suffix == '.h5' and Path(model_path.stem).exists():
             # prefer SavedModel over HDF5 format if it exists
@@ -183,5 +186,5 @@ class EynollahModelZoo:
         Ensure that a loaded models is not referenced by ``self._loaded`` anymore
         """
         if hasattr(self, '_loaded') and getattr(self, '_loaded'):
-            for needle in self._loaded.keys():
+            for needle in list(self._loaded.keys()):
                 del self._loaded[needle]

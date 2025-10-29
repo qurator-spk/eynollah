@@ -59,7 +59,7 @@ class Eynollah_ocr:
         export_textline_images_and_text: bool=False,
         do_not_mask_with_textline_contour: bool=False,
         pref_of_dataset=None,
-        min_conf_value_of_textline_text : float=0.3,
+        min_conf_value_of_textline_text : Optional[float]=None,
         logger: Optional[Logger]=None,
     ):
         self.tr_ocr = tr_ocr
@@ -69,7 +69,7 @@ class Eynollah_ocr:
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
         # prefix or dataset
         self.pref_of_dataset = pref_of_dataset
-        self.logger = logger if logger else getLogger('eynollah')
+        self.logger = logger if logger else getLogger('eynollah.ocr')
         self.model_zoo = EynollahModelZoo(basedir=dir_models)
         
         # TODO: Properly document what 'export_textline_images_and_text' is about
@@ -77,21 +77,15 @@ class Eynollah_ocr:
             self.logger.info("export_textline_images_and_text was set, so no actual models are loaded")
             return
 
-        self.min_conf_value_of_textline_text = min_conf_value_of_textline_text
+        self.min_conf_value_of_textline_text = min_conf_value_of_textline_text if min_conf_value_of_textline_text else 0.3
         self.b_s = 2 if batch_size is None and tr_ocr else 8 if batch_size is None else batch_size
 
         if tr_ocr:
-            self.model_zoo.load_model('trocr_processor', '')
-            if model_name:
-                self.model_zoo.load_model('ocr', 'tr', model_name)
-            else:
-                self.model_zoo.load_model('ocr', 'tr')
+            self.model_zoo.load_model('trocr_processor')
+            self.model_zoo.load_model('ocr', 'tr', model_path_override=model_name)
             self.model_zoo.get('ocr').to(self.device)
         else:
-            if model_name:
-                self.model_zoo.load_model('ocr', '', model_name)
-            else:
-                self.model_zoo.load_model('ocr', '')
+            self.model_zoo.load_model('ocr', '', model_path_override=model_name)
             self.model_zoo.load_model('num_to_char')
             self.end_character = len(self.model_zoo.load_model('characters')) + 2
 
@@ -206,10 +200,10 @@ class Eynollah_ocr:
                                             cropped_lines = []
                                             indexer_b_s = 0
                                             
-                                            pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
+                                            pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
                                             generated_ids_merged = self.model_zoo.get('ocr').generate(
                                                 pixel_values_merged.to(self.device))
-                                            generated_text_merged = self.model_zoo.get('processor').batch_decode(
+                                            generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(
                                                 generated_ids_merged, skip_special_tokens=True)
                                             
                                             extracted_texts = extracted_texts + generated_text_merged
@@ -229,10 +223,10 @@ class Eynollah_ocr:
                                                 cropped_lines = []
                                                 indexer_b_s = 0
                                                 
-                                                pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
+                                                pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
                                                 generated_ids_merged = self.model_zoo.get('ocr').generate(
                                                     pixel_values_merged.to(self.device))
-                                                generated_text_merged = self.model_zoo.get('processor').batch_decode(
+                                                generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(
                                                     generated_ids_merged, skip_special_tokens=True)
                                                 
                                                 extracted_texts = extracted_texts + generated_text_merged
@@ -249,10 +243,10 @@ class Eynollah_ocr:
                                                 cropped_lines = []
                                                 indexer_b_s = 0
                                                 
-                                                pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
+                                                pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
                                                 generated_ids_merged = self.model_zoo.get('ocr').generate(
                                                     pixel_values_merged.to(self.device))
-                                                generated_text_merged = self.model_zoo.get('processor').batch_decode(
+                                                generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(
                                                     generated_ids_merged, skip_special_tokens=True)
                                                 
                                                 extracted_texts = extracted_texts + generated_text_merged
@@ -267,10 +261,10 @@ class Eynollah_ocr:
                                                 cropped_lines = []
                                                 indexer_b_s = 0
                                                 
-                                                pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
+                                                pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
                                                 generated_ids_merged = self.model_zoo.get('ocr').generate(
                                                     pixel_values_merged.to(self.device))
-                                                generated_text_merged = self.model_zoo.get('processor').batch_decode(
+                                                generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(
                                                     generated_ids_merged, skip_special_tokens=True)
                                                 
                                                 extracted_texts = extracted_texts + generated_text_merged
@@ -284,9 +278,9 @@ class Eynollah_ocr:
                     cropped_lines = []
                     indexer_b_s = 0
                     
-                    pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
+                    pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
                     generated_ids_merged = self.model_zoo.get('ocr').generate(pixel_values_merged.to(self.device))
-                    generated_text_merged = self.model_zoo.get('processor').batch_decode(generated_ids_merged, skip_special_tokens=True)
+                    generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(generated_ids_merged, skip_special_tokens=True)
                     
                     extracted_texts = extracted_texts + generated_text_merged
                     
@@ -301,10 +295,10 @@ class Eynollah_ocr:
                         ####n_start = i*self.b_s
                         ####n_end = (i+1)*self.b_s
                         ####imgs = cropped_lines[n_start:n_end]
-                    ####pixel_values_merged = self.model_zoo.get('processor')(imgs, return_tensors="pt").pixel_values
+                    ####pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
                     ####generated_ids_merged = self.model_ocr.generate(
                     ####    pixel_values_merged.to(self.device))
-                    ####generated_text_merged = self.model_zoo.get('processor').batch_decode(
+                    ####generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(
                     ####    generated_ids_merged, skip_special_tokens=True)
                     
                     ####extracted_texts = extracted_texts + generated_text_merged

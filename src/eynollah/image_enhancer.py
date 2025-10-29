@@ -50,7 +50,7 @@ class Enhancer:
         else:
             self.num_col_lower = num_col_lower
             
-        self.logger = logger if logger else getLogger('enhancement')
+        self.logger = logger if logger else getLogger('eynollah.enhance')
         self.model_zoo = EynollahModelZoo(basedir=dir_models)
         for v in ['binarization', 'enhancement', 'col_classifier', 'page']:
             self.model_zoo.load_model(v)
@@ -142,7 +142,7 @@ class Enhancer:
                     index_y_d = img_h - img_height_model
 
                 img_patch = img[np.newaxis, index_y_d:index_y_u, index_x_d:index_x_u, :]
-                label_p_pred = self.model_zoo.get('enhancement', Model).predict(img_patch, verbose=0)
+                label_p_pred = self.model_zoo.get('enhancement', Model).predict(img_patch, verbose='0')
                 seg = label_p_pred[0, :, :, :] * 255
 
                 if i == 0 and j == 0:
@@ -667,7 +667,7 @@ class Enhancer:
         t0 = time.time()
         img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(light_version=False)
         
-        return img_res
+        return img_res, is_image_enhanced
         
         
     def run(self,
@@ -705,9 +705,18 @@ class Enhancer:
                     self.logger.warning("will skip input for existing output file '%s'", self.output_filename)
                     continue
 
-            image_enhanced = self.run_single()
+            did_resize = False
+            image_enhanced, did_enhance = self.run_single()
             if self.save_org_scale:
                 image_enhanced = resize_image(image_enhanced, self.h_org, self.w_org)
+                did_resize = True
+
+            self.logger.info(
+                "Image %s was %senhanced%s.",
+                img_filename,
+                '' if did_enhance else 'not ',
+                'and resized' if did_resize else ''
+            )
             
             cv2.imwrite(self.output_filename, image_enhanced)
             
