@@ -1,4 +1,9 @@
+# FIXME: fix all of those...
 # pyright: reportPossiblyUnboundVariable=false
+# pyright: reportOptionalMemberAccess=false
+# pyright: reportArgumentType=false
+# pyright: reportCallIssue=false
+# pyright: reportOptionalSubscript=false
 
 from logging import Logger, getLogger
 from typing import Optional
@@ -53,7 +58,6 @@ class Eynollah_ocr:
         self,
         *,
         model_zoo: EynollahModelZoo,
-        dir_xmls=None,
         tr_ocr=False,
         batch_size: Optional[int]=None,
         export_textline_images_and_text: bool=False,
@@ -82,12 +86,13 @@ class Eynollah_ocr:
 
         if tr_ocr:
             self.model_zoo.load_model('trocr_processor')
-            self.model_zoo.load_model('ocr', 'tr', model_path_override=model_name)
+            self.model_zoo.load_model('ocr', 'tr')
             self.model_zoo.get('ocr').to(self.device)
         else:
-            self.model_zoo.load_model('ocr', '', model_path_override=model_name)
+            self.model_zoo.load_model('ocr', '')
             self.model_zoo.load_model('num_to_char')
-            self.end_character = len(self.model_zoo.load_model('characters')) + 2
+            self.model_zoo.load_model('characters')
+            self.end_character = len(self.model_zoo.get('characters', list)) + 2
 
     @property
     def device(self):
