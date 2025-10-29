@@ -12,7 +12,7 @@
 ![](https://user-images.githubusercontent.com/952378/102350683-8a74db80-3fa5-11eb-8c7e-f743f7d6eae2.jpg)
 
 ## Features
-* Document layout analysis using pixelwise segmentation models with support for 10 distinct segmentation classes: 
+* Document layout analysis using pixelwise segmentation models with support for 10 segmentation classes: 
   * background, [page border](https://ocr-d.de/en/gt-guidelines/trans/lyRand.html), [text region](https://ocr-d.de/en/gt-guidelines/trans/lytextregion.html#textregionen__textregion_), [text line](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_TextLineType.html), [header](https://ocr-d.de/en/gt-guidelines/trans/lyUeberschrift.html), [image](https://ocr-d.de/en/gt-guidelines/trans/lyBildbereiche.html), [separator](https://ocr-d.de/en/gt-guidelines/trans/lySeparatoren.html), [marginalia](https://ocr-d.de/en/gt-guidelines/trans/lyMarginalie.html), [initial](https://ocr-d.de/en/gt-guidelines/trans/lyInitiale.html), [table](https://ocr-d.de/en/gt-guidelines/trans/lyTabellen.html)
 * Textline segmentation to bounding boxes or polygons (contours) including for curved lines and vertical text
 * Document image binarization with pixelwise segmentation or hybrid CNN-Transformer models
@@ -80,6 +80,8 @@ Eynollah supports five use cases:
 3. [image enhancement](#image-enhancement), 
 4. [text recognition (OCR)](#ocr), and 
 5. [reading order detection](#reading-order-detection).
+
+Some example outputs can be found in [`examples.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/examples.md).
 
 ### Layout Analysis
 
@@ -152,16 +154,6 @@ TODO
 
 ### OCR
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/71054636-51c6-4117-b3cf-361c5cda3528" alt="Input Image" width="45%">
-  <img src="https://github.com/user-attachments/assets/cfb3ce38-007a-4037-b547-21324a7d56dd" alt="Output Image" width="45%">
-</p>
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/343b2ed8-d818-4d4a-b301-f304cbbebfcd" alt="Input Image" width="45%">
-  <img src="https://github.com/user-attachments/assets/accb5ba7-e37f-477e-84aa-92eafa0d136e" alt="Output Image" width="45%">
-</p>
-
 The OCR module performs text recognition using either a CNN-RNN model or a Transformer model.
 
 The command-line interface for OCR can be called like this:
@@ -176,17 +168,17 @@ eynollah ocr \
 
 The following options can be used to further configure the ocr processing:
 
-| option            | description                                                                                 |
-|-------------------|:-------------------------------------------------------------------------------             |
-| `-dib`            | directory of bins(files type must be '.png'). Prediction with both RGB and bins.            |
-| `-doit`           | Directory containing output images rendered with the predicted text                         |
-| `--model_name`    | Specific model file path to use for OCR                                                     |
-| `-trocr`          | transformer ocr will be applied, otherwise cnn_rnn model                                    |
-| `-etit`           | textlines images and text in xml will be exported into output dir (OCR training data)       |
-| `-nmtc`           | cropped textline images will not be masked with textline contour                            |
-| `-bs`             | ocr inference batch size. Default bs for trocr and cnn_rnn models are 2 and 8 respectively  |
-| `-ds_pref`        | add an abbrevation of dataset name to generated training data                               |
-| `-min_conf`       | minimum OCR confidence value. OCRs with textline conf lower than this will be ignored       |
+| option            | description                                                                                |
+|-------------------|:-------------------------------------------------------------------------------------------|
+| `-dib`            | directory of binarized images (file type must be '.png'), prediction with both RGB and bin |
+| `-doit`           | directory for output images rendered with the predicted text                               |
+| `--model_name`    | file path to use specific model for OCR                                                    |
+| `-trocr`          | use transformer ocr model (otherwise cnn_rnn model is used)                                |
+| `-etit`           | export textline images and text in xml to output dir (OCR training data)                   |
+| `-nmtc`           | cropped textline images will not be masked with textline contour                           |
+| `-bs`             | ocr inference batch size. Default batch size is 2 for trocr and 8 for cnn_rnn models       |
+| `-ds_pref`        | add an abbrevation of dataset name to generated training data                              |
+| `-min_conf`       | minimum OCR confidence value. OCR with textline conf lower than this will be ignored       |
 
 
 ### Reading Order Detection
