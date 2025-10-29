@@ -31,7 +31,7 @@ def eynollah_subcommands():
         'layout',
         'ocr',
         'enhancement',
-        'machine-based-reading-order'
-        'models'
+        'machine-based-reading-order',
+        'models',
     ]
 

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Set, Tuple, Type
-from .types import AnyModel
+from typing import Dict, List, Set, Tuple
 
 
 @dataclass

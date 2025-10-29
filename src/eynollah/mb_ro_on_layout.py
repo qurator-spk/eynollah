@@ -2,6 +2,10 @@
 Machine learning based reading order detection
 """
 
+# pyright: reportCallIssue=false
+# pyright: reportUnboundVariable=false
+# pyright: reportArgumentType=false
+
 import logging 
 import os
 import time

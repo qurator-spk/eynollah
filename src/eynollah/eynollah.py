@@ -1,12 +1,22 @@
+"""
+document layout analysis (segmentation) with output in PAGE-XML
+"""
 # pylint: disable=no-member,invalid-name,line-too-long,missing-function-docstring,missing-class-docstring,too-many-branches
 # pylint: disable=too-many-locals,wrong-import-position,too-many-lines,too-many-statements,chained-comparison,fixme,broad-except,c-extension-no-member
 # pylint: disable=too-many-public-methods,too-many-arguments,too-many-instance-attributes,too-many-public-methods,
 # pylint: disable=consider-using-enumerate
+# FIXME: fix all of those...
 # pyright: reportUnnecessaryTypeIgnoreComment=true
 # pyright: reportPossiblyUnboundVariable=false
-"""
-document layout analysis (segmentation) with output in PAGE-XML
-"""
+# pyright: reportMissingImports=false
+# pyright: reportCallIssue=false
+# pyright: reportOperatorIssue=false
+# pyright: reportUnboundVariable=false
+# pyright: reportArgumentType=false
+# pyright: reportAttributeAccessIssue=false
+# pyright: reportOptionalMemberAccess=false
+# pyright: reportGeneralTypeIssues=false
+# pyright: reportOptionalSubscript=false
 
 import logging
 import sys
@@ -21,8 +31,7 @@ from difflib import SequenceMatcher as sq
 import math
 import os
 import time
-from typing import List, Optional, Tuple
-import warnings
+from typing import Optional
 from functools import partial
 from pathlib import Path
 from multiprocessing import cpu_count
@@ -39,17 +48,8 @@ from skimage.morphology import skeletonize
 from ocrd_utils import tf_disable_interactive_logs
 import statistics
 
-try:
-    import torch # type: ignore
-except ImportError:
-    torch = None
-try:
-    import matplotlib.pyplot as plt
-except ImportError:
-    plt = None
-
-#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 tf_disable_interactive_logs()
+
 import tensorflow as tf
 # warnings.filterwarnings("ignore")
 from tensorflow.python.keras import backend as K
@@ -58,6 +58,14 @@ from tensorflow.keras.models import load_model
 from tensorflow.compat.v1.keras.backend import set_session
 from tensorflow.keras import layers
 from tensorflow.keras.layers import StringLookup
+try:
+    import torch
+except ImportError:
+    torch = None
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    plt = None
 
 from .model_zoo import EynollahModelZoo
 from .utils.contour import (
@@ -3667,8 +3675,8 @@ class Eynollah:
     def return_ocr_of_textline_without_common_section(
         self,
         textline_image,
-        model_ocr: KerasModel,
-        processor: TrOCRProcessor,
+        model_ocr,
+        processor,
         device,
         width_textline,
         h2w_ratio,

@@ -426,13 +426,11 @@ def layout(
     threshold_art_class_layout,
     skip_layout_and_reading_order,
     ignore_page_extraction,
-    log_level,
-    setup_logging,
 ):
     """
     Detect Layout (with optional image enhancement and reading order detection)
     """
-    from eynollah.eynollah import Eynollah
+    from .eynollah import Eynollah
     assert enable_plotting or not save_layout, "Plotting with -sl also requires -ep"
     assert enable_plotting or not save_deskewed, "Plotting with -sd also requires -ep"
     assert enable_plotting or not save_all, "Plotting with -sa also requires -ep"
@@ -452,7 +450,6 @@ def layout(
     assert not extract_only_images or not right2left, "Image extraction -eoi can not be set alongside right2left -r2l"
     assert not extract_only_images or not headers_off, "Image extraction -eoi can not be set alongside headers_off -ho"
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    from .eynollah import Eynollah
     eynollah = Eynollah(
         model_zoo=ctx.obj.model_zoo,
         extract_only_images=extract_only_images,

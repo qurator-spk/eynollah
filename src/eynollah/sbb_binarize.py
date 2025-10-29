@@ -2,10 +2,15 @@
 Tool to load model and binarize a given image.
 """
 
+# pyright: reportIndexIssue=false
+# pyright: reportCallIssue=false
+# pyright: reportArgumentType=false
+# pyright: reportPossiblyUnboundVariable=false
+
 import os
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import numpy as np
 import cv2
@@ -326,7 +331,7 @@ class SbbBinarizer:
                 image = cv2.imread(image_path)
             img_last = 0
             for n, (model_file, model) in enumerate(self.models.items()):
-                self.log.info('Predicting %s with model %s [%s/%s]', image_path if image_path else '[image]', model_file, n + 1, len(self.models.keys()))
+                self.logger.info('Predicting %s with model %s [%s/%s]', image_path if image_path else '[image]', model_file, n + 1, len(self.models.keys()))
                 res = self.predict(model, image, use_patches)
 
                 img_fin = np.zeros((res.shape[0], res.shape[1], 3))

@@ -1,5 +1,4 @@
-from typing import List, TypeVar, Union
-from keras.models import Model as KerasModel
+from typing import TypeVar
 
 # NOTE: Creating an actual union type requires loading transformers which is expensive and error-prone
 # from transformers import TrOCRProcessor, VisionEncoderDecoderModel

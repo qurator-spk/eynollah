@@ -2,6 +2,11 @@
 Image enhancer. The output can be written as same scale of input or in new predicted scale.
 """
 
+# FIXME: fix all of those...
+# pyright: reportUnboundVariable=false
+# pyright: reportCallIssue=false
+# pyright: reportArgumentType=false
+
 import logging
 import os
 import time

@@ -1,5 +1,4 @@
 from .specs import EynollahModelSpec, EynollahModelSpecSet
-from .types import KerasModel
 
 # NOTE: This needs to change whenever models/versions change
 ZENODO = "https://zenodo.org/records/17295988/files"
