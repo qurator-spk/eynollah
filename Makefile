@@ -15,8 +15,8 @@ WGET = wget -O
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz
 #SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1
 EYNOLLAH_MODELS_URL := https://zenodo.org/records/17295988/files/models_all_v0_7_0.zip
-EYNOLLAH_MODELS_ZIP = $(notdir $(SEG_MODEL))
-EYNOLLAH_MODELS_DIR = $(SEG_MODELFILE:%.zip=%)
+EYNOLLAH_MODELS_ZIP = $(notdir $(EYNOLLAH_MODELS_URL))
+EYNOLLAH_MODELS_DIR = $(EYNOLLAH_MODELS_ZIP:%.zip=%)
 
 PYTEST_ARGS ?= -vv --isolate
 
@@ -32,7 +32,7 @@ help:
 	@echo "    install-dev  Install editable with pip"
 	@echo "    deps-test    Install test dependencies with pip"
 	@echo "    models       Download and extract models to $(CURDIR):"
-	@echo "                 $(BIN_MODELNAME) $(SEG_MODELNAME) $(OCR_MODELNAME)"
+	@echo "                 $(EYNOLLAH_MODELS_DIR)"
 	@echo "    smoke-test   Run simple CLI check"
 	@echo "    ocrd-test    Run OCR-D CLI check"
 	@echo "    test         Run unit tests"
@@ -112,9 +112,7 @@ ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	$(RM) -r $(TMPDIR)
 
 # Run unit tests
-test: export MODELS_LAYOUT=$(CURDIR)/$(SEG_MODELNAME)
-test: export MODELS_OCR=$(CURDIR)/$(OCR_MODELNAME)
-test: export MODELS_BIN=$(CURDIR)/$(BIN_MODELNAME)
+test: export EYNOLLAH_MODELS_DIR := $(CURDIR)/$(EYNOLLAH_MODELS_DIR)
 test:
 	$(PYTHON) -m pytest tests --durations=0 --continue-on-collection-errors $(PYTEST_ARGS)
 
