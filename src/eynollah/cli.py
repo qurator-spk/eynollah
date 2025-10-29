@@ -1,17 +1,22 @@
 from dataclasses import dataclass
-import os
-import sys
-import click
 import logging
-from ocrd_utils import initLogging, getLevelName, getLogger
+import sys
+import os
+from typing import Union
+
+import click
 
 from .model_zoo import EynollahModelZoo
-
 from .cli_models import models_cli
 
 @dataclass()
 class EynollahCliCtx:
+    """
+    Holds options relevant for all eynollah subcommands
+    """
     model_zoo: EynollahModelZoo
+    log_level : Union[str, None] = 'INFO'
+
 
 @click.group()
 @click.option(
@@ -28,10 +33,31 @@ class EynollahCliCtx:
     type=(str, str, str),
     multiple=True,
 )
+@click.option(
+    "--log_level",
+    "-l",
+    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
+    help="Override log level globally to this",
+)
 @click.pass_context
-def main(ctx, model_basedir, model_overrides):
+def main(ctx, model_basedir, model_overrides, log_level):
+    """
+    eynollah - Document Layout Analysis, Image Enhancement, OCR
+    """
+    # Initialize logging
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.NOTSET)
+    formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname)s %(name)s - %(message)s', datefmt='%H:%M:%S')
+    console_handler.setFormatter(formatter)
+    logging.getLogger('eynollah').addHandler(console_handler)
+    logging.getLogger('eynollah').setLevel(log_level or logging.INFO)
     # Initialize model zoo
-    ctx.obj = EynollahCliCtx(model_zoo=EynollahModelZoo(basedir=model_basedir, model_overrides=model_overrides))
+    model_zoo = EynollahModelZoo(basedir=model_basedir, model_overrides=model_overrides)
+    # Initialize CLI context
+    ctx.obj = EynollahCliCtx(
+        model_zoo=model_zoo,
+        log_level=log_level,
+    )
 
 main.add_command(models_cli, 'models')
 
@@ -55,20 +81,14 @@ main.add_command(models_cli, 'models')
     type=click.Path(exists=True, file_okay=False),
     required=True,
 )
-@click.option(
-    "--log_level",
-    "-l",
-    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override log level globally to this",
-)
 @click.pass_context
-def machine_based_reading_order(ctx, input, dir_in, out, log_level):
+def machine_based_reading_order(ctx, input, dir_in, out):
+    """
+    Generate ReadingOrder with a ML model
+    """
     from eynollah.mb_ro_on_layout import machine_based_reading_order_on_layout
     assert bool(input) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     orderer = machine_based_reading_order_on_layout(model_zoo=ctx.obj.model_zoo)
-    if log_level:
-        orderer.logger.setLevel(getLevelName(log_level))
-
     orderer.run(xml_filename=input,
                 dir_in=dir_in,
                 dir_out=out,
@@ -103,12 +123,6 @@ def machine_based_reading_order(ctx, input, dir_in, out, log_level):
     default='single',
     help="Whether to use the (newer and faster) single-model binarization or the (slightly better) multi-model binarization"
 )
-@click.option(
-    "--log_level",
-    "-l",
-    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override log level globally to this",
-)
 @click.pass_context
 def binarization(
     ctx,
@@ -117,13 +131,13 @@ def binarization(
     mode,
     dir_in,
     output,
-    log_level,
 ):
+    """
+    Binarize images with a ML model
+    """
     from eynollah.sbb_binarize import SbbBinarizer
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     binarizer = SbbBinarizer(model_zoo=ctx.obj.model_zoo, mode=mode)
-    if log_level:
-        binarizer.log.setLevel(getLevelName(log_level))
     binarizer.run(
         image_path=input_image,
         use_patches=patches,
@@ -175,25 +189,19 @@ def binarization(
     is_flag=True,
     help="if this parameter set to true, this tool will save the enhanced image in org scale.",
 )
-@click.option(
-    "--log_level",
-    "-l",
-    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override log level globally to this",
-)
 @click.pass_context
-def enhancement(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower, save_org_scale,  log_level):
-    from eynollah.image_enhancer import Enhancer
+def enhancement(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower, save_org_scale):
+    """
+    Enhance image
+    """
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    initLogging()
+    from .image_enhancer import Enhancer
     enhancer = Enhancer(
         model_zoo=ctx.obj.model_zoo,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
         save_org_scale=save_org_scale,
     )
-    if log_level:
-        enhancer.logger.setLevel(getLevelName(log_level))
     enhancer.run(overwrite=overwrite,
                  dir_in=dir_in,
                  image_filename=image,
@@ -384,19 +392,6 @@ def enhancement(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower
     is_flag=True,
     help="if this parameter set to true, this tool will ignore layout detection and reading order. It means that textline detection will be done within printspace and contours of textline will be written in xml output file.",
 )
-# TODO move to top-level CLI context
-@click.option(
-    "--log_level",
-    "-l",
-    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override 'eynollah' log level globally to this",
-)
-# 
-@click.option(
-    "--setup-logging",
-    is_flag=True,
-    help="Setup a basic console logger",
-)
 @click.pass_context
 def layout(
     ctx,
@@ -434,16 +429,10 @@ def layout(
     log_level,
     setup_logging,
 ):
+    """
+    Detect Layout (with optional image enhancement and reading order detection)
+    """
     from eynollah.eynollah import Eynollah
-    if setup_logging:
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(message)s')
-        console_handler.setFormatter(formatter)
-        getLogger('eynollah').addHandler(console_handler)
-        getLogger('eynollah').setLevel(logging.INFO)
-    else:
-        initLogging()
     assert enable_plotting or not save_layout, "Plotting with -sl also requires -ep"
     assert enable_plotting or not save_deskewed, "Plotting with -sd also requires -ep"
     assert enable_plotting or not save_all, "Plotting with -sa also requires -ep"
@@ -463,6 +452,7 @@ def layout(
     assert not extract_only_images or not right2left, "Image extraction -eoi can not be set alongside right2left -r2l"
     assert not extract_only_images or not headers_off, "Image extraction -eoi can not be set alongside headers_off -ho"
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
+    from .eynollah import Eynollah
     eynollah = Eynollah(
         model_zoo=ctx.obj.model_zoo,
         extract_only_images=extract_only_images,
@@ -488,8 +478,6 @@ def layout(
         threshold_art_class_textline=threshold_art_class_textline,
         threshold_art_class_layout=threshold_art_class_layout,
     )
-    if log_level:
-        eynollah.logger.setLevel(getLevelName(log_level))
     eynollah.run(overwrite=overwrite,
                  image_filename=image,
                  dir_in=dir_in,
@@ -579,12 +567,6 @@ def layout(
     "-min_conf",
     help="minimum OCR confidence value. Text lines with a confidence value lower than this threshold will not be included in the output XML file.",
 )
-@click.option(
-    "--log_level",
-    "-l",
-    type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
-    help="Override log level globally to this",
-)
 @click.pass_context
 def ocr(
     ctx,
@@ -601,11 +583,10 @@ def ocr(
     batch_size,
     dataset_abbrevation,
     min_conf_value_of_textline_text,
-    log_level,
 ):
-    from eynollah.eynollah_ocr import Eynollah_ocr
-    initLogging()
-
+    """
+    Recognize text with a CNN/RNN or transformer ML model.
+    """
     assert not export_textline_images_and_text or not tr_ocr, "Exporting textline and text  -etit can not be set alongside transformer ocr -tr_ocr"
     # FIXME: refactor: move export_textline_images_and_text out of eynollah.py
     # assert not export_textline_images_and_text or not model, "Exporting textline and text  -etit can not be set alongside model -m"
@@ -613,6 +594,7 @@ def ocr(
     assert not export_textline_images_and_text or not dir_in_bin, "Exporting textline and text  -etit can not be set alongside directory of bin images -dib"
     assert not export_textline_images_and_text or not dir_out_image_text, "Exporting textline and text  -etit can not be set alongside directory of images with predicted text -doit"
     assert bool(image) != bool(dir_in), "Either -i (single image) or -di (directory) must be provided, but not both."
+    from .eynollah_ocr import Eynollah_ocr
     eynollah_ocr = Eynollah_ocr(
         model_zoo=ctx.obj.model_zoo,
         tr_ocr=tr_ocr,
@@ -620,10 +602,7 @@ def ocr(
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
         batch_size=batch_size,
         pref_of_dataset=dataset_abbrevation,
-        min_conf_value_of_textline_text=min_conf_value_of_textline_text,
-    )
-    if log_level:
-        eynollah_ocr.logger.setLevel(getLevelName(log_level))
+        min_conf_value_of_textline_text=min_conf_value_of_textline_text)
     eynollah_ocr.run(overwrite=overwrite,
                      dir_in=dir_in,
                      dir_in_bin=dir_in_bin,

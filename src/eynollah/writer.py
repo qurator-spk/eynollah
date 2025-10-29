@@ -3,10 +3,11 @@
 from pathlib import Path
 import os.path
 from typing import Optional
+import logging
+import xml.etree.ElementTree as ET
 from .utils.xml import create_page_xml, xml_reading_order
 from .utils.counter import EynollahIdCounter
 
-from ocrd_utils import getLogger
 from ocrd_models.ocrd_page import (
         BorderType,
         CoordsType,
@@ -23,7 +24,7 @@ import numpy as np
 class EynollahXmlWriter:
 
     def __init__(self, *, dir_out, image_filename, curved_line,textline_light, pcgts=None):
-        self.logger = getLogger('eynollah.writer')
+        self.logger = logging.getLogger('eynollah.writer')
         self.counter = EynollahIdCounter()
         self.dir_out = dir_out
         self.image_filename = image_filename

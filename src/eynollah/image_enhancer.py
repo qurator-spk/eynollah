@@ -2,7 +2,7 @@
 Image enhancer. The output can be written as same scale of input or in new predicted scale.
 """
 
-from logging import Logger
+import logging
 import os
 import time
 from typing import Dict, Optional
@@ -12,7 +12,6 @@ import gc
 import cv2
 from keras.models import Model
 import numpy as np
-from ocrd_utils import getLogger, tf_disable_interactive_logs
 import tensorflow as tf
 from skimage.morphology import skeletonize
 
@@ -37,7 +36,6 @@ class Enhancer:
         num_col_upper : Optional[int] = None,
         num_col_lower : Optional[int] = None,
         save_org_scale : bool = False,
-        logger : Optional[Logger] = None,
     ):
         self.input_binary = False
         self.light_version = False
@@ -51,7 +49,7 @@ class Enhancer:
         else:
             self.num_col_lower = num_col_lower
             
-        self.logger = logger if logger else getLogger('eynollah.enhance')
+        self.logger = logging.getLogger('eynollah.enhance')
         self.model_zoo = model_zoo
         for v in ['binarization', 'enhancement', 'col_classifier', 'page']:
             self.model_zoo.load_model(v)

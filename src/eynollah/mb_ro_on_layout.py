@@ -1,8 +1,8 @@
 """
-Image enhancer. The output can be written as same scale of input or in new predicted scale.
+Machine learning based reading order detection
 """
 
-from logging import Logger
+import logging 
 import os
 import time
 from typing import Optional
@@ -12,7 +12,6 @@ import xml.etree.ElementTree as ET
 import cv2
 from keras.models import Model
 import numpy as np
-from ocrd_utils import getLogger
 import statistics
 import tensorflow as tf
 
@@ -34,9 +33,9 @@ class machine_based_reading_order_on_layout:
         self,
         *,
         model_zoo: EynollahModelZoo,
-        logger : Optional[Logger] = None,
+        logger : Optional[logging.Logger] = None,
     ):
-        self.logger = logger if logger else getLogger('mbreorder')
+        self.logger = logger or logging.getLogger('eynollah.mbreorder')
         self.model_zoo = model_zoo
         
         try:

@@ -19,7 +19,6 @@ from .contour import (contours_in_same_horizon,
                       find_new_features_of_contours,
                       return_contours_of_image,
                       return_parent_contours)
-
 def pairwise(iterable):
     # pairwise('ABCDEFG') → AB BC CD DE EF FG
 

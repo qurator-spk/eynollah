@@ -8,6 +8,15 @@
 document layout analysis (segmentation) with output in PAGE-XML
 """
 
+import logging
+import sys
+
+# cannot use importlib.resources until we move to 3.9+ forimportlib.resources.files
+if sys.version_info < (3, 10):
+    import importlib_resources
+else:
+    import importlib.resources as importlib_resources
+
 from difflib import SequenceMatcher as sq
 import math
 import os
@@ -27,7 +36,7 @@ import shapely.affinity
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from skimage.morphology import skeletonize
-from ocrd_utils import getLogger, tf_disable_interactive_logs
+from ocrd_utils import tf_disable_interactive_logs
 import statistics
 
 try:
@@ -42,10 +51,15 @@ except ImportError:
 #os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 tf_disable_interactive_logs()
 import tensorflow as tf
-tf.get_logger().setLevel("ERROR")
-warnings.filterwarnings("ignore")
+# warnings.filterwarnings("ignore")
+from tensorflow.python.keras import backend as K
+from tensorflow.keras.models import load_model
+# use tf1 compatibility for keras backend
+from tensorflow.compat.v1.keras.backend import set_session
+from tensorflow.keras import layers
+from tensorflow.keras.layers import StringLookup
 
-from .model_zoo import (EynollahModelZoo, KerasModel, TrOCRProcessor)
+from .model_zoo import EynollahModelZoo
 from .utils.contour import (
     filter_contours_area_of_image,
     filter_contours_area_of_image_tables,
@@ -162,8 +176,9 @@ class Eynollah:
         threshold_art_class_layout: Optional[float] = None,
         threshold_art_class_textline: Optional[float] = None,
         skip_layout_and_reading_order : bool = False,
+        logger : Optional[logging.Logger] = None,
     ):
-        self.logger = getLogger('eynollah')
+        self.logger = logger or logging.getLogger('eynollah')
         self.model_zoo = model_zoo
         self.plotter = None
 
@@ -4724,5 +4739,3 @@ class Eynollah:
                 conf_contours_textregions=conf_contours_textregions)
             
         return pcgts
-
-

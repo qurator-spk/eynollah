@@ -5,14 +5,14 @@ Tool to load model and binarize a given image.
 import os
 import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-from keras.models import Model
 import numpy as np
 import cv2
 from ocrd_utils import tf_disable_interactive_logs
 
 from eynollah.model_zoo import EynollahModelZoo
+from eynollah.model_zoo.types import AnyModel
 tf_disable_interactive_logs()
 import tensorflow as tf
 from tensorflow.python.keras import backend as tensorflow_backend
@@ -24,10 +24,14 @@ def resize_image(img_in, input_height, input_width):
 
 class SbbBinarizer:
 
-    def __init__(self, *, model_zoo: EynollahModelZoo, mode: str, logger=None):
-        if mode not in ('single', 'multi'):
-            raise ValueError(f"'mode' must be either 'multi' or 'single', not {mode}")
-        self.log = logger if logger else logging.getLogger('eynollah.binarization')
+    def __init__(
+        self,
+        *,
+        model_zoo: EynollahModelZoo,
+        mode: str,
+        logger: Optional[logging.Logger] = None,
+    ):
+        self.logger = logger if logger else logging.getLogger('eynollah.binarization')
         self.model_zoo = model_zoo
         self.models = self.setup_models(mode)
         self.session = self.start_new_session()
@@ -40,7 +44,7 @@ class SbbBinarizer:
         tensorflow_backend.set_session(session)
         return session
     
-    def setup_models(self, mode: str) -> Dict[Path, Model]:
+    def setup_models(self, mode: str) -> Dict[Path, AnyModel]:
         return {
             self.model_zoo.model_path(v): self.model_zoo.load_model(v)
             for v in (['binarization'] if mode == 'single' else [f'binarization_multi_{i}' for i in range(1, 5)])
@@ -341,17 +345,19 @@ class SbbBinarizer:
             img_last[:, :][img_last[:, :] > 0] = 255
             img_last = (img_last[:, :] == 0) * 255
             if output:
+                self.logger.info('Writing binarized image to %s', output)
                 cv2.imwrite(output, img_last)
             return img_last
         else:
             ls_imgs = list(filter(is_image_filename, os.listdir(dir_in)))
-            for image_name in ls_imgs:
+            self.logger.info("Found %d image files to binarize in %s", len(ls_imgs), dir_in)
+            for i, image_name in enumerate(ls_imgs):
                 image_stem = image_name.split('.')[0]
-                # print(image_name,'image_name')
+                self.logger.info('Binarizing [%3d/%d] %s', i + 1, len(ls_imgs), image_name)
                 image = cv2.imread(os.path.join(dir_in,image_name) )
                 img_last = 0
                 for n, (model_file, model) in enumerate(self.models.items()):
-                    self.log.info('Predicting %s with model %s [%s/%s]', image_name, model_file, n + 1, len(self.models.keys()))
+                    self.logger.info('Predicting %s with model %s [%s/%s]', image_name, model_file, n + 1, len(self.models.keys()))
 
                     res = self.predict(model, image, use_patches)
 
@@ -371,4 +377,6 @@ class SbbBinarizer:
                 img_last[:, :][img_last[:, :] > 0] = 255
                 img_last = (img_last[:, :] == 0) * 255
                 
-                cv2.imwrite(os.path.join(output, image_stem + '.png'), img_last)
+                output_filename = os.path.join(output, image_stem + '.png')
+                self.logger.info('Writing binarized image to %s', output_filename)
+                cv2.imwrite(output_filename, img_last)

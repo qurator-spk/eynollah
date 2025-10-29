@@ -32,7 +32,7 @@ def run_eynollah_ok_and_check_logs(
                 *args
         ]
         if pytestconfig.getoption('verbose') > 0:
-            args.extend(['-l', 'DEBUG'])
+            args = ['-l', 'DEBUG'] + args
         caplog.set_level(logging.INFO)
         runner = CliRunner()
         with caplog.filtering(eynollah_log_filter):
