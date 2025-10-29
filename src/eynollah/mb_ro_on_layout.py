@@ -32,12 +32,12 @@ KERNEL = np.ones((5, 5), np.uint8)
 class machine_based_reading_order_on_layout:
     def __init__(
         self,
-        dir_models : str,
+        *,
+        model_zoo: EynollahModelZoo,
         logger : Optional[Logger] = None,
     ):
         self.logger = logger if logger else getLogger('mbreorder')
-        self.dir_models = dir_models
-        self.model_reading_order_dir = dir_models + "/model_eynollah_reading_order_20250824"
+        self.model_zoo = model_zoo
         
         try:
             for device in tf.config.list_physical_devices('GPU'):
@@ -45,7 +45,6 @@ class machine_based_reading_order_on_layout:
         except:
             self.logger.warning("no GPU device available")
             
-        self.model_zoo = EynollahModelZoo(basedir=dir_models)
         self.model_zoo.load_model('reading_order')
         # FIXME: light_version is always true, no need for checks in the code
         self.light_version = True

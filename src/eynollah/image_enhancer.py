@@ -32,7 +32,8 @@ KERNEL = np.ones((5, 5), np.uint8)
 class Enhancer:
     def __init__(
         self,
-        dir_models : str,
+        *,
+        model_zoo: EynollahModelZoo,
         num_col_upper : Optional[int] = None,
         num_col_lower : Optional[int] = None,
         save_org_scale : bool = False,
@@ -51,7 +52,7 @@ class Enhancer:
             self.num_col_lower = num_col_lower
             
         self.logger = logger if logger else getLogger('eynollah.enhance')
-        self.model_zoo = EynollahModelZoo(basedir=dir_models)
+        self.model_zoo = model_zoo
         for v in ['binarization', 'enhancement', 'col_classifier', 'page']:
             self.model_zoo.load_model(v)
         

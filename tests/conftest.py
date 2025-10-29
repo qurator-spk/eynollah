@@ -23,3 +23,15 @@ def image_resources(resources_dir):
 @pytest.fixture()
 def eynollah_log_filter():
     return lambda logrec: logrec.name.startswith('eynollah')
+
+@pytest.fixture
+def eynollah_subcommands():
+    return [
+        'binarization',
+        'layout',
+        'ocr',
+        'enhancement',
+        'machine-based-reading-order'
+        'models'
+    ]
+

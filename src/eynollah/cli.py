@@ -2,20 +2,36 @@ from dataclasses import dataclass
 import sys
 import click
 import logging
-from typing import Tuple, List
 from ocrd_utils import initLogging, getLevelName, getLogger
-from eynollah.eynollah import Eynollah
-from eynollah.eynollah_ocr import Eynollah_ocr
-from eynollah.sbb_binarize import SbbBinarizer
-from eynollah.image_enhancer import Enhancer
-from eynollah.mb_ro_on_layout import machine_based_reading_order_on_layout
 from eynollah.model_zoo import EynollahModelZoo
 
 from .cli_models import models_cli
 
+@dataclass()
+class EynollahCliCtx:
+    model_zoo: EynollahModelZoo
+
+
 @click.group()
-def main():
-    pass
+@click.option(
+    "--model-basedir",
+    "-m",
+    help="directory of models",
+    type=click.Path(exists=True, file_okay=False),
+    # default=f"{os.environ['HOME']}/.local/share/ocrd-resources/ocrd-eynollah-segment",
+    required=True,
+)
+@click.option(
+    "--model-overrides",
+    "-mv",
+    help="override default versions of model categories, syntax is 'CATEGORY VARIANT PATH', e.g 'region light /path/to/model'. See eynollah list-models for the full list",
+    type=(str, str, str),
+    multiple=True,
+)
+@click.pass_context
+def main(ctx, model_basedir, model_overrides):
+    # Initialize model zoo
+    ctx.obj = EynollahCliCtx(model_zoo=EynollahModelZoo(basedir=model_basedir, model_overrides=model_overrides))
 
 main.add_command(models_cli, 'models')
 
@@ -40,22 +56,16 @@ main.add_command(models_cli, 'models')
     required=True,
 )
 @click.option(
-    "--model",
-    "-m",
-    help="directory of models",
-    type=click.Path(exists=True, file_okay=False),
-    required=True,
-)
-@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
-
-def machine_based_reading_order(input, dir_in, out, model, log_level):
+@click.pass_context
+def machine_based_reading_order(ctx, input, dir_in, out, log_level):
+    from eynollah.mb_ro_on_layout import machine_based_reading_order_on_layout
     assert bool(input) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    orderer = machine_based_reading_order_on_layout(model)
+    orderer = machine_based_reading_order_on_layout(model_zoo=ctx.obj.model_zoo)
     if log_level:
         orderer.logger.setLevel(getLevelName(log_level))
 
@@ -67,7 +77,6 @@ def machine_based_reading_order(input, dir_in, out, model, log_level):
 
 @main.command()
 @click.option('--patches/--no-patches', default=True, help='by enabling this parameter you let the model to see the image in patches.')
-@click.option('--model_dir', '-m', type=click.Path(exists=True, file_okay=False), required=True, help='directory containing models for prediction')
 @click.option(
     "--input-image", "--image",
     "-i",
@@ -92,7 +101,7 @@ def machine_based_reading_order(input, dir_in, out, model, log_level):
     '--mode',
     type=click.Choice(['single', 'multi']),
     default='single',
-    help="Whether to use the (faster) single-model binarization or the (slightly better) multi-model binarization"
+    help="Whether to use the (newer and faster) single-model binarization or the (slightly better) multi-model binarization"
 )
 @click.option(
     "--log_level",
@@ -100,17 +109,19 @@ def machine_based_reading_order(input, dir_in, out, model, log_level):
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
+@click.pass_context
 def binarization(
+    ctx,
     patches,
-    model_dir,
     input_image,
     mode,
     dir_in,
     output,
     log_level,
 ):
+    from eynollah.sbb_binarize import SbbBinarizer
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    binarizer = SbbBinarizer(model_dir, mode=mode)
+    binarizer = SbbBinarizer(model_zoo=ctx.obj.model_zoo, mode=mode)
     if log_level:
         binarizer.log.setLevel(getLevelName(log_level))
     binarizer.run(
@@ -149,14 +160,6 @@ def binarization(
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
-    "--model",
-    "-m",
-    help="directory of models",
-    type=click.Path(exists=True, file_okay=False),
-    required=True,
-)
-
-@click.option(
     "--num_col_upper",
     "-ncu",
     help="lower limit of columns in document image",
@@ -178,12 +181,13 @@ def binarization(
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
-
-def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_lower, save_org_scale,  log_level):
+@click.pass_context
+def enhancement(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower, save_org_scale,  log_level):
+    from eynollah.image_enhancer import Enhancer
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     initLogging()
     enhancer = Enhancer(
-        model,
+        model_zoo=ctx.obj.model_zoo,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
         save_org_scale=save_org_scale,
@@ -222,22 +226,6 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
     "-di",
     help="directory of input images (instead of --image)",
     type=click.Path(exists=True, file_okay=False),
-)
-@click.option(
-    "--model",
-    "-m",
-    'model_basedir',
-    help="directory of models",
-    type=click.Path(exists=True, file_okay=False),
-    # default=f"{os.environ['HOME']}/.local/share/ocrd-resources/ocrd-eynollah-segment",
-    required=True,
-)
-@click.option(
-    "--model_version",
-    "-mv",
-    help="override default versions of model categories, syntax is 'CATEGORY VARIANT PATH', e.g 'region light /path/to/model'. See eynollah list-models for the full list",
-    type=(str, str, str),
-    multiple=True,
 )
 @click.option(
     "--save_images",
@@ -409,14 +397,13 @@ def enhancement(image, out, overwrite, dir_in, model, num_col_upper, num_col_low
     is_flag=True,
     help="Setup a basic console logger",
 )
-
+@click.pass_context
 def layout(
+    ctx,
     image,
     out,
     overwrite,
     dir_in,
-    model_basedir,
-    model_version,
     save_images,
     save_layout,
     save_deskewed,
@@ -447,6 +434,7 @@ def layout(
     log_level,
     setup_logging,
 ):
+    from eynollah.eynollah import Eynollah
     if setup_logging:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO)
@@ -476,8 +464,7 @@ def layout(
     assert not extract_only_images or not headers_off, "Image extraction -eoi can not be set alongside headers_off -ho"
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     eynollah = Eynollah(
-        model_basedir,
-        model_overrides=model_version,
+        model_zoo=ctx.obj.model_zoo,
         extract_only_images=extract_only_images,
         enable_plotting=enable_plotting,
         allow_enhancement=allow_enhancement,
@@ -560,17 +547,6 @@ def layout(
     is_flag=True,
 )
 @click.option(
-    "--model",
-    "-m",
-    help="directory of models",
-    type=click.Path(exists=True, file_okay=False),
-)
-@click.option(
-    "--model_name",
-    help="Specific model file path to use for OCR",
-    type=click.Path(exists=True, file_okay=False),
-)
-@click.option(
     "--tr_ocr",
     "-trocr/-notrocr",
     is_flag=True,
@@ -609,20 +585,36 @@ def layout(
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
-
-def ocr(image, dir_in, dir_in_bin, dir_xmls, out, dir_out_image_text, overwrite, model, model_name, tr_ocr, export_textline_images_and_text, do_not_mask_with_textline_contour, batch_size, dataset_abbrevation, min_conf_value_of_textline_text, log_level):
+@click.pass_context
+def ocr(
+    ctx,
+    image,
+    dir_in,
+    dir_in_bin,
+    dir_xmls,
+    out,
+    dir_out_image_text,
+    overwrite,
+    tr_ocr,
+    export_textline_images_and_text,
+    do_not_mask_with_textline_contour,
+    batch_size,
+    dataset_abbrevation,
+    min_conf_value_of_textline_text,
+    log_level,
+):
+    from eynollah.eynollah_ocr import Eynollah_ocr
     initLogging()
-        
-    assert bool(model) != bool(model_name), "Either -m (model directory) or --model_name (specific model name) must be provided."
+
     assert not export_textline_images_and_text or not tr_ocr, "Exporting textline and text  -etit can not be set alongside transformer ocr -tr_ocr"
-    assert not export_textline_images_and_text or not model, "Exporting textline and text  -etit can not be set alongside model -m"
+    # FIXME: refactor: move export_textline_images_and_text out of eynollah.py
+    # assert not export_textline_images_and_text or not model, "Exporting textline and text  -etit can not be set alongside model -m"
     assert not export_textline_images_and_text or not batch_size, "Exporting textline and text  -etit can not be set alongside batch size -bs"
     assert not export_textline_images_and_text or not dir_in_bin, "Exporting textline and text  -etit can not be set alongside directory of bin images -dib"
     assert not export_textline_images_and_text or not dir_out_image_text, "Exporting textline and text  -etit can not be set alongside directory of images with predicted text -doit"
     assert bool(image) != bool(dir_in), "Either -i (single image) or -di (directory) must be provided, but not both."
     eynollah_ocr = Eynollah_ocr(
-        dir_models=model,
-        model_name=model_name,
+        model_zoo=ctx.obj.model_zoo,
         tr_ocr=tr_ocr,
         export_textline_images_and_text=export_textline_images_and_text,
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,

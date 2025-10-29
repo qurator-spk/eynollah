@@ -1,7 +1,4 @@
 import pytest
-from eynollah.cli import (
-    layout as layout_cli,
-)
 from ocrd_modelfactory import page_from_file
 from ocrd_models.constants import NAMESPACES as NS
 
@@ -30,11 +27,10 @@ def test_run_eynollah_layout_filename(
     resources_dir,
     options,
 ):
-    outdir = tmp_path
     infile = resources_dir / 'kant_aufklaerung_1784_0020.tif'
     outfile = tmp_path / 'kant_aufklaerung_1784_0020.xml'
     run_eynollah_ok_and_check_logs(
-        layout_cli,
+        'layout',
         [
         '-i', str(infile),
         '-o', str(outfile.parent),
@@ -68,7 +64,7 @@ def test_run_eynollah_layout_filename2(
     infile = resources_dir / 'euler_rechenkunst01_1738_0025.tif'
     outfile = tmp_path / 'euler_rechenkunst01_1738_0025.xml'
     run_eynollah_ok_and_check_logs(
-        layout_cli,
+        'layout',
         [
             '-i', str(infile),
             '-o', str(outfile.parent),
@@ -96,7 +92,7 @@ def test_run_eynollah_layout_directory(
 ):
     outdir = tmp_path
     run_eynollah_ok_and_check_logs(
-        layout_cli,
+        'layout',
         [
         '-di', str(resources_dir),
         '-o', str(outdir),

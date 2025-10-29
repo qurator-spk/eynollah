@@ -51,8 +51,8 @@ except ImportError:
 class Eynollah_ocr:
     def __init__(
         self,
-        dir_models,
-        model_name=None,
+        *,
+        model_zoo: EynollahModelZoo,
         dir_xmls=None,
         tr_ocr=False,
         batch_size: Optional[int]=None,
@@ -70,7 +70,7 @@ class Eynollah_ocr:
         # prefix or dataset
         self.pref_of_dataset = pref_of_dataset
         self.logger = logger if logger else getLogger('eynollah.ocr')
-        self.model_zoo = EynollahModelZoo(basedir=dir_models)
+        self.model_zoo = model_zoo
         
         # TODO: Properly document what 'export_textline_images_and_text' is about
         if export_textline_images_and_text:

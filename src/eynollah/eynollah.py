@@ -138,8 +138,8 @@ num_patches =21*21#14*14#28*28#14*14#28*28
 class Eynollah:
     def __init__(
         self,
-        dir_models : str,
-        model_overrides: List[Tuple[str, str, str]] = [],
+        *,
+        model_zoo: EynollahModelZoo,
         extract_only_images : bool =False,
         enable_plotting : bool = False,
         allow_enhancement : bool = False,
@@ -164,7 +164,7 @@ class Eynollah:
         skip_layout_and_reading_order : bool = False,
     ):
         self.logger = getLogger('eynollah')
-        self.model_zoo = EynollahModelZoo(basedir=dir_models)
+        self.model_zoo = model_zoo
         self.plotter = None
 
         if skip_layout_and_reading_order:
@@ -231,12 +231,10 @@ class Eynollah:
             self.logger.warning("no GPU device available")
             
         self.logger.info("Loading models...")
-        self.setup_models(*model_overrides)
+        self.setup_models()
         self.logger.info(f"Model initialization complete ({time.time() - t_start:.1f}s)")
 
-    def setup_models(self, *model_overrides: Tuple[str, str, str]):
-        # override defaults from CLI
-        self.model_zoo.override_models(*model_overrides)
+    def setup_models(self):
 
         # load models, depending on modes
         # (note: loading too many models can cause OOM on GPU/CUDA,

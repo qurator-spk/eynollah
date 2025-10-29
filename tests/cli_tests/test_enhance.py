@@ -1,10 +1,5 @@
 import pytest
 from PIL import Image
-from eynollah.cli import (
-    enhancement as enhancement_cli,
-)
-from ocrd_modelfactory import page_from_file
-from ocrd_models.constants import NAMESPACES as NS
 
 @pytest.mark.parametrize(
     "options",
@@ -21,7 +16,7 @@ def test_run_eynollah_enhancement_filename(
     infile = resources_dir / 'kant_aufklaerung_1784_0020.tif'
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     run_eynollah_ok_and_check_logs(
-        enhancement_cli,
+        'enhancement',
         [
             '-i', str(infile),
             '-o', str(outfile.parent),
@@ -44,7 +39,7 @@ def test_run_eynollah_enhancement_directory(
 ):
     outdir = tmp_path
     run_eynollah_ok_and_check_logs(
-        enhancement_cli,
+        'enhancement',
         [
             '-di', str(resources_dir),
             '-o', str(outdir),

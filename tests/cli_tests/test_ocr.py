@@ -1,7 +1,4 @@
 import pytest
-from eynollah.cli import (
-    ocr as ocr_cli,
-)
 from ocrd_modelfactory import page_from_file
 from ocrd_models.constants import NAMESPACES as NS
 
@@ -26,7 +23,7 @@ def test_run_eynollah_ocr_filename(
     if "-doit" in options:
         options.insert(options.index("-doit") + 1, str(outrenderfile.parent))
     run_eynollah_ok_and_check_logs(
-        ocr_cli,
+        'ocr',
         [
             '-i', str(infile),
             '-dx', str(infile.parent),
@@ -53,7 +50,7 @@ def test_run_eynollah_ocr_directory(
 ):
     outdir = tmp_path
     run_eynollah_ok_and_check_logs(
-        ocr_cli,
+        'ocr',
         [
             '-di', str(resources_dir),
             '-dx', str(resources_dir),

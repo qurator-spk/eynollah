@@ -1,11 +1,6 @@
 from ocrd_modelfactory import page_from_file
 from ocrd_models.constants import NAMESPACES as NS
 
-from eynollah.cli import (
-    machine_based_reading_order as mbreorder_cli,
-)
-
-
 def test_run_eynollah_mbreorder_filename(
     tmp_path,
     resources_dir,
@@ -14,7 +9,7 @@ def test_run_eynollah_mbreorder_filename(
     infile = resources_dir / 'kant_aufklaerung_1784_0020.xml'
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.xml')
     run_eynollah_ok_and_check_logs(
-        mbreorder_cli,
+        'machine-based-reading-order',
         [
             '-i', str(infile),
             '-o', str(outfile.parent),
@@ -37,10 +32,9 @@ def test_run_eynollah_mbreorder_directory(
     resources_dir,
     run_eynollah_ok_and_check_logs,
 ):
-    outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.xml')
     outdir = tmp_path
     run_eynollah_ok_and_check_logs(
-        mbreorder_cli,
+        'machine-based-reading-order',
         [
             '-di', str(resources_dir),
             '-o', str(outdir),

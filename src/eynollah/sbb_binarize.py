@@ -24,11 +24,11 @@ def resize_image(img_in, input_height, input_width):
 
 class SbbBinarizer:
 
-    def __init__(self, model_dir: str, mode: str, logger=None):
+    def __init__(self, *, model_zoo: EynollahModelZoo, mode: str, logger=None):
         if mode not in ('single', 'multi'):
             raise ValueError(f"'mode' must be either 'multi' or 'single', not {mode}")
         self.log = logger if logger else logging.getLogger('eynollah.binarization')
-        self.model_zoo = EynollahModelZoo(basedir=model_dir)
+        self.model_zoo = model_zoo
         self.models = self.setup_models(mode)
         self.session = self.start_new_session()
 

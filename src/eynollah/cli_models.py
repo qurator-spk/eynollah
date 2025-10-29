@@ -6,30 +6,7 @@ import click
 from eynollah.model_zoo.default_specs import MODELS_VERSION
 from .model_zoo import EynollahModelZoo
 
-
-@dataclass()
-class EynollahCliCtx:
-    model_zoo: EynollahModelZoo
-
-
 @click.group()
-@click.pass_context
-@click.option(
-    "--model",
-    "-m",
-    'model_basedir',
-    help="directory of models",
-    type=click.Path(exists=True, file_okay=False),
-    # default=f"{os.environ['HOME']}/.local/share/ocrd-resources/ocrd-eynollah-segment",
-    required=True,
-)
-@click.option(
-    "--model-overrides",
-    "-mv",
-    help="override default versions of model categories, syntax is 'CATEGORY VARIANT PATH', e.g 'region light /path/to/model'. See eynollah list-models for the full list",
-    type=(str, str, str),
-    multiple=True,
-)
 def models_cli(
     ctx,
     model_basedir: str,
@@ -38,7 +15,7 @@ def models_cli(
     """
     Organize models for the various runners in eynollah.
     """
-    ctx.obj = EynollahCliCtx(model_zoo=EynollahModelZoo(basedir=model_basedir, model_overrides=model_overrides))
+    assert ctx.obj.model_zoo
 
 
 @models_cli.command('list')

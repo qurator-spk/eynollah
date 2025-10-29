@@ -4,11 +4,13 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Type, Union
 
+from ocrd_utils import tf_disable_interactive_logs
+tf_disable_interactive_logs()
+
 from keras.layers import StringLookup
 from keras.models import Model as KerasModel
 from keras.models import load_model
 from tabulate import tabulate
-from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 from ..patch_encoder import PatchEncoder, Patches
 from .specs import EynollahModelSpecSet
 from .default_specs import DEFAULT_MODEL_SPECS
@@ -102,6 +104,7 @@ class EynollahModelZoo:
         elif model_category == 'characters':
             model = self._load_characters()
         elif model_category == 'trocr_processor':
+            from transformers import TrOCRProcessor
             model = TrOCRProcessor.from_pretrained(model_path)
         else:
             try:
@@ -128,7 +131,10 @@ class EynollahModelZoo:
         """
         ocr_model_dir = self.model_path('ocr', variant)
         if variant == 'tr':
-            return VisionEncoderDecoderModel.from_pretrained(ocr_model_dir)
+            from transformers import VisionEncoderDecoderModel
+            ret = VisionEncoderDecoderModel.from_pretrained(ocr_model_dir)
+            assert isinstance(ret, VisionEncoderDecoderModel)
+            return ret
         else:
             ocr_model = load_model(ocr_model_dir, compile=False)
             assert isinstance(ocr_model, KerasModel)
