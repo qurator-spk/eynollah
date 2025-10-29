@@ -23,7 +23,7 @@ class EynollahCliCtx:
     "--model-basedir",
     "-m",
     help="directory of models",
-    type=click.Path(exists=True, file_okay=False),
+    type=click.Path(exists=True),
     default=f'{os.getcwd()}/models_eynollah',
 )
 @click.option(
