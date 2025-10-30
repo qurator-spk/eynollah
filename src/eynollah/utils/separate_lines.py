@@ -1473,9 +1473,9 @@ def separate_lines_new2(img_crop, thetha, num_col, slope_region, logger=None, pl
         img_int = np.zeros((img_xline.shape[0], img_xline.shape[1]))
         img_int[:, :] = img_xline[:, :]  # img_patch_org[:,:,0]
 
-        img_resized = np.zeros((int(img_int.shape[0] * 1.2), int(img_int.shape[1] * 3)))
-        img_resized[int(img_int.shape[0] * 0.1): int(img_int.shape[0] * 0.1) + img_int.shape[0],
-        int(img_int.shape[1] * 1.0): int(img_int.shape[1] * 1.0) + img_int.shape[1]] = img_int[:, :]
+        img_resized = np.zeros((int(img_int.shape[0] * (1.2)), int(img_int.shape[1] * (3))))
+        img_resized[int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0],
+                    int(img_int.shape[1] * (1.0)) : int(img_int.shape[1] * (1.0)) + img_int.shape[1]] = img_int[:, :]
         # plt.imshow(img_xline)
         # plt.show()
         img_line_rotated = rotate_image(img_resized, slopes_tile_wise[i])
@@ -1487,8 +1487,8 @@ def separate_lines_new2(img_crop, thetha, num_col, slope_region, logger=None, pl
         img_patch_separated_returned[:, :][img_patch_separated_returned[:, :] != 0] = 1
 
         img_patch_separated_returned_true_size = img_patch_separated_returned[
-            int(img_int.shape[0] * 0.1): int(img_int.shape[0] * 0.1) + img_int.shape[0],
-            int(img_int.shape[1] * 1.0): int(img_int.shape[1] * 1.0) + img_int.shape[1]]
+            int(img_int.shape[0] * (0.1)) : int(img_int.shape[0] * (0.1)) + img_int.shape[0],
+            int(img_int.shape[1] * (1.0)) : int(img_int.shape[1] * (1.0)) + img_int.shape[1]]
 
         img_patch_separated_returned_true_size = img_patch_separated_returned_true_size[:, margin : length_x - margin]
         img_patch_interest_revised[:, index_x_d + margin : index_x_u - margin] = img_patch_separated_returned_true_size
@@ -1517,7 +1517,7 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
     img_int[:,:]=img_patch_org[:,:]#img_patch_org[:,:,0]
 
     max_shape=np.max(img_int.shape)
-    img_resized=np.zeros((int(max_shape * 1.1) , int(max_shape * 1.1)))
+    img_resized=np.zeros((int( max_shape*(1.1) ) , int( max_shape*(1.1) ) ))
 
     onset_x=int((img_resized.shape[1]-img_int.shape[1])/2.)
     onset_y=int((img_resized.shape[0]-img_int.shape[0])/2.)
