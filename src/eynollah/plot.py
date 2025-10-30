@@ -40,8 +40,8 @@ class EynollahPlotter:
         self.image_filename_stem = image_filename_stem
         # XXX TODO hacky these cannot be set at init time
         self.image_org = image_org
-        self.scale_x = scale_x
-        self.scale_y = scale_y
+        self.scale_x : float = scale_x
+        self.scale_y : float = scale_y
 
     def save_plot_of_layout_main(self, text_regions_p, image_page):
         if self.dir_of_layout is not None:
