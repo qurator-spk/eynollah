@@ -801,13 +801,15 @@ def find_num_col_only_image(regions_without_separators, multiplier=3.8):
     return len(peaks_fin_true), peaks_fin_true
 
 def find_num_col_by_vertical_lines(regions_without_separators, multiplier=3.8):
+    print(regions_without_separators.shape)
     regions_without_separators_0 = regions_without_separators.sum(axis=0)
 
     ##plt.plot(regions_without_separators_0)
     ##plt.show()
     sigma_ = 35  # 70#35
-
+    print(regions_without_separators_0.shape, 'regions_without_separators_0')
     z = gaussian_filter1d(regions_without_separators_0, sigma_)
+    print(z, z.shape, 'z')
     peaks, _ = find_peaks(z, height=0)
 
     # print(peaks,'peaksnew')
@@ -1377,7 +1379,218 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     peaks_neg_tot.append(last_point)
     return peaks_neg_tot
 
-def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, label_seps, contours_h=None):
+def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, pixel_lines, contours_h=None):
+    region_pre_p = np.repeat(region_pre_p[:, :, np.newaxis], 3, axis=2)
+    t_ins_c0 = time.time()
+    separators_closeup=( (region_pre_p[:,:,:]==pixel_lines))*1
+    separators_closeup[0:110,:,:]=0
+    separators_closeup[separators_closeup.shape[0]-150:,:,:]=0
+
+    kernel = np.ones((5,5),np.uint8)
+    separators_closeup=separators_closeup.astype(np.uint8)
+    separators_closeup = cv2.dilate(separators_closeup,kernel,iterations = 1)
+    separators_closeup = cv2.erode(separators_closeup,kernel,iterations = 1)
+
+    separators_closeup_new=np.zeros((separators_closeup.shape[0] ,separators_closeup.shape[1] ))
+    separators_closeup_n=np.copy(separators_closeup)
+    separators_closeup_n=separators_closeup_n.astype(np.uint8)
+
+    separators_closeup_n_binary=np.zeros(( separators_closeup_n.shape[0],separators_closeup_n.shape[1]) )
+    separators_closeup_n_binary[:,:]=separators_closeup_n[:,:,0]
+    separators_closeup_n_binary[:,:][separators_closeup_n_binary[:,:]!=0]=1
+
+    gray_early=np.repeat(separators_closeup_n_binary[:, :, np.newaxis], 3, axis=2)
+    gray_early=gray_early.astype(np.uint8)
+    imgray_e = cv2.cvtColor(gray_early, cv2.COLOR_BGR2GRAY)
+    ret_e, thresh_e = cv2.threshold(imgray_e, 0, 255, 0)
+
+    contours_line_e,hierarchy_e=cv2.findContours(thresh_e,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    _, dist_xe, _, _, _, _, y_min_main, y_max_main, _ = \
+        find_features_of_lines(contours_line_e)
+    dist_ye = y_max_main - y_min_main
+    args_e=np.arange(len(contours_line_e))
+    args_hor_e=args_e[(dist_ye<=50) &
+                      (dist_xe>=3*dist_ye)]
+    cnts_hor_e=[]
+    for ce in args_hor_e:
+        cnts_hor_e.append(contours_line_e[ce])
+    figs_e=np.zeros(thresh_e.shape)
+    figs_e=cv2.fillPoly(figs_e,pts=cnts_hor_e,color=(1,1,1))
+
+    separators_closeup_n_binary=cv2.fillPoly(separators_closeup_n_binary, pts=cnts_hor_e, color=(0,0,0))
+    gray = cv2.bitwise_not(separators_closeup_n_binary)
+    gray=gray.astype(np.uint8)
+
+    bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, \
+                               cv2.THRESH_BINARY, 15, -2)
+    horizontal = np.copy(bw)
+    vertical = np.copy(bw)
+
+    cols = horizontal.shape[1]
+    horizontal_size = cols // 30
+    # Create structure element for extracting horizontal lines through morphology operations
+    horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontal_size, 1))
+    # Apply morphology operations
+    horizontal = cv2.erode(horizontal, horizontalStructure)
+    horizontal = cv2.dilate(horizontal, horizontalStructure)
+
+    kernel = np.ones((5,5),np.uint8)
+    horizontal = cv2.dilate(horizontal,kernel,iterations = 2)
+    horizontal = cv2.erode(horizontal,kernel,iterations = 2)
+    horizontal = cv2.fillPoly(horizontal, pts=cnts_hor_e, color=(255,255,255))
+
+    rows = vertical.shape[0]
+    verticalsize = rows // 30
+    # Create structure element for extracting vertical lines through morphology operations
+    verticalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (1, verticalsize))
+    # Apply morphology operations
+    vertical = cv2.erode(vertical, verticalStructure)
+    vertical = cv2.dilate(vertical, verticalStructure)
+    vertical = cv2.dilate(vertical,kernel,iterations = 1)
+
+    horizontal, special_separators = \
+        combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
+            vertical, horizontal, num_col_classifier)
+
+    separators_closeup_new[:,:][vertical[:,:]!=0]=1
+    separators_closeup_new[:,:][horizontal[:,:]!=0]=1
+
+    vertical=np.repeat(vertical[:, :, np.newaxis], 3, axis=2)
+    vertical=vertical.astype(np.uint8)
+
+    imgray = cv2.cvtColor(vertical, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+    contours_line_vers,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    slope_lines, dist_x, x_min_main, x_max_main, cy_main, slope_lines_org, y_min_main, y_max_main, cx_main = \
+        find_features_of_lines(contours_line_vers)
+
+    args=np.arange(len(slope_lines))
+    args_ver=args[slope_lines==1]
+    dist_x_ver=dist_x[slope_lines==1]
+    y_min_main_ver=y_min_main[slope_lines==1]
+    y_max_main_ver=y_max_main[slope_lines==1]
+    x_min_main_ver=x_min_main[slope_lines==1]
+    x_max_main_ver=x_max_main[slope_lines==1]
+    cx_main_ver=cx_main[slope_lines==1]
+    dist_y_ver=y_max_main_ver-y_min_main_ver
+    len_y=separators_closeup.shape[0]/3.0
+
+    horizontal=np.repeat(horizontal[:, :, np.newaxis], 3, axis=2)
+    horizontal=horizontal.astype(np.uint8)
+    imgray = cv2.cvtColor(horizontal, cv2.COLOR_BGR2GRAY)
+    ret, thresh = cv2.threshold(imgray, 0, 255, 0)
+    contours_line_hors,hierarchy=cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    slope_lines, dist_x, x_min_main, x_max_main, cy_main, slope_lines_org, y_min_main, y_max_main, cx_main = \
+        find_features_of_lines(contours_line_hors)
+
+    slope_lines_org_hor=slope_lines_org[slope_lines==0]
+    args=np.arange(len(slope_lines))
+    len_x=separators_closeup.shape[1]/5.0
+    dist_y=np.abs(y_max_main-y_min_main)
+
+    args_hor=args[slope_lines==0]
+    dist_x_hor=dist_x[slope_lines==0]
+    y_min_main_hor=y_min_main[slope_lines==0]
+    y_max_main_hor=y_max_main[slope_lines==0]
+    x_min_main_hor=x_min_main[slope_lines==0]
+    x_max_main_hor=x_max_main[slope_lines==0]
+    dist_y_hor=dist_y[slope_lines==0]
+    cy_main_hor=cy_main[slope_lines==0]
+
+    args_hor=args_hor[dist_x_hor>=len_x/2.0]
+    x_max_main_hor=x_max_main_hor[dist_x_hor>=len_x/2.0]
+    x_min_main_hor=x_min_main_hor[dist_x_hor>=len_x/2.0]
+    cy_main_hor=cy_main_hor[dist_x_hor>=len_x/2.0]
+    y_min_main_hor=y_min_main_hor[dist_x_hor>=len_x/2.0]
+    y_max_main_hor=y_max_main_hor[dist_x_hor>=len_x/2.0]
+    dist_y_hor=dist_y_hor[dist_x_hor>=len_x/2.0]
+    slope_lines_org_hor=slope_lines_org_hor[dist_x_hor>=len_x/2.0]
+    dist_x_hor=dist_x_hor[dist_x_hor>=len_x/2.0]
+
+    matrix_of_lines_ch=np.zeros((len(cy_main_hor)+len(cx_main_ver),10))
+    matrix_of_lines_ch[:len(cy_main_hor),0]=args_hor
+    matrix_of_lines_ch[len(cy_main_hor):,0]=args_ver
+    matrix_of_lines_ch[len(cy_main_hor):,1]=cx_main_ver
+    matrix_of_lines_ch[:len(cy_main_hor),2]=x_min_main_hor+50#x_min_main_hor+150
+    matrix_of_lines_ch[len(cy_main_hor):,2]=x_min_main_ver
+    matrix_of_lines_ch[:len(cy_main_hor),3]=x_max_main_hor-50#x_max_main_hor-150
+    matrix_of_lines_ch[len(cy_main_hor):,3]=x_max_main_ver
+    matrix_of_lines_ch[:len(cy_main_hor),4]=dist_x_hor
+    matrix_of_lines_ch[len(cy_main_hor):,4]=dist_x_ver
+    matrix_of_lines_ch[:len(cy_main_hor),5]=cy_main_hor
+    matrix_of_lines_ch[:len(cy_main_hor),6]=y_min_main_hor
+    matrix_of_lines_ch[len(cy_main_hor):,6]=y_min_main_ver
+    matrix_of_lines_ch[:len(cy_main_hor),7]=y_max_main_hor
+    matrix_of_lines_ch[len(cy_main_hor):,7]=y_max_main_ver
+    matrix_of_lines_ch[:len(cy_main_hor),8]=dist_y_hor
+    matrix_of_lines_ch[len(cy_main_hor):,8]=dist_y_ver
+    matrix_of_lines_ch[len(cy_main_hor):,9]=1
+
+    if contours_h is not None:
+        _, dist_x_head, x_min_main_head, x_max_main_head, cy_main_head, _, y_min_main_head, y_max_main_head, _ = \
+            find_features_of_lines(contours_h)
+        matrix_l_n=np.zeros((matrix_of_lines_ch.shape[0]+len(cy_main_head),matrix_of_lines_ch.shape[1]))
+        matrix_l_n[:matrix_of_lines_ch.shape[0],:]=np.copy(matrix_of_lines_ch[:,:])
+        args_head=np.arange(len(cy_main_head)) + len(cy_main_hor)
+
+        matrix_l_n[matrix_of_lines_ch.shape[0]:,0]=args_head
+        matrix_l_n[matrix_of_lines_ch.shape[0]:,2]=x_min_main_head+30
+        matrix_l_n[matrix_of_lines_ch.shape[0]:,3]=x_max_main_head-30
+        matrix_l_n[matrix_of_lines_ch.shape[0]:,4]=dist_x_head
+        matrix_l_n[matrix_of_lines_ch.shape[0]:,5]=y_min_main_head-3-8
+        matrix_l_n[matrix_of_lines_ch.shape[0]:,6]=y_min_main_head-5-8
+        matrix_l_n[matrix_of_lines_ch.shape[0]:,7]=y_max_main_head#y_min_main_head+1-8
+        matrix_l_n[matrix_of_lines_ch.shape[0]:,8]=4
+        matrix_of_lines_ch=np.copy(matrix_l_n)
+
+    cy_main_splitters=cy_main_hor[(x_min_main_hor<=.16*region_pre_p.shape[1]) &
+                                  (x_max_main_hor>=.84*region_pre_p.shape[1])]
+    cy_main_splitters=np.array( list(cy_main_splitters)+list(special_separators))
+    if contours_h is not None:
+        try:
+            cy_main_splitters_head=cy_main_head[(x_min_main_head<=.16*region_pre_p.shape[1]) &
+                                                (x_max_main_head>=.84*region_pre_p.shape[1])]
+            cy_main_splitters=np.array( list(cy_main_splitters)+list(cy_main_splitters_head))
+        except:
+            pass
+    args_cy_splitter=np.argsort(cy_main_splitters)
+    cy_main_splitters_sort=cy_main_splitters[args_cy_splitter]
+
+    splitter_y_new=[]
+    splitter_y_new.append(0)
+    for i in range(len(cy_main_splitters_sort)):
+        splitter_y_new.append(  cy_main_splitters_sort[i] )
+    splitter_y_new.append(region_pre_p.shape[0])
+    splitter_y_new_diff=np.diff(splitter_y_new)/float(region_pre_p.shape[0])*100
+
+    args_big_parts=np.arange(len(splitter_y_new_diff))[ splitter_y_new_diff>22 ]
+
+    regions_without_separators=return_regions_without_separators(region_pre_p)
+    length_y_threshold=regions_without_separators.shape[0]/4.0
+
+    num_col_fin=0
+    peaks_neg_fin_fin=[]
+    for itiles in args_big_parts:
+        regions_without_separators_tile=regions_without_separators[int(splitter_y_new[itiles]):
+                                                                   int(splitter_y_new[itiles+1]),:,0]
+        try:
+            num_col, peaks_neg_fin = find_num_col(regions_without_separators_tile,
+                                                  num_col_classifier, tables, multiplier=7.0)
+        except:
+            num_col = 0
+            peaks_neg_fin = []
+        if num_col>num_col_fin:
+            num_col_fin=num_col
+            peaks_neg_fin_fin=peaks_neg_fin
+
+    if len(args_big_parts)==1 and (len(peaks_neg_fin_fin)+1)<num_col_classifier:
+        peaks_neg_fin=find_num_col_by_vertical_lines(vertical[:,:,0])
+        peaks_neg_fin=peaks_neg_fin[peaks_neg_fin>=500]
+        peaks_neg_fin=peaks_neg_fin[peaks_neg_fin<=(vertical.shape[1]-500)]
+        peaks_neg_fin_fin=peaks_neg_fin[:]
+
+    return num_col_fin, peaks_neg_fin_fin,matrix_of_lines_ch,splitter_y_new,separators_closeup_n
     ncomps, ccomps = cv2.connectedComponents(region_pre_p.astype(np.uint8))
 
     separators_closeup = 1 * (region_pre_p == label_seps)
