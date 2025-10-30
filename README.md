@@ -134,7 +134,7 @@ If no further option is set, the tool performs layout detection of main regions 
 and marginals).
 The best output quality is achieved when RGB images are used as input rather than greyscale or binarized images.
 
-Additional documentation can be found in [`usage.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
+Additional documentation can be found in [`usage.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/usage.md).
 
 ### Binarization
 
@@ -199,7 +199,7 @@ eynollah machine-based-reading-order \
 
 ## Use as OCR-D processor
 
-See [`ocrd.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
+See [`ocrd.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/ocrd.md).
 
 ## How to cite
 
