@@ -60,6 +60,10 @@ jobs:
         make install-dev EXTRAS=OCR,plotting
         make deps-test EXTRAS=OCR,plotting
 
+    - name: Hard-upgrade torch for debugging
+      run: |
+        python -m pip install --upgrade torch
+
     - name: Test with pytest
       run: make coverage PYTEST_ARGS="-vv --junitxml=pytest.xml"
 
