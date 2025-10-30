@@ -70,7 +70,7 @@ def test_run_eynollah_layout_filename2(
             '-o', str(outfile.parent),
         ] + options,
         [
-            infile
+            str(infile)
         ]
     )
     assert outfile.exists()
