@@ -70,7 +70,7 @@ install:
 install-dev:
 	$(PIP) install -e .$(and $(EXTRAS),[$(EXTRAS)])
 
-deps-test: $(EYNOLLAH_MODELS_ZIP)
+deps-test:
 	$(PIP) install -r requirements-test.txt
 
 smoke-test: TMPDIR != mktemp -d

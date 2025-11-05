@@ -54,6 +54,13 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    # - uses: actions/cache@v4
+    #   with:
+    #     path: |
+    #       path/to/dependencies
+    #       some/other/dependencies
+    #     key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
