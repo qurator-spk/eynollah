@@ -70,7 +70,6 @@ jobs:
     - name: Hard-upgrade torch for debugging
       run: |
         python -m pip install --upgrade torch
-        find models_eynollah
 
     - name: Test with pytest
       run: make coverage PYTEST_ARGS="-vv --junitxml=pytest.xml"
