@@ -56,7 +56,7 @@ $(EYNOLLAH_MODELS_ZIP):
 	$(WGET) $@ $(EYNOLLAH_MODELS_URL)
 
 $(EYNOLLAH_MODELS_DIR): $(EYNOLLAH_MODELS_ZIP)
-	unzip $<
+	mkdir -p $@; cd $@; unzip ../$<
 
 build:
 	$(PIP) install build
