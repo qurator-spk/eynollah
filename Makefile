@@ -111,7 +111,7 @@ ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	$(RM) -r $(TMPDIR)
 
 # Run unit tests
-test: export EYNOLLAH_MODELS_DIR := $(CURDIR)/models_eynollah
+test: export EYNOLLAH_MODELS_DIR := $(CURDIR)
 test:
 	$(PYTHON) -m pytest tests --durations=0 --continue-on-collection-errors $(PYTEST_ARGS)
 
