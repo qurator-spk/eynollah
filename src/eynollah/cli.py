@@ -6,6 +6,8 @@ from typing import Union
 
 import click
 
+# NOTE: For debugging/predictable order of imports
+from .eynollah_imports import imported_libs
 from .model_zoo import EynollahModelZoo
 from .cli_models import models_cli
 

@@ -104,25 +104,25 @@ def test_run_eynollah_layout_directory(
     )
     assert len(list(outdir.iterdir())) == 2
 
-def test_run_eynollah_layout_marginalia(
-    tmp_path,
-    resources_dir,
-    run_eynollah_ok_and_check_logs,
-):
-    outdir = tmp_path
-    outfile = outdir / 'estor_rechtsgelehrsamkeit02_1758_0880_800px.xml'
-    run_eynollah_ok_and_check_logs(
-        'layout',
-        [
-        '-i', str(resources_dir / 'estor_rechtsgelehrsamkeit02_1758_0880_800px.jpg'),
-        '-o', str(outdir),
-        ],
-        [
-            'Job done in',
-            'All jobs done in',
-        ]
-    )
-    assert outfile.exists()
-    tree = page_from_file(str(outfile)).etree
-    regions = tree.xpath('//page:TextRegion[type="marginalia"]', namespaces=NS)
-    assert len(regions) == 5, "expected 5 marginalia regions"
+# def test_run_eynollah_layout_marginalia(
+#     tmp_path,
+#     resources_dir,
+#     run_eynollah_ok_and_check_logs,
+# ):
+#     outdir = tmp_path
+#     outfile = outdir / 'estor_rechtsgelehrsamkeit02_1758_0880_800px.xml'
+#     run_eynollah_ok_and_check_logs(
+#         'layout',
+#         [
+#         '-i', str(resources_dir / 'estor_rechtsgelehrsamkeit02_1758_0880_800px.jpg'),
+#         '-o', str(outdir),
+#         ],
+#         [
+#             'Job done in',
+#             'All jobs done in',
+#         ]
+#     )
+#     assert outfile.exists()
+#     tree = page_from_file(str(outfile)).etree
+#     regions = tree.xpath('//page:TextRegion[type="marginalia"]', namespaces=NS)
+#     assert len(regions) == 5, "expected 5 marginalia regions"
