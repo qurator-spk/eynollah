@@ -11,3 +11,4 @@ output.html
 *.tif
 *.sw?
 TAGS
+uv.lock
