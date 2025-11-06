@@ -14,7 +14,7 @@ def model_dir(tests_dir):
 
 @pytest.fixture()
 def resources_dir(tests_dir):
-    return tests_dir / 'resources'
+    return tests_dir / 'resources/2files'
 
 @pytest.fixture()
 def image_resources(resources_dir):

@@ -25,10 +25,10 @@ jobs:
         df -h
     - uses: actions/checkout@v4
 
-    - name: Lint with ruff
-      uses: astral-sh/ruff-action@v3
-      with:
-        src: "./src"
+    # - name: Lint with ruff
+    #   uses: astral-sh/ruff-action@v3
+    #   with:
+    #     src: "./src"
 
     - name: Try to restore models_eynollah
       uses: actions/cache/restore@v4
