@@ -13,7 +13,7 @@ def test_run_eynollah_binarization_filename(
     tests_dir,
     options,
 ):
-    infile = tests_dir.joinpath('resources/kant_aufklaerung_1784_0020.tif')
+    infile = tests_dir.joinpath('resources/2files/kant_aufklaerung_1784_0020.tif')
     outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
     run_eynollah_ok_and_check_logs(
         'binarization',

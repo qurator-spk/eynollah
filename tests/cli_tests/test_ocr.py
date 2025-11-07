@@ -5,10 +5,10 @@ from ocrd_models.constants import NAMESPACES as NS
 @pytest.mark.parametrize(
     "options",
     [
+        ["-trocr"],
         [], # defaults
         ["-doit", #str(outrenderfile.parent)],
          ],
-        ["-trocr"],
     ], ids=str)
 def test_run_eynollah_ocr_filename(
     tmp_path,

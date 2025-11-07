@@ -295,7 +295,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
     EynollahModelSpec(
         category="trocr_processor",
         variant='',
-        filename="models_eynollah/microsoft/trocr-base-printed",
+        filename="models_eynollah/model_eynollah_ocr_trocr_20250919",
         dist_url=dist_url("trocr"),
         dists=['trocr'],
         type='TrOCRProcessor',

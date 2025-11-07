@@ -76,22 +76,22 @@ deps-test:
 smoke-test: TMPDIR != mktemp -d
 smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif
 	# layout analysis:
-	eynollah layout -i $< -o $(TMPDIR) -m $(CURDIR)/models_eynollah
+	eynollah -m $(CURDIR)/models_eynollah layout -i $< -o $(TMPDIR) 
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$(basename $(<F)).xml
 	fgrep -c -e TextRegion -e ImageRegion -e SeparatorRegion $(TMPDIR)/$(basename $(<F)).xml
 	# layout, directory mode (skip one, add one):
-	eynollah layout -di $(<D) -o $(TMPDIR) -m $(CURDIR)/models_eynollah
+	eynollah -m $(CURDIR)/models_eynollah layout -di $(<D) -o $(TMPDIR) 
 	test -s $(TMPDIR)/euler_rechenkunst01_1738_0025.xml
 	# mbreorder, directory mode (overwrite):
-	eynollah machine-based-reading-order -di $(<D) -o $(TMPDIR) -m $(CURDIR)/$(SEG_MODELNAME)
+	eynollah -m $(CURDIR)/$(SEG_MODELNAME) machine-based-reading-order -di $(<D) -o $(TMPDIR) 
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$(basename $(<F)).xml
 	fgrep -c -e RegionRefIndexed $(TMPDIR)/$(basename $(<F)).xml
 	# binarize:
-	eynollah binarization -m $(CURDIR)/models_eynollah/eynollah-binarization_20210425 -i $< -o $(TMPDIR)/$(<F)
+	eynollah -m $(CURDIR)/models_eynollah/eynollah-binarization_20210425 binarization  -i $< -o $(TMPDIR)/$(<F)
 	test -s $(TMPDIR)/$(<F)
 	@set -x; test "$$(identify -format '%w %h' $<)" = "$$(identify -format '%w %h' $(TMPDIR)/$(<F))"
 	# enhance:
-	eynollah enhancement -m $(CURDIR)/models_eynollah -sos -i $< -o $(TMPDIR) -O
+	eynollah -m $(CURDIR)/models_eynollah enhancement  -sos -i $< -o $(TMPDIR) -O
 	test -s $(TMPDIR)/$(<F)
 	@set -x; test "$$(identify -format '%w %h' $<)" = "$$(identify -format '%w %h' $(TMPDIR)/$(<F))"
 	$(RM) -r $(TMPDIR)
