@@ -2482,119 +2482,150 @@ class Eynollah:
             self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
 
         self.logger.debug("enter do_order_of_regions")
-        contours_only_text_parent = np.array(contours_only_text_parent)
-        contours_only_text_parent_h = np.array(contours_only_text_parent_h)
         boxes = np.array(boxes, dtype=int) # to be on the safe side
-        c_boxes = np.stack((0.5 * boxes[:, 2:4].sum(axis=1),
-                            0.5 * boxes[:, 0:2].sum(axis=1)))
-        cx_main, cy_main, mx_main, Mx_main, my_main, My_main, mxy_main = find_new_features_of_contours(
+        cx_text_only, cy_text_only, x_min_text_only, x_max_text_only, _, _, y_cor_x_min_main = find_new_features_of_contours(
             contours_only_text_parent)
-        cx_head, cy_head, mx_head, Mx_head, my_head, My_head, mxy_head = find_new_features_of_contours(
+        cx_text_only_h, cy_text_only_h, x_min_text_only_h, x_max_text_only_h, _, _, y_cor_x_min_main_h = find_new_features_of_contours(
             contours_only_text_parent_h)
-
+        
         def match_boxes(only_centers: bool):
-            arg_text_con_main = np.zeros(len(contours_only_text_parent), dtype=int)
-            for ii in range(len(contours_only_text_parent)):
+            arg_text_con = []
+            for ii in range(len(cx_text_only)):
                 check_if_textregion_located_in_a_box = False
-                for jj, box in enumerate(boxes):
-                    if ((cx_main[ii] >= box[0] and
-                         cx_main[ii] < box[1] and
-                         cy_main[ii] >= box[2] and
-                         cy_main[ii] < box[3]) if only_centers else
-                        (mx_main[ii] >= box[0] and
-                         Mx_main[ii] < box[1] and
-                         my_main[ii] >= box[2] and
-                         My_main[ii] < box[3])):
-                        arg_text_con_main[ii] = jj
-                        check_if_textregion_located_in_a_box = True
-                        #print("main/matched", (mx_main[ii], Mx_main[ii], my_main[ii], My_main[ii]), "\tin", box, only_centers)
-                        break
+                for jj in range(len(boxes)):
+                    if self.right2left:
+                        if ((x_max_text_only[ii] - 80 >= boxes[jj][0] and
+                             x_max_text_only[ii] - 80 < boxes[jj][1] and
+                             y_cor_x_min_main[ii] >= boxes[jj][2] and
+                             y_cor_x_min_main[ii] < boxes[jj][3]) if only_centers else
+                             (cx_text_only[ii] >= boxes[jj][0] and
+                             cx_text_only[ii] < boxes[jj][1] and
+                             cy_text_only[ii] >= boxes[jj][2] and
+                             cy_text_only[ii] < boxes[jj][3])):
+                            arg_text_con.append(jj)
+                            check_if_textregion_located_in_a_box = True
+                            break
+                    else:
+                        if ((x_min_text_only[ii] + 80 >= boxes[jj][0] and
+                             x_min_text_only[ii] + 80 < boxes[jj][1] and
+                             y_cor_x_min_main[ii] >= boxes[jj][2] and
+                             y_cor_x_min_main[ii] < boxes[jj][3]) if only_centers else 
+                             (cx_text_only[ii] >= boxes[jj][0] and
+                             cx_text_only[ii] < boxes[jj][1] and
+                             cy_text_only[ii] >= boxes[jj][2] and
+                             cy_text_only[ii] < boxes[jj][3])):
+                            arg_text_con.append(jj)
+                            check_if_textregion_located_in_a_box = True
+                            break
                 if not check_if_textregion_located_in_a_box:
-                    dists_tr_from_box = np.linalg.norm(c_boxes - np.array([[cy_main[ii]], [cx_main[ii]]]), axis=0)
-                    pcontained_in_box = ((boxes[:, 2] <= cy_main[ii]) & (cy_main[ii] < boxes[:, 3]) &
-                                         (boxes[:, 0] <= cx_main[ii]) & (cx_main[ii] < boxes[:, 1]))
-                    ind_min = np.argmin(np.ma.masked_array(dists_tr_from_box, ~pcontained_in_box))
-                    arg_text_con_main[ii] = ind_min
-                    #print("main/fallback", (mx_main[ii], Mx_main[ii], my_main[ii], My_main[ii]), "\tin", boxes[ind_min], only_centers)
-            args_contours_main = np.arange(len(contours_only_text_parent))
-            order_by_con_main = np.zeros_like(arg_text_con_main)
+                    dists_tr_from_box = [math.sqrt((cx_text_only[ii] - boxes[jj][1]) ** 2 +
+                                                   (cy_text_only[ii] - boxes[jj][2]) ** 2)
+                                         for jj in range(len(boxes))]
+                    ind_min = np.argmin(dists_tr_from_box)
+                    arg_text_con.append(ind_min)
+            args_contours = np.array(range(len(arg_text_con)))
+            arg_text_con_h = []
+            for ii in range(len(cx_text_only_h)):
+                check_if_textregion_located_in_a_box = False
+                for jj in range(len(boxes)):
+                    if self.right2left:
+                        if ((x_max_text_only_h[ii] - 80 >= boxes[jj][0] and
+                            x_max_text_only_h[ii] - 80 < boxes[jj][1] and
+                            y_cor_x_min_main_h[ii] >= boxes[jj][2] and
+                            y_cor_x_min_main_h[ii] < boxes[jj][3]) if only_centers else
+                            (cx_text_only_h[ii] >= boxes[jj][0] and
+                             cx_text_only_h[ii] < boxes[jj][1] and
+                             cy_text_only_h[ii] >= boxes[jj][2] and
+                             cy_text_only_h[ii] < boxes[jj][3])):
+                            arg_text_con_h.append(jj)
+                            check_if_textregion_located_in_a_box = True
+                            break
+                    else:
+                        if ((x_min_text_only_h[ii] + 80 >= boxes[jj][0] and
+                             x_min_text_only_h[ii] + 80 < boxes[jj][1] and
+                             y_cor_x_min_main_h[ii] >= boxes[jj][2] and
+                             y_cor_x_min_main_h[ii] < boxes[jj][3]) if only_centers else
+                            (cx_text_only_h[ii] >= boxes[jj][0] and
+                             cx_text_only_h[ii] < boxes[jj][1] and
+                             cy_text_only_h[ii] >= boxes[jj][2] and
+                             cy_text_only_h[ii] < boxes[jj][3])):
+                            arg_text_con_h.append(jj)
+                            check_if_textregion_located_in_a_box = True
+                            break
+                if not check_if_textregion_located_in_a_box:
+                    dists_tr_from_box = [math.sqrt((cx_text_only_h[ii] - boxes[jj][1]) ** 2 +
+                                                   (cy_text_only_h[ii] - boxes[jj][2]) ** 2)
+                                         for jj in range(len(boxes))]
+                    ind_min = np.argmin(dists_tr_from_box)
+                    arg_text_con_h.append(ind_min)
+            args_contours_h = np.array(range(len(arg_text_con_h)))
 
-            arg_text_con_head = np.zeros(len(contours_only_text_parent_h), dtype=int)
-            for ii in range(len(contours_only_text_parent_h)):
-                check_if_textregion_located_in_a_box = False
-                for jj, box in enumerate(boxes):
-                    if ((cx_head[ii] >= box[0] and
-                         cx_head[ii] < box[1] and
-                         cy_head[ii] >= box[2] and
-                         cy_head[ii] < box[3]) if only_centers else
-                        (mx_head[ii] >= box[0] and
-                         Mx_head[ii] < box[1] and
-                         my_head[ii] >= box[2] and
-                         My_head[ii] < box[3])):
-                        arg_text_con_head[ii] = jj
-                        check_if_textregion_located_in_a_box = True
-                        #print("head/matched", (mx_head[ii], Mx_head[ii], my_head[ii], My_head[ii]), "\tin", box, only_centers)
-                        break
-                if not check_if_textregion_located_in_a_box:
-                    dists_tr_from_box = np.linalg.norm(c_boxes - np.array([[cy_head[ii]], [cx_head[ii]]]), axis=0)
-                    pcontained_in_box = ((boxes[:, 2] <= cy_head[ii]) & (cy_head[ii] < boxes[:, 3]) &
-                                         (boxes[:, 0] <= cx_head[ii]) & (cx_head[ii] < boxes[:, 1]))
-                    ind_min = np.argmin(np.ma.masked_array(dists_tr_from_box, ~pcontained_in_box))
-                    arg_text_con_head[ii] = ind_min
-                    #print("head/fallback", (mx_head[ii], Mx_head[ii], my_head[ii], My_head[ii]), "\tin", boxes[ind_min], only_centers)
-            args_contours_head = np.arange(len(contours_only_text_parent_h))
-            order_by_con_head = np.zeros_like(arg_text_con_head)
+            order_by_con_head = np.zeros(len(arg_text_con_h))
+            order_by_con_main = np.zeros(len(arg_text_con))
 
             ref_point = 0
             order_of_texts_tot = []
             id_of_texts_tot = []
-            for iij, box in enumerate(boxes):
-                ys = slice(*box[2:4])
-                xs = slice(*box[0:2])
-                args_contours_box_main = args_contours_main[arg_text_con_main == iij]
-                args_contours_box_head = args_contours_head[arg_text_con_head == iij]
-                con_inter_box = contours_only_text_parent[args_contours_box_main]
-                con_inter_box_h = contours_only_text_parent_h[args_contours_box_head]
+            for iij in range(len(boxes)):
+                ys = slice(*boxes[iij][2:4])
+                xs = slice(*boxes[iij][0:2])
+                args_contours_box = args_contours[np.array(arg_text_con) == iij]
+                args_contours_box_h = args_contours_h[np.array(arg_text_con_h) == iij]
+                con_inter_box = []
+                con_inter_box_h = []
+
+                for box in args_contours_box:
+                    con_inter_box.append(contours_only_text_parent[box])
+
+                for box in args_contours_box_h:
+                    con_inter_box_h.append(contours_only_text_parent_h[box])
 
                 indexes_sorted, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
-                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, box[2], box[0])
+                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, boxes[iij][2])
 
                 order_of_texts, id_of_texts = order_and_id_of_texts(
                     con_inter_box, con_inter_box_h,
                     indexes_sorted, index_by_kind_sorted, kind_of_texts_sorted, ref_point)
 
-                indexes_sorted_main = indexes_sorted[kind_of_texts_sorted == 1]
-                indexes_by_type_main = index_by_kind_sorted[kind_of_texts_sorted == 1]
-                indexes_sorted_head = indexes_sorted[kind_of_texts_sorted == 2]
-                indexes_by_type_head = index_by_kind_sorted[kind_of_texts_sorted == 2]
+                indexes_sorted_main = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 1]
+                indexes_by_type_main = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 1]
+                indexes_sorted_head = np.array(indexes_sorted)[np.array(kind_of_texts_sorted) == 2]
+                indexes_by_type_head = np.array(index_by_kind_sorted)[np.array(kind_of_texts_sorted) == 2]
 
-                for zahler, _ in enumerate(args_contours_box_main):
+                for zahler, _ in enumerate(args_contours_box):
                     arg_order_v = indexes_sorted_main[zahler]
-                    order_by_con_main[args_contours_box_main[indexes_by_type_main[zahler]]] = \
-                        np.flatnonzero(indexes_sorted == arg_order_v) + ref_point
+                    order_by_con_main[args_contours_box[indexes_by_type_main[zahler]]] = \
+                        np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
-                for zahler, _ in enumerate(args_contours_box_head):
+                for zahler, _ in enumerate(args_contours_box_h):
                     arg_order_v = indexes_sorted_head[zahler]
-                    order_by_con_head[args_contours_box_head[indexes_by_type_head[zahler]]] = \
-                        np.flatnonzero(indexes_sorted == arg_order_v) + ref_point
+                    order_by_con_head[args_contours_box_h[indexes_by_type_head[zahler]]] = \
+                        np.where(indexes_sorted == arg_order_v)[0][0] + ref_point
 
                 for jji in range(len(id_of_texts)):
                     order_of_texts_tot.append(order_of_texts[jji] + ref_point)
                     id_of_texts_tot.append(id_of_texts[jji])
                 ref_point += len(id_of_texts)
 
-            order_of_texts_tot = np.concatenate((order_by_con_main,
-                                                 order_by_con_head))
-            order_text_new = np.argsort(order_of_texts_tot)
+            order_of_texts_tot = []
+            for tj1 in range(len(contours_only_text_parent)):
+                order_of_texts_tot.append(int(order_by_con_main[tj1]))
+
+            for tj1 in range(len(contours_only_text_parent_h)):
+                order_of_texts_tot.append(int(order_by_con_head[tj1]))
+
+            order_text_new = []
+            for iii in range(len(order_of_texts_tot)):
+                order_text_new.append(np.where(np.array(order_of_texts_tot) == iii)[0][0])
+                
             return order_text_new, id_of_texts_tot
 
         try:
-            results = match_boxes(False)
+            results = match_boxes(True)
         except Exception as why:
             self.logger.exception(why)
-            results = match_boxes(True)
-
-        self.logger.debug("exit do_order_of_regions")
+            results = match_boxes(False)
+        self.logger.debug("exit do_order_of_regions_full_layout")
         return results
 
     def check_iou_of_bounding_box_and_contour_for_tables(
@@ -3088,7 +3119,7 @@ class Eynollah:
     def run_deskew(self, textline_mask_tot_ea):
         #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
         slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), 2, 30, True,
-                                          map=self.executor.map, logger=self.logger, plotter=self.plotter)
+                                          logger=self.logger, plotter=self.plotter)
         if self.plotter:
             self.plotter.save_deskewed_image(slope_deskew)
         self.logger.info("slope_deskew: %.2f°", slope_deskew)
@@ -4419,130 +4450,89 @@ class Eynollah:
         ###min_con_area = 0.000005
         contours_only_text, hir_on_text = return_contours_of_image(text_only)
         contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
-        contours_only_text_parent_d_ordered = []
-        contours_only_text_parent_d = []
 
         if len(contours_only_text_parent) > 0:
-            areas_tot_text = np.prod(text_only.shape)
             areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
-            areas_cnt_text = areas_cnt_text / float(areas_tot_text)
-            #self.logger.info('areas_cnt_text %s', areas_cnt_text)
-            contours_only_text_parent = np.array(contours_only_text_parent)[areas_cnt_text > MIN_AREA_REGION]
-            areas_cnt_text_parent = areas_cnt_text[areas_cnt_text > MIN_AREA_REGION]
-
+            areas_cnt_text = areas_cnt_text / float(text_only.shape[0] * text_only.shape[1])
+            contours_biggest = contours_only_text_parent[np.argmax(areas_cnt_text)]
+            contours_only_text_parent = [c for jz, c in enumerate(contours_only_text_parent)
+                                         if areas_cnt_text[jz] > MIN_AREA_REGION]
+            areas_cnt_text_parent = [area for area in areas_cnt_text if area > MIN_AREA_REGION]
             index_con_parents = np.argsort(areas_cnt_text_parent)
-            contours_only_text_parent = contours_only_text_parent[index_con_parents]
-            areas_cnt_text_parent = areas_cnt_text_parent[index_con_parents]
 
-            centers = np.stack(find_center_of_contours(contours_only_text_parent)) # [2, N]
+            contours_only_text_parent = self.return_list_of_contours_with_desired_order(
+                contours_only_text_parent, index_con_parents)
 
-            center0 = centers[:, -1:] # [2, 1]
+            areas_cnt_text_parent = self.return_list_of_contours_with_desired_order(
+                areas_cnt_text_parent, index_con_parents)
+
+            cx_bigest_big, cy_biggest_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest])
+            cx_bigest, cy_biggest, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent)
 
             if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
                 contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
                 contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
 
-                areas_tot_text_d = np.prod(text_only_d.shape)
                 areas_cnt_text_d = np.array([cv2.contourArea(c) for c in contours_only_text_parent_d])
-                areas_cnt_text_d = areas_cnt_text_d / float(areas_tot_text_d)
+                areas_cnt_text_d = areas_cnt_text_d / float(text_only_d.shape[0] * text_only_d.shape[1])
 
-                contours_only_text_parent_d = np.array(contours_only_text_parent_d)[areas_cnt_text_d > MIN_AREA_REGION]
-                areas_cnt_text_d = areas_cnt_text_d[areas_cnt_text_d > MIN_AREA_REGION]
-
-                if len(contours_only_text_parent_d):
+                if len(areas_cnt_text_d)>0:
+                    contours_biggest_d = contours_only_text_parent_d[np.argmax(areas_cnt_text_d)]
                     index_con_parents_d = np.argsort(areas_cnt_text_d)
-                    contours_only_text_parent_d = np.array(contours_only_text_parent_d)[index_con_parents_d]
-                    areas_cnt_text_d = areas_cnt_text_d[index_con_parents_d]
+                    contours_only_text_parent_d = self.return_list_of_contours_with_desired_order(
+                        contours_only_text_parent_d, index_con_parents_d)
+                    
+                    areas_cnt_text_d = self.return_list_of_contours_with_desired_order(
+                        areas_cnt_text_d, index_con_parents_d)
 
-                    centers_d = np.stack(find_center_of_contours(contours_only_text_parent_d)) # [2, N]
+                    cx_bigest_d_big, cy_biggest_d_big, _, _, _, _, _ = find_new_features_of_contours([contours_biggest_d])
+                    cx_bigest_d, cy_biggest_d, _, _, _, _, _ = find_new_features_of_contours(contours_only_text_parent_d)
+                    try:
+                        if len(cx_bigest_d) >= 5:
+                            cx_bigest_d_last5 = cx_bigest_d[-5:]
+                            cy_biggest_d_last5 = cy_biggest_d[-5:]
+                            dists_d = [math.sqrt((cx_bigest_big[0] - cx_bigest_d_last5[j]) ** 2 +
+                                                 (cy_biggest_big[0] - cy_biggest_d_last5[j]) ** 2)
+                                       for j in range(len(cy_biggest_d_last5))]
+                            ind_largest = len(cx_bigest_d) -5 + np.argmin(dists_d)
+                        else:
+                            cx_bigest_d_last5 = cx_bigest_d[-len(cx_bigest_d):]
+                            cy_biggest_d_last5 = cy_biggest_d[-len(cx_bigest_d):]
+                            dists_d = [math.sqrt((cx_bigest_big[0]-cx_bigest_d_last5[j])**2 +
+                                                 (cy_biggest_big[0]-cy_biggest_d_last5[j])**2)
+                                       for j in range(len(cy_biggest_d_last5))]
+                            ind_largest = len(cx_bigest_d) - len(cx_bigest_d) + np.argmin(dists_d)
 
-                    center0_d = centers_d[:, -1:].copy() # [2, 1]
+                        cx_bigest_d_big[0] = cx_bigest_d[ind_largest]
+                        cy_biggest_d_big[0] = cy_biggest_d[ind_largest]
+                    except Exception as why:
+                        self.logger.error(str(why))
 
-                    # find the largest among the largest 5 deskewed contours
-                    # that is also closest to the largest original contour
-                    last5_centers_d = centers_d[:, -5:]
-                    dists_d = np.linalg.norm(center0 - last5_centers_d, axis=0)
-                    ind_largest = len(contours_only_text_parent_d) - last5_centers_d.shape[1] + np.argmin(dists_d)
-                    center0_d[:, 0] = centers_d[:, ind_largest]
-
-                    # order new contours the same way as the undeskewed contours
-                    # (by calculating the offset of the largest contours, respectively,
-                    #  of the new and undeskewed image; then for each contour,
-                    #  finding the closest new contour, with proximity calculated
-                    #  as distance of their centers modulo offset vector)
                     (h, w) = text_only.shape[:2]
                     center = (w // 2.0, h // 2.0)
                     M = cv2.getRotationMatrix2D(center, slope_deskew, 1.0)
                     M_22 = np.array(M)[:2, :2]
-                    center0 = np.dot(M_22, center0) # [2, 1]
-                    offset = center0 - center0_d # [2, 1]
+                    p_big = np.dot(M_22, [cx_bigest_big, cy_biggest_big])
+                    x_diff = p_big[0] - cx_bigest_d_big
+                    y_diff = p_big[1] - cy_biggest_d_big
 
-                    centers = np.dot(M_22, centers) - offset # [2,N]
-                    # add dimension for area (so only contours of similar size will be considered close)
-                    centers = np.append(centers, areas_cnt_text_parent[np.newaxis], axis=0)
-                    centers_d = np.append(centers_d, areas_cnt_text_d[np.newaxis], axis=0)
+                    contours_only_text_parent_d_ordered = []
+                    for i in range(len(contours_only_text_parent)):
+                        p = np.dot(M_22, [cx_bigest[i], cy_biggest[i]])
+                        p[0] = p[0] - x_diff[0]
+                        p[1] = p[1] - y_diff[0]
+                        dists = [math.sqrt((p[0] - cx_bigest_d[j]) ** 2 +
+                                           (p[1] - cy_biggest_d[j]) ** 2)
+                                 for j in range(len(cx_bigest_d))]
+                        contours_only_text_parent_d_ordered.append(contours_only_text_parent_d[np.argmin(dists)])
+                else:
+                    contours_only_text_parent_d_ordered = []
+                    contours_only_text_parent_d = []
+                    contours_only_text_parent = []
 
-                    dists = np.zeros((len(contours_only_text_parent), len(contours_only_text_parent_d)))
-                    for i in range(len(contours_only_text_parent)):
-                        dists[i] = np.linalg.norm(centers[:, i:i + 1] - centers_d, axis=0)
-                    corresp = np.zeros(dists.shape, dtype=bool)
-                    # keep searching next-closest until at least one correspondence on each side
-                    while not np.all(corresp.sum(axis=1)) and not np.all(corresp.sum(axis=0)):
-                        idx = np.nanargmin(dists)
-                        i, j = np.unravel_index(idx, dists.shape)
-                        dists[i, j] = np.nan
-                        corresp[i, j] = True
-                    #print("original/deskewed adjacency", corresp.nonzero())
-                    contours_only_text_parent_d_ordered = np.zeros_like(contours_only_text_parent)
-                    contours_only_text_parent_d_ordered = contours_only_text_parent_d[np.argmax(corresp, axis=1)]
-                    # img1 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
-                    # for i in range(len(contours_only_text_parent)):
-                    #     cv2.fillPoly(img1, pts=[contours_only_text_parent_d_ordered[i]], color=i + 1)
-                    # plt.subplot(2, 2, 1, title="direct corresp contours")
-                    # plt.imshow(img1)
-                    # img2 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
-                    # join deskewed regions mapping to single original ones
-                    for i in range(len(contours_only_text_parent)):
-                        if np.count_nonzero(corresp[i]) > 1:
-                            indices = np.flatnonzero(corresp[i])
-                            #print("joining", indices)
-                            polygons_d = [contour2polygon(contour)
-                                          for contour in contours_only_text_parent_d[indices]]
-                            contour_d = polygon2contour(join_polygons(polygons_d))
-                            contours_only_text_parent_d_ordered[i] = contour_d
-                    #         cv2.fillPoly(img2, pts=[contour_d], color=i + 1)
-                    # plt.subplot(2, 2, 3, title="joined contours")
-                    # plt.imshow(img2)
-                    # img3 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
-                    # split deskewed regions mapping to multiple original ones
-                    def deskew(polygon):
-                        polygon = shapely.affinity.rotate(polygon, -slope_deskew, origin=center)
-                        polygon = shapely.affinity.translate(polygon, *offset.squeeze())
-                        return polygon
-                    for j in range(len(contours_only_text_parent_d)):
-                        if np.count_nonzero(corresp[:, j]) > 1:
-                            indices = np.flatnonzero(corresp[:, j])
-                            #print("splitting along", indices)
-                            polygons = [deskew(contour2polygon(contour))
-                                        for contour in contours_only_text_parent[indices]]
-                            polygon_d = contour2polygon(contours_only_text_parent_d[j])
-                            polygons_d = [make_intersection(polygon_d, polygon)
-                                          for polygon in polygons]
-                            # ignore where there is no actual overlap
-                            indices = indices[np.flatnonzero(polygons_d)]
-                            contours_d = [polygon2contour(polygon_d)
-                                          for polygon_d in polygons_d
-                                          if polygon_d]
-                            contours_only_text_parent_d_ordered[indices] = contours_d
-                    #         cv2.fillPoly(img3, pts=contours_d, color=j + 1)
-                    # plt.subplot(2, 2, 4, title="split contours")
-                    # plt.imshow(img3)
-                    # img4 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
-                    # for i in range(len(contours_only_text_parent)):
-                    #     cv2.fillPoly(img4, pts=[contours_only_text_parent_d_ordered[i]], color=i + 1)
-                    # plt.subplot(2, 2, 2, title="result contours")
-                    # plt.imshow(img4)
-                    # plt.show()
+            else:
+                contours_only_text_parent_d_ordered = []
+                contours_only_text_parent_d = []
 
         if not len(contours_only_text_parent):
             # stop early
