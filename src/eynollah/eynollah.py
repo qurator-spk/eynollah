@@ -333,7 +333,7 @@ class Eynollah:
                 #"modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"
                 #"modelens_1_2_4_5_early_lay_1_2_spaltige"
                 #"model_3_eraly_layout_no_patches_1_2_spaltige"
-                "modelens_e_l_all_sp_0_1_2_3_4_171024"),
+                "model_ens_farsi"),#"modelens_e_l_all_sp_0_1_2_3_4_171024"),
             "region_fl_np": ( # full layout / no patches
                 #"modelens_full_lay_1_3_031124"
                 #"modelens_full_lay_13__3_19_241024"
@@ -3674,8 +3674,13 @@ class Eynollah:
         img_header_and_sep = resize_image(img_header_and_sep, height1, width1)
         img_poly = resize_image(img_poly, height3, width3)
         
-
         
+        if self.right2left:
+            labels_con = labels_con.astype(np.uint8)
+            labels_con = cv2.flip(labels_con,1)
+            img_header_and_sep = cv2.flip(img_header_and_sep,1)
+            img_poly = cv2.flip(img_poly,1)
+
         input_1 = np.zeros((inference_bs, height1, width1, 3))
         ordered = [list(range(len(co_text_all)))]
         index_update = 0
