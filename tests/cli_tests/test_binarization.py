@@ -10,11 +10,11 @@ from PIL import Image
 def test_run_eynollah_binarization_filename(
     tmp_path,
     run_eynollah_ok_and_check_logs,
-    tests_dir,
+    resources_dir,
     options,
 ):
-    infile = tests_dir.joinpath('resources/2files/kant_aufklaerung_1784_0020.tif')
-    outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.png')
+    infile = resources_dir + '/2files/kant_aufklaerung_1784_0020.tif'
+    outfile = tmp_path / 'kant_aufklaerung_1784_0020.png'
     run_eynollah_ok_and_check_logs(
         'binarization',
         [
@@ -42,7 +42,7 @@ def test_run_eynollah_binarization_directory(
     run_eynollah_ok_and_check_logs(
         'binarization',
         [
-            '-di', str(resources_dir),
+            '-di', str(resources_dir / '2files'),
             '-o', str(outdir),
         ],
         [

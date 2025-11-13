@@ -6,8 +6,8 @@ def test_run_eynollah_mbreorder_filename(
     resources_dir,
     run_eynollah_ok_and_check_logs,
 ):
-    infile = resources_dir / 'kant_aufklaerung_1784_0020.xml'
-    outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.xml')
+    infile = resources_dir / '2files/kant_aufklaerung_1784_0020.xml'
+    outfile = tmp_path /'kant_aufklaerung_1784_0020.xml'
     run_eynollah_ok_and_check_logs(
         'machine-based-reading-order',
         [
@@ -36,7 +36,7 @@ def test_run_eynollah_mbreorder_directory(
     run_eynollah_ok_and_check_logs(
         'machine-based-reading-order',
         [
-            '-di', str(resources_dir),
+            '-di', str(resources_dir / '2files'),
             '-o', str(outdir),
         ],
         [

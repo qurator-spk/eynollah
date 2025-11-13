@@ -27,7 +27,7 @@ def test_run_eynollah_layout_filename(
     resources_dir,
     options,
 ):
-    infile = resources_dir / 'kant_aufklaerung_1784_0020.tif'
+    infile = resources_dir / '2files/kant_aufklaerung_1784_0020.tif'
     outfile = tmp_path / 'kant_aufklaerung_1784_0020.xml'
     run_eynollah_ok_and_check_logs(
         'layout',
@@ -61,7 +61,7 @@ def test_run_eynollah_layout_filename2(
     run_eynollah_ok_and_check_logs,
     options,
 ):
-    infile = resources_dir / 'euler_rechenkunst01_1738_0025.tif'
+    infile = resources_dir / '2files/euler_rechenkunst01_1738_0025.tif'
     outfile = tmp_path / 'euler_rechenkunst01_1738_0025.xml'
     run_eynollah_ok_and_check_logs(
         'layout',
@@ -94,7 +94,7 @@ def test_run_eynollah_layout_directory(
     run_eynollah_ok_and_check_logs(
         'layout',
         [
-        '-di', str(resources_dir),
+        '-di', str(resources_dir / '2files'),
         '-o', str(outdir),
         ],
         [

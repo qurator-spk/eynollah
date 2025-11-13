@@ -16,8 +16,8 @@ def test_run_eynollah_ocr_filename(
     resources_dir,
     options,
 ):
-    infile = resources_dir / 'kant_aufklaerung_1784_0020.tif'
-    outfile = tmp_path.joinpath('kant_aufklaerung_1784_0020.xml')
+    infile = resources_dir / '2files/kant_aufklaerung_1784_0020.tif'
+    outfile = tmp_path / 'kant_aufklaerung_1784_0020.xml'
     outrenderfile = tmp_path / 'render' / 'kant_aufklaerung_1784_0020.png'
     outrenderfile.parent.mkdir()
     if "-doit" in options:
@@ -52,8 +52,8 @@ def test_run_eynollah_ocr_directory(
     run_eynollah_ok_and_check_logs(
         'ocr',
         [
-            '-di', str(resources_dir),
-            '-dx', str(resources_dir),
+            '-di', str(resources_dir / '2files'),
+            '-dx', str(resources_dir / '2files'),
             '-o', str(outdir),
         ],
         [
