@@ -333,7 +333,7 @@ class Eynollah:
                 #"modelens_early12_sp_2_3_5_6_7_8_9_10_12_14_15_16_18"
                 #"modelens_1_2_4_5_early_lay_1_2_spaltige"
                 #"model_3_eraly_layout_no_patches_1_2_spaltige"
-                "model_ens_farsi"),#"modelens_e_l_all_sp_0_1_2_3_4_171024"),
+                "modelens_e_l_all_sp_0_1_2_3_4_171024"),
             "region_fl_np": ( # full layout / no patches
                 #"modelens_full_lay_1_3_031124"
                 #"modelens_full_lay_13__3_19_241024"
