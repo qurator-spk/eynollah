@@ -18,7 +18,7 @@ def resources_dir(tests_dir):
 
 @pytest.fixture()
 def image_resources(resources_dir):
-    return [Path(x) for x in glob(str(resources_dir / '*.tif'))]
+    return [Path(x) for x in glob(str(resources_dir / '2files/*.tif'))]
 
 @pytest.fixture()
 def eynollah_log_filter():
