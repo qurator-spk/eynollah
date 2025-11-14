@@ -2491,11 +2491,15 @@ class Eynollah:
             contours_only_text_parent)
         cx_head, cy_head, mx_head, Mx_head, my_head, My_head, mxy_head = find_new_features_of_contours(
             contours_only_text_parent_h)
+        cx_main = np.array(cx_main, dtype=int)
+        cy_main = np.array(cy_main, dtype=int)
+        cx_head = np.array(cx_head, dtype=int)
+        cy_head = np.array(cy_head, dtype=int)
 
         def match_boxes(only_centers: bool):
             arg_text_con_main = np.zeros(len(contours_only_text_parent), dtype=int)
             for ii in range(len(contours_only_text_parent)):
-                check_if_textregion_located_in_a_box = False
+                box_found = False
                 for jj, box in enumerate(boxes):
                     if ((cx_main[ii] >= box[0] and
                          cx_main[ii] < box[1] and
@@ -2506,22 +2510,23 @@ class Eynollah:
                          my_main[ii] >= box[2] and
                          My_main[ii] < box[3])):
                         arg_text_con_main[ii] = jj
-                        check_if_textregion_located_in_a_box = True
-                        #print("main/matched", (mx_main[ii], Mx_main[ii], my_main[ii], My_main[ii]), "\tin", box, only_centers)
+                        box_found = True
+                        # print("main/matched ", ii, "\t", (mx_main[ii], Mx_main[ii], my_main[ii], My_main[ii]), "\tin", jj, box, only_centers)
                         break
-                if not check_if_textregion_located_in_a_box:
+                if not box_found:
                     dists_tr_from_box = np.linalg.norm(c_boxes - np.array([[cy_main[ii]], [cx_main[ii]]]), axis=0)
                     pcontained_in_box = ((boxes[:, 2] <= cy_main[ii]) & (cy_main[ii] < boxes[:, 3]) &
                                          (boxes[:, 0] <= cx_main[ii]) & (cx_main[ii] < boxes[:, 1]))
+                    assert pcontained_in_box.any(), (ii, cx_main[ii], cy_main[ii])
                     ind_min = np.argmin(np.ma.masked_array(dists_tr_from_box, ~pcontained_in_box))
                     arg_text_con_main[ii] = ind_min
-                    #print("main/fallback", (mx_main[ii], Mx_main[ii], my_main[ii], My_main[ii]), "\tin", boxes[ind_min], only_centers)
+                    # print("main/fallback ", ii, "\t", (mx_main[ii], Mx_main[ii], my_main[ii], My_main[ii]), "\tin", ind_min, boxes[ind_min], only_centers)
             args_contours_main = np.arange(len(contours_only_text_parent))
             order_by_con_main = np.zeros_like(arg_text_con_main)
 
             arg_text_con_head = np.zeros(len(contours_only_text_parent_h), dtype=int)
             for ii in range(len(contours_only_text_parent_h)):
-                check_if_textregion_located_in_a_box = False
+                box_found = False
                 for jj, box in enumerate(boxes):
                     if ((cx_head[ii] >= box[0] and
                          cx_head[ii] < box[1] and
@@ -2532,16 +2537,17 @@ class Eynollah:
                          my_head[ii] >= box[2] and
                          My_head[ii] < box[3])):
                         arg_text_con_head[ii] = jj
-                        check_if_textregion_located_in_a_box = True
-                        #print("head/matched", (mx_head[ii], Mx_head[ii], my_head[ii], My_head[ii]), "\tin", box, only_centers)
+                        box_found = True
+                        # print("head/matched ", ii, "\t", (mx_head[ii], Mx_head[ii], my_head[ii], My_head[ii]), "\tin", jj, box, only_centers)
                         break
-                if not check_if_textregion_located_in_a_box:
+                if not box_found:
                     dists_tr_from_box = np.linalg.norm(c_boxes - np.array([[cy_head[ii]], [cx_head[ii]]]), axis=0)
                     pcontained_in_box = ((boxes[:, 2] <= cy_head[ii]) & (cy_head[ii] < boxes[:, 3]) &
                                          (boxes[:, 0] <= cx_head[ii]) & (cx_head[ii] < boxes[:, 1]))
+                    assert pcontained_in_box.any(), (ii, cx_head[ii], cy_head[ii])
                     ind_min = np.argmin(np.ma.masked_array(dists_tr_from_box, ~pcontained_in_box))
                     arg_text_con_head[ii] = ind_min
-                    #print("head/fallback", (mx_head[ii], Mx_head[ii], my_head[ii], My_head[ii]), "\tin", boxes[ind_min], only_centers)
+                    # print("head/fallback ", ii, "\t", (mx_head[ii], Mx_head[ii], my_head[ii], My_head[ii]), "\tin", ind_min, boxes[ind_min], only_centers)
             args_contours_head = np.arange(len(contours_only_text_parent_h))
             order_by_con_head = np.zeros_like(arg_text_con_head)
 
