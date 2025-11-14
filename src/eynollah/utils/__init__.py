@@ -32,289 +32,132 @@ def pairwise(iterable):
         yield a, b
         a = b
 
-def return_x_start_end_mothers_childs_and_type_of_reading_order(
-        peak_points, x_min_hor_some, x_max_hor_some, cy_hor_some, y_max_hor_some):
+def return_multicol_separators_x_start_end(
+        regions_without_separators, peak_points, top, bot,
+        x_min_hor_some, x_max_hor_some, cy_hor_some, y_min_hor_some, y_max_hor_some):
     """
     Analyse which separators overlap multiple column candidates,
     and how they overlap each other.
 
     Ignore separators not spanning multiple columns.
 
-    For the separators to be returned, try to join them when they are directly
-    adjacent horizontally but nearby vertically (and thus mutually compatible).
-    Also, mark any separators that already span the full width.
-
-    Furthermore, identify which pairs of (unjoined) separators span subsets of columns
-    of each other (disregarding vertical positions). Referring, respectively, to the
-    superset separators as  "mothers" and to the subset separators as "children",
-    retrieve information on which columns are spanned by separators with no mother,
-    and which columns are spanned by their children (if any).
-
-    Moreover, determine if there is any (column) overlap among the multi-span separators
-    with no mother, specifically (and thus, no simple box separation is possible).
+    For the separators to be returned, try to remove or unify them when there
+    is no region between them (vertically) and their neighbours.
 
     Arguments:
+        * the text mask (with all separators suppressed)
         * the x column coordinates
-        * the x start column index of the raw separators
-        * the x end column index of the raw separators
-        * the y center coordinate of the raw separators
-        * the y end coordinate of the raw separators
+        * the y start coordinate to consider in total
+        * the y end coordinate to consider in total
+        * the x start coordinate of the horizontal separators
+        * the x end coordinate of the horizontal separators
+        * the y start coordinate of the horizontal separators
+        * the y center coordinate of the horizontal separators
+        * the y end coordinate of the horizontal separators
 
     Returns:
         a tuple of:
-        * whether any top-level (no-mother) multi-span separators overlap each other
         * the x start column index of the resulting multi-span separators
         * the x end column index of the resulting multi-span separators
+        * the y start coordinate of the resulting multi-span separators
         * the y center coordinate of the resulting multi-span separators
         * the y end coordinate of the resulting multi-span separators
-        * the y center (for 1 representative) of the top-level (no-mother) multi-span separators
-        * the x start column index of the top-level (no-mother) multi-span separators
-        * the x end column index of the top-level (no-mother) multi-span separators
-        * whether any multi-span separators have super-spans of other (child) multi-span separators
-        * the y center (for 1 representative) of the top-level (no-mother) multi-span separators
-          which have super-spans of other (child) multi-span separators
-        * the x start column index of the top-level multi-span separators
-          which have super-spans of other (child) multi-span separators
-        * the x end column index of the top-level multi-span separators
-          which have super-spans of other (child) multi-span separators
-        * indexes of multi-span separators with full-width span
     """
 
-    x_start=[]
-    x_end=[]
-    len_sep=[]
-    y_mid=[]
-    y_max=[]
-    new_main_sep_y=[]
-    indexer=0
+    x_start = [0]
+    x_end = [len(peak_points) - 1]
+    y_min = [top]
+    y_mid = [top]
+    y_max = [top + 2]
+    indexer = 1
     for i in range(len(x_min_hor_some)):
         #print(indexer, "%d:%d" % (x_min_hor_some[i], x_max_hor_some[i]), cy_hor_some[i])
         starting = x_min_hor_some[i] - peak_points
         min_start = np.flatnonzero(starting >= 0)[-1] # last left-of
         ending = x_max_hor_some[i] - peak_points
-        max_end = np.flatnonzero(ending < 0)[0] # first right-of
+        max_end = np.flatnonzero(ending <= 0)[0] # first right-of
         #print(indexer, "%d:%d" % (min_start, max_end))
 
         if (max_end-min_start)>=2:
             # column range of separator spans more than one column candidate
-            if (max_end-min_start)==(len(peak_points)-1):
-                # all columns (i.e. could be true new y splitter)
-                new_main_sep_y.append(indexer)
-
             #print((max_end-min_start),len(peak_points),'(max_end-min_start)')
+            y_min.append(y_min_hor_some[i])
             y_mid.append(cy_hor_some[i])
             y_max.append(y_max_hor_some[i])
             x_end.append(max_end)
             x_start.append(min_start)
-            len_sep.append(max_end-min_start)
             indexer+=1
     #print(x_start,'x_start')
     #print(x_end,'x_end')
 
-    x_start_returned = np.array(x_start, dtype=int)
-    x_end_returned = np.array(x_end, dtype=int)
-    y_mid_returned = np.array(y_mid, dtype=int)
-    y_max_returned = np.array(y_max, dtype=int)
-    #print(y_mid_returned,'y_mid_returned')
-    #print(x_start_returned,'x_start_returned')
-    #print(x_end_returned,'x_end_returned')
-
-    # join/elongate separators if follow-up x and similar y
-    sep_pairs = contours_in_same_horizon(y_mid_returned)
-    if len(sep_pairs):
-        #print('burda')
-        args_to_be_unified = set()
-        y_mid_unified = []
-        y_max_unified = []
-        x_start_unified = []
-        x_end_unified = []
-        for pair in sep_pairs:
-            if (not np.array_equal(*x_start_returned[pair]) and
-                not np.array_equal(*x_end_returned[pair]) and
-                # immediately adjacent columns?
-                np.diff(x_end_returned[pair] -
-                        x_start_returned[pair])[0] in [1, -1]):
-
-                args_to_be_unified.union(set(pair))
-                y_mid_unified.append(np.min(y_mid_returned[pair]))
-                y_max_unified.append(np.max(y_max_returned[pair]))
-                x_start_unified.append(np.min(x_start_returned[pair]))
-                x_end_unified.append(np.max(x_end_returned[pair]))
-                #print(pair,'pair')
-                #print(x_start_returned[pair],'x_s_same_hor')
-                #print(x_end_returned[pair],'x_e_same_hor')
-        #print(y_mid_unified,'y_mid_unified')
-        #print(y_max_unified,'y_max_unified')
-        #print(x_start_unified,'x_s_unified')
-        #print(x_end_unified,'x_e_selected')
-        #print('#############################')
-
-        if len(y_mid_unified):
-            args_lines_not_unified = np.setdiff1d(np.arange(len(y_mid_returned)),
-                                                  list(args_to_be_unified), assume_unique=True)
-            #print(args_lines_not_unified,'args_lines_not_unified')
-            x_start_returned = np.append(x_start_returned[args_lines_not_unified],
-                                         x_start_unified, axis=0)
-            x_end_returned = np.append(x_end_returned[args_lines_not_unified],
-                                       x_end_unified, axis=0)
-            y_mid_returned = np.append(y_mid_returned[args_lines_not_unified],
-                                       y_mid_unified, axis=0)
-            y_max_returned = np.append(y_max_returned[args_lines_not_unified],
-                                        y_max_unified, axis=0)
-    #print(y_mid_returned,'y_mid_returned2')
-    #print(x_start_returned,'x_start_returned2')
-    #print(x_end_returned,'x_end_returned2')
-
-    #print(new_main_sep_y,'new_main_sep_y')
-    #print(x_start,'x_start')
-    #print(x_end,'x_end')
-    x_start = np.array(x_start)
-    x_end = np.array(x_end)
-    y_mid = np.array(y_mid)
-    if len(new_main_sep_y):
-        # some full-width multi-span separators exist, so
-        # restrict the y range of separators to search for
-        # mutual overlaps to only those within the largest
-        # y strip between adjacent multi-span separators
-        # that involve at least one such full-width seps.
-        # (does not affect the separators to be returned)
-        min_ys=np.min(y_mid)
-        max_ys=np.max(y_mid)
-        #print(min_ys,'min_ys')
-        #print(max_ys,'max_ys')
-
-        y_mains0 = list(y_mid[new_main_sep_y])
-        y_mains = [min_ys] + y_mains0 + [max_ys]
-
-        y_mains = np.sort(y_mains)
-        argm = np.argmax(np.diff(y_mains))
-        y_mid_new = y_mains[argm]
-        y_mid_next_new = y_mains[argm + 1]
-
-        #print(y_mid_new,argm,'y_mid_new')
-        #print(y_mid_next_new,argm+1,'y_mid_next_new')
-        #print(y_mid[new_main_sep_y],new_main_sep_y,'yseps')
-        x_start=np.array(x_start)
-        x_end=np.array(x_end)
-        y_mid=np.array(y_mid)
-        # iff either boundary is itself not a full-width separator,
-        # then include it in the range of separators to be kept
-        if y_mid_new in y_mains0:
-            where = y_mid > y_mid_new
-        else:
-            where = y_mid >= y_mid_new
-        if y_mid_next_new in y_mains0:
-            where &= y_mid < y_mid_next_new
-        else:
-            where &= y_mid <= y_mid_next_new
-        x_start = x_start[where]
-        x_end = x_end[where]
-        y_mid = y_mid[where]
+    x_start = np.array(x_start, dtype=int)
+    x_end = np.array(x_end, dtype=int)
+    y_min = np.array(y_min, dtype=int)
+    y_mid = np.array(y_mid, dtype=int)
+    y_max = np.array(y_max, dtype=int)
+    #print(y_mid,'y_mid')
     #print(x_start,'x_start')
     #print(x_end,'x_end')
 
-    # remove redundant separators that span the same columns
-    # (keeping only 1 representative each)
-    deleted = set()
-    for index_i in range(len(x_start) - 1):
-        nodes_i = set(range(x_start[index_i], x_end[index_i] + 1))
-        #print(nodes_i, "nodes_i")
-        for index_j in range(index_i + 1, len(x_start)):
-            nodes_j = set(range(x_start[index_j], x_end[index_j] + 1))
-            #print(nodes_j, "nodes_j")
-            if nodes_i == nodes_j:
-                deleted.add(index_j)
-    #print(deleted,"deleted")
-    remained_sep_indexes = set(range(len(x_start))) - deleted
-    #print(remained_sep_indexes,'remained_sep_indexes')
+    # remove redundant separators (with nothing in between)
+    args_emptysep = set()
+    args_ysorted = np.argsort(y_mid)
+    for i in range(len(y_mid)):
+        # find nearest neighbours above with nothing in between
+        prev = (~np.eye(len(y_mid), dtype=bool)[i] &
+                (y_mid[i] >= y_mid) &
+                # complete subsumption:
+                # (x_start[i] >= x_start) &
+                # (x_end[i] <= x_end)
+                # partial overlap
+                (x_start[i] < x_end) &
+                (x_end[i] > x_start)
+        )
+        prev[list(args_emptysep)] = False # but no pair we already saw
+        if not prev.any():
+            continue
+        prev = np.flatnonzero(prev[args_ysorted])
+        j = args_ysorted[prev[-1]]
+        if not np.any(regions_without_separators[y_max[j]: y_min[i],
+                                                 peak_points[min(x_start[i], x_start[j])]:
+                                                 peak_points[max(x_end[i], x_end[j])]]):
+            args_emptysep.add(i)
+            if x_start[j] > x_start[i]:
+                # print(j, "now starts at", x_start[i])
+                x_start[j] = x_start[i]
+            if x_end[j] < x_end[i]:
+                x_end[j] = x_end[i]
+                # print(j, "now ends at", x_end[i])
+            # print(j, i, "%d:%d" % (y_mid[j], y_mid[i]), "%d:%d" % (x_start[i], x_end[i]), "empty prev sep")
+            continue
+        # find nearest neighbours below with nothing in between
+        nExt = (~np.eye(len(y_mid), dtype=bool)[i] &
+                (y_mid[i] <= y_mid) &
+                (x_start[i] >= x_start) &
+                (x_end[i] <= x_end))
+        nExt[list(args_emptysep)] = False # but no pair we already saw
+        if not nExt.any():
+            continue
+        nExt = np.flatnonzero(nExt[args_ysorted])
+        j = args_ysorted[nExt[0]]
+        if not np.any(regions_without_separators[y_max[i]: y_min[j],
+                                                 peak_points[x_start[i]]:
+                                                 peak_points[x_end[i]]]):
+            args_emptysep.add(i)
+            # print(j, i, "%d:%d" % (y_mid[j], y_mid[i]), "%d:%d" % (x_start[i], x_end[i]), "empty next sep")
+    args_to_be_kept = [arg for arg in args_ysorted
+                       if not arg in args_emptysep]
+    x_start = x_start[args_to_be_kept]
+    x_end = x_end[args_to_be_kept]
+    y_min = y_min[args_to_be_kept]
+    y_mid = y_mid[args_to_be_kept]
+    y_max = y_max[args_to_be_kept]
 
-    # determine which separators span which columns
-    mother = [] # whether the respective separator has a mother separator
-    child = [] # whether the respective separator has a child separator
-    for index_i in remained_sep_indexes:
-        have_mother=0
-        have_child=0
-        nodes_i = set(range(x_start[index_i], x_end[index_i] + 1))
-        for index_j in remained_sep_indexes:
-            nodes_j = set(range(x_start[index_j], x_end[index_j] + 1))
-            if nodes_i < nodes_j:
-                have_mother=1
-            if nodes_i > nodes_j:
-                have_child=1
-        mother.append(have_mother)
-        child.append(have_child)
-    #print(mother, "mother")
-    #print(child, "child")
-
-    mother = np.array(mother)
-    child = np.array(child)
-    #print(mother,'mother')
-    #print(child,'child')
-    remained_sep_indexes = np.array(list(remained_sep_indexes))
-    #print(len(remained_sep_indexes))
-    #print(len(remained_sep_indexes),len(x_start),len(x_end),len(y_mid),'lens')
-
-    reading_order_type = 0
-    if len(remained_sep_indexes):
-        #print(np.array(remained_sep_indexes),'np.array(remained_sep_indexes)')
-        #print(np.array(mother),'mother')
-        remained_sep_indexes_without_mother = remained_sep_indexes[mother==0]
-        remained_sep_indexes_with_child_without_mother = remained_sep_indexes[(mother==0) & (child==1)]
-        #print(remained_sep_indexes_without_mother,'remained_sep_indexes_without_mother')
-        #print(remained_sep_indexes_without_mother,'remained_sep_indexes_without_mother')
-
-        x_end_with_child_without_mother = x_end[remained_sep_indexes_with_child_without_mother]
-        x_start_with_child_without_mother = x_start[remained_sep_indexes_with_child_without_mother]
-        y_mid_with_child_without_mother = y_mid[remained_sep_indexes_with_child_without_mother]
-
-        x_end_without_mother = x_end[remained_sep_indexes_without_mother]
-        x_start_without_mother = x_start[remained_sep_indexes_without_mother]
-        y_mid_without_mother = y_mid[remained_sep_indexes_without_mother]
-
-        if len(remained_sep_indexes_without_mother)>=2:
-            for i in range(len(remained_sep_indexes_without_mother)-1):
-                index_i = remained_sep_indexes_without_mother[i]
-                nodes_i = set(range(x_start[index_i], x_end[index_i] + 1))
-                #print(index_i, nodes_i, "nodes_i without mother")
-                for j in range(i + 1, len(remained_sep_indexes_without_mother)):
-                    index_j = remained_sep_indexes_without_mother[j]
-                    nodes_j = set(range(x_start[index_j], x_end[index_j] + 1))
-                    #print(index_j, nodes_j, "nodes_j without mother")
-                    if nodes_i - nodes_j != nodes_i:
-                        #print("type=1")
-                        reading_order_type = 1
-    else:
-        y_mid_without_mother = np.zeros(0, int)
-        x_start_without_mother = np.zeros(0, int)
-        x_end_without_mother = np.zeros(0, int)
-        y_mid_with_child_without_mother = np.zeros(0, int)
-        x_start_with_child_without_mother = np.zeros(0, int)
-        x_end_with_child_without_mother = np.zeros(0, int)
-
-    #print(reading_order_type,'reading_order_type')
-    #print(y_mid_with_child_without_mother,'y_mid_with_child_without_mother')
-    #print(x_start_with_child_without_mother,'x_start_with_child_without_mother')
-    #print(x_end_with_child_without_mother,'x_end_with_hild_without_mother')
-
-    len_sep_with_child = len(child[child==1])
-    #print(len_sep_with_child,'len_sep_with_child')
-    there_is_sep_with_child = 0
-    if len_sep_with_child >= 1:
-        there_is_sep_with_child = 1
-
-    return (reading_order_type,
-            x_start_returned,
-            x_end_returned,
-            y_mid_returned,
-            y_max_returned,
-            y_mid_without_mother,
-            x_start_without_mother,
-            x_end_without_mother,
-            there_is_sep_with_child,
-            y_mid_with_child_without_mother,
-            x_start_with_child_without_mother,
-            x_end_with_child_without_mother,
-            new_main_sep_y)
+    return (x_start,
+            x_end,
+            y_min,
+            y_mid,
+            y_max)
 
 def box2rect(box: Tuple[int, int, int, int]) -> Tuple[int, int, int, int]:
     return (box[1], box[1] + box[3],
@@ -1212,6 +1055,25 @@ def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col)
     return textlines_con_changed
 
 def order_of_regions(textline_mask, contours_main, contours_head, y_ref, x_ref):
+    """
+    Order text region contours within a single column bbox in a top-down-left-right way.
+
+    First, determine the vertical gaps. Then iterate over each vertical segment,
+    identifying the contours centered in that segment. Order them by their
+    horizontal center, and add them to the overall order.
+
+    Arguments:
+      * textline_mask: the mask of the textline segmentation, cropped for that box
+      * contours_main: the paragraph text region contours expected to be here
+      * contours_head: the heading text region contours expected to be here
+      * y_ref: the vertical offset of that box within the page
+      * x_ref: the horizontal offset of that box within the page
+
+    Returns: a tuple of
+      * the array of contour indexes overall within this box (i.e. into main+head)
+      * the array of types (1 for paragraph, 2 for heading)
+      * the array of contour indexes for the respective type (i.e. into contours_main or contours_head)
+    """
     ##plt.imshow(textline_mask)
     ##plt.show()
     y = textline_mask.sum(axis=1) # horizontal projection profile
@@ -1547,7 +1409,7 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
         try:
             num_col, peaks_neg_fin = find_num_col(regions_without_separators[top: bot],
                                                   num_col_classifier, tables, multiplier=7.0)
-            #print("big part %d:%d has %d columns" % (top, bot, num_col), peaks_neg_fin)
+            # print("big part %d:%d has %d columns" % (top, bot, num_col + 1), peaks_neg_fin)
         except:
             num_col = 0
             peaks_neg_fin = []
@@ -1564,11 +1426,36 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
     return num_col_fin, peaks_neg_fin_fin, matrix_of_seps_ch, splitter_y_new, separators_closeup_n
 
 def return_boxes_of_images_by_order_of_reading_new(
-        splitter_y_new, regions_without_separators,
-        matrix_of_lines_ch,
+        splitter_y_new,
+        regions_without_separators,
+        regions_with_separators,
+        matrix_of_seps_ch,
         num_col_classifier, erosion_hurts, tables,
         right2left_readingorder,
         logger=None):
+    """
+    Iterate through the vertical parts of a page, each with its own set of columns,
+    and from the matrix of horizontal separators for that part, find an ordered
+    list of bounding boxes through all columns and regions.
+
+    Arguments:
+       * splitter_y_new: the y coordinates separating the parts
+       * regions_without_separators: (text) region mask with separators suppressed;
+             (needed to find per-part columns and to combine separators if possible)
+       * regions_with_separators: (full) region map with separators suppressed;
+             (needed to elongate separators if possible)
+       * matrix_of_seps: type and coordinates of horizontal and vertical separators,
+             as well as headings
+       * num_col_classifier: predicted number of columns for the entire page
+       * erosion_hurts: bool
+       * tables: bool
+       * right2left_readingorder: whether to invert the default left-to-right order
+
+    Returns: a tuple of
+       * the ordered list of bounding boxes
+       * a list of arrays: the x coordinates delimiting the columns for every page part
+             (according to splitter)
+    """
 
     if right2left_readingorder:
         regions_without_separators = cv2.flip(regions_without_separators,1)
@@ -1576,12 +1463,20 @@ def return_boxes_of_images_by_order_of_reading_new(
         logger = getLogger(__package__)
     logger.debug('enter return_boxes_of_images_by_order_of_reading_new')
 
+    # def dbg_imshow(box, title):
+    #     xmin, xmax, ymin, ymax = box
+    #     plt.imshow(regions_with_separators) #, extent=[0, width_tot, bot, top])
+    #     plt.gca().add_patch(patches.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+    #                                           fill=False, linewidth=1, edgecolor='r'))
+    #     plt.title(title + " at %d:%d, %d:%d" % (ymin, ymax, xmin, xmax))
+    #     plt.show()
     # def dbg_plt(box=None, title=None, rectangles=None, rectangles_showidx=False):
     #     minx, maxx, miny, maxy = box or (0, None, 0, None)
     #     img = regions_without_separators[miny:maxy, minx:maxx]
     #     plt.imshow(img)
-    #     xrange = np.arange(0, img.shape[1], 100)
-    #     yrange = np.arange(0, img.shape[0], 100)
+    #     step = max(img.shape) // 10
+    #     xrange = np.arange(0, img.shape[1], step)
+    #     yrange = np.arange(0, img.shape[0], step)
     #     ax = plt.gca()
     #     ax.set_xticks(xrange)
     #     ax.set_yticks(yrange)
@@ -1597,7 +1492,7 @@ def return_boxes_of_images_by_order_of_reading_new(
     #             ax.add_patch(patches.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
     #                                            fill=False, linewidth=1, edgecolor='r'))
     #             if rectangles_showidx:
-    #                 ax.text((xmin+xmax)/2, (ymin+ymax)/2, str(i + 1), c='r')
+    #                 ax.text((xmin+xmax)/2, (ymin+ymax)/2, str(i), c='r')
     #     plt.show()
     # dbg_plt(title="return_boxes_of_images_by_order_of_reading_new")
 
@@ -1606,11 +1501,12 @@ def return_boxes_of_images_by_order_of_reading_new(
     splitter_y_new = np.array(splitter_y_new, dtype=int)
     height_tot, width_tot = regions_without_separators.shape
     big_part = 22 * height_tot // 100 # percent height
+    _, ccomps, cstats, _ = cv2.connectedComponentsWithStats(regions_without_separators.astype(np.uint8))
     for top, bot in pairwise(splitter_y_new):
         # print("%d:%d" % (top, bot), 'i')
         # dbg_plt([0, None, top, bot], "image cut for y split %d:%d" % (top, bot))
-        matrix_new = matrix_of_lines_ch[(matrix_of_lines_ch[:,6] > top) &
-                                        (matrix_of_lines_ch[:,7] < bot)]
+        matrix_new = matrix_of_seps_ch[(matrix_of_seps_ch[:,6] >= top) &
+                                       (matrix_of_seps_ch[:,7] < bot)]
         #print(len( matrix_new[:,9][matrix_new[:,9]==1] ))
         #print(matrix_new[:,8][matrix_new[:,9]==1],'gaddaaa')
         # check to see is there any vertical separator to find holes.
@@ -1698,19 +1594,9 @@ def return_boxes_of_images_by_order_of_reading_new(
 
         # elongate horizontal separators+headings as much as possible without overlap
         args_nonver = matrix_new[:, 9] != 1
-        regions_with_separators = np.copy(regions_without_separators[top:bot])
-        for xmin, xmax, ymin, ymax in matrix_new[:, [2, 3, 6, 7]]:
-            regions_with_separators[ymin - top: ymax - top, xmin: xmax] = 6
-        # def dbg_imshow(box, title):
-        #     xmin, xmax, ymin, ymax = box
-        #     plt.imshow(regions_with_separators, extent=[0, width_tot, bot, top])
-        #     plt.gca().add_patch(patches.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
-        #                                           fill=False, linewidth=1, edgecolor='r'))
-        #     plt.title(title + " at %d:%d, %d:%d" % (ymin, ymax, xmin, xmax))
-        #     plt.show()
         for i in np.flatnonzero(args_nonver):
             xmin, xmax, ymin, ymax, typ = matrix_new[i, [2, 3, 6, 7, 9]]
-            cut = regions_with_separators[ymin - top: ymax - top]
+            cut = regions_with_separators[ymin: ymax]
             # dbg_imshow([xmin, xmax, ymin, ymax], "separator %d (%s)" % (i, "heading" if typ else "horizontal"))
             starting = xmin - peaks_neg_tot
             min_start = np.flatnonzero(starting >= 0)[-1] # last left-of
@@ -1737,6 +1623,7 @@ def return_boxes_of_images_by_order_of_reading_new(
         args_hor = matrix_new[:, 9] == 0
         x_min_hor_some = matrix_new[:, 2][args_hor]
         x_max_hor_some = matrix_new[:, 3][args_hor]
+        y_min_hor_some = matrix_new[:, 6][args_hor]
         y_max_hor_some = matrix_new[:, 7][args_hor]
         cy_hor_some = matrix_new[:, 5][args_hor]
 
@@ -1752,412 +1639,144 @@ def return_boxes_of_images_by_order_of_reading_new(
         # (x +/- 30px to avoid crossing col peaks by accident)
         x_min_hor_some = np.append(x_min_hor_some, np.tile(x_min_hor_head + 30, 2))
         x_max_hor_some = np.append(x_max_hor_some, np.tile(x_max_hor_head - 30, 2))
+        y_min_hor_some = np.append(y_min_hor_some, # toplines
+                                   np.concatenate((y_min_hor_head - 2,
+                                                   y_max_hor_head - 0)))
         y_max_hor_some = np.append(y_max_hor_some, # baselines
-                                   np.concatenate((y_min_hor_head + 2,
+                                   np.concatenate((y_min_hor_head + 0,
                                                    y_max_hor_head + 2)))
-        cy_hor_some = np.append(cy_hor_some, # toplines
-                                np.concatenate((y_min_hor_head - 2,
-                                                y_max_hor_head - 2)))
+        cy_hor_some = np.append(cy_hor_some, # centerlines
+                                np.concatenate((y_min_hor_head - 1,
+                                                y_max_hor_head + 1)))
+
+        # analyse connected components of regions to gain additional separators
+        # and prepare a map for cross-column boxes
+        ccounts = np.bincount(ccomps[top: bot].flatten())
+        col_ccounts = np.stack([np.bincount(ccomps[top: bot, left: right].flatten(),
+                                            minlength=ccounts.size)
+                                for left, right in pairwise(peaks_neg_tot)])
+        labelcolmap = dict()
+        for label, label_count in enumerate(ccounts):
+            if not label:
+                continue
+            label_left, label_top, label_width, label_height, label_area = cstats[label]
+            # if label_count < 0.9 * label_area:
+            #     # mostly not in this part of the page
+            #     continue
+            if label_count < 0.01 * (top - bot) * width_tot:
+                continue
+            #assert np.sum(col_ccounts[:, label]) == label_count
+            label_right = label_left + label_width
+            label_bot = label_top + label_height
+            label_start = np.flatnonzero(peaks_neg_tot > label_left)[0] - 1
+            label_end = np.flatnonzero(peaks_neg_tot >= label_right)[0]
+            # store as dict for multi-column boxes:
+            for start in range(label_start, label_end):
+                labelcolmap.setdefault(start, list()).append(
+                    (label_end, label_top, label_bot, sum(col_ccounts[start: label_end, label])))
+            # make additional separators:
+            if label_end - label_start < 2:
+                continue
+            if np.count_nonzero(col_ccounts[:, label] > 0.1 * label_count) < 2:
+                continue
+            x_min_hor_some = np.append(x_min_hor_some, [label_left] * 2)
+            x_max_hor_some = np.append(x_max_hor_some, [label_right] * 2)
+            y_min_hor_some = np.append(y_min_hor_some, [label_top - 2, label_bot])
+            y_max_hor_some = np.append(y_max_hor_some, [label_top, label_bot + 2])
+            cy_hor_some = np.append(cy_hor_some, [label_top - 1, label_bot + 1])
 
         if right2left_readingorder:
             x_max_hor_some = width_tot - x_min_hor_some
             x_min_hor_some = width_tot - x_max_hor_some
 
-
-        reading_order_type, x_starting, x_ending, y_mid, y_max, \
-            y_mid_without_mother, x_start_without_mother, x_end_without_mother, \
-            there_is_sep_with_child, \
-            y_mid_with_child_without_mother, x_start_with_child_without_mother, x_end_with_child_without_mother, \
-            new_main_sep_y = return_x_start_end_mothers_childs_and_type_of_reading_order(
-                peaks_neg_tot, x_min_hor_some, x_max_hor_some, cy_hor_some, y_max_hor_some)
-
-        # show multi-column separators
-        # dbg_plt([0, None, top, bot], "multi-column separators in current split", 
+        x_starting, x_ending, y_min, y_mid, y_max = return_multicol_separators_x_start_end(
+            regions_without_separators, peaks_neg_tot, top, bot,
+            x_min_hor_some, x_max_hor_some, cy_hor_some, y_min_hor_some, y_max_hor_some)
+        # dbg_plt([0, None, top, bot], "non-empty multi-column separators in current split", 
         #         list(zip(peaks_neg_tot[x_starting], peaks_neg_tot[x_ending],
-        #                  y_mid - top, y_max - top)), True)
+        #                  y_min - top, y_max - top)), True)
 
-        if (reading_order_type == 1 or
-            len(y_mid_without_mother) >= 2 or
-            there_is_sep_with_child == 1):
-            # there are top-level multi-colspan horizontal separators which overlap each other
-            # or multiple top-level multi-colspan horizontal separators
-            # or multi-colspan horizontal separators shorter than their respective top-level:
-            # todo: explain how this is dealt with
-            try:
-                y_grenze = top + 300
-                up = (y_mid > top) & (y_mid <= y_grenze)
-
-                args_early_ys=np.arange(len(y_mid))
-                #print(args_early_ys,'args_early_ys')
-                #print(y_mid,'y_mid')
-
-                x_starting_up = x_starting[up]
-                x_ending_up = x_ending[up]
-                y_mid_up = y_mid[up]
-                y_max_up = y_max[up]
-                args_up = args_early_ys[up]
-                #print(args_up,'args_up')
-                #print(y_mid_up,'y_mid_up')
-                #check if there is a big separator in this y_mains0
-                if len(y_mid_up) > 0:
-                    # is there a separator with full-width span?
-                    main_separator = (x_starting_up == 0) & (x_ending_up == len(peaks_neg_tot) - 1)
-                    y_mid_main_separator_up = y_mid_up[main_separator]
-                    y_max_main_separator_up = y_max_up[main_separator]
-                    args_main_to_deleted = args_up[main_separator]
-                    #print(y_mid_main_separator_up,y_max_main_separator_up,args_main_to_deleted,'fffffjammmm')
-                    if len(y_max_main_separator_up):
-                        args_to_be_kept = np.array(list( set(args_early_ys) - set(args_main_to_deleted) ))
-                        #print(args_to_be_kept,'args_to_be_kept')
-                        boxes.append([0, peaks_neg_tot[-1],
-                                      top, y_max_main_separator_up.max()])
-                        # dbg_plt(boxes[-1], "near top main separator box")
-                        top = y_max_main_separator_up.max()
-
-                        #print(top,'top')
-                        y_mid = y_mid[args_to_be_kept]
-                        x_starting = x_starting[args_to_be_kept]
-                        x_ending = x_ending[args_to_be_kept]
-                        y_max = y_max[args_to_be_kept]
-
-                        #print('galdiha')
-                        y_grenze = top + 200
-                        up = (y_mid > top) & (y_mid <= y_grenze)
-                        args_early_ys2 = np.arange(len(y_mid))
-                        x_starting_up = x_starting[up]
-                        x_ending_up = x_ending[up]
-                        y_mid_up = y_mid[up]
-                        y_max_up = y_max[up]
-                        args_up2 = args_early_ys2[up]
-                        #print(y_mid_up,x_starting_up,x_ending_up,'didid')
-                    else:
-                        args_early_ys2 = args_early_ys
-                        args_up2 = args_up
-
-                    nodes_in = set()
-                    for ij in range(len(x_starting_up)):
-                        nodes_in.update(range(x_starting_up[ij],
-                                              x_ending_up[ij]))
-                    #print(nodes_in,'nodes_in')
-                    #print(np.array(range(len(peaks_neg_tot)-1)),'np.array(range(len(peaks_neg_tot)-1))')
-
-                    if nodes_in == set(range(len(peaks_neg_tot)-1)):
-                        pass
-                    elif nodes_in == set(range(1, len(peaks_neg_tot)-1)):
-                        pass
-                    else:
-                        #print('burdaydikh')
-                        args_to_be_kept2 = np.array(list( set(args_early_ys2) - set(args_up2) ))
-
-                        if len(args_to_be_kept2):
-                            #print(args_to_be_kept2, "args_to_be_kept2")
-                            y_mid = y_mid[args_to_be_kept2]
-                            x_starting = x_starting[args_to_be_kept2]
-                            x_ending = x_ending[args_to_be_kept2]
-                            y_max = y_max[args_to_be_kept2]
-
-                #int(top)
-                # order multi-column separators
-                y_mid_by_order=[]
-                x_start_by_order=[]
-                x_end_by_order=[]
-                if (reading_order_type == 1 or
-                    len(x_end_with_child_without_mother) == 0):
-                    if reading_order_type == 1:
-                        # there are top-level multi-colspan horizontal separators which overlap each other
-                        #print("adding all columns at top because of multiple overlapping mothers")
-                        y_mid_by_order.append(top)
-                        x_start_by_order.append(0)
-                        x_end_by_order.append(len(peaks_neg_tot)-2)
-                    else:
-                        # there are no top-level multi-colspan horizontal separators which themselves
-                        # contain shorter multi-colspan separators
-                        #print(x_start_without_mother,x_end_without_mother,peaks_neg_tot,'dodo')
-                        columns_covered_by_mothers = set()
-                        for dj in range(len(x_start_without_mother)):
-                            columns_covered_by_mothers.update(
-                                range(x_start_without_mother[dj],
-                                      x_end_without_mother[dj]))
-                        columns_not_covered = list(all_columns - columns_covered_by_mothers)
-                        #print(columns_covered_by_mothers, "columns_covered_by_mothers")
-                        #print(columns_not_covered, "columns_not_covered")
-                        y_mid = np.append(y_mid, np.ones(len(columns_not_covered) +
-                                                         len(x_start_without_mother),
-                                                         dtype=int) * top)
-                        ##y_mid_by_order = np.append(y_mid_by_order, [top] * len(columns_not_covered))
-                        ##x_start_by_order = np.append(x_start_by_order, [0] * len(columns_not_covered))
-                        x_starting = np.append(x_starting, np.array(columns_not_covered, int))
-                        x_starting = np.append(x_starting, x_start_without_mother)
-                        x_ending = np.append(x_ending, np.array(columns_not_covered, int) + 1)
-                        x_ending = np.append(x_ending, x_end_without_mother)
-
-                    ind_args=np.arange(len(y_mid))
-                    #print(ind_args,'ind_args')
-                    for column in range(len(peaks_neg_tot)-1):
-                        #print(column,'column')
-                        ind_args_in_col=ind_args[x_starting==column]
-                        #print('babali2')
-                        #print(ind_args_in_col,'ind_args_in_col')
-                        #print(len(y_mid))
-                        y_mid_column=y_mid[ind_args_in_col]
-                        x_start_column=x_starting[ind_args_in_col]
-                        x_end_column=x_ending[ind_args_in_col]
-                        #print('babali3')
-                        ind_args_col_sorted=np.argsort(y_mid_column)
-                        y_mid_by_order.extend(y_mid_column[ind_args_col_sorted])
-                        x_start_by_order.extend(x_start_column[ind_args_col_sorted])
-                        x_end_by_order.extend(x_end_column[ind_args_col_sorted] - 1)
-                else:
-                    #print(x_start_without_mother,x_end_without_mother,peaks_neg_tot,'dodo')
-                    columns_covered_by_mothers = set()
-                    for dj in range(len(x_start_without_mother)):
-                        columns_covered_by_mothers.update(
-                            range(x_start_without_mother[dj],
-                                  x_end_without_mother[dj]))
-                    columns_not_covered = list(all_columns - columns_covered_by_mothers)
-                    #print(columns_covered_by_mothers, "columns_covered_by_mothers")
-                    #print(columns_not_covered, "columns_not_covered")
-                    y_mid = np.append(y_mid, np.ones(len(columns_not_covered) +
-                                                     len(x_start_without_mother),
-                                                     dtype=int) * top)
-                    ##y_mid_by_order = np.append(y_mid_by_order, [top] * len(columns_not_covered))
-                    ##x_start_by_order = np.append(x_start_by_order, [0] * len(columns_not_covered))
-                    x_starting = np.append(x_starting, np.array(columns_not_covered, int))
-                    x_starting = np.append(x_starting, x_start_without_mother)
-                    x_ending = np.append(x_ending, np.array(columns_not_covered, int) + 1)
-                    x_ending = np.append(x_ending, x_end_without_mother)
-
-                    columns_covered_by_mothers_with_child = set()
-                    for dj in range(len(x_end_with_child_without_mother)):
-                        columns_covered_by_mothers_with_child.update(
-                            range(x_start_with_child_without_mother[dj],
-                                  x_end_with_child_without_mother[dj]))
-                    #print(columns_covered_by_mothers_with_child, "columns_covered_by_mothers_with_child")
-                    columns_not_covered_by_mothers_with_child = list(
-                        all_columns - columns_covered_by_mothers_with_child)
-                    #indexes_to_be_spanned=[]
-                    for i_s in range(len(x_end_with_child_without_mother)):
-                        columns_not_covered_by_mothers_with_child.append(x_start_with_child_without_mother[i_s])
-                    columns_not_covered_by_mothers_with_child = np.sort(columns_not_covered_by_mothers_with_child)
-                    #print(columns_not_covered_by_mothers_with_child, "columns_not_covered_by_mothers_with_child")
-                    ind_args = np.arange(len(y_mid))
-                    for i_s_nc in columns_not_covered_by_mothers_with_child:
-                        if i_s_nc in x_start_with_child_without_mother:
-                            # use only seps with mother's span ("biggest")
-                            #print("i_s_nc", i_s_nc)
-                            x_end_biggest_column = \
-                                x_end_with_child_without_mother[
-                                    x_start_with_child_without_mother == i_s_nc][0]
-                            args_all_biggest_seps = \
-                                ind_args[(x_starting == i_s_nc) &
-                                         (x_ending == x_end_biggest_column)]
-                            y_mid_column_nc = y_mid[args_all_biggest_seps]
-                            #print("%d:%d" % (i_s_nc, x_end_biggest_column), "columns covered by mother with child")
-                            #x_start_column_nc = x_starting[args_all_biggest_seps]
-                            #x_end_column_nc = x_ending[args_all_biggest_seps]
-                            y_mid_column_nc = np.sort(y_mid_column_nc)
-                            #print(y_mid_column_nc, "y_mid_column_nc (sorted)")
-                            for nc_top, nc_bot in pairwise(np.append(y_mid_column_nc, bot)):
-                                #print("i_c", i_c)
-                                #print("%d:%d" % (nc_top, nc_bot), "y_mid_column_nc")
-                                ind_all_seps_between_nm_wc = \
-                                    ind_args[(y_mid > nc_top) &
-                                             (y_mid < nc_bot) &
-                                             (x_starting >= i_s_nc) &
-                                             (x_ending <= x_end_biggest_column)]
-                                y_mid_all_between_nm_wc = y_mid[ind_all_seps_between_nm_wc]
-                                x_starting_all_between_nm_wc = x_starting[ind_all_seps_between_nm_wc]
-                                x_ending_all_between_nm_wc = x_ending[ind_all_seps_between_nm_wc]
-
-                                columns_covered_by_mothers = set()
-                                for dj in range(len(ind_all_seps_between_nm_wc)):
-                                    columns_covered_by_mothers.update(
-                                        range(x_starting_all_between_nm_wc[dj],
-                                              x_ending_all_between_nm_wc[dj]))
-                                #print(columns_covered_by_mothers, "columns_covered_by_mothers")
-                                child_columns = set(range(i_s_nc, x_end_biggest_column))
-                                columns_not_covered = list(child_columns - columns_covered_by_mothers)
-                                #print(child_columns, "child_columns")
-                                #print(columns_not_covered, "columns_not_covered")
-
-                                if len(ind_all_seps_between_nm_wc):
-                                    biggest = np.argmax(x_ending_all_between_nm_wc -
-                                                        x_starting_all_between_nm_wc)
-                                    #print(ind_all_seps_between_nm_wc, "ind_all_seps_between_nm_wc")
-                                    #print(biggest, "%d:%d" % (x_starting_all_between_nm_wc[biggest],
-                                                              x_ending_all_between_nm_wc[biggest]), "biggest")
-                                    if columns_covered_by_mothers == set(
-                                            range(x_starting_all_between_nm_wc[biggest],
-                                                  x_ending_all_between_nm_wc[biggest])):
-                                        # single biggest accounts for all covered columns alone,
-                                        # this separator should be extended to cover all
-                                        seps_too_close_to_top_separator = \
-                                            ((y_mid_all_between_nm_wc > nc_top) &
-                                             (y_mid_all_between_nm_wc <= nc_top + 500))
-                                        if (np.count_nonzero(seps_too_close_to_top_separator) and
-                                            np.count_nonzero(seps_too_close_to_top_separator) <
-                                            len(ind_all_seps_between_nm_wc)):
-                                            #print(seps_too_close_to_top_separator, "seps_too_close_to_top_separator")
-                                            y_mid_all_between_nm_wc = \
-                                                y_mid_all_between_nm_wc[~seps_too_close_to_top_separator]
-                                            x_starting_all_between_nm_wc = \
-                                                x_starting_all_between_nm_wc[~seps_too_close_to_top_separator]
-                                            x_ending_all_between_nm_wc = \
-                                                x_ending_all_between_nm_wc[~seps_too_close_to_top_separator]
-
-                                        y_mid_all_between_nm_wc = np.append(
-                                            y_mid_all_between_nm_wc, nc_top)
-                                        x_starting_all_between_nm_wc = np.append(
-                                            x_starting_all_between_nm_wc, i_s_nc)
-                                        x_ending_all_between_nm_wc = np.append(
-                                            x_ending_all_between_nm_wc, x_end_biggest_column)
-                                    else:
-                                        y_mid_all_between_nm_wc = np.append(
-                                            y_mid_all_between_nm_wc, nc_top)
-                                        x_starting_all_between_nm_wc = np.append(
-                                            x_starting_all_between_nm_wc, x_starting_all_between_nm_wc[biggest])
-                                        x_ending_all_between_nm_wc = np.append(
-                                            x_ending_all_between_nm_wc, x_ending_all_between_nm_wc[biggest])
-
-                                if len(columns_not_covered):
-                                    y_mid_all_between_nm_wc = np.append(
-                                        y_mid_all_between_nm_wc, [nc_top] * len(columns_not_covered))
-                                    x_starting_all_between_nm_wc = np.append(
-                                        x_starting_all_between_nm_wc, np.array(columns_not_covered, int))
-                                    x_ending_all_between_nm_wc = np.append(
-                                        x_ending_all_between_nm_wc, np.array(columns_not_covered, int) + 1)
-
-                                ind_args_between=np.arange(len(x_ending_all_between_nm_wc))
-                                for column in range(int(i_s_nc), int(x_end_biggest_column)):
-                                    ind_args_in_col=ind_args_between[x_starting_all_between_nm_wc==column]
-                                    #print('babali2')
-                                    #print(ind_args_in_col,'ind_args_in_col')
-                                    #print(len(y_mid))
-                                    y_mid_column=y_mid_all_between_nm_wc[ind_args_in_col]
-                                    x_start_column=x_starting_all_between_nm_wc[ind_args_in_col]
-                                    x_end_column=x_ending_all_between_nm_wc[ind_args_in_col]
-                                    #print('babali3')
-                                    ind_args_col_sorted=np.argsort(y_mid_column)
-                                    y_mid_by_order.extend(y_mid_column[ind_args_col_sorted])
-                                    x_start_by_order.extend(x_start_column[ind_args_col_sorted])
-                                    x_end_by_order.extend(x_end_column[ind_args_col_sorted] - 1)
-                        else:
-                            #print(i_s_nc,'column not covered by mothers with child')
-                            ind_args_in_col=ind_args[x_starting==i_s_nc]
-                            #print('babali2')
-                            #print(ind_args_in_col,'ind_args_in_col')
-                            #print(len(y_mid))
-                            y_mid_column=y_mid[ind_args_in_col]
-                            x_start_column=x_starting[ind_args_in_col]
-                            x_end_column=x_ending[ind_args_in_col]
-                            #print('babali3')
-                            ind_args_col_sorted = np.argsort(y_mid_column)
-                            y_mid_by_order.extend(y_mid_column[ind_args_col_sorted])
-                            x_start_by_order.extend(x_start_column[ind_args_col_sorted])
-                            x_end_by_order.extend(x_end_column[ind_args_col_sorted] - 1)
-
-                # create single-column boxes from multi-column separators
-                y_mid_by_order = np.array(y_mid_by_order)
-                x_start_by_order = np.array(x_start_by_order)
-                x_end_by_order = np.array(x_end_by_order)
-                for il in range(len(y_mid_by_order)):
-                    #print(il, "il")
-                    y_mid_itself = y_mid_by_order[il]
-                    x_start_itself = x_start_by_order[il]
-                    x_end_itself = x_end_by_order[il]
-                    for column in range(int(x_start_itself), int(x_end_itself)+1):
-                        #print(column,'cols')
-                        #print('burda')
-                        #print('burda2')
-                        y_mid_next = y_mid_by_order[(y_mid_itself < y_mid_by_order) &
-                                                    (column >= x_start_by_order) &
-                                                    (column <= x_end_by_order)]
-                        y_mid_next = y_mid_next.min(initial=bot)
-                        #print(y_mid_next,'y_mid_next')
-                        #print(y_mid_itself,'y_mid_itself')
+        # core algorithm:
+        # 1. iterate through multi-column separators, pre-ordered by their y coord
+        # 2. for each separator, iterate from its starting to its ending column
+        # 3. in each starting column, determine the next downwards separator,
+        # 4. if there is none, then fill up the column to the bottom;
+        #    otherwise, fill up to that next separator
+        # 5. moreover, determine the next rightward column that would not cut through
+        #     any regions, advancing to that column, and storing a new in-order bbox
+        #     for that down/right span
+        # 6. if there was a next separator, and it ends no further than the current one,
+        #    then recurse on that separator from step 1, then continue (with the next
+        #    column for the current separator) at step 2, or (with the next separator
+        #    in order) at step 1
+        args = list(range(len(y_mid)))
+        while len(args):
+            cur = args[0]
+            args = args[1:]
+            # print("iter", cur, y_mid[cur], "%d:%d" % (x_starting[cur], x_ending[cur]))
+            def get_span(start, y_top, y_bot):
+                # for last, l_top, l_bot, l_count in labelcolmap.get(start, []):
+                #     if y_top < l_bot and y_bot > l_top and last > start + 1:
+                #         width = (peaks_neg_tot[last] - peaks_neg_tot[start])
+                #         print("span", start, last, l_top, l_bot, l_count,
+                #               "box area", (y_bot - y_top) * width,
+                #               "label area", (min(y_bot, l_bot) - max(y_top, l_top)) * width,
+                #               "box height", (y_bot - y_top),
+                #               "label height", sum(regions_without_separators[
+                #                   y_top: y_bot, peaks_neg_tot[start + 1]]))
+                return min((last for last, l_top, l_bot, l_count in labelcolmap.get(start, [])
+                            # yield the right-most column that does not cut through
+                            # any regions in this horizontal span
+                            if y_top < l_bot and y_bot > l_top
+                            # Ignore if it ends here, anyway
+                            and last > start + 1
+                            # Ensure this is not just a tiny region near larger regions
+                            and l_count > 0.1 * max(l_count2 for _, l_top2, l_bot2, l_count2 in labelcolmap[start]
+                                                    if y_top < l_bot2 and y_bot > l_top2)
+                            # or just a small cut of the respective region
+                            # (i.e. box should cover at least 10% of the label).
+                            and ((min(y_bot, l_bot) - max(y_top, l_top)) *
+                                 (peaks_neg_tot[last] - peaks_neg_tot[start])) > 0.1 * l_count
+                            # But do allow cutting tiny passages with less 10% of height
+                            # (i.e. label is already almost separated by columns)
+                            and sum(regions_without_separators[
+                                y_top: y_bot, peaks_neg_tot[start + 1]]) > 0.1 * (y_bot - y_top)),
+                           # Otherwise advance only 1 column.
+                           default=start + 1)
+            def add_sep(cur):
+                column = x_starting[cur]
+                while column < x_ending[cur]:
+                    nxt = np.flatnonzero((y_mid[cur] < y_mid) &
+                                         (column >= x_starting) &
+                                         (column < x_ending))
+                    if len(nxt):
+                        nxt = nxt[0]
+                        # print("column", column)
+                        last = get_span(column, y_max[cur], y_min[nxt])
+                        last = min(last, x_ending[nxt], x_ending[cur])
+                        # print("nxt", nxt, y_mid[nxt], "%d:%d" % (column, last))
                         boxes.append([peaks_neg_tot[column],
-                                      peaks_neg_tot[column+1],
-                                      y_mid_itself,
-                                      y_mid_next])
-                        # dbg_plt(boxes[-1], "A column %d box" % (column + 1))
-            except:
-                logger.exception("cannot assign boxes")
-                boxes.append([0, peaks_neg_tot[len(peaks_neg_tot)-1],
-                              top, bot])
-                # dbg_plt(boxes[-1], "fallback box")
-        else:
-            # order multi-column separators
-            y_mid_by_order=[]
-            x_start_by_order=[]
-            x_end_by_order=[]
-            if len(x_starting)>0:
-                columns_covered_by_seps_covered_more_than_2col = set()
-                for dj in range(len(x_starting)):
-                    if set(range(x_starting[dj], x_ending[dj])) != all_columns:
-                        columns_covered_by_seps_covered_more_than_2col.update(
-                            range(x_starting[dj], x_ending[dj]))
-                columns_not_covered = list(all_columns - columns_covered_by_seps_covered_more_than_2col)
-
-                y_mid = np.append(y_mid, np.ones(len(columns_not_covered) + 1,
-                                                 dtype=int) * top)
-                ##y_mid_by_order = np.append(y_mid_by_order, [top] * len(columns_not_covered))
-                ##x_start_by_order = np.append(x_start_by_order, [0] * len(columns_not_covered))
-                x_starting = np.append(x_starting, np.array(columns_not_covered, x_starting.dtype))
-                x_ending = np.append(x_ending, np.array(columns_not_covered, x_ending.dtype) + 1)
-                if len(new_main_sep_y) > 0:
-                    x_starting = np.append(x_starting, 0)
-                    x_ending = np.append(x_ending, len(peaks_neg_tot) - 1)
-                else:
-                    x_starting = np.append(x_starting, x_starting[0])
-                    x_ending = np.append(x_ending, x_ending[0])
-            else:
-                columns_not_covered = list(all_columns)
-                y_mid = np.append(y_mid, np.ones(len(columns_not_covered),
-                                                 dtype=int) * top)
-                ##y_mid_by_order = np.append(y_mid_by_order, [top] * len(columns_not_covered))
-                ##x_start_by_order = np.append(x_start_by_order, [0] * len(columns_not_covered))
-                x_starting = np.append(x_starting, np.array(columns_not_covered, x_starting.dtype))
-                x_ending = np.append(x_ending, np.array(columns_not_covered, x_ending.dtype) + 1)
-
-            ind_args = np.arange(len(y_mid))
-
-            for column in range(len(peaks_neg_tot)-1):
-                #print(column,'column')
-                ind_args_in_col=ind_args[x_starting==column]
-                #print(len(y_mid))
-                y_mid_column=y_mid[ind_args_in_col]
-                x_start_column=x_starting[ind_args_in_col]
-                x_end_column=x_ending[ind_args_in_col]
-
-                ind_args_col_sorted = np.argsort(y_mid_column)
-                y_mid_by_order.extend(y_mid_column[ind_args_col_sorted])
-                x_start_by_order.extend(x_start_column[ind_args_col_sorted])
-                x_end_by_order.extend(x_end_column[ind_args_col_sorted] - 1)
-
-            # create single-column boxes from multi-column separators
-            y_mid_by_order = np.array(y_mid_by_order)
-            x_start_by_order = np.array(x_start_by_order)
-            x_end_by_order = np.array(x_end_by_order)
-            for il in range(len(y_mid_by_order)):
-                #print(il, "il")
-                y_mid_itself = y_mid_by_order[il]
-                #print(y_mid_itself,'y_mid_itself')
-                x_start_itself = x_start_by_order[il]
-                x_end_itself = x_end_by_order[il]
-                for column in range(x_start_itself, x_end_itself+1):
-                    #print(column,'cols')
-                    #print('burda2')
-                    y_mid_next = y_mid_by_order[(y_mid_itself < y_mid_by_order) &
-                                                (column >= x_start_by_order) &
-                                                (column <= x_end_by_order)]
-                    #print(y_mid_next,'y_mid_next')
-                    y_mid_next = y_mid_next.min(initial=bot)
-                    #print(y_mid_next,'y_mid_next')
-                    boxes.append([peaks_neg_tot[column],
-                                  peaks_neg_tot[column+1],
-                                  y_mid_itself,
-                                  y_mid_next])
-                    # dbg_plt(boxes[-1], "B column %d box" % (column + 1))
+                                      peaks_neg_tot[last],
+                                      y_mid[cur],
+                                      y_mid[nxt]])
+                        # dbg_plt(boxes[-1], "recursive column %d:%d box [%d]" % (column, last, len(boxes)))
+                        column = last
+                        if last == x_ending[nxt] and x_ending[nxt] <= x_ending[cur] and nxt in args:
+                            # child – recur
+                            # print("recur", nxt, y_mid[nxt], "%d:%d" % (x_starting[nxt], x_ending[nxt]))
+                            args.remove(nxt)
+                            add_sep(nxt)
+                    else:
+                        # print("column", column)
+                        last = get_span(column, y_max[cur], bot)
+                        # print("bot", bot, "%d:%d" % (column, last))
+                        boxes.append([peaks_neg_tot[column],
+                                      peaks_neg_tot[last],
+                                      y_mid[cur],
+                                      bot])
+                        # dbg_plt(boxes[-1], "non-recursive column %d box [%d]" % (column, len(boxes)))
+                        column = last
+            add_sep(cur)
 
     if right2left_readingorder:
         peaks_neg_tot_tables_new = []
