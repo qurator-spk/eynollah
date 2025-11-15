@@ -1158,6 +1158,7 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref, x_ref):
         #         cnt = (contours_main if type_ == 1 else contours_head)[idx]
         #         col = 'red' if type_ == 1 else 'blue'
         #         plt.scatter(cx - x_ref, cy - y_ref, 20, c=col, marker='o')
+        #         plt.text(cx - x_ref, cy - y_ref, str(idx), c=col)
         #         plt.gca().add_patch(patches.Polygon(cnt[:, 0] - [[x_ref, y_ref]], closed=False, fill=False, color=col))
         #     plt.title("box contours centered in %d:%d (red=main / blue=heading)" % (top, bot))
         #     plt.show()

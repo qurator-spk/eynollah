@@ -89,7 +89,7 @@ class EynollahXmlWriter:
 
     def build_pagexml_no_full_layout(
             self, found_polygons_text_region,
-            page_coord, order_of_texts, id_of_texts,
+            page_coord, order_of_texts,
             all_found_textline_polygons,
             all_box_coord,
             found_polygons_text_region_img,
@@ -102,7 +102,7 @@ class EynollahXmlWriter:
             **kwargs):
         return self.build_pagexml_full_layout(
             found_polygons_text_region, [],
-            page_coord, order_of_texts, id_of_texts,
+            page_coord, order_of_texts,
             all_found_textline_polygons, [],
             all_box_coord, [],
             found_polygons_text_region_img, found_polygons_tables, [],
@@ -116,7 +116,7 @@ class EynollahXmlWriter:
     def build_pagexml_full_layout(
             self,
             found_polygons_text_region, found_polygons_text_region_h,
-            page_coord, order_of_texts, id_of_texts,
+            page_coord, order_of_texts,
             all_found_textline_polygons, all_found_textline_polygons_h,
             all_box_coord, all_box_coord_h,
             found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals,

@@ -134,7 +134,6 @@ from .utils import (
     return_boxes_of_images_by_order_of_reading_new
 )
 from .utils.pil_cv2 import check_dpi, pil2cv
-from .utils.xml import order_and_id_of_texts
 from .plot import EynollahPlotter
 from .writer import EynollahXmlWriter
 
@@ -2546,9 +2545,7 @@ class Eynollah:
             args_contours_head = np.arange(len(contours_only_text_parent_h))
             order_by_con_head = np.zeros_like(arg_text_con_head)
 
-            ref_point = 0
-            order_of_texts_tot = []
-            id_of_texts_tot = []
+            idx = 0
             for iij, box in enumerate(boxes):
                 ys = slice(*box[2:4])
                 xs = slice(*box[0:2])
@@ -2557,37 +2554,25 @@ class Eynollah:
                 con_inter_box = contours_only_text_parent[args_contours_box_main]
                 con_inter_box_h = contours_only_text_parent_h[args_contours_box_head]
 
-                indexes_sorted, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
+                _, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
                     textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, box[2], box[0])
 
-                order_of_texts, id_of_texts = order_and_id_of_texts(
-                    con_inter_box, con_inter_box_h,
-                    indexes_sorted, index_by_kind_sorted, kind_of_texts_sorted, ref_point)
+                for tidx, kind in zip(index_by_kind_sorted, kind_of_texts_sorted):
+                    if kind == 1:
+                        # print(iij, "main", args_contours_box_main[tidx], "becomes", idx)
+                        order_by_con_main[args_contours_box_main[tidx]] = idx
+                    else:
+                        # print(iij, "head", args_contours_box_head[tidx], "becomes", idx)
+                        order_by_con_head[args_contours_box_head[tidx]] = idx
+                    idx += 1
 
-                indexes_sorted_main = indexes_sorted[kind_of_texts_sorted == 1]
-                indexes_by_type_main = index_by_kind_sorted[kind_of_texts_sorted == 1]
-                indexes_sorted_head = indexes_sorted[kind_of_texts_sorted == 2]
-                indexes_by_type_head = index_by_kind_sorted[kind_of_texts_sorted == 2]
-
-                for zahler, _ in enumerate(args_contours_box_main):
-                    arg_order_v = indexes_sorted_main[zahler]
-                    order_by_con_main[args_contours_box_main[indexes_by_type_main[zahler]]] = \
-                        np.flatnonzero(indexes_sorted == arg_order_v) + ref_point
-
-                for zahler, _ in enumerate(args_contours_box_head):
-                    arg_order_v = indexes_sorted_head[zahler]
-                    order_by_con_head[args_contours_box_head[indexes_by_type_head[zahler]]] = \
-                        np.flatnonzero(indexes_sorted == arg_order_v) + ref_point
-
-                for jji in range(len(id_of_texts)):
-                    order_of_texts_tot.append(order_of_texts[jji] + ref_point)
-                    id_of_texts_tot.append(id_of_texts[jji])
-                ref_point += len(id_of_texts)
-
-            order_of_texts_tot = np.concatenate((order_by_con_main,
-                                                 order_by_con_head))
-            order_text_new = np.argsort(order_of_texts_tot)
-            return order_text_new, id_of_texts_tot
+            # xml writer will create region ids in order of
+            # - contours_only_text_parent (main text), followed by
+            # - contours_only_text_parent (headings),
+            # and then create regionrefs into these ordered by order_text_new
+            order_text_new = np.argsort(np.concatenate((order_by_con_main,
+                                                        order_by_con_head)))
+            return order_text_new
 
         try:
             results = match_boxes(False)
@@ -3600,7 +3585,7 @@ class Eynollah:
                 co_text_all = contours_only_text_parent
 
         if not len(co_text_all):
-            return [], []
+            return []
 
         labels_con = np.zeros((int(y_len /6.), int(x_len/6.), len(co_text_all)), dtype=bool)
         co_text_all = [(i/6).astype(int) for i in co_text_all]
@@ -3683,11 +3668,9 @@ class Eynollah:
                 else:
                     org_contours_indexes.extend([indexes_of_located_cont[region_with_curr_order]])
             
-            region_ids = ['region_%04d' % i for i in range(len(co_text_all_org))]
-            return org_contours_indexes, region_ids
+            return org_contours_indexes
         else:
-            region_ids = ['region_%04d' % i for i in range(len(co_text_all_org))]
-            return ordered, region_ids
+            return ordered
 
     def return_start_and_end_of_common_text_of_textline_ocr(self,textline_image, ind_tot):
         width = np.shape(textline_image)[1]
@@ -4222,7 +4205,6 @@ class Eynollah:
             
             order_text_new = [0]
             slopes =[0]
-            id_of_texts_tot =['region_0001']
             conf_contours_textregions =[0]
             
             if self.ocr and not self.tr:
@@ -4234,7 +4216,7 @@ class Eynollah:
                 ocr_all_textlines = None
             
             pcgts = self.writer.build_pagexml_no_full_layout(
-                cont_page, page_coord, order_text_new, id_of_texts_tot,
+                cont_page, page_coord, order_text_new,
                 all_found_textline_polygons, page_coord, [],
                 [], [], [], [], [], [],
                 slopes, [], [],
@@ -4736,14 +4718,14 @@ class Eynollah:
             self.logger.info("Headers ignored in reading order")
 
         if self.reading_order_machine_based:
-            order_text_new, id_of_texts_tot = self.do_order_of_regions_with_model(
+            order_text_new = self.do_order_of_regions_with_model(
                 contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
         else:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                order_text_new, id_of_texts_tot = self.do_order_of_regions(
+                order_text_new = self.do_order_of_regions(
                     contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
             else:
-                order_text_new, id_of_texts_tot = self.do_order_of_regions(
+                order_text_new = self.do_order_of_regions(
                     contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered,
                     boxes_d, textline_mask_tot_d)
         self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
@@ -4840,7 +4822,7 @@ class Eynollah:
 
         if self.full_layout:
             pcgts = self.writer.build_pagexml_full_layout(
-                contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new, id_of_texts_tot,
+                contours_only_text_parent, contours_only_text_parent_h, page_coord, order_text_new,
                 all_found_textline_polygons, all_found_textline_polygons_h, all_box_coord, all_box_coord_h,
                 polygons_of_images, contours_tables, polygons_of_drop_capitals,
                 polygons_of_marginals_left, polygons_of_marginals_right,
@@ -4853,7 +4835,7 @@ class Eynollah:
                 conf_contours_textregions, conf_contours_textregions_h)
         else:
             pcgts = self.writer.build_pagexml_no_full_layout(
-                contours_only_text_parent, page_coord, order_text_new, id_of_texts_tot,
+                contours_only_text_parent, page_coord, order_text_new,
                 all_found_textline_polygons, all_box_coord, polygons_of_images,
                 polygons_of_marginals_left, polygons_of_marginals_right,
                 all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right,
