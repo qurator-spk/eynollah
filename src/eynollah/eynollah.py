@@ -4461,42 +4461,42 @@ class Eynollah:
                         dists[i] = np.linalg.norm(centers[:, i:i + 1] - centers_d, axis=0)
                     corresp = np.zeros(dists.shape, dtype=bool)
                     # keep searching next-closest until at least one correspondence on each side
-                    while not np.all(corresp.sum(axis=1)) and not np.all(corresp.sum(axis=0)):
+                    while not np.all(corresp.sum(axis=1)) or not np.all(corresp.sum(axis=0)):
                         idx = np.nanargmin(dists)
                         i, j = np.unravel_index(idx, dists.shape)
                         dists[i, j] = np.nan
                         corresp[i, j] = True
-                    #print("original/deskewed adjacency", corresp.nonzero())
+                    # print("original/deskewed adjacency", corresp.nonzero())
                     contours_only_text_parent_d_ordered = np.zeros_like(contours_only_text_parent)
                     contours_only_text_parent_d_ordered = contours_only_text_parent_d[np.argmax(corresp, axis=1)]
                     # img1 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
                     # for i in range(len(contours_only_text_parent)):
                     #     cv2.fillPoly(img1, pts=[contours_only_text_parent_d_ordered[i]], color=i + 1)
-                    # plt.subplot(2, 2, 1, title="direct corresp contours")
+                    # plt.subplot(1, 4, 1, title="direct corresp contours")
                     # plt.imshow(img1)
                     # img2 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
                     # join deskewed regions mapping to single original ones
                     for i in range(len(contours_only_text_parent)):
                         if np.count_nonzero(corresp[i]) > 1:
                             indices = np.flatnonzero(corresp[i])
-                            #print("joining", indices)
+                            # print("joining", indices)
                             polygons_d = [contour2polygon(contour)
                                           for contour in contours_only_text_parent_d[indices]]
                             contour_d = polygon2contour(join_polygons(polygons_d))
                             contours_only_text_parent_d_ordered[i] = contour_d
                     #         cv2.fillPoly(img2, pts=[contour_d], color=i + 1)
-                    # plt.subplot(2, 2, 3, title="joined contours")
+                    # plt.subplot(1, 4, 2, title="joined contours")
                     # plt.imshow(img2)
                     # img3 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
                     # split deskewed regions mapping to multiple original ones
                     def deskew(polygon):
                         polygon = shapely.affinity.rotate(polygon, -slope_deskew, origin=center)
-                        polygon = shapely.affinity.translate(polygon, *offset.squeeze())
+                        #polygon = shapely.affinity.translate(polygon, *offset.squeeze())
                         return polygon
                     for j in range(len(contours_only_text_parent_d)):
                         if np.count_nonzero(corresp[:, j]) > 1:
                             indices = np.flatnonzero(corresp[:, j])
-                            #print("splitting along", indices)
+                            # print("splitting along", indices)
                             polygons = [deskew(contour2polygon(contour))
                                         for contour in contours_only_text_parent[indices]]
                             polygon_d = contour2polygon(contours_only_text_parent_d[j])
@@ -4509,14 +4509,38 @@ class Eynollah:
                                           if polygon_d]
                             contours_only_text_parent_d_ordered[indices] = contours_d
                     #         cv2.fillPoly(img3, pts=contours_d, color=j + 1)
-                    # plt.subplot(2, 2, 4, title="split contours")
+                    # plt.subplot(1, 4, 3, title="split contours")
                     # plt.imshow(img3)
                     # img4 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
                     # for i in range(len(contours_only_text_parent)):
                     #     cv2.fillPoly(img4, pts=[contours_only_text_parent_d_ordered[i]], color=i + 1)
-                    # plt.subplot(2, 2, 2, title="result contours")
+                    # plt.subplot(1, 4, 4, title="result contours")
                     # plt.imshow(img4)
                     # plt.show()
+                # from matplotlib import patches as ptchs
+                # plt.subplot(1, 2, 1, title="undeskewed")
+                # plt.imshow(text_only)
+                # centers = np.stack(find_center_of_contours(contours_only_text_parent)) # [2, N]
+                # for i in range(len(contours_only_text_parent)):
+                #     cnt = contours_only_text_parent[i]
+                #     ctr = centers[:, i]
+                #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='blue'))
+                #     plt.gca().scatter(ctr[0], ctr[1], 20, c='blue', marker='x')
+                #     plt.gca().text(ctr[0], ctr[1], str(i), c='blue')
+                # plt.subplot(1, 2, 2, title="deskewed")
+                # plt.imshow(text_only_d)
+                # centers_d = np.stack(find_center_of_contours(contours_only_text_parent_d_ordered)) # [2, N]
+                # for i in range(len(contours_only_text_parent)):
+                #     cnt = contours_only_text_parent[i]
+                #     cnt = polygon2contour(deskew(contour2polygon(cnt)))
+                #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='blue'))
+                # for i in range(len(contours_only_text_parent_d_ordered)):
+                #     cnt = contours_only_text_parent_d_ordered[i]
+                #     ctr = centers_d[:, i]
+                #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='red'))
+                #     plt.gca().scatter(ctr[0], ctr[1], 20, c='red', marker='x')
+                #     plt.gca().text(ctr[0], ctr[1], str(i), c='red')
+                # plt.show()
 
         if not len(contours_only_text_parent):
             # stop early
