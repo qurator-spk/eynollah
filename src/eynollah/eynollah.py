@@ -88,12 +88,7 @@ from .utils.contour import (
     join_polygons,
     make_intersection,
 )
-from .utils.rotate import (
-    rotate_image,
-    rotation_not_90_func,
-    rotation_not_90_func_full_layout,
-    rotation_image_new
-)
+from .utils.rotate import rotate_image
 from .utils.utils_ocr import (
     return_start_and_end_of_common_text_of_textline_ocr_without_common_section,
     return_textline_contour_with_added_box_coordinate,
@@ -3131,11 +3126,9 @@ class Eynollah:
         self.logger.debug('enter run_boxes_no_full_layout')
         t_0_box = time.time()
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            _, textline_mask_tot_d, text_regions_p_d, table_prediction_n = rotation_not_90_func(
-                image_page, textline_mask_tot, text_regions_p, table_prediction, slope_deskew)
-            text_regions_p_d = resize_image(text_regions_p_d, text_regions_p.shape[0], text_regions_p.shape[1])
-            textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
-            table_prediction_n = resize_image(table_prediction_n, text_regions_p.shape[0], text_regions_p.shape[1])
+            textline_mask_tot_d = rotate_image(textline_mask_tot, slope_deskew)
+            text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
+            table_prediction_n = rotate_image(table_prediction, slope_deskew)
             regions_without_separators_d = (text_regions_p_d[:, :] == 1) * 1
             if self.tables:
                 regions_without_separators_d[table_prediction_n[:,:] == 1] = 1
@@ -3276,20 +3269,9 @@ class Eynollah:
                 text_regions_p[:,:][table_prediction[:,:]==1] = 10
                 img_revised_tab = text_regions_p[:,:]
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                    _, textline_mask_tot_d, text_regions_p_d, table_prediction_n = \
-                        rotation_not_90_func(image_page, textline_mask_tot, text_regions_p,
-                                             table_prediction, slope_deskew)
-
-                    text_regions_p_d = resize_image(text_regions_p_d,
-                                                    text_regions_p.shape[0],
-                                                    text_regions_p.shape[1])
-                    textline_mask_tot_d = resize_image(textline_mask_tot_d,
-                                                       text_regions_p.shape[0],
-                                                       text_regions_p.shape[1])
-                    table_prediction_n = resize_image(table_prediction_n,
-                                                      text_regions_p.shape[0],
-                                                      text_regions_p.shape[1])
-
+                    textline_mask_tot_d = rotate_image(textline_mask_tot, slope_deskew)
+                    text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
+                    table_prediction_n = rotate_image(table_prediction, slope_deskew)
                     regions_without_separators_d = (text_regions_p_d[:,:] == 1)*1
                     regions_without_separators_d[table_prediction_n[:,:] == 1] = 1
                 else:
@@ -3303,20 +3285,9 @@ class Eynollah:
 
             else:
                 if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                    _, textline_mask_tot_d, text_regions_p_d, table_prediction_n = \
-                        rotation_not_90_func(image_page, textline_mask_tot, text_regions_p,
-                                             table_prediction, slope_deskew)
-
-                    text_regions_p_d = resize_image(text_regions_p_d,
-                                                    text_regions_p.shape[0],
-                                                    text_regions_p.shape[1])
-                    textline_mask_tot_d = resize_image(textline_mask_tot_d,
-                                                       text_regions_p.shape[0],
-                                                       text_regions_p.shape[1])
-                    table_prediction_n = resize_image(table_prediction_n,
-                                                      text_regions_p.shape[0],
-                                                      text_regions_p.shape[1])
-
+                    textline_mask_tot_d = rotate_image(textline_mask_tot, slope_deskew)
+                    text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
+                    table_prediction_n = rotate_image(table_prediction, slope_deskew)
                     regions_without_separators_d = (text_regions_p_d[:,:] == 1)*1
                     regions_without_separators_d[table_prediction_n[:,:] == 1] = 1
                 else:
@@ -3465,12 +3436,9 @@ class Eynollah:
         #plt.show()
         ####if not self.tables:
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            _, textline_mask_tot_d, text_regions_p_d, regions_fully_n = rotation_not_90_func_full_layout(
-                image_page, textline_mask_tot, text_regions_p, regions_fully, slope_deskew)
-
-            text_regions_p_d = resize_image(text_regions_p_d, text_regions_p.shape[0], text_regions_p.shape[1])
-            textline_mask_tot_d = resize_image(textline_mask_tot_d, text_regions_p.shape[0], text_regions_p.shape[1])
-            regions_fully_n = resize_image(regions_fully_n, text_regions_p.shape[0], text_regions_p.shape[1])
+            textline_mask_tot_d = rotate_image(textline_mask_tot, slope_deskew)
+            text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
+            regions_fully_n = rotate_image(regions_fully, slope_deskew)
             if not self.tables:
                 regions_without_separators_d = (text_regions_p_d[:, :] == 1) * 1
         else:
