@@ -4164,7 +4164,7 @@ class Eynollah:
                 image_page, page_coord, cont_page = \
                 self.get_regions_light_v_extract_only_images(img_res, is_image_enhanced, num_col_classifier)
             pcgts = self.writer.build_pagexml_no_full_layout(
-                [], page_coord, [], [], [], [],
+                [], page_coord, [], [], [],
                 polygons_of_images, [], [], [], [], [], [], [], [], [],
                 cont_page, [], [])
             if self.plotter:
@@ -4282,7 +4282,7 @@ class Eynollah:
             self.logger.info("No columns detected - generating empty PAGE-XML")
     
             pcgts = self.writer.build_pagexml_no_full_layout(
-                [], page_coord, [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+                [], page_coord, [], [], [], [], [], [], [], [], [], [], [], [], [],
                 cont_page, [], [])
             return pcgts
 
@@ -4529,7 +4529,7 @@ class Eynollah:
             empty_marginals = [[]] * len(polygons_of_marginals)
             if self.full_layout:
                 pcgts = self.writer.build_pagexml_full_layout(
-                    [], [], page_coord, [], [], [], [], [], [],
+                    [], [], page_coord, [], [], [], [], [],
                     polygons_of_images, contours_tables, [],
                     polygons_of_marginals, polygons_of_marginals,
                     empty_marginals, empty_marginals,
@@ -4538,7 +4538,7 @@ class Eynollah:
                     cont_page, polygons_seplines)
             else:
                 pcgts = self.writer.build_pagexml_no_full_layout(
-                    [], page_coord, [], [], [], [],
+                    [], page_coord, [], [], [],
                     polygons_of_images,
                     polygons_of_marginals, polygons_of_marginals,
                     empty_marginals, empty_marginals,
