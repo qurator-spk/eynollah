@@ -328,7 +328,7 @@ class SbbBinarizer:
             print(input_path, 'image_name')
             if os.path.exists(output_path):
                 if overwrite:
-                    self.logger.warning("will overwrite existing output file '%s'", output_ptah)
+                    self.logger.warning("will overwrite existing output file '%s'", output_path)
                 else:
                     self.logger.warning("will skip input for existing output file '%s'", output_path)
             image = cv2.imread(input_path)

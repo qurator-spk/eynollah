@@ -146,7 +146,7 @@ def return_multicol_separators_x_start_end(
             args_emptysep.add(i)
             # print(j, i, "%d:%d" % (y_mid[j], y_mid[i]), "%d:%d" % (x_start[i], x_end[i]), "empty next sep")
     args_to_be_kept = [arg for arg in args_ysorted
-                       if not arg in args_emptysep]
+                       if arg not in args_emptysep]
     x_start = x_start[args_to_be_kept]
     x_end = x_end[args_to_be_kept]
     y_min = y_min[args_to_be_kept]
