@@ -1400,6 +1400,14 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
         matrix_of_seps_ch = np.append(
             matrix_of_seps_ch, matrix_l_n, axis=0)
 
+    # ensure no seps are out of bounds
+    matrix_of_seps_ch[:, 1] = np.maximum(np.minimum(matrix_of_seps_ch[:, 1], region_pre_p.shape[1]), 0)
+    matrix_of_seps_ch[:, 2] = np.maximum(matrix_of_seps_ch[:, 2], 0)
+    matrix_of_seps_ch[:, 3] = np.minimum(matrix_of_seps_ch[:, 3], region_pre_p.shape[1])
+    matrix_of_seps_ch[:, 5] = np.maximum(np.minimum(matrix_of_seps_ch[:, 5], region_pre_p.shape[0]), 0)
+    matrix_of_seps_ch[:, 6] = np.maximum(matrix_of_seps_ch[:, 6], 0)
+    matrix_of_seps_ch[:, 7] = np.minimum(matrix_of_seps_ch[:, 7], region_pre_p.shape[0])
+
     cy_seps_splitters=cy_seps_hor[(x_min_seps_hor<=.16*region_pre_p.shape[1]) &
                                   (x_max_seps_hor>=.84*region_pre_p.shape[1])]
     cy_seps_splitters = np.append(cy_seps_splitters, special_separators)
@@ -1621,7 +1629,7 @@ def return_boxes_of_images_by_order_of_reading_new(
             starting = xmin - peaks_neg_tot
             min_start = np.flatnonzero(starting >= 0)[-1] # last left-of
             ending = xmax - peaks_neg_tot
-            max_end = np.flatnonzero(ending < 0)[0] # first right-of
+            max_end = np.flatnonzero(ending <= 0)[0] # first right-of
             # skip elongation unless this is already a multi-column separator/heading:
             if not max_end - min_start > 1:
                 continue
