@@ -74,7 +74,7 @@ deps-test:
 	$(PIP) install -r requirements-test.txt
 
 smoke-test: TMPDIR != mktemp -d
-smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif
+smoke-test: tests/resources/2files/kant_aufklaerung_1784_0020.tif
 	# layout analysis:
 	eynollah -m $(CURDIR)/models_eynollah layout -i $< -o $(TMPDIR) 
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$(basename $(<F)).xml
@@ -98,7 +98,7 @@ smoke-test: tests/resources/kant_aufklaerung_1784_0020.tif
 
 ocrd-test: export OCRD_MISSING_OUTPUT := ABORT
 ocrd-test: TMPDIR != mktemp -d
-ocrd-test: tests/resources/kant_aufklaerung_1784_0020.tif
+ocrd-test: tests/resources/2files/kant_aufklaerung_1784_0020.tif
 	cp $< $(TMPDIR)
 	ocrd workspace -d $(TMPDIR) init
 	ocrd workspace -d $(TMPDIR) add -G OCR-D-IMG -g PHYS_0020 -i OCR-D-IMG_0020 $(<F)
