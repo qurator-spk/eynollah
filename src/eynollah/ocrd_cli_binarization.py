@@ -40,7 +40,7 @@ class SbbBinarizeProcessor(Processor):
         # resolve relative path via OCR-D ResourceManager
         assert isinstance(self.parameter, frozendict)
         model_zoo = EynollahModelZoo(basedir=self.parameter['model'])
-        self.binarizer = SbbBinarizer(model_zoo=model_zoo, mode='single', logger=self.logger)
+        self.binarizer = SbbBinarizer(model_zoo=model_zoo, logger=self.logger)
 
     def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
         """
@@ -103,7 +103,7 @@ class SbbBinarizeProcessor(Processor):
                 line_image_bin = cv2pil(self.binarizer.run(image=pil2cv(line_image), use_patches=True))
                 # update PAGE (reference the image file):
                 line_image_ref = AlternativeImageType(comments=line_xywh['features'] + ',binarized')
-                line.add_AlternativeImage(region_image_ref)
+                line.add_AlternativeImage(line_image_ref)
                 result.images.append(OcrdPageResultImage(line_image_bin, line.id + '.IMG-BIN', line_image_ref))
 
         return result

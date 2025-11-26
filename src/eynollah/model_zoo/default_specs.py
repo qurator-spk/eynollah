@@ -46,42 +46,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
     ),
 
     EynollahModelSpec(
-        category="binarization_multi_1",
-        variant='',
-        filename="models_eynollah/eynollah-binarization-multi_2020_01_16/model_bin1",
-        dist_url=dist_url("binarization"),
-        dists=['binarization'],
-        type='Keras',
-    ),
-
-    EynollahModelSpec(
-        category="binarization_multi_2",
-        variant='',
-        filename="models_eynollah/eynollah-binarization-multi_2020_01_16/model_bin2",
-        dist_url=dist_url("binarization"),
-        dists=['binarization'],
-        type='Keras',
-    ),
-
-    EynollahModelSpec(
-        category="binarization_multi_3",
-        variant='',
-        filename="models_eynollah/eynollah-binarization-multi_2020_01_16/model_bin3",
-        dist_url=dist_url("binarization"),
-        dists=['binarization'],
-        type='Keras',
-    ),
-
-    EynollahModelSpec(
-        category="binarization_multi_4",
-        variant='',
-        filename="models_eynollah/eynollah-binarization-multi_2020_01_16/model_bin4",
-        dist_url=dist_url("binarization"),
-        dists=['binarization'],
-        type='Keras',
-    ),
-
-    EynollahModelSpec(
         category="col_classifier",
         variant='',
         filename="models_eynollah/eynollah-column-classifier_20210425",
