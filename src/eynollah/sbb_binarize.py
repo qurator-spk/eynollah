@@ -9,15 +9,13 @@ Tool to load model and binarize a given image.
 
 import os
 import logging
-from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import cv2
 from ocrd_utils import tf_disable_interactive_logs
 
 from eynollah.model_zoo import EynollahModelZoo
-from eynollah.model_zoo.types import AnyModel
 tf_disable_interactive_logs()
 import tensorflow as tf
 from tensorflow.python.keras import backend as tensorflow_backend
@@ -323,7 +321,7 @@ class SbbBinarizer:
                 image = cv2.imread(image_path)
             img_last = 0
             model_file, model = self.models
-            self.logger.info('Predicting %s with model %s [%s/%s]', image_path if image_path else '[image]', model_file)
+            self.logger.info('Predicting %s with model %s', image_path if image_path else '[image]', model_file)
             res = self.predict(model, image, use_patches)
 
             img_fin = np.zeros((res.shape[0], res.shape[1], 3))
@@ -338,7 +336,6 @@ class SbbBinarizer:
             img_fin = (res[:, :] == 0) * 255
             img_last = img_last + img_fin
 
-            kernel = np.ones((5, 5), np.uint8)
             img_last[:, :][img_last[:, :] > 0] = 255
             img_last = (img_last[:, :] == 0) * 255
             if output:
@@ -348,13 +345,13 @@ class SbbBinarizer:
         else:
             ls_imgs = list(filter(is_image_filename, os.listdir(dir_in)))
             self.logger.info("Found %d image files to binarize in %s", len(ls_imgs), dir_in)
-            for i, image_name in enumerate(ls_imgs):
-                image_stem = image_name.split('.')[0]
-                self.logger.info('Binarizing [%3d/%d] %s', i + 1, len(ls_imgs), image_name)
-                image = cv2.imread(os.path.join(dir_in,image_name) )
+            for i, image_path in enumerate(ls_imgs):
+                self.logger.info('Binarizing [%3d/%d] %s', i + 1, len(ls_imgs), image_path)
+                image_stem = image_path.split('.')[0]
+                image = cv2.imread(os.path.join(dir_in,image_path) )
                 img_last = 0
                 model_file, model = self.models
-                self.logger.info('Predicting %s with model %s [%s/%s]', image_path if image_path else '[image]', model_file)
+                self.logger.info('Predicting %s with model %s', image_path if image_path else '[image]', model_file)
                 res = self.predict(model, image, use_patches)
 
                 img_fin = np.zeros((res.shape[0], res.shape[1], 3))
@@ -369,7 +366,6 @@ class SbbBinarizer:
                 img_fin = (res[:, :] == 0) * 255
                 img_last = img_last + img_fin
 
-                kernel = np.ones((5, 5), np.uint8)
                 img_last[:, :][img_last[:, :] > 0] = 255
                 img_last = (img_last[:, :] == 0) * 255
                 
