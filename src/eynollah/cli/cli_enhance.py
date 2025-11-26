@@ -48,7 +48,7 @@ def enhance_cli(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower
     Enhance image
     """
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    from .image_enhancer import Enhancer
+    from ..image_enhancer import Enhancer
     enhancer = Enhancer(
         model_zoo=ctx.obj.model_zoo,
         num_col_upper=num_col_upper,

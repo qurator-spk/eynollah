@@ -113,7 +113,7 @@ def ocr_cli(
     assert not export_textline_images_and_text or not dir_in_bin, "Exporting textline and text  -etit can not be set alongside directory of bin images -dib"
     assert not export_textline_images_and_text or not dir_out_image_text, "Exporting textline and text  -etit can not be set alongside directory of images with predicted text -doit"
     assert bool(image) != bool(dir_in), "Either -i (single image) or -di (directory) must be provided, but not both."
-    from .eynollah_ocr import Eynollah_ocr
+    from ..eynollah_ocr import Eynollah_ocr
     eynollah_ocr = Eynollah_ocr(
         model_zoo=ctx.obj.model_zoo,
         tr_ocr=tr_ocr,

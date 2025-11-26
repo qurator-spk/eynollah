@@ -32,7 +32,7 @@ def binarize_cli(
     """
     Binarize images with a ML model
     """
-    from eynollah.sbb_binarize import SbbBinarizer
+    from ..sbb_binarize import SbbBinarizer
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     binarizer = SbbBinarizer(model_zoo=ctx.obj.model_zoo)
     binarizer.run(
