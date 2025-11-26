@@ -473,8 +473,7 @@ class Eynollah_ocr:
                 img = cv2.imread(dir_img)
                 if dir_in_bin is not None:
                     cropped_lines_bin = []
-                    dir_img_bin = os.path.join(dir_in_bin, file_name+'.png')
-                    img_bin = cv2.imread(dir_img_bin)
+                    img_bin = cv2.imread(os.path.join(dir_in_bin, file_name+'.png'))
                 
                 if dir_out_image_text:
                     out_image_with_text = os.path.join(dir_out_image_text, file_name+'.png')

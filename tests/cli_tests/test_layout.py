@@ -13,12 +13,6 @@ from ocrd_models.constants import NAMESPACES as NS
              "--textline_light", "--light_version"],
             # -ep ...
             # -eoi ...
-            # FIXME: find out whether OCR extra was installed, otherwise skip these
-            ["--do_ocr"],
-            ["--do_ocr", "--light_version", "--textline_light"],
-            ["--do_ocr", "--transformer_ocr"],
-            #["--do_ocr", "--transformer_ocr", "--light_version", "--textline_light"],
-            ["--do_ocr", "--transformer_ocr", "--light_version", "--textline_light", "--full-layout"],
             # --skip_layout_and_reading_order
     ], ids=str)
 def test_run_eynollah_layout_filename(

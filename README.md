@@ -120,9 +120,6 @@ The following options can be used to further configure the processing:
 | `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory                            |
 | `-thart`          | threshold of artifical class in the case of textline detection. The default value is 0.1    |
 | `-tharl`          | threshold of artifical class in the case of layout detection. The default value is 0.1      |
-| `-ocr`            | do ocr                                                                                      |
-| `-tr`             | apply transformer ocr. Default model is a CNN-RNN model                                     |
-| `-bs_ocr`         | ocr inference batch size. Default bs for trocr and cnn_rnn models are 2 and 8 respectively  |
 | `-ncu`            | upper limit of columns in document image                                                    |
 | `-ncl`            | lower limit of columns in document image                                                    |
 | `-slro`           | skip layout detection and reading order                                                     |

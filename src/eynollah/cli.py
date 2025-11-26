@@ -321,7 +321,7 @@ def enhancement(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower
     "--input_binary/--input-RGB",
     "-ib/-irgb",
     is_flag=True,
-    help="in general, eynollah uses RGB as input but if the input document is strongly dark, bright or for any other reason you can turn binarized input on. This option does not mean that you have to provide a binary image, otherwise this means that the tool itself will binarized the RGB input document.",
+    help="In general, eynollah uses RGB as input but if the input document is very dark, very bright or for any other reason you can turn on input binarization. When this flag is set, eynollah will binarize the RGB input document, you should always provide RGB images to eynollah.",
 )
 @click.option(
     "--allow_scaling/--no-allow-scaling",
@@ -352,23 +352,6 @@ def enhancement(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower
     "-romb/-hro",
     is_flag=True,
     help="if this parameter set to true, this tool would apply machine based reading order detection",
-)
-@click.option(
-    "--do_ocr",
-    "-ocr/-noocr",
-    is_flag=True,
-    help="if this parameter set to true, this tool will try to do ocr",
-)
-@click.option(
-    "--transformer_ocr",
-    "-tr/-notr",
-    is_flag=True,
-    help="if this parameter set to true, this tool will apply transformer ocr",
-)
-@click.option(
-    "--batch_size_ocr",
-    "-bs_ocr",
-    help="number of inference batch size of ocr model. Default b_s for trocr and cnn_rnn models are 2 and 8 respectively",
 )
 @click.option(
     "--num_col_upper",
@@ -421,9 +404,6 @@ def layout(
     headers_off,
     light_version,
     reading_order_machine_based,
-    do_ocr,
-    transformer_ocr,
-    batch_size_ocr,
     num_col_upper,
     num_col_lower,
     threshold_art_class_textline,
@@ -470,9 +450,6 @@ def layout(
         light_version=light_version,
         ignore_page_extraction=ignore_page_extraction,
         reading_order_machine_based=reading_order_machine_based,
-        do_ocr=do_ocr,
-        transformer_ocr=transformer_ocr,
-        batch_size_ocr=batch_size_ocr,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
         skip_layout_and_reading_order=skip_layout_and_reading_order,
@@ -506,7 +483,15 @@ def layout(
 @click.option(
     "--dir_in_bin",
     "-dib",
-    help="directory of binarized images (in addition to --dir_in for RGB images; filename stems must match the RGB image files, with '.png' suffix).\nPerform prediction using both RGB and binary images. (This does not necessarily improve results, however it may be beneficial for certain document images.)",
+    help=("""
+        directory of binarized images (in addition to --dir_in for RGB              
+        images; filename stems must match the RGB image files, with '.png'
+        \n                                                                              
+        Perform prediction using both RGB and binary images.                            
+        (This does not necessarily improve results, however it may be beneficial        
+        for certain document images.
+"""),                                                 
+       
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
