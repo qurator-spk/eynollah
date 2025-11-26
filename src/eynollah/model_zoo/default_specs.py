@@ -66,8 +66,8 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
     ),
 
     EynollahModelSpec(
-        category="region",
-        variant='extract_only_images',
+        category="extract_images",
+        variant='',
         filename="models_eynollah/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18",
         dist_url=dist_url(),
         type='Keras',

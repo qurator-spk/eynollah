@@ -109,7 +109,6 @@ The following options can be used to further configure the processing:
 | `-cl`             | apply contour detection for curved text lines instead of bounding boxes                     |
 | `-ib`             | apply binarization (the resulting image is saved to the output directory)                   |
 | `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`)              |
-| `-eoi`            | extract only images to output directory (other processing will not be done)                 |
 | `-ho`             | ignore headers for reading order dectection                                                 |
 | `-si <directory>` | save image regions detected to this directory                                               |
 | `-sd <directory>` | save deskewed image to this directory                                                       |
