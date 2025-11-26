@@ -102,12 +102,12 @@ ocrd-test: tests/resources/2files/kant_aufklaerung_1784_0020.tif
 	cp $< $(TMPDIR)
 	ocrd workspace -d $(TMPDIR) init
 	ocrd workspace -d $(TMPDIR) add -G OCR-D-IMG -g PHYS_0020 -i OCR-D-IMG_0020 $(<F)
-	ocrd-eynollah-segment -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-SEG -P models $(CURDIR)/models_eynollah
+	ocrd-eynollah-segment -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-SEG -P models $(CURDIR)
 	result=$$(ocrd workspace -d $(TMPDIR) find -G OCR-D-SEG); \
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$$result && \
 	fgrep -c -e TextRegion -e ImageRegion -e SeparatorRegion $(TMPDIR)/$$result
-	ocrd-sbb-binarize -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-BIN -P model $(CURDIR)/models_eynollah/eynollah-binarization_20210425 
-	ocrd-sbb-binarize -w $(TMPDIR) -I OCR-D-SEG -O OCR-D-SEG-BIN -P model $(CURDIR)/models_eynollah/eynollah-binarization_20210425  -P operation_level region
+	ocrd-sbb-binarize -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-BIN -P model $(CURDIR)
+	ocrd-sbb-binarize -w $(TMPDIR) -I OCR-D-SEG -O OCR-D-SEG-BIN -P model $(CURDIR)  -P operation_level region
 	$(RM) -r $(TMPDIR)
 
 # Run unit tests

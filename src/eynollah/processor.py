@@ -3,6 +3,8 @@ from typing import Optional
 from ocrd_models import OcrdPage
 from ocrd import OcrdPageResultImage, Processor, OcrdPageResult
 
+from eynollah.model_zoo.model_zoo import EynollahModelZoo
+
 from .eynollah import Eynollah, EynollahXmlWriter
 
 class EynollahProcessor(Processor):
@@ -19,8 +21,9 @@ class EynollahProcessor(Processor):
         if self.parameter['textline_light'] != self.parameter['light_version']:
             raise ValueError("Error: You must set or unset both parameter 'textline_light' (to enable light textline detection), "
                              "and parameter 'light_version' (faster+simpler method for main region detection and deskewing)")
+        model_zoo = EynollahModelZoo(basedir=self.parameter['models'])
         self.eynollah = Eynollah(
-            self.resolve_resource(self.parameter['models']),
+            model_zoo=model_zoo,
             allow_enhancement=self.parameter['allow_enhancement'],
             curved_line=self.parameter['curved_line'],
             right2left=self.parameter['right_to_left'],
