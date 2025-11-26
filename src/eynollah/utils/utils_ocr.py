@@ -379,7 +379,6 @@ def return_rnn_cnn_ocr_of_given_textlines(image,
                                           all_box_coord,
                                           prediction_model,
                                           b_s_ocr, num_to_char,
-                                          textline_light=False,
                                           curved_line=False):
     max_len = 512
     padding_token = 299
@@ -404,7 +403,7 @@ def return_rnn_cnn_ocr_of_given_textlines(image,
         else:
             for indexing2, ind_poly in enumerate(ind_poly_first):
                 cropped_lines_region_indexer.append(indexer_text_region)
-                if not (textline_light or curved_line):
+                if not curved_line:
                     ind_poly = copy.deepcopy(ind_poly)
                     box_ind = all_box_coord[indexing]
 

@@ -1748,7 +1748,7 @@ def do_work_of_slopes_new_curved(
 @wrap_ndarray_shared(kw='textline_mask_tot_ea')
 def do_work_of_slopes_new_light(
         box_text, contour, contour_par,
-        textline_mask_tot_ea=None, slope_deskew=0, textline_light=True,
+        textline_mask_tot_ea=None, slope_deskew=0,
         logger=None
 ):
     if logger is None:
@@ -1765,16 +1765,10 @@ def do_work_of_slopes_new_light(
     mask_only_con_region = np.zeros(textline_mask_tot_ea.shape)
     mask_only_con_region = cv2.fillPoly(mask_only_con_region, pts=[contour_par], color=(1, 1, 1))
 
-    if textline_light:
-        all_text_region_raw = np.copy(textline_mask_tot_ea)
-        all_text_region_raw[mask_only_con_region == 0] = 0
-        cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(all_text_region_raw)
-        cnt_clean_rot = filter_contours_area_of_image(all_text_region_raw, cnt_clean_rot_raw, hir_on_cnt_clean_rot,
-                                                      max_area=1, min_area=0.00001)
-    else:
-        all_text_region_raw = np.copy(textline_mask_tot_ea[y: y + h, x: x + w])
-        mask_only_con_region = mask_only_con_region[y: y + h, x: x + w]
-        all_text_region_raw[mask_only_con_region == 0] = 0
-        cnt_clean_rot = textline_contours_postprocessing(all_text_region_raw, slope_deskew, contour_par, box_text)
+    all_text_region_raw = np.copy(textline_mask_tot_ea)
+    all_text_region_raw[mask_only_con_region == 0] = 0
+    cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(all_text_region_raw)
+    cnt_clean_rot = filter_contours_area_of_image(all_text_region_raw, cnt_clean_rot_raw, hir_on_cnt_clean_rot,
+                                                  max_area=1, min_area=0.00001)
 
     return cnt_clean_rot, crop_coor, slope_deskew

@@ -13,7 +13,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         category="enhancement",
         variant='',
         filename="models_eynollah/eynollah-enhancement_20210425",
-        dists=['enhancement', 'layout', 'ci'],
         dist_url=dist_url(),
         type='Keras',
     ),
@@ -22,7 +21,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         category="binarization",
         variant='hybrid',
         filename="models_eynollah/eynollah-binarization-hybrid_20230504/model_bin_hybrid_trans_cnn_sbb_ens",
-        dists=['layout', 'binarization', ],
         dist_url=dist_url(),
         type='Keras',
     ),
@@ -31,7 +29,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         category="binarization",
         variant='20210309',
         filename="models_eynollah/eynollah-binarization_20210309",
-        dists=['binarization'],
         dist_url=dist_url("extra"),
         type='Keras',
     ),
@@ -40,7 +37,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         category="binarization",
         variant='',
         filename="models_eynollah/eynollah-binarization_20210425",
-        dists=['binarization'],
         dist_url=dist_url("extra"),
         type='Keras',
     ),
@@ -50,7 +46,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         variant='',
         filename="models_eynollah/eynollah-column-classifier_20210425",
         dist_url=dist_url(),
-        dists=['layout'],
         type='Keras',
     ),
 
@@ -59,7 +54,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         variant='',
         filename="models_eynollah/model_eynollah_page_extraction_20250915",
         dist_url=dist_url(),
-        dists=['layout'],
         type='Keras',
     ),
 
@@ -68,7 +62,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         variant='',
         filename="models_eynollah/eynollah-main-regions-ensembled_20210425",
         dist_url=dist_url(),
-        dists=['layout'],
         type='Keras',
     ),
 
@@ -77,27 +70,24 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         variant='extract_only_images',
         filename="models_eynollah/eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18",
         dist_url=dist_url(),
-        dists=['layout'],
         type='Keras',
     ),
 
     EynollahModelSpec(
         category="region",
-        variant='light',
+        variant='',
         filename="models_eynollah/eynollah-main-regions_20220314",
         dist_url=dist_url(),
         help="early layout",
-        dists=['layout'],
         type='Keras',
     ),
 
     EynollahModelSpec(
         category="region_p2",
-        variant='',
+        variant='non-light',
         filename="models_eynollah/eynollah-main-regions-aug-rotation_20210425",
-        dist_url=dist_url(),
+        dist_url=dist_url('extra'),
         help="early layout, non-light, 2nd part",
-        dists=['layout'],
         type='Keras',
     ),
 
@@ -110,8 +100,7 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         #filename="models_eynollah/modelens_1_2_4_5_early_lay_1_2_spaltige",
         #filename="models_eynollah/model_3_eraly_layout_no_patches_1_2_spaltige",
         filename="models_eynollah/modelens_e_l_all_sp_0_1_2_3_4_171024",
-        dist_url=dist_url("all"),
-        dists=['layout'],
+        dist_url=dist_url("layout"),
         help="early layout, light, 1-or-2-column",
         type='Keras',
     ),
@@ -128,7 +117,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/modelens_full_lay_1__4_3_091124",
         dist_url=dist_url(),
         help="full layout / no patches",
-        dists=['layout'],
         type='Keras',
     ),
 
@@ -148,7 +136,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/modelens_full_lay_1__4_3_091124",
         dist_url=dist_url(),
         help="full layout / with patches",
-        dists=['layout'],
         type='Keras',
     ),
 
@@ -162,13 +149,12 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         #filename="models_eynollah/model_ens_reading_order_machine_based",
         filename="models_eynollah/model_eynollah_reading_order_20250824",
         dist_url=dist_url(),
-        dists=['layout', 'reading_order'],
         type='Keras',
     ),
 
     EynollahModelSpec(
         category="textline",
-        variant='',
+        variant='non-light',
         #filename="models_eynollah/modelens_textline_1_4_16092024",
         #filename="models_eynollah/model_textline_ens_3_4_5_6_artificial",
         #filename="models_eynollah/modelens_textline_1_3_4_20240915",
@@ -176,36 +162,32 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         #filename="models_eynollah/modelens_textline_9_12_13_14_15",
         #filename="models_eynollah/eynollah-textline_20210425",
         filename="models_eynollah/modelens_textline_0_1__2_4_16092024",
-        dist_url=dist_url(),
-        dists=['layout'],
+        dist_url=dist_url('extra'),
         type='Keras',
     ),
 
     EynollahModelSpec(
         category="textline",
-        variant='light',
+        variant='',
         #filename="models_eynollah/eynollah-textline_light_20210425",
         filename="models_eynollah/modelens_textline_0_1__2_4_16092024",
         dist_url=dist_url(),
-        dists=['layout'],
+        type='Keras',
+    ),
+
+    EynollahModelSpec(
+        category="table",
+        variant='non-light',
+        filename="models_eynollah/eynollah-tables_20210319",
+        dist_url=dist_url('extra'),
         type='Keras',
     ),
 
     EynollahModelSpec(
         category="table",
         variant='',
-        filename="models_eynollah/eynollah-tables_20210319",
-        dist_url=dist_url(),
-        dists=['layout'],
-        type='Keras',
-    ),
-
-    EynollahModelSpec(
-        category="table",
-        variant='light',
         filename="models_eynollah/modelens_table_0t4_201124",
         dist_url=dist_url(),
-        dists=['layout'],
         type='Keras',
     ),
 
@@ -214,7 +196,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         variant='',
         filename="models_eynollah/model_eynollah_ocr_cnnrnn_20250930",
         dist_url=dist_url("ocr"),
-        dists=['layout', 'ocr'],
         type='Keras',
     ),
 
@@ -224,7 +205,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/model_eynollah_ocr_cnnrnn__degraded_20250805/",
         help="slightly better at degraded Fraktur",
         dist_url=dist_url("ocr"),
-        dists=['ocr'],
         type='Keras',
     ),
 
@@ -233,7 +213,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         variant='',
         filename="characters_org.txt",
         dist_url=dist_url("ocr"),
-        dists=['ocr'],
         type='decoder',
     ),
 
@@ -242,7 +221,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         variant='',
         filename="characters_org.txt",
         dist_url=dist_url("ocr"),
-        dists=['ocr'],
         type='List[str]',
     ),
 
@@ -252,7 +230,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         filename="models_eynollah/model_eynollah_ocr_trocr_20250919",
         dist_url=dist_url("ocr"),
         help='much slower transformer-based',
-        dists=['trocr'],
         type='Keras',
     ),
 
@@ -261,7 +238,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         variant='',
         filename="models_eynollah/model_eynollah_ocr_trocr_20250919",
         dist_url=dist_url("ocr"),
-        dists=['trocr'],
         type='TrOCRProcessor',
     ),
 
@@ -270,7 +246,6 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
         variant='htr',
         filename="models_eynollah/microsoft/trocr-base-handwritten",
         dist_url=dist_url("extra"),
-        dists=['trocr'],
         type='TrOCRProcessor',
     ),
 

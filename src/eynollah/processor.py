@@ -18,9 +18,6 @@ class EynollahProcessor(Processor):
 
     def setup(self) -> None:
         assert self.parameter
-        if self.parameter['textline_light'] != self.parameter['light_version']:
-            raise ValueError("Error: You must set or unset both parameter 'textline_light' (to enable light textline detection), "
-                             "and parameter 'light_version' (faster+simpler method for main region detection and deskewing)")
         model_zoo = EynollahModelZoo(basedir=self.parameter['models'])
         self.eynollah = Eynollah(
             model_zoo=model_zoo,
@@ -29,8 +26,6 @@ class EynollahProcessor(Processor):
             right2left=self.parameter['right_to_left'],
             reading_order_machine_based=self.parameter['reading_order_machine_based'],
             ignore_page_extraction=self.parameter['ignore_page_extraction'],
-            light_version=self.parameter['light_version'],
-            textline_light=self.parameter['textline_light'],
             full_layout=self.parameter['full_layout'],
             allow_scaling=self.parameter['allow_scaling'],
             headers_off=self.parameter['headers_off'],
@@ -93,7 +88,6 @@ class EynollahProcessor(Processor):
             dir_out=None,
             image_filename=image_filename,
             curved_line=self.eynollah.curved_line,
-            textline_light=self.eynollah.textline_light,
             pcgts=pcgts)
         self.eynollah.run_single()
         return result

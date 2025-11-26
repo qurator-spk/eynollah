@@ -82,12 +82,6 @@ import click
     help="if this parameter set to true, this tool will try to return contoure of textlines instead of rectangle bounding box of textline. This should be taken into account that with this option the tool need more time to do process.",
 )
 @click.option(
-    "--textline_light/--no-textline_light",
-    "-tll/-notll",
-    is_flag=True,
-    help="if this parameter set to true, this tool will try to return contoure of textlines instead of rectangle bounding box of textline with a faster method.",
-)
-@click.option(
     "--full-layout/--no-full-layout",
     "-fl/-nofl",
     is_flag=True,
@@ -122,12 +116,6 @@ import click
     "-ho/-noho",
     is_flag=True,
     help="if this parameter set to true, this tool would ignore headers role in reading order",
-)
-@click.option(
-    "--light_version/--original",
-    "-light/-org",
-    is_flag=True,
-    help="if this parameter set to true, this tool would use lighter version",
 )
 @click.option(
     "--ignore_page_extraction/--extract_page_included",
@@ -183,14 +171,12 @@ def layout_cli(
     enable_plotting,
     allow_enhancement,
     curved_line,
-    textline_light,
     full_layout,
     tables,
     right2left,
     input_binary,
     allow_scaling,
     headers_off,
-    light_version,
     reading_order_machine_based,
     num_col_upper,
     num_col_lower,
@@ -211,12 +197,9 @@ def layout_cli(
     assert enable_plotting or not allow_enhancement, "Plotting with -ae also requires -ep"
     assert not enable_plotting or save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement, \
         "Plotting with -ep also requires -sl, -sd, -sa, -sp, -si or -ae"
-    assert textline_light == light_version, "Both light textline detection -tll and light version -light must be set or unset equally"
     assert not extract_only_images or not allow_enhancement, "Image extraction -eoi can not be set alongside allow_enhancement -ae"
     assert not extract_only_images or not allow_scaling, "Image extraction -eoi can not be set alongside allow_scaling -as"
-    assert not extract_only_images or not light_version, "Image extraction -eoi can not be set alongside light_version -light"
     assert not extract_only_images or not curved_line, "Image extraction -eoi can not be set alongside curved_line -cl"
-    assert not extract_only_images or not textline_light, "Image extraction -eoi can not be set alongside textline_light -tll"
     assert not extract_only_images or not full_layout, "Image extraction -eoi can not be set alongside full_layout -fl"
     assert not extract_only_images or not tables, "Image extraction -eoi can not be set alongside tables -tab"
     assert not extract_only_images or not right2left, "Image extraction -eoi can not be set alongside right2left -r2l"
@@ -228,14 +211,12 @@ def layout_cli(
         enable_plotting=enable_plotting,
         allow_enhancement=allow_enhancement,
         curved_line=curved_line,
-        textline_light=textline_light,
         full_layout=full_layout,
         tables=tables,
         right2left=right2left,
         input_binary=input_binary,
         allow_scaling=allow_scaling,
         headers_off=headers_off,
-        light_version=light_version,
         ignore_page_extraction=ignore_page_extraction,
         reading_order_machine_based=reading_order_machine_based,
         num_col_upper=num_col_upper,

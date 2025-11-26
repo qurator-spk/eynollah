@@ -49,8 +49,6 @@ class machine_based_reading_order_on_layout:
             self.logger.warning("no GPU device available")
             
         self.model_zoo.load_model('reading_order')
-        # FIXME: light_version is always true, no need for checks in the code
-        self.light_version = True
 
     def read_xml(self, xml_file):
         tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding='utf-8'))
@@ -517,7 +515,7 @@ class machine_based_reading_order_on_layout:
         
         
         min_cont_size_to_be_dilated = 10
-        if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+        if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
             cx_conts, cy_conts, x_min_conts, x_max_conts, y_min_conts, y_max_conts, _ = find_new_features_of_contours(contours_only_text_parent)
             args_cont_located = np.array(range(len(contours_only_text_parent)))
             
@@ -617,13 +615,13 @@ class machine_based_reading_order_on_layout:
                 img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,
                                    int(x_min_main[j]):int(x_max_main[j])] = 1
             co_text_all_org = contours_only_text_parent + contours_only_text_parent_h
-            if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+            if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
                 co_text_all = contours_only_dilated + contours_only_text_parent_h
             else:
                 co_text_all = contours_only_text_parent + contours_only_text_parent_h
         else:
             co_text_all_org = contours_only_text_parent
-            if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+            if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
                 co_text_all = contours_only_dilated
             else:
                 co_text_all = contours_only_text_parent
@@ -702,7 +700,7 @@ class machine_based_reading_order_on_layout:
         ##id_all_text = np.array(id_all_text)[index_sort]
         
         
-        if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+        if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
             org_contours_indexes = []
             for ind in range(len(ordered)):
                 region_with_curr_order = ordered[ind]
