@@ -25,7 +25,9 @@ class EynollahCliCtx:
     "--model-basedir",
     "-m",
     help="directory of models",
-    type=click.Path(exists=True),
+    # NOTE: not mandatory to exist so --help for subcommands works but will log a warning
+    #       and raise exception when trying to load models in the CLI
+    # type=click.Path(exists=True),
     default=f'{os.getcwd()}/models_eynollah',
 )
 @click.option(
