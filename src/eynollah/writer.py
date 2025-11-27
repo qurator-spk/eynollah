@@ -72,13 +72,9 @@ class EynollahXmlWriter:
                     point = point[0]
                 point_x = point[0] + page_coord[2]
                 point_y = point[1] + page_coord[0]
-                # FIXME: or actually... not self.curved_line or np.abs(slopes[region_idx]) > 45?
-                if not (self.curved_line and np.abs(slopes[region_idx]) <= 45):
-                    point_x += region_bboxes[2]
-                    point_y += region_bboxes[0]
                 point_x = max(0, int(point_x / self.scale_x))
                 point_y = max(0, int(point_y / self.scale_y))
-                points_co += str(point_x) + ',' + str(point_y) + ' '
+                points_co += f'{point_x},{point_y} '
             coords.set_points(points_co[:-1])
 
     def write_pagexml(self, pcgts):

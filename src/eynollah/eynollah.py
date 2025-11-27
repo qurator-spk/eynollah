@@ -1512,52 +1512,10 @@ class Eynollah:
         img_width_h = img.shape[1]
         model_region = self.model_zoo.get("region_fl") if patches else self.model_zoo.get("region_fl_np")
 
-        if not patches:
-            img = otsu_copy_binary(img)
-            img = img.astype(np.uint8)
-            prediction_regions2 = None
-        elif cols:
-            if cols == 1:
-                img_height_new = int(img_height_h * 0.7)
-                img_width_new = int(img_width_h * 0.7)
-            elif cols == 2:
-                img_height_new = int(img_height_h * 0.4)
-                img_width_new = int(img_width_h * 0.4)
-            else:
-                img_height_new = int(img_height_h * 0.3)
-                img_width_new = int(img_width_h * 0.3)
-            img2 = otsu_copy_binary(img)
-            img2 = img2.astype(np.uint8)
-            img2 = resize_image(img2, img_height_new, img_width_new)
-            prediction_regions2 = self.do_prediction(patches, img2, model_region, marginal_of_patch_percent=0.1)
-            prediction_regions2 = resize_image(prediction_regions2, img_height_h, img_width_h)
-
-            img = otsu_copy_binary(img).astype(np.uint8)
-            if cols == 1:
-                img = resize_image(img, int(img_height_h * 0.5), int(img_width_h * 0.5)).astype(np.uint8)
-            elif cols == 2 and img_width_h >= 2000:
-                img = resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9)).astype(np.uint8)
-            elif cols == 3 and ((self.scale_x == 1 and img_width_h > 3000) or
-                                (self.scale_x != 1 and img_width_h > 2800)):
-                img = resize_image(img, 2800 * img_height_h // img_width_h, 2800).astype(np.uint8)
-            elif cols == 4 and ((self.scale_x == 1 and img_width_h > 4000) or
-                                (self.scale_x != 1 and img_width_h > 3700)):
-                img = resize_image(img, 3700 * img_height_h // img_width_h, 3700).astype(np.uint8)
-            elif cols == 4:
-                img = resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9)).astype(np.uint8)
-            elif cols == 5 and self.scale_x == 1 and img_width_h > 5000:
-                img = resize_image(img, int(img_height_h * 0.7), int(img_width_h * 0.7)).astype(np.uint8)
-            elif cols == 5:
-                img = resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9)).astype(np.uint8)
-            elif img_width_h > 5600:
-                img = resize_image(img, 5600 * img_height_h // img_width_h, 5600).astype(np.uint8)
-            else:
-                img = resize_image(img, int(img_height_h * 0.9), int(img_width_h * 0.9)).astype(np.uint8)
-
         prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=0.1)
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
-        return prediction_regions, prediction_regions2
+        return prediction_regions, None
         
     def get_textlines_of_a_textregion_sorted(self, textlines_textregion, cx_textline, cy_textline, w_h_textline):
         N = len(cy_textline)
