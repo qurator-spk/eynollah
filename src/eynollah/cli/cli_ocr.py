@@ -60,12 +60,6 @@ import click
     help="if this parameter set to true, transformer ocr will be applied, otherwise cnn_rnn model.",
 )
 @click.option(
-    "--export_textline_images_and_text",
-    "-etit/-noetit",
-    is_flag=True,
-    help="if this parameter set to true, images and text in xml will be exported into output dir. This files can be used for training a OCR engine.",
-)
-@click.option(
     "--do_not_mask_with_textline_contour",
     "-nmtc/-mtc",
     is_flag=True,
@@ -75,11 +69,6 @@ import click
     "--batch_size",
     "-bs",
     help="number of inference batch size. Default b_s for trocr and cnn_rnn models are 2 and 8 respectively",
-)
-@click.option(
-    "--dataset_abbrevation",
-    "-ds_pref",
-    help="in the case of extracting textline and text from a xml GT file user can add an abbrevation of dataset name to generated dataset",
 )
 @click.option(
     "--min_conf_value_of_textline_text",
@@ -97,7 +86,6 @@ def ocr_cli(
     dir_out_image_text,
     overwrite,
     tr_ocr,
-    export_textline_images_and_text,
     do_not_mask_with_textline_contour,
     batch_size,
     dataset_abbrevation,
@@ -106,18 +94,11 @@ def ocr_cli(
     """
     Recognize text with a CNN/RNN or transformer ML model.
     """
-    assert not export_textline_images_and_text or not tr_ocr, "Exporting textline and text  -etit can not be set alongside transformer ocr -tr_ocr"
-    # FIXME: refactor: move export_textline_images_and_text out of eynollah.py
-    # assert not export_textline_images_and_text or not model, "Exporting textline and text  -etit can not be set alongside model -m"
-    assert not export_textline_images_and_text or not batch_size, "Exporting textline and text  -etit can not be set alongside batch size -bs"
-    assert not export_textline_images_and_text or not dir_in_bin, "Exporting textline and text  -etit can not be set alongside directory of bin images -dib"
-    assert not export_textline_images_and_text or not dir_out_image_text, "Exporting textline and text  -etit can not be set alongside directory of images with predicted text -doit"
-    assert bool(image) != bool(dir_in), "Either -i (single image) or -di (directory) must be provided, but not both."
+    assert bool(image) ^ bool(dir_in), "Either -i (single image) or -di (directory) must be provided, but not both."
     from ..eynollah_ocr import Eynollah_ocr
     eynollah_ocr = Eynollah_ocr(
         model_zoo=ctx.obj.model_zoo,
         tr_ocr=tr_ocr,
-        export_textline_images_and_text=export_textline_images_and_text,
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
         batch_size=batch_size,
         pref_of_dataset=dataset_abbrevation,
