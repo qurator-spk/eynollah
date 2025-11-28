@@ -1508,7 +1508,7 @@ def return_boxes_of_images_by_order_of_reading_new(
        * splitter_y_new: the y coordinates separating the parts
        * regions_without_separators: (text) region mask with separators suppressed;
              (needed to find per-part columns and to combine separators if possible)
-       * regions_with_separators: (full) region map with separators suppressed;
+       * regions_with_separators: (full) region map with separators included;
              (needed to elongate separators if possible)
        * matrix_of_seps: type and coordinates of horizontal and vertical separators,
              as well as headings
@@ -1525,6 +1525,7 @@ def return_boxes_of_images_by_order_of_reading_new(
 
     if right2left_readingorder:
         regions_without_separators = cv2.flip(regions_without_separators,1)
+        regions_with_separators = cv2.flip(regions_with_separators,1)
     if logger is None:
         logger = getLogger(__package__)
     logger.debug('enter return_boxes_of_images_by_order_of_reading_new')
