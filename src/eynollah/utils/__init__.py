@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import List, Tuple
 from logging import getLogger
 import time
 import math
@@ -1315,7 +1315,35 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     peaks_neg_tot.append(last_point)
     return peaks_neg_tot
 
-def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables, label_seps, contours_h=None):
+def find_number_of_columns_in_document(
+        region_pre_p: np.ndarray,
+        num_col_classifier: int,
+        tables: bool,
+        label_seps: int,
+        contours_h: List[np.ndarray] = None,
+        logger=None
+) -> Tuple[int, List[int], np.ndarray, List[int], np.ndarray]:
+    """
+    Extract vertical and horizontal separators, vertical splits and horizontal column boundaries on page.
+
+    Arguments:
+      * region_pre_p: segmentation map of the page
+      * num_col_classifier: predicted (expected) number of columns of the page
+      * tables: whether tables may be present
+      * label_seps: segmentation map class label for separators
+      * contours_h: polygons of potential headings (serving as additional horizontal separators)
+      * logger
+
+    Returns: a tuple of
+      * the actual number of columns found
+      * the x coordinates of the column boundaries
+      * an array of the separators (bounding boxes and types)
+      * the y coordinates of the page splits
+      * a mask of the separators
+    """
+    if logger is None:
+        logger = getLogger(__package__)
+
     separators_closeup = 1 * (region_pre_p == label_seps)
     separators_closeup[0:110] = 0
     separators_closeup[-150:] = 0
@@ -1483,8 +1511,11 @@ def find_number_of_columns_in_document(region_pre_p, num_col_classifier, tables,
         num_big_parts += 1
         try:
             num_col, peaks_neg_fin = find_num_col(regions_without_separators[top: bot],
-                                                  num_col_classifier, tables, multiplier=7.0)
-            # print("big part %d:%d has %d columns" % (top, bot, num_col + 1), peaks_neg_fin)
+                                                  num_col_classifier, tables,
+                                                  vertical_separators=1 * (vertical[top: bot] > 0),
+                                                  multiplier=7.0)
+            logger.debug("big part %d:%d has %d columns", top, bot, num_col + 1)
+            # print(peaks_neg_fin)
         except:
             num_col = 0
             peaks_neg_fin = []
@@ -1522,7 +1553,8 @@ def return_boxes_of_images_by_order_of_reading_new(
        * matrix_of_seps: type and coordinates of horizontal and vertical separators,
              as well as headings
        * num_col_classifier: predicted number of columns for the entire page
-       * erosion_hurts: bool
+       * erosion_hurts: whether region masks have already been eroded
+                        (and thus gaps can be expected to be wider)
        * tables: bool
        * right2left_readingorder: whether to invert the default left-to-right order
 
@@ -1578,6 +1610,12 @@ def return_boxes_of_images_by_order_of_reading_new(
     height_tot, width_tot = regions_without_separators.shape
     big_part = 22 * height_tot // 100 # percent height
     _, ccomps, cstats, _ = cv2.connectedComponentsWithStats(regions_without_separators.astype(np.uint8))
+    args_ver = matrix_of_seps_ch[:, 9] == 1
+    mask_ver = np.zeros_like(regions_without_separators, dtype=bool)
+    for i in np.flatnonzero(args_ver):
+        mask_ver[matrix_of_seps_ch[i, 6]: matrix_of_seps_ch[i, 7],
+                 matrix_of_seps_ch[i, 2]: matrix_of_seps_ch[i, 3]] = True
+    vertical_seps = 1 * ((regions_with_separators == 6) & mask_ver)
     for top, bot in pairwise(splitter_y_new):
         # print("%d:%d" % (top, bot), 'i')
         # dbg_plt([0, None, top, bot], "image cut for y split %d:%d" % (top, bot))
@@ -1589,16 +1627,13 @@ def return_boxes_of_images_by_order_of_reading_new(
         #if (len(matrix_new[:,9][matrix_new[:,9]==1]) > 0 and
         #    np.max(matrix_new[:,8][matrix_new[:,9]==1]) >=
         #    0.1 * (np.abs(bot-top))):
-        try:
-            num_col, peaks_neg_fin = find_num_col(
-                regions_without_separators[top:bot],
-                # we do not expect to get all columns in small parts (headings etc.):
-                num_col_classifier if bot - top >= big_part else 1,
-                tables, multiplier=6. if erosion_hurts else 7.,
-                unbalanced=True)
-        except:
-            peaks_neg_fin=[]
-            num_col = 0
+        num_col, peaks_neg_fin = find_num_col(
+            regions_without_separators[top:bot],
+            # we do not expect to get all columns in small parts (headings etc.):
+            num_col_classifier if bot - top >= big_part else 1,
+            tables, vertical_separators=vertical_seps[top: bot],
+            multiplier=6. if erosion_hurts else 7.,
+            unbalanced=True)
         try:
             if ((len(peaks_neg_fin) + 1 < num_col_classifier or
                 num_col_classifier == 6) and
@@ -1606,12 +1641,18 @@ def return_boxes_of_images_by_order_of_reading_new(
                 bot - top >= big_part):
                 # found too few columns here
                 #print('burda')
+                logger.debug("searching for more than %d columns in big part %d:%d",
+                             len(peaks_neg_fin) + 1, top, bot)
                 peaks_neg_fin_org = np.copy(peaks_neg_fin)
                 #print("peaks_neg_fin_org", peaks_neg_fin_org)
-                if len(peaks_neg_fin)==0:
+                if len(peaks_neg_fin) == 0:
                     num_col, peaks_neg_fin = find_num_col(
                         regions_without_separators[top:bot],
-                        num_col_classifier, tables, multiplier=3., unbalanced=True)
+                        num_col_classifier, tables,
+                        vertical_separators=vertical_seps[top: bot],
+                        # try to be less strict (lower threshold than above)
+                        multiplier=7. if erosion_hurts else 8.,
+                        unbalanced=True)
                 #print(peaks_neg_fin,'peaks_neg_fin')
                 peaks_neg_fin_early = [0] + peaks_neg_fin + [width_tot-1]
 
@@ -1625,22 +1666,19 @@ def return_boxes_of_images_by_order_of_reading_new(
                     # plt.plot(regions_without_separators[top:bot, left:right].sum(axis=0))
                     # plt.title("vertical projection (sum over y)")
                     # plt.show()
-                    try:
-                        _, peaks_neg_fin1 = find_num_col(
-                            regions_without_separators[top:bot, left:right],
-                            num_col_classifier, tables, multiplier=7.)
-                    except:
-                        peaks_neg_fin1 = []
-                    try:
-                        _, peaks_neg_fin2 = find_num_col(
-                            regions_without_separators[top:bot, left:right],
-                            num_col_classifier, tables, multiplier=5.)
-                    except:
-                        peaks_neg_fin2 = []
+                    # try to get more peaks with different multipliers
+                    num_col_expected = round((right - left) / width_tot * num_col_classifier)
+                    args = regions_without_separators[top:bot, left:right], num_col_expected, tables
+                    kwargs = dict(vertical_separators=vertical_seps[top: bot, left:right])
+                    _, peaks_neg_fin1 = find_num_col(*args, **kwargs, multiplier=7.)
+                    _, peaks_neg_fin2 = find_num_col(*args, **kwargs, multiplier=5.)
                     if len(peaks_neg_fin1) >= len(peaks_neg_fin2):
                         peaks_neg_fin = peaks_neg_fin1
                     else:
                         peaks_neg_fin = peaks_neg_fin2
+                    # print(peaks_neg_fin)
+                    logger.debug("found %d additional column boundaries in %d:%d",
+                                 len(peaks_neg_fin), left, right)
                     # add offset to local result
                     peaks_neg_fin = list(np.array(peaks_neg_fin) + left)
                     #print(peaks_neg_fin,'peaks_neg_fin')
@@ -1652,6 +1690,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                     #print(peaks_neg_fin_rev,'peaks_neg_fin_rev')
 
                 if len(peaks_neg_fin_rev) >= len(peaks_neg_fin_org):
+                    #print("found more peaks than at first glance", peaks_neg_fin_rev, peaks_neg_fin_org)
                     peaks_neg_fin = peaks_neg_fin_rev
                 else:
                     peaks_neg_fin = peaks_neg_fin_org
