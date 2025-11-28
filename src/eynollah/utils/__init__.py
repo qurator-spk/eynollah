@@ -1796,7 +1796,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                 #               "box height", (y_bot - y_top),
                 #               "label height", sum(regions_without_separators[
                 #                   y_top: y_bot, peaks_neg_tot[start + 1]]))
-                return min((last for last, l_top, l_bot, l_count in labelcolmap.get(start, [])
+                return max((last for last, l_top, l_bot, l_count in labelcolmap.get(start, [])
                             # yield the right-most column that does not cut through
                             # any regions in this horizontal span
                             if y_top < l_bot and y_bot > l_top
