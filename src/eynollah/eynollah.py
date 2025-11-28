@@ -2356,7 +2356,6 @@ class Eynollah:
         img_only_regions_with_sep = (prediction_regions_org_y == 1).astype(np.uint8)
         try:
             img_only_regions = cv2.erode(img_only_regions_with_sep[:,:], KERNEL, iterations=20)
-            _, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
             img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]*(1.2 if is_image_enhanced else 1)))
 
             prediction_regions_org = self.do_prediction(True, img, self.models["region"])
@@ -3138,7 +3137,7 @@ class Eynollah:
         #print(time.time()-t_0_box,'time box in 2')
         self.logger.info("num_col_classifier: %s", num_col_classifier)
 
-        if num_col_classifier >= 3:
+        if not erosion_hurts:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                 regions_without_separators = regions_without_separators.astype(np.uint8)
                 regions_without_separators = cv2.erode(regions_without_separators[:, :], KERNEL, iterations=6)
@@ -3289,21 +3288,16 @@ class Eynollah:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     num_col, _, matrix_of_seps_ch, splitter_y_new, _ = find_number_of_columns_in_document(
                         text_regions_p, num_col_classifier, self.tables, label_seps)
-
-                if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                    num_col_d, _, matrix_of_seps_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
-                        text_regions_p_d, num_col_classifier, self.tables, label_seps)
-
-                if num_col_classifier>=3:
-                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                    if not erosion_hurts:
                         regions_without_separators = regions_without_separators.astype(np.uint8)
                         regions_without_separators = cv2.erode(regions_without_separators[:,:], KERNEL, iterations=6)
 
-                    if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+                else:
+                    num_col_d, _, matrix_of_seps_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
+                        text_regions_p_d, num_col_classifier, self.tables, label_seps)
+                    if not erosion_hurts:
                         regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
                         regions_without_separators_d = cv2.erode(regions_without_separators_d[:,:], KERNEL, iterations=6)
-                else:
-                    pass
 
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(
@@ -4149,6 +4143,7 @@ class Eynollah:
             self.run_enhancement(self.light_version)
         
         self.logger.info(f"Image: {self.image.shape[1]}x{self.image.shape[0]}, "
+                         f"scale {self.scale_x:.1f}x{self.scale_y:.1f}, "
                          f"{self.dpi} DPI, {num_col_classifier} columns")
         if is_image_enhanced:
             self.logger.info("Enhancement applied")
@@ -4682,7 +4677,7 @@ class Eynollah:
                         _, _, matrix_of_seps_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
                             text_regions_p_d, num_col_classifier, self.tables, label_seps)
 
-                if num_col_classifier >= 3:
+                if not erosion_hurts:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                         regions_without_separators = regions_without_separators.astype(np.uint8)
                         regions_without_separators = cv2.erode(regions_without_separators[:, :], KERNEL, iterations=6)
