@@ -128,6 +128,7 @@ def return_textlines_split_if_needed(textline_image, textline_image_bin=None):
             return [image1, image2], None
     else:
         return None, None
+
 def preprocess_and_resize_image_for_ocrcnn_model(img, image_height, image_width):
     if img.shape[0]==0 or img.shape[1]==0:
         img_fin = np.ones((image_height, image_width, 3))
