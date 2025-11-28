@@ -88,7 +88,6 @@ def ocr_cli(
     tr_ocr,
     do_not_mask_with_textline_contour,
     batch_size,
-    dataset_abbrevation,
     min_conf_value_of_textline_text,
 ):
     """
@@ -101,7 +100,6 @@ def ocr_cli(
         tr_ocr=tr_ocr,
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
         batch_size=batch_size,
-        pref_of_dataset=dataset_abbrevation,
         min_conf_value_of_textline_text=min_conf_value_of_textline_text)
     eynollah_ocr.run(overwrite=overwrite,
                      dir_in=dir_in,
