@@ -20,7 +20,7 @@ def contours_in_same_horizon(cy_main_hor):
     by index into the array.
     """
     sort = np.argsort(cy_main_hor)
-    same = np.diff(cy_main_hor[sort] <= 20)
+    same = np.diff(cy_main_hor[sort]) <= 20
     # groups = np.split(sort, np.arange(len(cy_main_hor) - 1)[~same] + 1)
     same = np.flatnonzero(same)
     return np.stack((sort[:-1][same], sort[1:][same])).T
