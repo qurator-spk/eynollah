@@ -1189,7 +1189,7 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
                      int(cx_main_ver[i])-25:
                      int(cx_main_ver[i])+25] = 0
         img_p_in_ver[int(y_max_main_ver[i])-30:
-                     int(y_max_main_ver[i]),
+                     int(y_max_main_ver[i]+1),
                      int(cx_main_ver[i])-25:
                      int(cx_main_ver[i])+25] = 0
 
