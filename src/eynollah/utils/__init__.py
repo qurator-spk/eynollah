@@ -1194,6 +1194,9 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
       * the y coordinates with horizontal separators spanning the full width
     """
 
+    # cut horizontal seps by vertical seps
+    img_p_in_hor[img_p_in_ver > 0] = 0
+
     #img_p_in_ver = cv2.erode(img_p_in_ver, self.kernel, iterations=2)
     _, thresh = cv2.threshold(img_p_in_ver, 0, 255, 0)
     contours_lines_ver, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -1237,24 +1240,34 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
                 some_cy=cy_main_hor[pair]
                 some_x_min=x_min_main_hor[pair]
                 some_x_max=x_max_main_hor[pair]
+                some_y_min=y_min_main_hor[pair]
+                some_y_max=y_max_main_hor[pair]
+                if np.any(img_p_in_ver[some_y_min.min(): some_y_max.max(),
+                                       some_x_max.min(): some_x_min.max()]):
+                    # print("horizontal pair cut by vertical sep", pair, some_args, some_cy,
+                    #       "%d:%d" % (some_x_min[0], some_x_max[0]),
+                    #       "%d:%d" % (some_x_min[1], some_x_max[1]))
+                    continue
 
                 #img_in=np.zeros(separators_closeup_n[:,:,2].shape)
                 #print(img_p_in_ver.shape[1],some_x_max-some_x_min,'xdiff')
-                diff_x_some=some_x_max-some_x_min
-                for jv in range(len(some_args)):
-                    img_p_in=cv2.fillPoly(img_in_hor, pts=[contours_lines_hor[some_args[jv]]], color=(1,1,1))
-                    if any(i_diff>(img_p_in_ver.shape[1]/float(3.3)) for i_diff in diff_x_some):
-                        img_p_in[int(np.mean(some_cy))-5:
-                                 int(np.mean(some_cy))+5,
-                                 int(np.min(some_x_min)):
-                                 int(np.max(some_x_max)) ]=1
-                sum_dis=dist_x_hor[some_args].sum()
-                diff_max_min_uniques=np.max(x_max_main_hor[some_args])-np.min(x_min_main_hor[some_args])
+                sum_xspan = dist_x_hor[some_args].sum()
+                tot_xspan = np.max(x_max_main_hor[some_args]) - np.min(x_min_main_hor[some_args])
+                dev_xspan = np.std(dist_x_hor[some_args]) / np.mean(dist_x_hor[some_args])
+                if (tot_xspan > sum_xspan and # no x overlap
+                    sum_xspan > 0.85 * tot_xspan): # x close to each other
+                    # print("merging horizontal pair", pair, some_args, some_cy,
+                    #       "%d:%d" % (some_x_min[0], some_x_max[0]),
+                    #       "%d:%d" % (some_x_min[1], some_x_max[1]))
+                    img_p_in[int(np.mean(some_cy)) - 5:
+                             int(np.mean(some_cy)) + 5,
+                             np.min(some_x_min):
+                             np.max(some_x_max)] = 255
 
-                if (diff_max_min_uniques > sum_dis and
-                    sum_dis / float(diff_max_min_uniques) > 0.85 and
-                    diff_max_min_uniques / float(img_p_in_ver.shape[1]) > 0.85 and
-                    np.std(dist_x_hor[some_args]) < 0.55 * np.mean(dist_x_hor[some_args])):
+                if (tot_xspan > sum_xspan and # no x overlap
+                    sum_xspan > 0.85 * tot_xspan and # x close to each other
+                    tot_xspan > 0.85 * width and # nearly full width
+                    dev_xspan < 0.55): # similar x span
                     # print(dist_x_hor[some_args],
                     #       dist_x_hor[some_args].sum(),
                     #       np.min(x_min_main_hor[some_args]),
@@ -1263,17 +1276,23 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
                     #       np.std( dist_x_hor[some_args] ),
                     #       np.var( dist_x_hor[some_args] ),'jalibdiha')
                     special_separators.append(np.mean(cy_main_hor[some_args]))
+                    # print("special separator for midline", special_separators[-1])
+            # plt.subplot(1, 2, 1, title='original horizontal (1) / vertical (2) seps')
+            # plt.imshow(1 * (img_p_in_hor > 0) + 2 * (img_p_in_ver > 0))
+            # plt.subplot(1, 2, 2, title='extended horizontal seps')
+            # plt.imshow(img_p_in)
+            # plt.show()
         else:
             img_p_in = img_p_in_hor
             special_separators = []
 
-        img_p_in_ver[img_p_in_ver == 255] = 1
-        sep_ver_hor_cross = 255 * ((img_p_in > 0) & (img_p_in_ver > 0))
-        contours_cross, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        center_cross = np.array(find_center_of_contours(contours_cross), dtype=int)
-        for cx, cy in center_cross.T:
-            img_p_in[cy - 30: cy + 30, cx + 5: cx + 40] = 0
-            img_p_in[cy - 30: cy + 30, cx - 40: cx - 4] = 0
+        #img_p_in_ver[img_p_in_ver == 255] = 1
+        # sep_ver_hor_cross = 255 * ((img_p_in > 0) & (img_p_in_ver > 0))
+        # contours_cross, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # center_cross = np.array(find_center_of_contours(contours_cross), dtype=int)
+        # for cx, cy in center_cross.T:
+        #     img_p_in[cy - 30: cy + 30, cx + 5: cx + 40] = 0
+        #     img_p_in[cy - 30: cy + 30, cx - 40: cx - 4] = 0
     else:
         img_p_in = np.copy(img_p_in_hor)
         special_separators = []
