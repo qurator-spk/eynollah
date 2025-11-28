@@ -1180,7 +1180,7 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
 
     #img_p_in_ver = cv2.erode(img_p_in_ver, self.kernel, iterations=2)
     _, thresh = cv2.threshold(img_p_in_ver, 0, 255, 0)
-    contours_lines_ver, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_lines_ver, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     slope_lines_ver, _, x_min_main_ver, _, _, _, y_min_main_ver, y_max_main_ver, cx_main_ver = \
         find_features_of_lines(contours_lines_ver)
     for i in range(len(x_min_main_ver)):
@@ -1194,7 +1194,7 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
                      int(cx_main_ver[i])+25] = 0
 
     _, thresh = cv2.threshold(img_in_hor, 0, 255, 0)
-    contours_lines_hor, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_lines_hor, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     slope_lines_hor, dist_x_hor, x_min_main_hor, x_max_main_hor, cy_main_hor, _, _, _, _ = \
         find_features_of_lines(contours_lines_hor)
