@@ -1,29 +1,15 @@
 from functools import cached_property
 from typing import Optional
 
-from PIL import Image
 from frozendict import frozendict
-import numpy as np
-import cv2
-from click import command
 
 from ocrd import Processor, OcrdPageResult, OcrdPageResultImage
 from ocrd_models.ocrd_page import OcrdPage, AlternativeImageType
-from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 
 from eynollah.model_zoo.model_zoo import EynollahModelZoo
 
-from .sbb_binarize import SbbBinarizer
-
-
-def cv2pil(img):
-    return Image.fromarray(img.astype('uint8'))
-
-def pil2cv(img):
-    # from ocrd/workspace.py
-    color_conversion = cv2.COLOR_GRAY2BGR if img.mode in ('1', 'L') else  cv2.COLOR_RGB2BGR
-    pil_as_np_array = np.array(img).astype('uint8') if img.mode == '1' else np.array(img)
-    return cv2.cvtColor(pil_as_np_array, color_conversion)
+from ..sbb_binarize import SbbBinarizer
+from ..utils.pil_cv2 import cv2pil, pil2cv
 
 class SbbBinarizeProcessor(Processor):
     # already employs GPU (without singleton process atm)
@@ -103,12 +89,7 @@ class SbbBinarizeProcessor(Processor):
                 line_image_bin = cv2pil(self.binarizer.run(image=pil2cv(line_image), use_patches=True))
                 # update PAGE (reference the image file):
                 line_image_ref = AlternativeImageType(comments=line_xywh['features'] + ',binarized')
-                line.add_AlternativeImage(region_image_ref)
+                line.add_AlternativeImage(line_image_ref)
                 result.images.append(OcrdPageResultImage(line_image_bin, line.id + '.IMG-BIN', line_image_ref))
 
         return result
-
-@command()
-@ocrd_cli_options
-def main(*args, **kwargs):
-    return ocrd_cli_wrap_processor(SbbBinarizeProcessor, *args, **kwargs)

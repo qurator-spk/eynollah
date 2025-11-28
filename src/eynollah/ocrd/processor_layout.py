@@ -3,9 +3,9 @@ from typing import Optional
 from ocrd_models import OcrdPage
 from ocrd import OcrdPageResultImage, Processor, OcrdPageResult
 
-from eynollah.model_zoo.model_zoo import EynollahModelZoo
-
-from .eynollah import Eynollah, EynollahXmlWriter
+from ..model_zoo.model_zoo import EynollahModelZoo
+from ..eynollah import Eynollah
+from ..writer import EynollahXmlWriter
 
 class EynollahProcessor(Processor):
     # already employs background CPU multiprocessing per page

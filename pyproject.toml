@@ -41,8 +41,9 @@ classifiers = [
 [project.scripts]
 eynollah = "eynollah.cli:main"
 eynollah-training = "eynollah.training.cli:main"
-ocrd-eynollah-segment = "eynollah.ocrd_cli:main"
-ocrd-sbb-binarize = "eynollah.ocrd_cli_binarization:main"
+ocrd-eynollah-segment = "eynollah.ocrd.ocrd_cli_layout:main"
+ocrd-sbb-binarize = "eynollah.ocrd.ocrd_cli_binarize:main"
+ocrd-eynollah-ocr = "eynollah.ocrd.ocrd_cli_ocr:main"
 
 [project.urls]
 Homepage = "https://github.com/qurator-spk/eynollah"
