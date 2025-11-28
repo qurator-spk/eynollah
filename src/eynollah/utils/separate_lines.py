@@ -1564,6 +1564,9 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
             angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, plotter=plotter)
             if var2 > var:
                 angle = angle2
+    # precision stage:
+    angles = np.linspace(angle - 2.5, angle + 2.5, n_tot_angles // 2)
+    angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
     return angle
 
 def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map):
