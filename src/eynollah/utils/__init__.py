@@ -241,10 +241,13 @@ def find_num_col_deskew(regions_without_separators, sigma_, multiplier=3.8):
     z = gaussian_filter1d(regions_without_separators_0, sigma_)
     return np.std(z)
 
-def find_num_col(regions_without_separators, num_col_classifier, tables, multiplier=3.8, unbalanced=False):
+def find_num_col(regions_without_separators, num_col_classifier, tables, multiplier=3.8, unbalanced=False, vertical_separators=None):
     if not regions_without_separators.any():
         return 0, []
+    if vertical_separators is None:
+        vertical_separators = np.zeros_like(regions_without_separators)
     regions_without_separators_0 = regions_without_separators.sum(axis=0)
+    vertical_separators_0 = vertical_separators.sum(axis=0)
     # fig, (ax1, ax2) = plt.subplots(2, sharex=True)
     # ax1.imshow(regions_without_separators, aspect="auto")
     # ax2.plot(regions_without_separators_0)
@@ -258,13 +261,12 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
     first_nonzero = first_nonzero + 50 #+ 200
     last_offmargin = len(regions_without_separators_0) - 170 #370
     first_offmargin = 170 #370
+    x = vertical_separators_0
     y = regions_without_separators_0  # [first_nonzero:last_nonzero]
-    y_help = np.zeros(len(y) + 20)
-    y_help[10 : len(y) + 10] = y
-    x = np.arange(len(y))
-    zneg_rev = -y_help + np.max(y_help)
-    zneg = np.zeros(len(zneg_rev) + 20)
-    zneg[10 : len(zneg_rev) + 10] = zneg_rev
+    y_help = np.pad(y, (10, 10), constant_values=(0, 0))
+    zneg_rev = y.max() - y_help
+    zneg = np.pad(zneg_rev, (10, 10), constant_values=(0, 0))
+    x = gaussian_filter1d(x, sigma_)
     z = gaussian_filter1d(y, sigma_)
     zneg = gaussian_filter1d(zneg, sigma_)
 
@@ -333,6 +335,7 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
     #np.mean(y[peaks_neg[0]:peaks_neg[-1]])-np.std(y[peaks_neg[0]:peaks_neg[-1]])/2.0
 
     # extra criterion: fixed multiple of lowest gap height
+    # print("grenze", grenze, multiplier * (5 + np.min(interest_neg)))
     grenze = min(grenze, multiplier * (5 + np.min(interest_neg)))
 
     # print(interest_neg,'interest_neg')
@@ -341,16 +344,22 @@ def find_num_col(regions_without_separators, num_col_classifier, tables, multipl
     # print(dis_talaei,'dis_talaei')
     # print(peaks_neg,'peaks_neg')
     # fig, (ax1, ax2) = plt.subplots(2, sharex=True)
-    # ax1.imshow(regions_without_separators, aspect="auto")
+    # ax1.imshow(regions_without_separators + 5 * vertical_separators, aspect="auto")
     # ax2.plot(z, color='red', label='z')
     # ax2.plot(zneg[20:], color='blue', label='zneg')
+    # ax2.plot(x, color='green', label='vsep')
     # ax2.scatter(peaks_neg, z[peaks_neg], color='red')
     # ax2.scatter(peaks_neg, zneg[20:][peaks_neg], color='blue')
-    # ax2.axhline(min_peaks_pos, color='red', label="min_peaks_pos")
-    # ax2.axhline(grenze, color='blue', label="grenze")
+    # ax2.axhline(min_peaks_pos, color='red')
+    # ax2.axhline(grenze, color='blue')
+    # ax2.annotate("min_peaks_pos", xy=(0, min_peaks_pos), color='red')
+    # ax2.annotate("grenze", xy=(0, grenze), color='blue')
     # ax2.text(0, grenze, "grenze")
+    # ax2.legend()
     # plt.show()
 
+    # print("vsep", x[peaks_neg])
+    interest_neg = interest_neg - x[peaks_neg]
     interest_neg_fin = interest_neg[(interest_neg < grenze)]
     peaks_neg_fin = peaks_neg[(interest_neg < grenze)]
 
