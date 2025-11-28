@@ -10,14 +10,14 @@ Image enhancer. The output can be written as same scale of input or in new predi
 import logging
 import os
 import time
-from typing import Dict, Optional
+from typing import Optional
 from pathlib import Path
 import gc
 
 import cv2
 from keras.models import Model
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf # type: ignore
 from skimage.morphology import skeletonize
 
 from .model_zoo import EynollahModelZoo
@@ -27,7 +27,6 @@ from .utils import (
     is_image_filename,
     crop_image_inside_box
 )
-from .patch_encoder import PatchEncoder, Patches
 
 DPI_THRESHOLD = 298
 KERNEL = np.ones((5, 5), np.uint8)
@@ -91,9 +90,6 @@ class Enhancer:
             key += '_uint8'
         return self._imgs[key].copy()
 
-    def isNaN(self, num):
-        return num != num
-    
     def predict_enhancement(self, img):
         self.logger.debug("enter predict_enhancement")
 

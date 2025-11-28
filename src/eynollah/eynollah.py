@@ -77,15 +77,14 @@ from .utils.rotate import (
 )
 from .utils.separate_lines import (
     return_deskew_slop,
-    do_work_of_slopes_new,
     do_work_of_slopes_new_curved,
-    do_work_of_slopes_new_light,
 )
 from .utils.marginals import get_marginals
 from .utils.resize import resize_image
 from .utils.shm import share_ndarray
 from .utils import (
     is_image_filename,
+    isNaN,
     crop_image_inside_box,
     box2rect,
     find_num_col,
@@ -268,9 +267,6 @@ class Eynollah:
         if uint8:
             key += '_uint8'
         return self._imgs[key].copy()
-
-    def isNaN(self, num):
-        return num != num
 
     def predict_enhancement(self, img):
         self.logger.debug("enter predict_enhancement")
@@ -913,136 +909,6 @@ class Eynollah:
         gc.collect()
         return prediction_true
 
-    def do_padding_with_scale(self, img, scale):
-        h_n = int(img.shape[0]*scale)
-        w_n = int(img.shape[1]*scale)
-
-        channel0_avg = int( np.mean(img[:,:,0]) )
-        channel1_avg = int( np.mean(img[:,:,1]) )
-        channel2_avg = int( np.mean(img[:,:,2]) )
-
-        h_diff = img.shape[0] - h_n
-        w_diff = img.shape[1] - w_n
-
-        h_start = int(0.5 * h_diff)
-        w_start = int(0.5 * w_diff)
-
-        img_res = resize_image(img, h_n, w_n)
-        #label_res = resize_image(label, h_n, w_n)
-
-        img_scaled_padded = np.copy(img)
-
-        #label_scaled_padded = np.zeros(label.shape)
-
-        img_scaled_padded[:,:,0] = channel0_avg
-        img_scaled_padded[:,:,1] = channel1_avg
-        img_scaled_padded[:,:,2] = channel2_avg
-
-        img_scaled_padded[h_start:h_start+h_n, w_start:w_start+w_n,:] = img_res[:,:,:]
-        #label_scaled_padded[h_start:h_start+h_n, w_start:w_start+w_n,:] = label_res[:,:,:]
-
-        return img_scaled_padded#, label_scaled_padded
-
-    def do_prediction_new_concept_scatter_nd(
-            self, patches, img, model,
-            n_batch_inference=1, marginal_of_patch_percent=0.1,
-            thresholding_for_some_classes_in_light_version=False,
-            thresholding_for_artificial_class_in_light_version=False):
-
-        self.logger.debug("enter do_prediction_new_concept")
-        img_height_model = model.layers[-1].output_shape[1]
-        img_width_model = model.layers[-1].output_shape[2]
-
-        if not patches:
-            img_h_page = img.shape[0]
-            img_w_page = img.shape[1]
-            img = img / 255.0
-            img = resize_image(img, img_height_model, img_width_model)
-
-            label_p_pred = model.predict(img[np.newaxis], verbose=0)
-            seg = np.argmax(label_p_pred, axis=3)[0]
-
-            if thresholding_for_artificial_class_in_light_version:
-                #seg_text = label_p_pred[0,:,:,1]
-                #seg_text[seg_text<0.2] =0
-                #seg_text[seg_text>0] =1
-                #seg[seg_text==1]=1
-
-                seg_art = label_p_pred[0,:,:,4]
-                seg_art[seg_art<0.2] =0
-                seg_art[seg_art>0] =1
-                seg[seg_art==1]=4
-
-            seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
-            prediction_true = resize_image(seg_color, img_h_page, img_w_page).astype(np.uint8)
-            return prediction_true
-
-        if img.shape[0] < img_height_model:
-            img = resize_image(img, img_height_model, img.shape[1])
-        if img.shape[1] < img_width_model:
-            img = resize_image(img, img.shape[0], img_width_model)
-
-        self.logger.debug("Patch size: %sx%s", img_height_model, img_width_model)
-        ##margin = int(marginal_of_patch_percent * img_height_model)
-        #width_mid = img_width_model - 2 * margin
-        #height_mid = img_height_model - 2 * margin
-        img = img / 255.0
-        img = img.astype(np.float16)
-        img_h = img.shape[0]
-        img_w = img.shape[1]
-
-        stride_x = img_width_model - 100
-        stride_y = img_height_model - 100
-
-        one_tensor = tf.ones_like(img)
-        img_patches, one_patches = tf.image.extract_patches(
-            images=[img, one_tensor],
-            sizes=[1, img_height_model, img_width_model, 1],
-            strides=[1, stride_y, stride_x, 1],
-            rates=[1, 1, 1, 1],
-            padding='SAME')
-        img_patches = tf.squeeze(img_patches)
-        one_patches = tf.squeeze(one_patches)
-        img_patches_resh = tf.reshape(img_patches, shape=(img_patches.shape[0] * img_patches.shape[1],
-                                                          img_height_model, img_width_model, 3))
-        pred_patches = model.predict(img_patches_resh, batch_size=n_batch_inference)
-        one_patches = tf.reshape(one_patches, shape=(img_patches.shape[0] * img_patches.shape[1],
-                                                     img_height_model, img_width_model, 3))
-        x = tf.range(img.shape[1])
-        y = tf.range(img.shape[0])
-        x, y = tf.meshgrid(x, y)
-        indices = tf.stack([y, x], axis=-1)
-
-        indices_patches = tf.image.extract_patches(
-            images=tf.expand_dims(indices, axis=0),
-            sizes=[1, img_height_model, img_width_model, 1],
-            strides=[1, stride_y, stride_x, 1],
-            rates=[1, 1, 1, 1],
-            padding='SAME')
-        indices_patches =  tf.squeeze(indices_patches)
-        indices_patches = tf.reshape(indices_patches, shape=(img_patches.shape[0] * img_patches.shape[1],
-                                                             img_height_model, img_width_model, 2))
-        margin_y = int( 0.5 * (img_height_model - stride_y) )
-        margin_x = int( 0.5 * (img_width_model - stride_x) )
-
-        mask_margin = np.zeros((img_height_model, img_width_model))
-        mask_margin[margin_y:img_height_model - margin_y,
-                    margin_x:img_width_model - margin_x] = 1
-
-        indices_patches_array = indices_patches.numpy()
-        for i in range(indices_patches_array.shape[0]):
-            indices_patches_array[i,:,:,0] = indices_patches_array[i,:,:,0]*mask_margin
-            indices_patches_array[i,:,:,1] = indices_patches_array[i,:,:,1]*mask_margin
-
-        reconstructed = tf.scatter_nd(
-            indices=indices_patches_array,
-            updates=pred_patches,
-            shape=(img.shape[0], img.shape[1], pred_patches.shape[-1])).numpy()
-
-        prediction_true = np.argmax(reconstructed, axis=2).astype(np.uint8)
-        gc.collect()
-        return np.repeat(prediction_true[:, :, np.newaxis], 3, axis=2)
-
     def do_prediction_new_concept(
             self, patches, img, model,
             n_batch_inference=1, marginal_of_patch_percent=0.1,
@@ -1615,41 +1481,6 @@ class Eynollah:
                 all_box_coord,
                 slopes)
 
-    def get_slopes_and_deskew_new_light(self, contours, contours_par, textline_mask_tot, boxes, slope_deskew):
-        if not len(contours):
-            return [], [], []
-        self.logger.debug("enter get_slopes_and_deskew_new_light")
-        with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
-            assert self.executor
-            results = self.executor.map(partial(do_work_of_slopes_new_light,
-                                                textline_mask_tot_ea=textline_mask_tot_shared,
-                                                slope_deskew=slope_deskew,
-                                                logger=self.logger,),
-                                        boxes, contours, contours_par)
-            results = list(results) # exhaust prior to release
-        #textline_polygons, box_coord, slopes = zip(*results)
-        self.logger.debug("exit get_slopes_and_deskew_new_light")
-        return tuple(zip(*results))
-
-    def get_slopes_and_deskew_new(self, contours, contours_par, textline_mask_tot, boxes, slope_deskew):
-        if not len(contours):
-            return [], [], []
-        self.logger.debug("enter get_slopes_and_deskew_new")
-        with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
-            assert self.executor
-            results = self.executor.map(partial(do_work_of_slopes_new,
-                                                textline_mask_tot_ea=textline_mask_tot_shared,
-                                                slope_deskew=slope_deskew,
-                                                MAX_SLOPE=MAX_SLOPE,
-                                                KERNEL=KERNEL,
-                                                logger=self.logger,
-                                                plotter=self.plotter,),
-                                        boxes, contours, contours_par)
-            results = list(results) # exhaust prior to release
-        #textline_polygons, box_coord, slopes = zip(*results)
-        self.logger.debug("exit get_slopes_and_deskew_new")
-        return tuple(zip(*results))
-
     def get_slopes_and_deskew_new_curved(self, contours_par, textline_mask_tot, boxes,
                                          mask_texts_only, num_col, scale_par, slope_deskew):
         if not len(contours_par):
@@ -1874,145 +1705,6 @@ class Eynollah:
                 textline_mask_tot_ea,
                 img_bin,
                 confidence_matrix)
-
-    def get_regions_from_xy_2models(self,img,is_image_enhanced, num_col_classifier):
-        self.logger.debug("enter get_regions_from_xy_2models")
-        erosion_hurts = False
-        img_org = np.copy(img)
-        img_height_h = img_org.shape[0]
-        img_width_h = img_org.shape[1]
-
-        ratio_y=1.3
-        ratio_x=1
-
-        img = resize_image(img_org, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-        prediction_regions_org_y = self.do_prediction(True, img, self.model_zoo.get("region"))
-        prediction_regions_org_y = resize_image(prediction_regions_org_y, img_height_h, img_width_h )
-
-        #plt.imshow(prediction_regions_org_y[:,:,0])
-        #plt.show()
-        prediction_regions_org_y = prediction_regions_org_y[:,:,0]
-        mask_zeros_y = (prediction_regions_org_y[:,:]==0)*1
-
-        ##img_only_regions_with_sep = ( (prediction_regions_org_y[:,:] != 3) & (prediction_regions_org_y[:,:] != 0) )*1
-        img_only_regions_with_sep = (prediction_regions_org_y == 1).astype(np.uint8)
-        try:
-            img_only_regions = cv2.erode(img_only_regions_with_sep[:,:], KERNEL, iterations=20)
-            _, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
-            img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]*(1.2 if is_image_enhanced else 1)))
-
-            prediction_regions_org = self.do_prediction(True, img, self.model_zoo.get("region"))
-            prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
-
-            prediction_regions_org=prediction_regions_org[:,:,0]
-            prediction_regions_org[(prediction_regions_org[:,:]==1) & (mask_zeros_y[:,:]==1)]=0
-
-            img = resize_image(img_org, int(img_org.shape[0]), int(img_org.shape[1]))
-
-            prediction_regions_org2 = self.do_prediction(True, img, self.model_zoo.get("region_p2"), marginal_of_patch_percent=0.2)
-            prediction_regions_org2=resize_image(prediction_regions_org2, img_height_h, img_width_h )
-
-            mask_zeros2 = (prediction_regions_org2[:,:,0] == 0)
-            mask_lines2 = (prediction_regions_org2[:,:,0] == 3)
-            text_sume_early = (prediction_regions_org[:,:] == 1).sum()
-            prediction_regions_org_copy = np.copy(prediction_regions_org)
-            prediction_regions_org_copy[(prediction_regions_org_copy[:,:]==1) & (mask_zeros2[:,:]==1)] = 0
-            text_sume_second = ((prediction_regions_org_copy[:,:]==1)*1).sum()
-            rate_two_models = 100. * text_sume_second / text_sume_early
-
-            self.logger.info("ratio_of_two_models: %s", rate_two_models)
-            if not(is_image_enhanced and rate_two_models < RATIO_OF_TWO_MODEL_THRESHOLD):
-                prediction_regions_org = np.copy(prediction_regions_org_copy)
-
-            prediction_regions_org[(mask_lines2[:,:]==1) & (prediction_regions_org[:,:]==0)]=3
-            mask_lines_only=(prediction_regions_org[:,:]==3)*1
-            prediction_regions_org = cv2.erode(prediction_regions_org[:,:], KERNEL, iterations=2)
-            prediction_regions_org = cv2.dilate(prediction_regions_org[:,:], KERNEL, iterations=2)
-
-            if rate_two_models<=40:
-                if self.input_binary:
-                    prediction_bin = np.copy(img_org)
-                else:
-                    prediction_bin = self.do_prediction(True, img_org, self.model_zoo.get("binarization"), n_batch_inference=5)
-                    prediction_bin = resize_image(prediction_bin, img_height_h, img_width_h )
-                    prediction_bin = 255 * (prediction_bin[:,:,0]==0)
-                    prediction_bin = np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
-
-                ratio_y=1
-                ratio_x=1
-
-                img = resize_image(prediction_bin, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-
-                prediction_regions_org = self.do_prediction(True, img, self.model_zoo.get("region"))
-                prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
-                prediction_regions_org=prediction_regions_org[:,:,0]
-
-                mask_lines_only=(prediction_regions_org[:,:]==3)*1
-
-            mask_texts_only=(prediction_regions_org[:,:]==1)*1
-            mask_images_only=(prediction_regions_org[:,:]==2)*1
-
-            polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
-            polygons_seplines = filter_contours_area_of_image(
-                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001, dilate=1)
-
-            polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only, 1, 0.00001)
-            polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only, 1, 0.00001)
-
-            text_regions_p_true = np.zeros(prediction_regions_org.shape)
-            text_regions_p_true = cv2.fillPoly(text_regions_p_true,pts = polygons_of_only_lines, color=(3, 3, 3))
-            text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
-
-            text_regions_p_true=cv2.fillPoly(text_regions_p_true,pts=polygons_of_only_texts, color=(1,1,1))
-
-            self.logger.debug("exit get_regions_from_xy_2models")
-            return text_regions_p_true, erosion_hurts, polygons_seplines, polygons_of_only_texts
-        except:
-            if self.input_binary:
-                prediction_bin = np.copy(img_org)
-                prediction_bin = self.do_prediction(True, img_org, self.model_zoo.get("binarization"), n_batch_inference=5)
-                prediction_bin = resize_image(prediction_bin, img_height_h, img_width_h )
-                prediction_bin = 255 * (prediction_bin[:,:,0]==0)
-                prediction_bin = np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2)
-            else:
-                prediction_bin = np.copy(img_org)
-            ratio_y=1
-            ratio_x=1
-
-
-            img = resize_image(prediction_bin, int(img_org.shape[0]*ratio_y), int(img_org.shape[1]*ratio_x))
-            prediction_regions_org = self.do_prediction(True, img, self.model_zoo.get("region"))
-            prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
-            prediction_regions_org=prediction_regions_org[:,:,0]
-
-            #mask_lines_only=(prediction_regions_org[:,:]==3)*1
-            #img = resize_image(img_org, int(img_org.shape[0]*1), int(img_org.shape[1]*1))
-
-            #prediction_regions_org = self.do_prediction(True, img, self.model_zoo.get_model("region"))
-            #prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
-            #prediction_regions_org = prediction_regions_org[:,:,0]
-            #prediction_regions_org[(prediction_regions_org[:,:] == 1) & (mask_zeros_y[:,:] == 1)]=0
-
-            mask_lines_only = (prediction_regions_org == 3)*1
-            mask_texts_only = (prediction_regions_org == 1)*1
-            mask_images_only= (prediction_regions_org == 2)*1
-
-            polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
-            polygons_seplines = filter_contours_area_of_image(
-                mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001, dilate=1)
-
-            polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
-            polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
-
-            text_regions_p_true = np.zeros(prediction_regions_org.shape)
-            text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_lines, color=(3,3,3))
-
-            text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
-            text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_texts, color=(1,1,1))
-
-            erosion_hurts = True
-            self.logger.debug("exit get_regions_from_xy_2models")
-            return text_regions_p_true, erosion_hurts, polygons_seplines, polygons_of_only_texts
 
     def do_order_of_regions(
             self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
@@ -2259,7 +1951,7 @@ class Eynollah:
 
             img_comm = cv2.fillPoly(img_comm, pts=main_contours, color=indiv)
 
-        if not self.isNaN(slope_mean_hor):
+        if not isNaN(slope_mean_hor):
             image_revised_last = np.zeros(image_regions_eraly_p.shape[:2])
             for i in range(len(boxes)):
                 box_ys = slice(*boxes[i][2:4])
@@ -2455,52 +2147,6 @@ class Eynollah:
 
         return  page_coord, image_page, textline_mask_tot_ea, img_bin_light, cont_page
 
-    def run_graphics_and_columns(
-            self, text_regions_p_1,
-            num_col_classifier, num_column_is_classified, erosion_hurts):
-
-        t_in_gr = time.time()
-        img_g = self.imread(grayscale=True, uint8=True)
-
-        img_g3 = np.zeros((img_g.shape[0], img_g.shape[1], 3))
-        img_g3 = img_g3.astype(np.uint8)
-        img_g3[:, :, 0] = img_g[:, :]
-        img_g3[:, :, 1] = img_g[:, :]
-        img_g3[:, :, 2] = img_g[:, :]
-
-        image_page, page_coord, cont_page = self.extract_page()
-
-        if self.tables:
-            table_prediction = self.get_tables_from_model(image_page, num_col_classifier)
-        else:
-            table_prediction = np.zeros((image_page.shape[0], image_page.shape[1])).astype(np.int16)
-
-        if self.plotter:
-            self.plotter.save_page_image(image_page)
-
-        text_regions_p_1 = text_regions_p_1[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
-        mask_images = (text_regions_p_1[:, :] == 2) * 1
-        mask_images = mask_images.astype(np.uint8)
-        mask_images = cv2.erode(mask_images[:, :], KERNEL, iterations=10)
-        mask_lines = (text_regions_p_1[:, :] == 3) * 1
-        mask_lines = mask_lines.astype(np.uint8)
-        img_only_regions_with_sep = ((text_regions_p_1[:, :] != 3) & (text_regions_p_1[:, :] != 0)) * 1
-        img_only_regions_with_sep = img_only_regions_with_sep.astype(np.uint8)
-
-        if erosion_hurts:
-            img_only_regions = np.copy(img_only_regions_with_sep[:,:])
-        else:
-            img_only_regions = cv2.erode(img_only_regions_with_sep[:,:], KERNEL, iterations=6)
-        try:
-            num_col, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
-            num_col = num_col + 1
-            if not num_column_is_classified:
-                num_col_classifier = num_col + 1
-        except Exception as why:
-            self.logger.error(why)
-            num_col = None
-        return (num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_lines,
-                text_regions_p_1, cont_page, table_prediction)
 
     def run_enhancement(self):
         t_in = time.time()
@@ -2518,10 +2164,7 @@ class Eynollah:
             else:
                 self.get_image_and_scales_after_enhancing(img_org, img_res)
         else:
-            if self.allow_enhancement:
-                self.get_image_and_scales(img_org, img_res, scale)
-            else:
-                self.get_image_and_scales(img_org, img_res, scale)
+            self.get_image_and_scales(img_org, img_res, scale)
             if self.allow_scaling:
                 img_org, img_res, is_image_enhanced = \
                     self.resize_image_with_column_classifier(is_image_enhanced, img_bin)
@@ -3018,42 +2661,6 @@ class Eynollah:
         else:
             region_ids = ['region_%04d' % i for i in range(len(co_text_all_org))]
             return ordered, region_ids
-
-
-    
-
-
-    
-
-    
-
-    def return_list_of_contours_with_desired_order(self, ls_cons, sorted_indexes):
-        return list(np.array(ls_cons)[np.array(sorted_indexes)])
-
-    def return_it_in_two_groups(self, x_differential):
-        split = [ind if x_differential[ind]!=x_differential[ind+1] else -1
-                 for ind in range(len(x_differential)-1)]
-        split_masked = list( np.array(split[:])[np.array(split[:])!=-1] )
-        if 0 not in split_masked:
-            split_masked.insert(0, -1)
-        split_masked.append(len(x_differential)-1)
-
-        split_masked = np.array(split_masked) +1
-
-        sums = [np.sum(x_differential[split_masked[ind]:split_masked[ind+1]])
-                for ind in range(len(split_masked)-1)]
-
-        indexes_to_bec_changed = [ind if (np.abs(sums[ind-1]) > np.abs(sums[ind]) and
-                                          np.abs(sums[ind+1]) > np.abs(sums[ind])) else -1
-                                  for ind in range(1,len(sums)-1)]
-        indexes_to_bec_changed_filtered = np.array(indexes_to_bec_changed)[np.array(indexes_to_bec_changed)!=-1]
-
-        x_differential_new = np.copy(x_differential)
-        for i in indexes_to_bec_changed_filtered:
-            i_slice = slice(split_masked[i], split_masked[i+1])
-            x_differential_new[i_slice] = -1 * np.array(x_differential)[i_slice]
-
-        return x_differential_new
 
     def filter_contours_inside_a_bigger_one(self, contours, contours_d_ordered, image,
                                             marginal_cnts=None, type_contour="textregion"):
