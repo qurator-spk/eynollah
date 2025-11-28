@@ -1176,7 +1176,23 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref, x_ref):
     return np.array(final_indexers_sorted), np.array(final_types), np.array(final_index_type)
 
 def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
-        img_p_in_ver, img_in_hor,num_col_classifier):
+        img_p_in_ver: np.ndarray,
+        img_p_in_hor: np.ndarray,
+        num_col_classifier: int,
+) -> Tuple[np.ndarray, List[float]]:
+    """
+    Given a horizontal and vertical separator mask, combine horizontal separators
+    (where possible) and make sure they do not cross each other.
+
+    Arguments:
+      * img_p_in_ver: mask of vertical separators
+      * img_p_in_hor: mask of horizontal separators
+      * num_col_classifier: predicted (expected) number of columns
+
+    Returns: a tuple of
+      * the final horizontal separators
+      * the y coordinates with horizontal separators spanning the full width
+    """
 
     #img_p_in_ver = cv2.erode(img_p_in_ver, self.kernel, iterations=2)
     _, thresh = cv2.threshold(img_p_in_ver, 0, 255, 0)
@@ -1192,20 +1208,26 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
                      int(y_max_main_ver[i]+1),
                      int(cx_main_ver[i])-25:
                      int(cx_main_ver[i])+25] = 0
+    height, width = img_p_in_ver.shape
 
-    _, thresh = cv2.threshold(img_in_hor, 0, 255, 0)
+    _, thresh = cv2.threshold(img_p_in_hor, 0, 255, 0)
     contours_lines_hor, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    slope_lines_hor, dist_x_hor, x_min_main_hor, x_max_main_hor, cy_main_hor, _, _, _, _ = \
-        find_features_of_lines(contours_lines_hor)
-    x_width_smaller_than_acolumn_width=img_in_hor.shape[1]/float(num_col_classifier+1.)
+    (slope_lines_hor,
+     dist_x_hor,
+     x_min_main_hor,
+     x_max_main_hor,
+     cy_main_hor, _,
+     y_min_main_hor,
+     y_max_main_hor,
+     _) = find_features_of_lines(contours_lines_hor)
 
-    len_lines_bigger_than_x_width_smaller_than_acolumn_width=len( dist_x_hor[dist_x_hor>=x_width_smaller_than_acolumn_width] )
-    len_lines_bigger_than_x_width_smaller_than_acolumn_width_per_column=int(len_lines_bigger_than_x_width_smaller_than_acolumn_width /
-                                                                            float(num_col_classifier))
-    if len_lines_bigger_than_x_width_smaller_than_acolumn_width_per_column < 10:
+    avg_col_width = width / float(num_col_classifier + 1)
+    nseps_wider_than_than_avg_col_width = np.count_nonzero(dist_x_hor>=avg_col_width)
+    if nseps_wider_than_than_avg_col_width < 10 * num_col_classifier:
         args_hor=np.arange(len(slope_lines_hor))
         sep_pairs=contours_in_same_horizon(cy_main_hor)
+        img_p_in = np.copy(img_p_in_hor)
         if len(sep_pairs):
             special_separators=[]
             contours_new=[]
@@ -1242,21 +1264,19 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
                     #       np.var( dist_x_hor[some_args] ),'jalibdiha')
                     special_separators.append(np.mean(cy_main_hor[some_args]))
         else:
-            img_p_in=img_in_hor
-            special_separators=[]
+            img_p_in = img_p_in_hor
+            special_separators = []
 
         img_p_in_ver[img_p_in_ver == 255] = 1
-        sep_ver_hor = img_p_in + img_p_in_ver
-        sep_ver_hor_cross = (sep_ver_hor == 2) * 1
-        _, thresh = cv2.threshold(sep_ver_hor_cross.astype(np.uint8), 0, 255, 0)
+        sep_ver_hor_cross = 255 * ((img_p_in > 0) & (img_p_in_ver > 0))
         contours_cross, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         center_cross = np.array(find_center_of_contours(contours_cross), dtype=int)
         for cx, cy in center_cross.T:
             img_p_in[cy - 30: cy + 30, cx + 5: cx + 40] = 0
             img_p_in[cy - 30: cy + 30, cx - 40: cx - 4] = 0
     else:
-        img_p_in=np.copy(img_in_hor)
-        special_separators=[]
+        img_p_in = np.copy(img_p_in_hor)
+        special_separators = []
     return img_p_in, special_separators
 
 def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
