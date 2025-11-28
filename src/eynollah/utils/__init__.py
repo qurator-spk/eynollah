@@ -1720,12 +1720,16 @@ def return_boxes_of_images_by_order_of_reading_new(
         # analyse connected components of regions to gain additional separators
         # and prepare a map for cross-column boxes
         ccounts = np.bincount(ccomps[top: bot].flatten())
+        ccounts_median = np.median(ccounts)
         col_ccounts = np.stack([np.bincount(ccomps[top: bot, left: right].flatten(),
                                             minlength=ccounts.size)
                                 for left, right in pairwise(peaks_neg_tot)])
         labelcolmap = dict()
         for label, label_count in enumerate(ccounts):
             if not label:
+                continue
+            # ignore small labels for the purpose of finding multicol seps
+            if label_count < 0.5 * ccounts_median:
                 continue
             label_left, label_top, label_width, label_height, label_area = cstats[label]
             # if label_count < 0.9 * label_area:
@@ -1738,15 +1742,15 @@ def return_boxes_of_images_by_order_of_reading_new(
             label_bot = label_top + label_height
             label_start = np.flatnonzero(peaks_neg_tot > label_left)[0] - 1
             label_end = np.flatnonzero(peaks_neg_tot >= label_right)[0]
+            if label_end - label_start < 2:
+                continue
+            if np.count_nonzero(col_ccounts[:, label] > 0.1 * label_count) < 2:
+                continue
             # store as dict for multi-column boxes:
             for start in range(label_start, label_end):
                 labelcolmap.setdefault(start, list()).append(
                     (label_end, label_top, label_bot, sum(col_ccounts[start: label_end, label])))
             # make additional separators:
-            if label_end - label_start < 2:
-                continue
-            if np.count_nonzero(col_ccounts[:, label] > 0.1 * label_count) < 2:
-                continue
             x_min_hor_some = np.append(x_min_hor_some, [label_left] * 2)
             x_max_hor_some = np.append(x_max_hor_some, [label_right] * 2)
             y_min_hor_some = np.append(y_min_hor_some, [label_top - 2, label_bot])
