@@ -8,7 +8,6 @@ document layout analysis (segmentation) with output in PAGE-XML
 # FIXME: fix all of those...
 # pyright: reportUnnecessaryTypeIgnoreComment=true
 # pyright: reportPossiblyUnboundVariable=false
-# pyright: reportCallIssue=false
 # pyright: reportOperatorIssue=false
 # pyright: reportUnboundVariable=false
 # pyright: reportArgumentType=false
@@ -19,12 +18,6 @@ document layout analysis (segmentation) with output in PAGE-XML
 
 import logging
 import sys
-
-# cannot use importlib.resources until we move to 3.9+ forimportlib.resources.files
-if sys.version_info < (3, 10):
-    import importlib_resources
-else:
-    import importlib.resources as importlib_resources
 
 from difflib import SequenceMatcher as sq
 import math
@@ -49,9 +42,9 @@ import statistics
 
 tf_disable_interactive_logs()
 
-import tensorflow as tf # type: ignore
+import tensorflow as tf
 try:
-    import torch # type: ignore
+    import torch
 except ImportError:
     torch = None
 try:
@@ -3693,19 +3686,17 @@ class Eynollah:
             
             order_text_new = [0]
             slopes =[0]
-            id_of_texts_tot =['region_0001']
             conf_contours_textregions =[0]
             
             pcgts = self.writer.build_pagexml_no_full_layout(
                 found_polygons_text_region=cont_page,                   
                 page_coord=page_coord,                  
                 order_of_texts=order_text_new,              
-                id_of_texts=id_of_texts_tot,             
                 all_found_textline_polygons=all_found_textline_polygons,   
                 all_box_coord=page_coord,                  
-                polygons_of_images=[],                          
-                polygons_of_marginals_left=[],                           
-                polygons_of_marginals_right=[],                            
+                found_polygons_text_region_img=[],                          
+                found_polygons_marginals_left=[],                           
+                found_polygons_marginals_right=[],                            
                 all_found_textline_polygons_marginals_left=[],                                           
                 all_found_textline_polygons_marginals_right=[],                                            
                 all_box_coord_marginals_left=[],                             
@@ -3715,9 +3706,7 @@ class Eynollah:
                 slopes_marginals_right=[],                          
                 cont_page=cont_page,                   
                 polygons_seplines=[],                          
-                contours_tables=[],                          
-                conf_contours_textregion=conf_contours_textregions,
-                skip_layout_reading_order=True
+                found_polygons_tables=[],                          
             )
             self.logger.info("Basic processing complete")
             return pcgts
@@ -3780,12 +3769,11 @@ class Eynollah:
                 found_polygons_text_region=[],
                 page_coord=page_coord,
                 order_of_texts=[],
-                id_of_texts=[],
                 all_found_textline_polygons=[],
                 all_box_coord=[],
-                polygons_of_images=[],
-                polygons_of_marginals_left=[],
-                polygons_of_marginals_right=[],
+                found_polygons_text_region_img=[],
+                found_polygons_marginals_left=[],
+                found_polygons_marginals_right=[],
                 all_found_textline_polygons_marginals_left=[],
                 all_found_textline_polygons_marginals_right=[],
                 all_box_coord_marginals_left=[],
@@ -3795,7 +3783,7 @@ class Eynollah:
                 slopes_marginals_right=[],
                 cont_page=cont_page,
                 polygons_seplines=[],
-                contours_tables=[]
+                found_polygons_tables=[],
             )
             return pcgts
 
@@ -4018,20 +4006,19 @@ class Eynollah:
             empty_marginals = [[]] * len(polygons_of_marginals)
             if self.full_layout:
                 pcgts = self.writer.build_pagexml_full_layout(
-                    contours_only_text_parent=[],
-                    contours_only_text_parent_h=[],
+                    found_polygons_text_region=[],
+                    found_polygons_text_region_h=[],
                     page_coord=page_coord,
                     order_of_texts=[],
-                    id_of_texts=[],
                     all_found_textline_polygons=[],
                     all_found_textline_polygons_h=[],
                     all_box_coord=[],
                     all_box_coord_h=[],
-                    polygons_of_images=polygons_of_images,
-                    contours_tables=contours_tables,
-                    polygons_of_drop_capitals=[],
-                    polygons_of_marginals_left=polygons_of_marginals,
-                    polygons_of_marginals_right=polygons_of_marginals,
+                    found_polygons_text_region_img=polygons_of_images,
+                    found_polygons_tables=contours_tables,
+                    found_polygons_drop_capitals=[],
+                    found_polygons_marginals_left=polygons_of_marginals,
+                    found_polygons_marginals_right=polygons_of_marginals,
                     all_found_textline_polygons_marginals_left=empty_marginals,
                     all_found_textline_polygons_marginals_right=empty_marginals,
                     all_box_coord_marginals_left=empty_marginals,
@@ -4048,12 +4035,11 @@ class Eynollah:
                     found_polygons_text_region=[],
                     page_coord=page_coord,
                     order_of_texts=[],
-                    id_of_texts=[],
                     all_found_textline_polygons=[],
                     all_box_coord=[],
-                    polygons_of_images=polygons_of_images,
-                    polygons_of_marginals_left=polygons_of_marginals,
-                    polygons_of_marginals_right=polygons_of_marginals,
+                    found_polygons_text_region_img=polygons_of_images,
+                    found_polygons_marginals_left=polygons_of_marginals,
+                    found_polygons_marginals_right=polygons_of_marginals,
                     all_found_textline_polygons_marginals_left=empty_marginals,
                     all_found_textline_polygons_marginals_right=empty_marginals,
                     all_box_coord_marginals_left=empty_marginals,
@@ -4063,7 +4049,7 @@ class Eynollah:
                     slopes_marginals_right=[],
                     cont_page=cont_page,
                     polygons_seplines=polygons_seplines,
-                    contours_tables=contours_tables
+                    found_polygons_tables=contours_tables
                 )
             return pcgts
 
@@ -4258,16 +4244,15 @@ class Eynollah:
                 found_polygons_text_region_h=contours_only_text_parent_h,
                 page_coord=page_coord,
                 order_of_texts=order_text_new,
-                id_of_texts=id_of_texts_tot,
                 all_found_textline_polygons=all_found_textline_polygons,
                 all_found_textline_polygons_h=all_found_textline_polygons_h,
                 all_box_coord=all_box_coord,
                 all_box_coord_h=all_box_coord_h,
-                polygons_of_images=polygons_of_images,
-                contours_tables=contours_tables,
-                polygons_of_drop_capitals=polygons_of_drop_capitals,
-                polygons_of_marginals_left=polygons_of_marginals_left,
-                polygons_of_marginals_right=polygons_of_marginals_right,
+                found_polygons_text_region_img=polygons_of_images,
+                found_polygons_tables=contours_tables,
+                found_polygons_drop_capitals=polygons_of_drop_capitals,
+                found_polygons_marginals_left=polygons_of_marginals_left,
+                found_polygons_marginals_right=polygons_of_marginals_right,
                 all_found_textline_polygons_marginals_left=all_found_textline_polygons_marginals_left,
                 all_found_textline_polygons_marginals_right=all_found_textline_polygons_marginals_right,
                 all_box_coord_marginals_left=all_box_coord_marginals_left,
@@ -4286,12 +4271,11 @@ class Eynollah:
                 found_polygons_text_region=contours_only_text_parent,
                 page_coord=page_coord,
                 order_of_texts=order_text_new,
-                id_of_texts=id_of_texts_tot,
                 all_found_textline_polygons=all_found_textline_polygons,
                 all_box_coord=all_box_coord,
-                polygons_of_images=polygons_of_images,
-                polygons_of_marginals_left=polygons_of_marginals_left,
-                polygons_of_marginals_right=polygons_of_marginals_right,
+                found_polygons_text_region_img=polygons_of_images,
+                found_polygons_marginals_left=polygons_of_marginals_left,
+                found_polygons_marginals_right=polygons_of_marginals_right,
                 all_found_textline_polygons_marginals_left=all_found_textline_polygons_marginals_left,
                 all_found_textline_polygons_marginals_right=all_found_textline_polygons_marginals_right,
                 all_box_coord_marginals_left=all_box_coord_marginals_left,
@@ -4301,8 +4285,7 @@ class Eynollah:
                 slopes_marginals_right=slopes_marginals_right,
                 cont_page=cont_page,
                 polygons_seplines=polygons_seplines,
-                contours_tables=contours_tables,
-                conf_contours_textregions=conf_contours_textregions
+                found_polygons_tables=contours_tables,
             )
             
         return pcgts
