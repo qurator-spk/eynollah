@@ -403,14 +403,14 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
             point_down_rot3=point_down_rot3-y_help
             point_down_rot4=point_down_rot4-y_help
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     elif len(peaks) < 1:
         pass
 
@@ -462,14 +462,14 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
         point_down_rot3=point_down_rot3-y_help
         point_down_rot4=point_down_rot4-y_help
 
-        textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                            [int(x_max_rot2), int(point_up_rot2)],
-                                            [int(x_max_rot3), int(point_down_rot3)],
-                                            [int(x_min_rot4), int(point_down_rot4)]]))
-        textline_boxes.append(np.array([[int(x_min), int(y_min)],
-                                        [int(x_max), int(y_min)],
-                                        [int(x_max), int(y_max)],
-                                        [int(x_min), int(y_max)]]))
+        textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                            [[int(x_max_rot2), int(point_up_rot2)]],
+                                            [[int(x_max_rot3), int(point_down_rot3)]],
+                                            [[int(x_min_rot4), int(point_down_rot4)]]]))
+        textline_boxes.append(np.array([[[int(x_min), int(y_min)]],
+                                        [[int(x_max), int(y_min)]],
+                                        [[int(x_max), int(y_max)]],
+                                        [[int(x_min), int(y_max)]]]))
     elif len(peaks) == 2:
         dis_to_next = np.abs(peaks[1] - peaks[0])
         for jj in range(len(peaks)):
@@ -530,14 +530,14 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
             point_down_rot3=point_down_rot3-y_help
             point_down_rot4=point_down_rot4-y_help
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     else:
         for jj in range(len(peaks)):
             if jj == 0:
@@ -606,14 +606,14 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
             point_down_rot3=point_down_rot3-y_help
             point_down_rot4=point_down_rot4-y_help
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     return peaks, textline_boxes_rot
 
 def separate_lines_vertical(img_patch, contour_text_interest, thetha):
@@ -785,14 +785,14 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
             if point_up_rot2 < 0:
                 point_up_rot2 = 0
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     elif len(peaks) < 1:
         pass
     elif len(peaks) == 1:
@@ -821,14 +821,14 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
         if point_up_rot2 < 0:
             point_up_rot2 = 0
 
-        textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                            [int(x_max_rot2), int(point_up_rot2)],
-                                            [int(x_max_rot3), int(point_down_rot3)],
-                                            [int(x_min_rot4), int(point_down_rot4)]]))
-        textline_boxes.append(np.array([[int(x_min), int(y_min)],
-                                        [int(x_max), int(y_min)],
-                                        [int(x_max), int(y_max)],
-                                        [int(x_min), int(y_max)]]))
+        textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                            [[int(x_max_rot2), int(point_up_rot2)]],
+                                            [[int(x_max_rot3), int(point_down_rot3)]],
+                                            [[int(x_min_rot4), int(point_down_rot4)]]]))
+        textline_boxes.append(np.array([[[int(x_min), int(y_min)]],
+                                        [[int(x_max), int(y_min)]],
+                                        [[int(x_max), int(y_max)]],
+                                        [[int(x_min), int(y_max)]]]))
     elif len(peaks) == 2:
         dis_to_next = np.abs(peaks[1] - peaks[0])
         for jj in range(len(peaks)):
@@ -876,14 +876,14 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
             if point_up_rot2 < 0:
                 point_up_rot2 = 0
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     else:
         for jj in range(len(peaks)):
             if jj == 0:
@@ -942,14 +942,14 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
             if point_up_rot2 < 0:
                 point_up_rot2 = 0
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     return peaks, textline_boxes_rot
 
 def separate_lines_new_inside_tiles2(img_patch, thetha):
