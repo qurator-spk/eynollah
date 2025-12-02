@@ -47,7 +47,7 @@ def main(ctx, model_basedir, model_overrides, log_level):
     eynollah - Document Layout Analysis, Image Enhancement, OCR
     """
     # Initialize logging
-    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setLevel(logging.NOTSET)
     formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(levelname)s %(name)s - %(message)s', datefmt='%H:%M:%S')
     console_handler.setFormatter(formatter)
