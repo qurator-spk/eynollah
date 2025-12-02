@@ -1670,10 +1670,10 @@ class Eynollah:
         else:
             box = [0, 0, self.image.shape[1], self.image.shape[0]]
             cropped_page, page_coord = crop_image_inside_box(box, self.image)
-            cont_page.append(np.array([[page_coord[2], page_coord[0]],
-                                       [page_coord[3], page_coord[0]],
-                                       [page_coord[3], page_coord[1]],
-                                       [page_coord[2], page_coord[1]]]))
+            cont_page.append(np.array([[[page_coord[2], page_coord[0]]],
+                                       [[page_coord[3], page_coord[0]]],
+                                       [[page_coord[3], page_coord[1]]],
+                                       [[page_coord[2], page_coord[1]]]]))
         return cropped_page, page_coord, cont_page
 
     def early_page_for_num_of_column_classification(self,img_bin):
