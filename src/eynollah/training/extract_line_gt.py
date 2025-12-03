@@ -20,7 +20,6 @@ from ..utils import is_image_filename
 @click.option(
     "--dir_in",
     "-di",
-    'image_filename',
     help="directory of input images (instead of --image)",
     type=click.Path(exists=True, file_okay=False),
 )
@@ -52,21 +51,21 @@ from ..utils import is_image_filename
     help="if this parameter set to true, cropped textline images will not be masked with textline contour.",
 )
 def linegt_cli(
-    image_filename,
+    image,
     dir_in,
     dir_xmls,
     dir_out,
     pref_of_dataset,
     do_not_mask_with_textline_contour,
 ):
-    assert bool(dir_in) ^ bool(image_filename), "Set --dir-in or --image-filename, not both"
+    assert bool(dir_in) ^ bool(image), "Set --dir-in or --image-filename, not both"
     if dir_in:
         ls_imgs = [
-            os.path.join(dir_in, image_filename) for image_filename in filter(is_image_filename, os.listdir(dir_in))
+            os.path.join(dir_in, image) for image in filter(is_image_filename, os.listdir(dir_in))
         ]
     else:
-        assert image_filename
-        ls_imgs = [image_filename]
+        assert image
+        ls_imgs = [image]
 
     for dir_img in ls_imgs:
         file_name = Path(dir_img).stem
@@ -83,7 +82,7 @@ def linegt_cli(
         name_space = alltags[0].split('}')[0]
         name_space = name_space.split('{')[1]
 
-        region_tags = [x for x in alltags if x.endswith('TextRegion')][0]
+        region_tags = np.unique([x for x in alltags if x.endswith('TextRegion')])
 
         cropped_lines_region_indexer = []
 
@@ -116,21 +115,20 @@ def linegt_cli(
 
                             if img_crop.shape[0] == 0 or img_crop.shape[1] == 0:
                                 continue
+                        if child_textlines.tag.endswith("TextEquiv"):
+                            for cheild_text in child_textlines:
+                                if cheild_text.tag.endswith("Unicode"):
+                                    textline_text = cheild_text.text
+                                    if textline_text:
+                                        base_name = os.path.join(
+                                            dir_out, file_name + '_line_' + str(indexer_textlines)
+                                        )
+                                        if pref_of_dataset:
+                                            base_name += '_' + pref_of_dataset
+                                        if not do_not_mask_with_textline_contour:
+                                            base_name += '_masked'
 
-                            if child_textlines.tag.endswith("TextEquiv"):
-                                for cheild_text in child_textlines:
-                                    if cheild_text.tag.endswith("Unicode"):
-                                        textline_text = cheild_text.text
-                                        if textline_text:
-                                            base_name = os.path.join(
-                                                dir_out, file_name + '_line_' + str(indexer_textlines)
-                                            )
-                                            if pref_of_dataset:
-                                                base_name += '_' + pref_of_dataset
-                                            if not do_not_mask_with_textline_contour:
-                                                base_name += '_masked'
-
-                                            with open(base_name + '.txt', 'w') as text_file:
-                                                text_file.write(textline_text)
-                                            cv2.imwrite(base_name + '.png', img_crop)
-                                        indexer_textlines += 1
+                                        with open(base_name + '.txt', 'w') as text_file:
+                                            text_file.write(textline_text)
+                                        cv2.imwrite(base_name + '.png', img_crop)
+                                    indexer_textlines += 1
