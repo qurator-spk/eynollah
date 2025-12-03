@@ -88,3 +88,7 @@ def order_and_id_of_texts(found_polygons_text_region, found_polygons_text_region
         order_of_texts.append(interest)
 
     return order_of_texts, id_of_texts
+
+def etree_namespace_for_element_tag(tag: str):
+    right = tag.find('}')
+    return tag[1:right]

@@ -1,3 +1,6 @@
+# NOTE: For predictable order of imports of torch/shapely/tensorflow
+#       this must be the first import of the CLI!
+from .eynollah_imports import imported_libs
 from .processor import EynollahProcessor
 from click import command
 from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor

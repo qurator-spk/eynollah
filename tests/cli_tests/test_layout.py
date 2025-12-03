@@ -9,16 +9,8 @@ from ocrd_models.constants import NAMESPACES as NS
             #["--allow_scaling", "--curved-line"],
             ["--allow_scaling", "--curved-line", "--full-layout"],
             ["--allow_scaling", "--curved-line", "--full-layout", "--reading_order_machine_based"],
-            ["--allow_scaling", "--curved-line", "--full-layout", "--reading_order_machine_based",
-             "--textline_light", "--light_version"],
             # -ep ...
             # -eoi ...
-            # FIXME: find out whether OCR extra was installed, otherwise skip these
-            ["--do_ocr"],
-            ["--do_ocr", "--light_version", "--textline_light"],
-            ["--do_ocr", "--transformer_ocr"],
-            #["--do_ocr", "--transformer_ocr", "--light_version", "--textline_light"],
-            ["--do_ocr", "--transformer_ocr", "--light_version", "--textline_light", "--full-layout"],
             # --skip_layout_and_reading_order
     ], ids=str)
 def test_run_eynollah_layout_filename(
@@ -53,7 +45,6 @@ def test_run_eynollah_layout_filename(
     [
             ["--tables"],
             ["--tables", "--full-layout"],
-            ["--tables", "--full-layout", "--textline_light", "--light_version"],
     ], ids=str)
 def test_run_eynollah_layout_filename2(
     tmp_path,

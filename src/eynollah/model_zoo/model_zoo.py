@@ -176,13 +176,12 @@ class EynollahModelZoo:
                     spec.category,
                     spec.variant,
                     spec.help,
-                    ', '.join(spec.dists),
                     f'Yes, at {self.model_path(spec.category, spec.variant)}'
                     if self.model_path(spec.category, spec.variant).exists()
                     else f'No, download {spec.dist_url}',
                     # self.model_path(spec.category, spec.variant),
                 ]
-                for spec in self.specs.specs
+                for spec in sorted(self.specs.specs, key=lambda x: x.dist_url)
             ],
             headers=[
                 'Type',
