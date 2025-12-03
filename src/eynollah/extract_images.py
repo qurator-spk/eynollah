@@ -30,23 +30,26 @@ class EynollahImageExtractor(Eynollah):
         enable_plotting : bool = False,
         input_binary : bool = False,
         ignore_page_extraction : bool = False,
-        reading_order_machine_based : bool = False,
         num_col_upper : Optional[int] = None,
         num_col_lower : Optional[int] = None,
-        threshold_art_class_layout: Optional[float] = None,
-        threshold_art_class_textline: Optional[float] = None,
-        skip_layout_and_reading_order : bool = False,
+        full_layout : bool = False,
+        tables : bool = False,
+        curved_line : bool = False,
+        allow_enhancement : bool = False,
+        
     ):
         self.logger = logging.getLogger('eynollah.extract_images')
         self.model_zoo = model_zoo
         self.plotter = None
-
-        self.reading_order_machine_based = reading_order_machine_based
+        self.tables = tables
+        self.curved_line = curved_line
+        self.allow_enhancement = allow_enhancement
+        
         self.enable_plotting = enable_plotting
         # --input-binary sensible if image is very dark, if layout is not working.
         self.input_binary = input_binary
         self.ignore_page_extraction = ignore_page_extraction
-        self.skip_layout_and_reading_order = skip_layout_and_reading_order
+        self.full_layout = full_layout
         if num_col_upper:
             self.num_col_upper = int(num_col_upper)
         else:
@@ -58,16 +61,6 @@ class EynollahImageExtractor(Eynollah):
 
         # for parallelization of CPU-intensive tasks:
         self.executor = ProcessPoolExecutor(max_workers=cpu_count())
-            
-        if threshold_art_class_layout:
-            self.threshold_art_class_layout = float(threshold_art_class_layout)
-        else:
-            self.threshold_art_class_layout = 0.1
-            
-        if threshold_art_class_textline:
-            self.threshold_art_class_textline = float(threshold_art_class_textline)
-        else:
-            self.threshold_art_class_textline = 0.1
 
         t_start = time.time()
 
@@ -115,7 +108,7 @@ class EynollahImageExtractor(Eynollah):
         img_h_new = int(img.shape[0] / float(img.shape[1]) * img_w_new)
         img_resized = resize_image(img,img_h_new, img_w_new )
 
-        prediction_regions_org, _ = self.do_prediction_new_concept(True, img_resized, self.model_zoo.get("region"))
+        prediction_regions_org, _ = self.do_prediction_new_concept(True, img_resized, self.model_zoo.get("extract_images"))
 
         prediction_regions_org = resize_image(prediction_regions_org,img_height_h, img_width_h )
         image_page, page_coord, cont_page = self.extract_page()
@@ -183,7 +176,6 @@ class EynollahImageExtractor(Eynollah):
         """
         self.logger.debug("enter run")
         t0_tot = time.time()
-
         # Log enabled features directly
         enabled_modes = []
         if self.full_layout:
@@ -261,10 +253,27 @@ class EynollahImageExtractor(Eynollah):
         _, _, _, polygons_of_images, \
             image_page, page_coord, cont_page = \
             self.get_regions_light_v_extract_only_images(img_res, num_col_classifier)
+
         pcgts = self.writer.build_pagexml_no_full_layout(
-            [], page_coord, [], [], [], [],
-            polygons_of_images, [], [], [], [], [], [], [], [], [],
-            cont_page, [], [])
+            found_polygons_text_region=[],                   
+            page_coord=page_coord,                  
+            order_of_texts=[],              
+            all_found_textline_polygons=[],   
+            all_box_coord=[],                  
+            found_polygons_text_region_img=polygons_of_images,                          
+            found_polygons_marginals_left=[],                           
+            found_polygons_marginals_right=[],                            
+            all_found_textline_polygons_marginals_left=[],                                           
+            all_found_textline_polygons_marginals_right=[],                                            
+            all_box_coord_marginals_left=[],                             
+            all_box_coord_marginals_right=[],                              
+            slopes=[],                      
+            slopes_marginals_left=[],                          
+            slopes_marginals_right=[],                          
+            cont_page=cont_page,                   
+            polygons_seplines=[],                          
+            found_polygons_tables=[],                          
+        )
         if self.plotter:
             self.plotter.write_images_into_directory(polygons_of_images, image_page)
             
