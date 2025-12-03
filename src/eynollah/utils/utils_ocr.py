@@ -369,8 +369,8 @@ def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved, 
         return img_curved, img_bin_curved
     
 def return_textline_contour_with_added_box_coordinate(textline_contour,  box_ind):
-    textline_contour[:,0] = textline_contour[:,0] + box_ind[2]
-    textline_contour[:,1] = textline_contour[:,1] + box_ind[0]
+    textline_contour[:,:,0] += box_ind[2]
+    textline_contour[:,:,1] += box_ind[0]
     return textline_contour
 
 
