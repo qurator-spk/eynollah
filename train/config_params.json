@@ -2,6 +2,7 @@
     "backbone_type" : "transformer",
     "task": "segmentation",
     "n_classes" : 2,
+    "max_len": 280,
     "n_epochs" : 0,
     "input_height" : 448,
     "input_width" : 448,
@@ -34,7 +35,7 @@
     "transformer_layers": 1,
     "transformer_num_heads": 1,
     "transformer_cnn_first": false,
-    "blur_k" : ["blur","guass","median"],
+    "blur_k" : ["blur","gauss","median"],
     "scales" : [0.6, 0.7, 0.8, 0.9],
     "brightness" : [1.3, 1.5, 1.7, 2],
     "degrade_scales" : [0.2, 0.4],
@@ -53,6 +54,7 @@
     "dir_output": "/home/vahid/Documents/test/sbb_pixelwise_segmentation/test_label/pageextractor_test/output_new",
     "dir_rgb_backgrounds": "/home/vahid/Documents/1_2_test_eynollah/set_rgb_background",
     "dir_rgb_foregrounds": "/home/vahid/Documents/1_2_test_eynollah/out_set_rgb_foreground",
-    "dir_img_bin": "/home/vahid/Documents/test/sbb_pixelwise_segmentation/test_label/pageextractor_test/train_new/images_bin"
+    "dir_img_bin": "/home/vahid/Documents/test/sbb_pixelwise_segmentation/test_label/pageextractor_test/train_new/images_bin",
+    "characters_txt_file":"dir_of_characters_txt_file_for_ocr"
     
 }

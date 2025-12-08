@@ -101,6 +101,20 @@ def config_params():
     degrading = False  # If true, degrading will be applied to the image. The amount of degrading is defined with "degrade_scales" in config_params.json.
     brightening = False  # If true, brightening will be applied to the image. The amount of brightening is defined with "brightness" in config_params.json.
     binarization = False  # If true, Otsu thresholding will be applied to augment the input with binarized images.
+    image_inversion = False # If true, and if the binarized images are avilable the image inevrsion will be applied.
+    white_noise_strap = False # If true, white noise will be applied on some straps on the textline image.
+    textline_skewing = False # If true, textline images will be skewed for augmentation.
+    textline_skewing_bin = False # If true, textline image skewing augmentation for binarized images will be applied if already are available.
+    textline_left_in_depth = False # If true, left side of textline image will be displayed in depth.
+    textline_left_in_depth_bin = False # If true, left side of textline binarized image (if available) will be displayed in depth.
+    textline_right_in_depth = False # If true, right side of textline image will be displayed in depth.
+    textline_right_in_depth_bin = False # If true, right side of textline binarized image (if available) will be displayed in depth.
+    textline_up_in_depth = False # If true, upper side of textline image will be displayed in depth.
+    textline_up_in_depth_bin = False # If true, upper side of textline binarized image (if available) will be displayed in depth.
+    textline_down_in_depth = False # If true, lower side of textline image will be displayed in depth.
+    textline_down_in_depth_bin = False # If true, lower side of textline binarized image (if available) will be displayed in depth.
+    pepper_bin_aug = False # If true, pepper noise will be added to textline binarized image (if available).
+    pepper_aug = False # If true, pepper noise will be added to textline image.
     adding_rgb_background = False
     adding_rgb_foreground = False
     add_red_textlines = False
@@ -111,7 +125,9 @@ def config_params():
     pretraining = False  # Set to true to load pretrained weights of ResNet50 encoder.
     scaling_bluring = False  # If true, a combination of scaling and blurring will be applied to the image.
     scaling_binarization = False  # If true, a combination of scaling and binarization will be applied to the image.
+    bin_deg = False # If true, a combination of degrading and binarization will be applied to the image.
     rotation = False # If true, a 90 degree rotation will be implemeneted.
+    color_padding_rotation = False # If true, rotation and padding will be implemeneted.
     rotation_not_90 = False # If true rotation based on provided angles with thetha will be implemeneted.
     scaling_brightness = False  # If true, a combination of scaling and brightening will be applied to the image.
     scaling_flip = False  # If true, a combination of scaling and flipping will be applied to the image.
@@ -119,6 +135,7 @@ def config_params():
     shuffle_indexes = None
     blur_k = None  # Blur image for augmentation.
     scales = None  # Scale patches for augmentation.
+    padd_colors = None # padding colors. A list elements can be only white and black. like ["white", "black"] or only one of them ["white"]
     degrade_scales = None  # Degrade image for augmentation.
     brightness = None #  Brighten image for augmentation.
     flip_index = None  #  Flip image for augmentation.
@@ -145,6 +162,7 @@ def config_params():
     number_of_backgrounds_per_image = 1
     dir_rgb_backgrounds = None
     dir_rgb_foregrounds = None
+    characters_txt_file = None # Directory of characters text file needed for cnn_rnn_ocr model training. The file ends with .txt
 
 @ex.automain
 def run(_config, n_classes, n_epochs, input_height,
@@ -159,7 +177,10 @@ def run(_config, n_classes, n_epochs, input_height,
         transformer_mlp_head_units, transformer_layers, transformer_num_heads, transformer_cnn_first,
         transformer_patchsize_x, transformer_patchsize_y,
         transformer_num_patches_xy, backbone_type, save_interval, flip_index, dir_eval, dir_output,
-        pretraining, learning_rate, task, f1_threshold_classification, classification_classes_name, dir_img_bin, number_of_backgrounds_per_image,dir_rgb_backgrounds, dir_rgb_foregrounds):
+        pretraining, learning_rate, task, f1_threshold_classification, classification_classes_name, dir_img_bin, number_of_backgrounds_per_image,dir_rgb_backgrounds,
+        dir_rgb_foregrounds, characters_txt_file, color_padding_rotation, bin_deg, image_inversion, white_noise_strap, textline_skewing, textline_skewing_bin,
+        textline_left_in_depth, textline_left_in_depth_bin, textline_right_in_depth, textline_right_in_depth_bin, textline_up_in_depth, textline_up_in_depth_bin,
+        textline_down_in_depth, textline_down_in_depth_bin, pepper_bin_aug, pepper_aug, padd_colors):
     
     if dir_rgb_backgrounds:
         list_all_possible_background_images = os.listdir(dir_rgb_backgrounds)
@@ -375,6 +396,34 @@ def run(_config, n_classes, n_epochs, input_height,
         #os.system('rm -rf '+dir_eval_flowing)
 
         #model.save(dir_output+'/'+'model'+'.h5')
+        
+    elif task=="cnn-rnn-ocr":
+        dir_img, dir_lab = get_dirs_or_files(dir_train)
+        
+        with open(characters_txt_file, 'r') as char_txt_f:
+            characters = json.load(char_txt_f)
+            
+        AUTOTUNE = tf.data.AUTOTUNE
+
+        # Mapping characters to integers.
+        char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
+
+        # Mapping integers back to original characters.
+        num_to_char = StringLookup(
+            vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
+        )
+        
+        padding_token = len(characters) + 5
+        ls_files_images = os.listdir(dir_img)
+        
+        train_ds = data_gen_ocr(padding_token, batchsize=n_batch, height=input_height, width=input_width, max_len=max_len, dir_ins=dir_train, ls_files_images,
+                                augmentation, color_padding_rotation, rotation=rotation_not_90, bluring_aug=blurring, degrading, bin_deg, brightening, w_padding=padding_white,
+                                rgb_fging=adding_rgb_foreground, rgb_bkding=adding_rgb_background, binarization, image_inversion, channel_shuffling=channels_shuffling, add_red_textline=add_red_textlines, white_noise_strap,
+                                textline_skewing, textline_skewing_bin, textline_left_in_depth, textline_left_in_depth_bin, textline_right_in_depth,
+                                textline_right_in_depth_bin, textline_up_in_depth, textline_up_in_depth_bin, textline_down_in_depth, textline_down_in_depth_bin,
+                                pepper_bin_aug, pepper_aug, deg_scales=degrade_scales, number_of_backgrounds_per_image, thethas=thetha, brightness, padd_colors,
+                                shuffle_indexes, pepper_indexes, skewing_amplitudes)
+        
     elif task=='classification':
         configuration()
         model = resnet50_classifier(n_classes,  input_height, input_width, weight_decay, pretraining)

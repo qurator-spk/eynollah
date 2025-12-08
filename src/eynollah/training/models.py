@@ -758,3 +758,86 @@ def machine_based_reading_order_model(n_classes,input_height=224,input_width=224
     model = Model(img_input , o)
 
     return model
+
+def cnn_rnn_ocr_model(image_height, image_width, n_classes, max_seq):
+    input_img = tensorflow.keras.Input(shape=(image_height, image_width, 3), name="image")
+    labels = tensorflow.keras.layers.Input(name="label", shape=(None,))
+
+    x = tensorflow.keras.layers.Conv2D(64,kernel_size=(3,3),padding="same")(input_img)
+    x = tensorflow.keras.layers.BatchNormalization(name="bn1")(x)
+    x = tensorflow.keras.layers.Activation("relu", name="relu1")(x)
+    x = tensorflow.keras.layers.Conv2D(64,kernel_size=(3,3),padding="same")(x)
+    x = tensorflow.keras.layers.BatchNormalization(name="bn2")(x)
+    x = tensorflow.keras.layers.Activation("relu", name="relu2")(x)
+    x = tensorflow.keras.layers.MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+
+    x = tensorflow.keras.layers.Conv2D(128,kernel_size=(3,3),padding="same")(x)
+    x = tensorflow.keras.layers.BatchNormalization(name="bn3")(x)
+    x = tensorflow.keras.layers.Activation("relu", name="relu3")(x)
+    x = tensorflow.keras.layers.Conv2D(128,kernel_size=(3,3),padding="same")(x)
+    x = tensorflow.keras.layers.BatchNormalization(name="bn4")(x)
+    x = tensorflow.keras.layers.Activation("relu", name="relu4")(x)
+    x = tensorflow.keras.layers.MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+
+    x = tensorflow.keras.layers.Conv2D(256,kernel_size=(3,3),padding="same")(x)
+    x = tensorflow.keras.layers.BatchNormalization(name="bn5")(x)
+    x = tensorflow.keras.layers.Activation("relu", name="relu5")(x)
+    x = tensorflow.keras.layers.Conv2D(256,kernel_size=(3,3),padding="same")(x)
+    x = tensorflow.keras.layers.BatchNormalization(name="bn6")(x)
+    x = tensorflow.keras.layers.Activation("relu", name="relu6")(x)
+    x = tensorflow.keras.layers.MaxPool2D(pool_size=(2,2),strides=(2,2))(x)
+
+    x = tensorflow.keras.layers.Conv2D(512,kernel_size=(3,3),padding="same")(x)
+    x = tensorflow.keras.layers.BatchNormalization(name="bn7")(x)
+    x = tensorflow.keras.layers.Activation("relu", name="relu7")(x)
+    x = tensorflow.keras.layers.Conv2D(512,kernel_size=(16,1))(x)
+    x = tensorflow.keras.layers.BatchNormalization(name="bn8")(x)
+    x = tensorflow.keras.layers.Activation("relu", name="relu8")(x)
+    x2d = tensorflow.keras.layers.MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+    x4d = tensorflow.keras.layers.MaxPool2D(pool_size=(1,2),strides=(1,2))(x2d)
+    
+
+    new_shape = (x.shape[2], x.shape[3])
+    new_shape2 = (x2d.shape[2], x2d.shape[3])
+    new_shape4 = (x4d.shape[2], x4d.shape[3])
+    
+
+    x = tensorflow.keras.layers.Reshape(target_shape=new_shape, name="reshape")(x)
+    x2d = tensorflow.keras.layers.Reshape(target_shape=new_shape2, name="reshape2")(x2d)
+    x4d = tensorflow.keras.layers.Reshape(target_shape=new_shape4, name="reshape4")(x4d)
+    
+
+    xrnnorg = tensorflow.keras.layers.Bidirectional(tensorflow.keras.layers.LSTM(512, return_sequences=True, dropout=0.25))(x)
+    xrnn2d = tensorflow.keras.layers.Bidirectional(tensorflow.keras.layers.LSTM(512, return_sequences=True, dropout=0.25))(x2d)
+    xrnn4d = tensorflow.keras.layers.Bidirectional(tensorflow.keras.layers.LSTM(512, return_sequences=True, dropout=0.25))(x4d)
+    
+    xrnn2d = tensorflow.keras.layers.Reshape(target_shape=(1, xrnn2d.shape[1], xrnn2d.shape[2]), name="reshape6")(xrnn2d)
+    xrnn4d = tensorflow.keras.layers.Reshape(target_shape=(1, xrnn4d.shape[1], xrnn4d.shape[2]), name="reshape8")(xrnn4d)
+    
+
+    xrnn2dup = tensorflow.keras.layers.UpSampling2D(size=(1, 2), interpolation="nearest")(xrnn2d)
+    xrnn4dup = tensorflow.keras.layers.UpSampling2D(size=(1, 4), interpolation="nearest")(xrnn4d)
+    
+    xrnn2dup = tensorflow.keras.layers.Reshape(target_shape=(xrnn2dup.shape[2], xrnn2dup.shape[3]), name="reshape10")(xrnn2dup)
+    xrnn4dup = tensorflow.keras.layers.Reshape(target_shape=(xrnn4dup.shape[2], xrnn4dup.shape[3]), name="reshape12")(xrnn4dup)
+
+    addition = tensorflow.keras.layers.Add()([xrnnorg, xrnn2dup, xrnn4dup])
+    
+    addition_rnn = tensorflow.keras.layers.Bidirectional(tensorflow.keras.layers.LSTM(512, return_sequences=True, dropout=0.25))(addition)
+    
+    out = tensorflow.keras.layers.Conv1D(max_seq, 1, data_format="channels_first")(addition_rnn)
+    out = tensorflow.keras.layers.BatchNormalization(name="bn9")(out)
+    out = tensorflow.keras.layers.Activation("relu", name="relu9")(out)
+    #out = tensorflow.keras.layers.Conv1D(n_classes, 1, activation='relu', data_format="channels_last")(out)
+
+    out = tensorflow.keras.layers.Dense(
+        n_classes, activation="softmax", name="dense2"
+    )(out)
+
+    # Add CTC layer for calculating CTC loss at each step.
+    output = CTCLayer(name="ctc_loss")(labels, out)
+    
+    model = tensorflow.keras.models.Model(inputs=[input_img, labels], outputs=output, name="handwriting_recognizer")
+
+    return model
+    
