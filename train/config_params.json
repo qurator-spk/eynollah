@@ -1,17 +1,17 @@
 {
     "backbone_type" : "transformer",
-    "task": "segmentation",
+    "task": "cnn-rnn-ocr",
     "n_classes" : 2,
     "max_len": 280,
     "n_epochs" : 0,
-    "input_height" : 448,
-    "input_width" : 448,
+    "input_height" : 32,
+    "input_width" : 512,
     "weight_decay" : 1e-6,
     "n_batch" : 1,
     "learning_rate": 1e-4,
     "patches" : false,
     "pretraining" : true,
-    "augmentation" : true,
+    "augmentation" : false,
     "flip_aug" : false,
     "blur_aug" : false,
     "scaling" : false,
@@ -49,12 +49,12 @@
     "weighted_loss": false,
     "is_loss_soft_dice": false,
     "data_is_provided": false,
-    "dir_train": "/home/vahid/Documents/test/sbb_pixelwise_segmentation/test_label/pageextractor_test/train_new",
+    "dir_train": "/home/vahid/extracted_lines/1919_bin/train",
     "dir_eval": "/home/vahid/Documents/test/sbb_pixelwise_segmentation/test_label/pageextractor_test/eval_new",
-    "dir_output": "/home/vahid/Documents/test/sbb_pixelwise_segmentation/test_label/pageextractor_test/output_new",
+    "dir_output": "/home/vahid/extracted_lines/1919_bin/output",
     "dir_rgb_backgrounds": "/home/vahid/Documents/1_2_test_eynollah/set_rgb_background",
     "dir_rgb_foregrounds": "/home/vahid/Documents/1_2_test_eynollah/out_set_rgb_foreground",
     "dir_img_bin": "/home/vahid/Documents/test/sbb_pixelwise_segmentation/test_label/pageextractor_test/train_new/images_bin",
-    "characters_txt_file":"dir_of_characters_txt_file_for_ocr"
+    "characters_txt_file":"/home/vahid/Downloads/models_eynollah/model_eynollah_ocr_cnnrnn_20250930/characters_org.txt"
     
 }

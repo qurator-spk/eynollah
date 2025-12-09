@@ -414,7 +414,7 @@ def generate_data_from_folder_evaluation(path_classes, height, width, n_classes,
     
     return ret_x/255., ret_y
 
-def generate_data_from_folder_training(path_classes, batchsize, height, width, n_classes, list_classes):
+def generate_data_from_folder_training(path_classes, n_batch, height, width, n_classes, list_classes):
     #sub_classes = os.listdir(path_classes)
     #n_classes = len(sub_classes)
 
@@ -440,8 +440,8 @@ def generate_data_from_folder_training(path_classes, batchsize, height, width, n
     shuffled_labels = np.array(labels)[ids]
     shuffled_files = np.array(all_imgs)[ids]
     categories = to_categorical(range(n_classes)).astype(np.int16)#[  [1 , 0, 0 , 0 , 0 , 0]  , [0 , 1, 0 , 0 , 0 , 0]  , [0 , 0, 1 , 0 , 0 , 0] , [0 , 0, 0 , 1 , 0 , 0] , [0 , 0, 0 , 0 , 1 , 0]  , [0 , 0, 0 , 0 , 0 , 1] ]
-    ret_x= np.zeros((batchsize, height,width, 3)).astype(np.int16)
-    ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+    ret_x= np.zeros((n_batch, height,width, 3)).astype(np.int16)
+    ret_y= np.zeros((n_batch, n_classes)).astype(np.int16)
     batchcount = 0
     while True:
         for i in range(len(shuffled_files)):
@@ -465,11 +465,11 @@ def generate_data_from_folder_training(path_classes, batchsize, height, width, n
             
             batchcount+=1
             
-            if batchcount>=batchsize:
+            if batchcount>=n_batch:
                 ret_x = ret_x/255.
                 yield ret_x, ret_y
-                ret_x= np.zeros((batchsize, height,width, 3)).astype(np.int16)
-                ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+                ret_x= np.zeros((n_batch, height,width, 3)).astype(np.int16)
+                ret_y= np.zeros((n_batch, n_classes)).astype(np.int16)
                 batchcount = 0
 
 def do_brightening(img_in_dir, factor):
@@ -634,10 +634,10 @@ def IoU(Yi, y_predi):
     #print("Mean IoU: {:4.3f}".format(mIoU))
     return mIoU
 
-def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batchsize, height, width, n_classes, thetha, augmentation=False):
+def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, n_batch, height, width, n_classes, thetha, augmentation=False):
     all_labels_files = os.listdir(classes_file_dir)
-    ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
-    ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+    ret_x= np.zeros((n_batch, height, width, 3))#.astype(np.int16)
+    ret_y= np.zeros((n_batch, n_classes)).astype(np.int16)
     batchcount = 0
     while True:
         for i in all_labels_files:
@@ -652,10 +652,10 @@ def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batch
 
             ret_y[batchcount, :] =  label_class
             batchcount+=1
-            if batchcount>=batchsize:
+            if batchcount>=n_batch:
                 yield ret_x, ret_y
-                ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
-                ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+                ret_x= np.zeros((n_batch, height, width, 3))#.astype(np.int16)
+                ret_y= np.zeros((n_batch, n_classes)).astype(np.int16)
                 batchcount = 0
                 
             if augmentation:
@@ -670,10 +670,10 @@ def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batch
 
                     ret_y[batchcount, :] =  label_class
                     batchcount+=1
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         yield ret_x, ret_y
-                        ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
-                        ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+                        ret_x= np.zeros((n_batch, height, width, 3))#.astype(np.int16)
+                        ret_y= np.zeros((n_batch, n_classes)).astype(np.int16)
                         batchcount = 0
 
 def data_gen(img_folder, mask_folder, batch_size, input_height, input_width, n_classes, task='segmentation'):
@@ -1264,42 +1264,45 @@ def provide_patches(imgs_list_train, segs_list_train, dir_img, dir_seg, dir_flow
                             
                             
                             
-def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len=None, dir_ins=None, ls_files_images=None,
-                 augmentation=False, color_padding_rotation=False, rotation=False, bluring_aug=False, degrading=False, bin_deg=False, brightening=False, w_padding=False,
-                 rgb_fging=False, rgb_bkding=False, binarization=False, image_inversion=False, channel_shuffling=False, add_red_textline=False, white_noise_strap=False,
-                 textline_skewing=False, textline_skewing_bin=False, textline_left_in_depth=False, textline_left_in_depth_bin=False, textline_right_in_depth=False,
-                 textline_right_in_depth_bin=False, textline_up_in_depth=False, textline_up_in_depth_bin=False, textline_down_in_depth=False, textline_down_in_depth_bin=False,
-                 pepper_bin_aug=False, pepper_aug=False, deg_scales=None, number_of_backgrounds_per_image=None, thethas=None, brightness=None, padd_colors=None,
-                 shuffle_indexes=None, ):
+def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir_train, ls_files_images,
+                 augmentation, color_padding_rotation, rotation_not_90, blur_aug, degrading, bin_deg, brightening, padding_white,
+                 adding_rgb_foreground, adding_rgb_background, binarization, image_inversion, channels_shuffling, add_red_textlines, white_noise_strap,
+                 textline_skewing, textline_skewing_bin, textline_left_in_depth, textline_left_in_depth_bin, textline_right_in_depth,
+                 textline_right_in_depth_bin, textline_up_in_depth, textline_up_in_depth_bin, textline_down_in_depth, textline_down_in_depth_bin,
+                 pepper_bin_aug, pepper_aug, degrade_scales, number_of_backgrounds_per_image, thetha, brightness, padd_colors,
+                 shuffle_indexes, pepper_indexes, skewing_amplitudes, dir_img_bin=None):
     
     random.shuffle(ls_files_images)
 
-    ret_x= np.zeros((batchsize, height,  width, 3)).astype(np.float32)
-    ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+    ret_x= np.zeros((n_batch, input_height,  input_width, 3)).astype(np.float32)
+    ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
     batchcount = 0
     while True:
         for i in ls_files_images:
             f_name = i.split('.')[0]
 
-            txt_inp  = open(os.path.join(dir_ins, "labels/"+f_name+'.txt'),'r').read().split('\n')[0]
+            txt_inp  = open(os.path.join(dir_train, "labels/"+f_name+'.txt'),'r').read().split('\n')[0]
             
-            img = cv2.imread(os.path.join(dir_ins, "images/"+i) )
-            img_bin_corr = cv2.imread(os.path.join(dir_ins, "images_bin/"+f_name+'.png') )
+            img = cv2.imread(os.path.join(dir_train, "images/"+i) )
+            if dir_img_bin:
+                img_bin_corr = cv2.imread(os.path.join(dir_img_bin, f_name+'.png') )
+            else:
+                img_bin_corr = None
 
             
             if augmentation:
-                img_out = scale_padd_image_for_ocr(img, height, width)
+                img_out = scale_padd_image_for_ocr(img, input_height, input_width)
                 
                 ret_x[batchcount, :,:,:] = img_out[:,:,:]
                 ret_y[batchcount, :] =  vectorize_label(txt_inp)
                 
                 batchcount+=1
                 
-                if batchcount>=batchsize:
+                if batchcount>=n_batch:
                     ret_x = ret_x/255.
                     yield {"image": ret_x, "label": ret_y}
-                    ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                    ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                    ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                    ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                     batchcount = 0
                 
                 if color_padding_rotation:
@@ -1307,59 +1310,59 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                         for padd_col in padd_colors:
                             img_out = rotation_not_90_func(do_padding(img, 1.2, padd_col), thetha)
                             
-                            img_out = scale_padd_image_for_ocr(img_out, height, width)
+                            img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                             
                             ret_x[batchcount, :,:,:] = img_out[:,:,:]
                             ret_y[batchcount, :] =  vectorize_label(txt_inp)
                             
                             batchcount+=1
                             
-                            if batchcount>=batchsize:
+                            if batchcount>=n_batch:
                                 ret_x = ret_x/255.
                                 yield {"image": ret_x, "label": ret_y}
-                                ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                                ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                                ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                                ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                                 batchcount = 0
                         
-                if rotation:
-                    for index, thetha in enumerate(thethas):
+                if rotation_not_90:
+                    for index, thetha in enumerate(thetha):
                         img_out = rotation_not_90_func(img, thetha)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp)
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                     
-                if bluring_aug:
+                if blur_aug:
                     for index, blur_type in enumerate(blurs):
                         img_out = bluring(img, blur_type)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp)
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                     
                 if degrading:
-                    for index, deg_scale_ind in enumerate(deg_scales):
+                    for index, deg_scale_ind in enumerate(degrade_scales):
                         try:
                             img_out  = do_degrading(img, deg_scale_ind)
-                            img_out = scale_padd_image_for_ocr(img_out, height, width)
+                            img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         except:
                             img_out = np.copy(img)
                         
@@ -1368,32 +1371,32 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                             
                 if bin_deg:
-                    for index, deg_scale_ind in enumerate(deg_scales):
+                    for index, deg_scale_ind in enumerate(degrade_scales):
                         try:
                             img_out  = do_degrading(img_bin_corr, deg_scale_ind)
-                            img_out = scale_padd_image_for_ocr(img_out, height, width)
+                            img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         except:
                             img_out = np.copy(img_bin_corr)
-                            img_out = scale_padd_image_for_ocr(img_out, height, width)
+                            img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp)
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                     
                 
@@ -1403,39 +1406,39 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                             img_out  = do_brightening(dir_img, bright_scale_ind)
                         except:
                             img_out = np.copy(img)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp)
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                         
-                if w_padding:
+                if padding_white:
                     for index, padding_size in enumerate(white_padds):
                         for padd_col in padd_colors:
                             img_out  = do_padding(img, padding_size, padd_col)
-                            img_out = scale_padd_image_for_ocr(img_out, height, width)
+                            img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                             
                             ret_x[batchcount, :,:,:] = img_out[:,:,:]
                             ret_y[batchcount, :] =  vectorize_label(txt_inp)
                             
                             batchcount+=1
                             
-                            if batchcount>=batchsize:
+                            if batchcount>=n_batch:
                                 ret_x = ret_x/255.
                                 yield {"image": ret_x, "label": ret_y}
-                                ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                                ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                                ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                                ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                                 batchcount = 0
                             
-                if rgb_fging:
+                if adding_rgb_foreground:
                     for i_n in range(number_of_backgrounds_per_image):
                         background_image_chosen_name = random.choice(list_all_possible_background_images)
                         foreground_rgb_chosen_name = random.choice(list_all_possible_foreground_rgbs)
@@ -1445,130 +1448,130 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
 
                         img_with_overlayed_background = return_binary_image_with_given_rgb_background_and_given_foreground_rgb(img_bin_corr, img_rgb_background_chosen, foreground_rgb_chosen)
                         
-                        img_out = scale_padd_image_for_ocr(img_with_overlayed_background, height, width)
+                        img_out = scale_padd_image_for_ocr(img_with_overlayed_background, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp)
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                         
                        
-                if rgb_bkding:
+                if adding_rgb_background:
                     for i_n in range(number_of_backgrounds_per_image):
                         background_image_chosen_name = random.choice(list_all_possible_background_images)
                         img_rgb_background_chosen = cv2.imread(dir_rgb_backgrounds + '/' + background_image_chosen_name)
                         img_with_overlayed_background = return_binary_image_with_given_rgb_background(img_bin_corr, img_rgb_background_chosen)
                         
-                        img_out = scale_padd_image_for_ocr(img_with_overlayed_background, height, width)
+                        img_out = scale_padd_image_for_ocr(img_with_overlayed_background, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp)
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                         
                 if binarization:
-                    img_out = scale_padd_image_for_ocr(img_bin_corr, height, width)
+                    img_out = scale_padd_image_for_ocr(img_bin_corr, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp)
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                 if image_inversion:
                     img_out = invert_image(img_bin_corr)
-                    img_out = scale_padd_image_for_ocr(img_out, height, width)
+                    img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     
                     ret_x[batchcount, :, :, :] = img_out[:,:,:]
                     ret_y[batchcount, :] = vectorize_label(txt_inp)
 
                     batchcount+=1
 
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x = np.zeros((batchsize, height, width, 3)).astype(np.float32)
+                        ret_x = np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
                         ret_y = np.zeros((batch_size, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
 
 
-                if channel_shuffling:
+                if channels_shuffling:
                     for shuffle_index in shuffle_indexes:
                         img_out  = return_shuffled_channels(img, shuffle_index)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp)
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                         
                         
-                if add_red_textline:
+                if add_red_textlines:
                     img_red_context = return_image_with_red_elements(img, img_bin_corr)
                     
-                    img_out = scale_padd_image_for_ocr(img_red_context, height, width)
+                    img_out = scale_padd_image_for_ocr(img_red_context, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp)
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                 if white_noise_strap:
                     img_out  = return_image_with_strapped_white_noises(img)
                     
-                    img_out = scale_padd_image_for_ocr(img_out, height, width)
+                    img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp)
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                 if textline_skewing:
                     for index, des_scale_ind in enumerate(skewing_amplitudes):
                         try:
                             img_out  = do_deskewing(img, des_scale_ind)
-                            img_out = scale_padd_image_for_ocr(img_out, height, width)
+                            img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         except:
                             img_out = np.copy(img)
                         
@@ -1577,18 +1580,18 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                             
                 if textline_skewing_bin:
                     for index, des_scale_ind in enumerate(skewing_amplitudes):
                         try:
                             img_out  = do_deskewing(img_bin_corr, des_scale_ind)
-                            img_out = scale_padd_image_for_ocr(img_out, height, width)
+                            img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         except:
                             img_out = np.copy(img_bin_corr)
                         
@@ -1597,18 +1600,18 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                             
                             
                 if textline_left_in_depth:
                     try:
                         img_out  = do_left_in_depth(img)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img)
                     
@@ -1617,18 +1620,18 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                         
                 if textline_left_in_depth_bin:
                     try:
                         img_out  = do_left_in_depth(img_bin_corr)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img_bin_corr)
                     
@@ -1637,18 +1640,18 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                         
                 if textline_right_in_depth:
                     try:
                         img_out  = do_right_in_depth(img)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img)
                     
@@ -1657,18 +1660,18 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                         
                 if textline_right_in_depth_bin:
                     try:
                         img_out  = do_right_in_depth(img_bin_corr)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img_bin_corr)
                     
@@ -1677,18 +1680,18 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                         
                 if textline_up_in_depth:
                     try:
                         img_out  = do_up_in_depth(img)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img)
                     
@@ -1697,18 +1700,18 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                         
                 if textline_up_in_depth_bin:
                     try:
                         img_out  = do_up_in_depth(img_bin_corr)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img_bin_corr)
                     
@@ -1717,18 +1720,18 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                         
                 if textline_down_in_depth:
                     try:
                         img_out  = do_down_in_depth(img)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img)
                     
@@ -1737,18 +1740,18 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                         
                 if textline_down_in_depth_bin:
                     try:
                         img_out  = do_down_in_depth(img_bin_corr)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img_bin_corr)
                     
@@ -1757,70 +1760,70 @@ def data_gen_ocr(padding_token, batchsize=None, height=None, width=None, max_len
                     
                     batchcount+=1
                     
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         ret_x = ret_x/255.
                         yield {"image": ret_x, "label": ret_y}
-                        ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                        ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                        ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                        ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                         batchcount = 0
                         
                 if pepper_bin_aug:
                     for index, pepper_ind in enumerate(pepper_indexes):
                         img_out  = add_salt_and_pepper_noise(img_bin_corr, pepper_ind, pepper_ind)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp)
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                             
                             
                 if pepper_aug:
                     for index, pepper_ind in enumerate(pepper_indexes):
                         img_out  = add_salt_and_pepper_noise(img, pepper_ind, pepper_ind)
-                        img_out = scale_padd_image_for_ocr(img_out, height, width)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp)
                         
                         batchcount+=1
                         
-                        if batchcount>=batchsize:
+                        if batchcount>=n_batch:
                             ret_x = ret_x/255.
                             yield {"image": ret_x, "label": ret_y}
-                            ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                            ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                            ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                            ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                             batchcount = 0
                     
                 
                         
             else:
                 
-                img_out = scale_padd_image_for_ocr(img, height, width)
+                img_out = scale_padd_image_for_ocr(img, input_height, input_width)
                 ret_x[batchcount, :,:,:] = img_out[:,:,:]
                 
                 ret_y[batchcount, :] =  vectorize_label(txt_inp)
                 
                 batchcount+=1
             
-                if batchcount>=batchsize:
+                if batchcount>=n_batch:
                     ret_x = ret_x/255.
                     yield {"image": ret_x, "label": ret_y}
-                    ret_x= np.zeros((batchsize, height, width, 3)).astype(np.float32)
-                    ret_y= np.zeros((batchsize, max_len)).astype(np.int16)+padding_token
+                    ret_x= np.zeros((n_batch, input_height, input_width, 3)).astype(np.float32)
+                    ret_y= np.zeros((n_batch, max_len)).astype(np.int16)+padding_token
                     batchcount = 0
 
 
-def return_muliplier_based_on_augmnentations(augmentation=False, color_padding_rotation=False, rotation=False, bluring_aug=False, 
-                                             degrading=False, bin_deg=False, brightening=False, w_padding=False,rgb_fging=False, rgb_bkding=False, binarization=False, image_inversion=False, channel_shuffling=False, add_red_textline=False, white_noise_strap=False,
-                                             textline_skewing=False, textline_skewing_bin=False, textline_left_in_depth=False, textline_left_in_depth_bin=False, textline_right_in_depth=False, textline_right_in_depth_bin=False, textline_up_in_depth=False, textline_up_in_depth_bin=False, textline_down_in_depth=False, textline_down_in_depth_bin=False, pepper_bin_aug=False, pepper_aug=False, deg_scales=None, number_of_backgrounds_per_image=None, thethas=None, brightness=None, padd_colors=None):
+def return_multiplier_based_on_augmnentations(augmentation, color_padding_rotation, rotation_not_90, blur_aug, 
+                                             degrading, bin_deg, brightening, padding_white,adding_rgb_foreground, adding_rgb_background, binarization, image_inversion, channels_shuffling, add_red_textlines, white_noise_strap,
+                                             textline_skewing, textline_skewing_bin, textline_left_in_depth, textline_left_in_depth_bin, textline_right_in_depth, textline_right_in_depth_bin, textline_up_in_depth, textline_up_in_depth_bin, textline_down_in_depth, textline_down_in_depth_bin, pepper_bin_aug, pepper_aug, degrade_scales, number_of_backgrounds_per_image, thetha, brightness, padd_colors, shuffle_indexes, pepper_indexes, skewing_amplitudes):
     aug_multip = 1
 
     if augmentation:
@@ -1828,7 +1831,7 @@ def return_muliplier_based_on_augmnentations(augmentation=False, color_padding_r
             aug_multip = aug_multip + 1
         if image_inversion:
             aug_multip = aug_multip + 1
-        if add_red_textline:
+        if add_red_textlines:
             aug_multip = aug_multip + 1
         if white_noise_strap:
             aug_multip = aug_multip + 1
@@ -1848,29 +1851,29 @@ def return_muliplier_based_on_augmnentations(augmentation=False, color_padding_r
             aug_multip = aug_multip + 1
         if textline_down_in_depth_bin:
             aug_multip = aug_multip + 1
-        if rgb_fging:
+        if adding_rgb_foreground:
             aug_multip = aug_multip + number_of_backgrounds_per_image
-        if rgb_bkding:
+        if adding_rgb_background:
             aug_multip = aug_multip + number_of_backgrounds_per_image
         if bin_deg:
-            aug_multip = aug_multip + len(deg_scales)
+            aug_multip = aug_multip + len(degrade_scales)
         if degrading:
-            aug_multip = aug_multip + len(deg_scales)
-        if rotation:
-            aug_multip = aug_multip + len(thethas)
+            aug_multip = aug_multip + len(degrade_scales)
+        if rotation_not_90:
+            aug_multip = aug_multip + len(thetha)
         if textline_skewing:
             aug_multip = aug_multip + len(skewing_amplitudes)
         if textline_skewing_bin:
             aug_multip = aug_multip + len(skewing_amplitudes)
         if color_padding_rotation:
             aug_multip = aug_multip + len(thetha_padd)*len(padd_colors)
-        if channel_shuffling:
+        if channels_shuffling:
             aug_multip = aug_multip + len(shuffle_indexes)
-        if bluring_aug:
+        if blur_aug:
             aug_multip = aug_multip + len(blurs)
         if brightening:
             aug_multip = aug_multip + len(brightness)
-        if w_padding:
+        if padding_white:
             aug_multip = aug_multip + len(white_padds)*len(padd_colors)
         if pepper_aug:
             aug_multip = aug_multip + len(pepper_indexes)

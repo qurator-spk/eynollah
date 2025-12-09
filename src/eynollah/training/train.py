@@ -15,10 +15,13 @@ from eynollah.training.models import (
     resnet50_classifier,
     resnet50_unet,
     vit_resnet50_unet,
-    vit_resnet50_unet_transformer_before_cnn
+    vit_resnet50_unet_transformer_before_cnn,
+    cnn_rnn_ocr_model
 )
 from eynollah.training.utils import (
     data_gen,
+    data_gen_ocr,
+    return_multiplier_based_on_augmnentations,
     generate_arrays_from_folder_reading_order,
     generate_data_from_folder_evaluation,
     generate_data_from_folder_training,
@@ -36,6 +39,7 @@ from tensorflow.keras.models import load_model
 from tqdm import tqdm
 from sklearn.metrics import f1_score
 from tensorflow.keras.callbacks import Callback
+from tensorflow.keras.layers import StringLookup
 
 import numpy as np
 import cv2
@@ -60,6 +64,7 @@ class SaveWeightsAfterSteps(Callback):
             with open(os.path.join(os.path.join(self.save_path, f"model_step_{self.step_count}"),"config.json"), "w") as fp:
                 json.dump(self._config, fp)  # encode dict into JSON
             print(f"saved model as steps {self.step_count} to {save_file}")
+            
             
             
 def configuration():
@@ -89,6 +94,7 @@ def config_params():
     input_width = 224 * 1  # Width of model's input in pixels.
     weight_decay = 1e-6  # Weight decay of l2 regularization of model layers.
     n_batch = 1  # Number of batches at each iteration.
+    max_len = None # max len for ocr output.
     learning_rate = 1e-4  # Set the learning rate.
     patches = False  # Divides input image into smaller patches (input size of the model) when set to true. For the model to see the full image, like page extraction, set this to false.
     augmentation = False  # To apply any kind of augmentation, this parameter must be set to true.
@@ -132,7 +138,9 @@ def config_params():
     scaling_brightness = False  # If true, a combination of scaling and brightening will be applied to the image.
     scaling_flip = False  # If true, a combination of scaling and flipping will be applied to the image.
     thetha = None  # Rotate image by these angles for augmentation.
-    shuffle_indexes = None
+    shuffle_indexes = None # List of shuffling indexes like [[0,2,1], [1,2,0], [1,0,2]]
+    pepper_indexes = None # List of pepper noise indexes like [0.01, 0.005]
+    skewing_amplitudes = None # List of skewing augmentation amplitudes like [5, 8]
     blur_k = None  # Blur image for augmentation.
     scales = None  # Scale patches for augmentation.
     padd_colors = None # padding colors. A list elements can be only white and black. like ["white", "black"] or only one of them ["white"]
@@ -180,7 +188,7 @@ def run(_config, n_classes, n_epochs, input_height,
         pretraining, learning_rate, task, f1_threshold_classification, classification_classes_name, dir_img_bin, number_of_backgrounds_per_image,dir_rgb_backgrounds,
         dir_rgb_foregrounds, characters_txt_file, color_padding_rotation, bin_deg, image_inversion, white_noise_strap, textline_skewing, textline_skewing_bin,
         textline_left_in_depth, textline_left_in_depth_bin, textline_right_in_depth, textline_right_in_depth_bin, textline_up_in_depth, textline_up_in_depth_bin,
-        textline_down_in_depth, textline_down_in_depth_bin, pepper_bin_aug, pepper_aug, padd_colors):
+        textline_down_in_depth, textline_down_in_depth_bin, pepper_bin_aug, pepper_aug, padd_colors, pepper_indexes, skewing_amplitudes, max_len):
     
     if dir_rgb_backgrounds:
         list_all_possible_background_images = os.listdir(dir_rgb_backgrounds)
@@ -409,20 +417,35 @@ def run(_config, n_classes, n_epochs, input_height,
         char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
 
         # Mapping integers back to original characters.
-        num_to_char = StringLookup(
-            vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
-        )
+        ##num_to_char = StringLookup(
+            ##vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
+        ##)
         
         padding_token = len(characters) + 5
         ls_files_images = os.listdir(dir_img)
         
-        train_ds = data_gen_ocr(padding_token, batchsize=n_batch, height=input_height, width=input_width, max_len=max_len, dir_ins=dir_train, ls_files_images,
-                                augmentation, color_padding_rotation, rotation=rotation_not_90, bluring_aug=blurring, degrading, bin_deg, brightening, w_padding=padding_white,
-                                rgb_fging=adding_rgb_foreground, rgb_bkding=adding_rgb_background, binarization, image_inversion, channel_shuffling=channels_shuffling, add_red_textline=add_red_textlines, white_noise_strap,
+        n_classes = len(char_to_num.get_vocabulary()) + 2
+        
+        
+        model = cnn_rnn_ocr_model(image_height=input_height, image_width=input_width, n_classes=n_classes, max_seq=max_len)
+        
+        print(model.summary())
+        
+        aug_multip = return_multiplier_based_on_augmnentations(augmentation, color_padding_rotation, rotation_not_90, blur_aug, degrading, bin_deg,
+                                                  brightening, padding_white, adding_rgb_foreground, adding_rgb_background, binarization,
+                                                  image_inversion, channels_shuffling, add_red_textlines, white_noise_strap, textline_skewing, textline_skewing_bin, textline_left_in_depth, textline_left_in_depth_bin, textline_right_in_depth, textline_right_in_depth_bin, textline_up_in_depth, textline_up_in_depth_bin, textline_down_in_depth, textline_down_in_depth_bin, pepper_bin_aug, pepper_aug, degrade_scales, number_of_backgrounds_per_image, thetha, brightness, padd_colors, shuffle_indexes, pepper_indexes, skewing_amplitudes)
+        
+        len_dataset = aug_multip*len(ls_files_images) 
+        
+        train_ds = data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir_train, ls_files_images,
+                                augmentation, color_padding_rotation, rotation_not_90, blur_aug, degrading, bin_deg, brightening, padding_white,
+                                adding_rgb_foreground, adding_rgb_background, binarization, image_inversion, channels_shuffling, add_red_textlines, white_noise_strap,
                                 textline_skewing, textline_skewing_bin, textline_left_in_depth, textline_left_in_depth_bin, textline_right_in_depth,
                                 textline_right_in_depth_bin, textline_up_in_depth, textline_up_in_depth_bin, textline_down_in_depth, textline_down_in_depth_bin,
-                                pepper_bin_aug, pepper_aug, deg_scales=degrade_scales, number_of_backgrounds_per_image, thethas=thetha, brightness, padd_colors,
-                                shuffle_indexes, pepper_indexes, skewing_amplitudes)
+                                pepper_bin_aug, pepper_aug, degrade_scales, number_of_backgrounds_per_image, thetha, brightness, padd_colors,
+                                shuffle_indexes, pepper_indexes, skewing_amplitudes, dir_img_bin)
+        
+        print(len_dataset, 'len_dataset')
         
     elif task=='classification':
         configuration()
