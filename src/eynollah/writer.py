@@ -4,7 +4,6 @@ from pathlib import Path
 import os.path
 from typing import Optional
 import logging
-import xml.etree.ElementTree as ET
 from .utils.xml import create_page_xml, xml_reading_order
 from .utils.counter import EynollahIdCounter
 
@@ -19,7 +18,6 @@ from ocrd_models.ocrd_page import (
         SeparatorRegionType,
         to_xml
         )
-import numpy as np
 
 class EynollahXmlWriter:
 
