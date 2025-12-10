@@ -103,8 +103,6 @@ The following options can be used to further configure the processing:
 | option            | description                                                                                 |
 |-------------------|:--------------------------------------------------------------------------------------------|
 | `-fl`             | full layout analysis including all steps and segmentation classes (recommended)             |
-| `-light`          | lighter and faster but simpler method for main region detection and deskewing (recommended) |
-| `-tll`            | this indicates the light textline and should be passed with light version (recommended)     |
 | `-tab`            | apply table detection                                                                       |
 | `-ae`             | apply enhancement (the resulting image is saved to the output directory)                    |
 | `-as`             | apply scaling                                                                               |

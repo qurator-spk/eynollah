@@ -23,14 +23,13 @@ import numpy as np
 
 class EynollahXmlWriter:
 
-    def __init__(self, *, dir_out, image_filename, curved_line,textline_light, pcgts=None):
+    def __init__(self, *, dir_out, image_filename, curved_line, pcgts=None):
         self.logger = logging.getLogger('eynollah.writer')
         self.counter = EynollahIdCounter()
         self.dir_out = dir_out
         self.image_filename = image_filename
         self.output_filename = os.path.join(self.dir_out or "", self.image_filename_stem) + ".xml"
         self.curved_line = curved_line
-        self.textline_light = textline_light
         self.pcgts = pcgts
         self.scale_x: Optional[float] = None # XXX set outside __init__
         self.scale_y: Optional[float] = None # XXX set outside __init__
@@ -73,8 +72,8 @@ class EynollahXmlWriter:
                     point = point[0]
                 point_x = point[0] + page_coord[2]
                 point_y = point[1] + page_coord[0]
-                # FIXME: or actually... not self.textline_light and not self.curved_line or np.abs(slopes[region_idx]) > 45?
-                if not self.textline_light and not (self.curved_line and np.abs(slopes[region_idx]) <= 45):
+                # FIXME: or actually... not self.curved_line or np.abs(slopes[region_idx]) > 45?
+                if not (self.curved_line and np.abs(slopes[region_idx]) <= 45):
                     point_x += region_bboxes[2]
                     point_y += region_bboxes[0]
                 point_x = max(0, int(point_x / self.scale_x))

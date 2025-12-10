@@ -10,8 +10,6 @@ class EynollahModelSpec():
     category: str
     # Relative filename to the models_eynollah directory in the dists
     filename: str
-    # basename of the ZIP files that should contain this model
-    dists: List[str]
     # URL to the smallest model distribution containing this model (link to Zenodo)
     dist_url: str
     type: str

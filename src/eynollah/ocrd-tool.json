@@ -30,16 +30,6 @@
           "default": true,
           "description": "Try to detect all element subtypes, including drop-caps and headings"
         },
-         "light_version": {
-          "type": "boolean",
-          "default": true,
-          "description": "Try to detect all element subtypes in light version (faster+simpler method for main region detection and deskewing)"
-        },
-         "textline_light": {
-          "type": "boolean",
-          "default": true,
-          "description": "Light version need textline light. If this parameter set to true, this tool will try to return contoure of textlines instead of rectangle bounding box of textline with a faster method."
-        },
         "tables": {
           "type": "boolean",
           "default": false,
