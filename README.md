@@ -103,15 +103,12 @@ The following options can be used to further configure the processing:
 | option            | description                                                                                 |
 |-------------------|:--------------------------------------------------------------------------------------------|
 | `-fl`             | full layout analysis including all steps and segmentation classes (recommended)             |
-| `-light`          | lighter and faster but simpler method for main region detection and deskewing (recommended) |
-| `-tll`            | this indicates the light textline and should be passed with light version (recommended)     |
 | `-tab`            | apply table detection                                                                       |
 | `-ae`             | apply enhancement (the resulting image is saved to the output directory)                    |
 | `-as`             | apply scaling                                                                               |
 | `-cl`             | apply contour detection for curved text lines instead of bounding boxes                     |
 | `-ib`             | apply binarization (the resulting image is saved to the output directory)                   |
 | `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`)              |
-| `-eoi`            | extract only images to output directory (other processing will not be done)                 |
 | `-ho`             | ignore headers for reading order dectection                                                 |
 | `-si <directory>` | save image regions detected to this directory                                               |
 | `-sd <directory>` | save deskewed image to this directory                                                       |
@@ -120,9 +117,6 @@ The following options can be used to further configure the processing:
 | `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory                            |
 | `-thart`          | threshold of artifical class in the case of textline detection. The default value is 0.1    |
 | `-tharl`          | threshold of artifical class in the case of layout detection. The default value is 0.1      |
-| `-ocr`            | do ocr                                                                                      |
-| `-tr`             | apply transformer ocr. Default model is a CNN-RNN model                                     |
-| `-bs_ocr`         | ocr inference batch size. Default bs for trocr and cnn_rnn models are 2 and 8 respectively  |
 | `-ncu`            | upper limit of columns in document image                                                    |
 | `-ncl`            | lower limit of columns in document image                                                    |
 | `-slro`           | skip layout detection and reading order                                                     |

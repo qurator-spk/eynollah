@@ -10,14 +10,14 @@ Image enhancer. The output can be written as same scale of input or in new predi
 import logging
 import os
 import time
-from typing import Dict, Optional
+from typing import Optional
 from pathlib import Path
 import gc
 
 import cv2
 from keras.models import Model
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf # type: ignore
 from skimage.morphology import skeletonize
 
 from .model_zoo import EynollahModelZoo
@@ -27,7 +27,6 @@ from .utils import (
     is_image_filename,
     crop_image_inside_box
 )
-from .patch_encoder import PatchEncoder, Patches
 
 DPI_THRESHOLD = 298
 KERNEL = np.ones((5, 5), np.uint8)
@@ -43,7 +42,6 @@ class Enhancer:
         save_org_scale : bool = False,
     ):
         self.input_binary = False
-        self.light_version = False
         self.save_org_scale = save_org_scale
         if num_col_upper:
             self.num_col_upper = int(num_col_upper)
@@ -69,16 +67,10 @@ class Enhancer:
         ret = {}
         if image_filename:
             ret['img'] = cv2.imread(image_filename)
-            if self.light_version:
-                self.dpi = 100
-            else:
-                self.dpi = 0#check_dpi(image_filename)
+            self.dpi = 100
         else:
             ret['img'] = pil2cv(image_pil)
-            if self.light_version:
-                self.dpi = 100
-            else:
-                self.dpi = 0#check_dpi(image_pil)
+            self.dpi = 100
         ret['img_grayscale'] = cv2.cvtColor(ret['img'], cv2.COLOR_BGR2GRAY)
         for prefix in ('',  '_grayscale'):
             ret[f'img{prefix}_uint8'] = ret[f'img{prefix}'].astype(np.uint8)
@@ -98,9 +90,6 @@ class Enhancer:
             key += '_uint8'
         return self._imgs[key].copy()
 
-    def isNaN(self, num):
-        return num != num
-    
     def predict_enhancement(self, img):
         self.logger.debug("enter predict_enhancement")
 
@@ -271,7 +260,7 @@ class Enhancer:
 
         return img_new, num_column_is_classified
     
-    def resize_and_enhance_image_with_column_classifier(self, light_version):
+    def resize_and_enhance_image_with_column_classifier(self):
         self.logger.debug("enter resize_and_enhance_image_with_column_classifier")
         dpi = 0#self.dpi
         self.logger.info("Detected %s DPI", dpi)
@@ -354,16 +343,13 @@ class Enhancer:
         self.logger.info("Found %d columns (%s)", num_col, np.around(label_p_pred, decimals=5))
 
         if dpi < DPI_THRESHOLD:
-            if light_version and num_col in (1,2):
+            if num_col in (1,2):
                 img_new, num_column_is_classified = self.calculate_width_height_by_columns_1_2(
                     img, num_col, width_early, label_p_pred)
             else:
                 img_new, num_column_is_classified = self.calculate_width_height_by_columns(
                     img, num_col, width_early, label_p_pred)
-            if light_version:
-                image_res = np.copy(img_new)
-            else:
-                image_res = self.predict_enhancement(img_new)
+            image_res = np.copy(img_new)
             is_image_enhanced = True
 
         else:
@@ -657,11 +643,11 @@ class Enhancer:
         gc.collect()
         return prediction_true
     
-    def run_enhancement(self, light_version):
+    def run_enhancement(self):
         t_in = time.time()
         self.logger.info("Resizing and enhancing image...")
         is_image_enhanced, img_org, img_res, num_col_classifier, num_column_is_classified, img_bin = \
-            self.resize_and_enhance_image_with_column_classifier(light_version)
+            self.resize_and_enhance_image_with_column_classifier()
         
         self.logger.info("Image was %senhanced.", '' if is_image_enhanced else 'not ')
         return img_res, is_image_enhanced, num_col_classifier, num_column_is_classified
@@ -669,7 +655,7 @@ class Enhancer:
 
     def run_single(self):
         t0 = time.time()
-        img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement(light_version=False)
+        img_res, is_image_enhanced, num_col_classifier, num_column_is_classified = self.run_enhancement()
         
         return img_res, is_image_enhanced
         
