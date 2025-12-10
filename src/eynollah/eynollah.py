@@ -277,8 +277,7 @@ class Eynollah:
         self.writer = EynollahXmlWriter(
             dir_out=dir_out,
             image_filename=image_filename,
-            curved_line=self.curved_line,
-            textline_light = True)
+            curved_line=self.curved_line)
 
     def imread(self, grayscale=False, uint8=True):
         key = 'img'
