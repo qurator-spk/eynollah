@@ -428,8 +428,11 @@ def run(_config, n_classes, n_epochs, input_height,
         
         n_classes = len(char_to_num.get_vocabulary()) + 2
         
-        
-        model = cnn_rnn_ocr_model(image_height=input_height, image_width=input_width, n_classes=n_classes, max_seq=max_len)
+        if continue_training:
+            model = load_model(dir_of_start_model)
+        else:
+            index_start = 0
+            model = cnn_rnn_ocr_model(image_height=input_height, image_width=input_width, n_classes=n_classes, max_seq=max_len)
         
         print(model.summary())
         
@@ -459,8 +462,7 @@ def run(_config, n_classes, n_epochs, input_height,
         if save_interval:
             save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config)
         
-        indexer_start = 0
-        for i in range(n_epochs):
+        for i in tqdm(range(index_start, n_epochs + index_start)):
             if save_interval:
                 model.fit(
                     train_ds,
@@ -476,7 +478,7 @@ def run(_config, n_classes, n_epochs, input_height,
                 )
             
             if i >=0:
-                model.save( os.path.join(dir_output,'model_'+str(i+indexer_start) ))
+                model.save( os.path.join(dir_output,'model_'+str(i) ))
                 with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config.json"), "w") as fp:
                     json.dump(_config, fp)  # encode dict into JSON
         

@@ -1390,6 +1390,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                             img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         except:
                             img_out = np.copy(img)
+                            img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
@@ -1599,6 +1600,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                             img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         except:
                             img_out = np.copy(img)
+                            img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
@@ -1619,6 +1621,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                             img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         except:
                             img_out = np.copy(img_bin_corr)
+                            img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                         
                         ret_x[batchcount, :,:,:] = img_out[:,:,:]
                         ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
@@ -1639,6 +1642,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                         img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
@@ -1659,6 +1663,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                         img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img_bin_corr)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
@@ -1679,6 +1684,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                         img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
@@ -1699,6 +1705,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                         img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img_bin_corr)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
@@ -1719,6 +1726,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                         img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
@@ -1739,6 +1747,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                         img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img_bin_corr)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
@@ -1759,6 +1768,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                         img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
@@ -1779,6 +1789,7 @@ def data_gen_ocr(padding_token, n_batch, input_height, input_width, max_len, dir
                         img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     except:
                         img_out = np.copy(img_bin_corr)
+                        img_out = scale_padd_image_for_ocr(img_out, input_height, input_width)
                     
                     ret_x[batchcount, :,:,:] = img_out[:,:,:]
                     ret_y[batchcount, :] =  vectorize_label(txt_inp, char_to_num, padding_token, max_len)
