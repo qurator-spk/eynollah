@@ -843,7 +843,7 @@ def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_s
     
     addition_rnn = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(image_width, return_sequences=True, dropout=0.25))(addition)
     
-    out = tf.keras.layers.Conv1D(max_seq, 1, data_format="channels_first")(addition_rnn)
+    out = tf.keras.layers.Conv1D(max_seq, 1, data_format="channels_last")(addition_rnn)
     out = tf.keras.layers.BatchNormalization(name="bn9")(out)
     out = tf.keras.layers.Activation("relu", name="relu9")(out)
     #out = tf.keras.layers.Conv1D(n_classes, 1, activation='relu', data_format="channels_last")(out)
