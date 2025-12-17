@@ -576,9 +576,9 @@ class sbb_predict:
                 if self.save_layout:
                     cv2.imwrite(self.save_layout, only_layout)
                     
-            if self.ground_truth:
-                gt_img=cv2.imread(self.ground_truth)
-                self.IoU(gt_img[:,:,0],res[:,:,0])
+                if self.ground_truth:
+                    gt_img=cv2.imread(self.ground_truth)
+                    self.IoU(gt_img[:,:,0],res[:,:,0])
             
         else:
             ls_images = os.listdir(self.dir_in)
@@ -599,9 +599,9 @@ class sbb_predict:
                     self.save_layout = os.path.join(self.out, f_name+'_layout.png')
                     cv2.imwrite(self.save_layout, only_layout)
                         
-                if self.ground_truth:
-                    gt_img=cv2.imread(self.ground_truth)
-                    self.IoU(gt_img[:,:,0],res[:,:,0])
+                    if self.ground_truth:
+                        gt_img=cv2.imread(self.ground_truth)
+                        self.IoU(gt_img[:,:,0],res[:,:,0])
             
 
         
