@@ -175,22 +175,94 @@ def config_params():
     characters_txt_file = None # Directory of characters text file needed for cnn_rnn_ocr model training. The file ends with .txt
 
 @ex.automain
-def run(_config, n_classes, n_epochs, input_height,
-        input_width, weight_decay, weighted_loss,
-        index_start, dir_of_start_model, is_loss_soft_dice,
-        n_batch, patches, augmentation, flip_aug,
-        blur_aug, padding_white, padding_black, scaling, shifting, degrading,channels_shuffling,
-        brightening, binarization, adding_rgb_background, adding_rgb_foreground, add_red_textlines, blur_k, scales, degrade_scales,shuffle_indexes,
-        brightness, dir_train, data_is_provided, scaling_bluring,
-        scaling_brightness, scaling_binarization, rotation, rotation_not_90,
-        thetha, thetha_padd, scaling_flip, continue_training, transformer_projection_dim,
-        transformer_mlp_head_units, transformer_layers, transformer_num_heads, transformer_cnn_first,
-        transformer_patchsize_x, transformer_patchsize_y,
-        transformer_num_patches_xy, backbone_type, save_interval, flip_index, dir_eval, dir_output,
-        pretraining, learning_rate, task, f1_threshold_classification, classification_classes_name, dir_img_bin, number_of_backgrounds_per_image,dir_rgb_backgrounds,
-        dir_rgb_foregrounds, characters_txt_file, color_padding_rotation, bin_deg, image_inversion, white_noise_strap, textline_skewing, textline_skewing_bin,
-        textline_left_in_depth, textline_left_in_depth_bin, textline_right_in_depth, textline_right_in_depth_bin, textline_up_in_depth, textline_up_in_depth_bin,
-        textline_down_in_depth, textline_down_in_depth_bin, pepper_bin_aug, pepper_aug, padd_colors, pepper_indexes, white_padds, skewing_amplitudes, max_len):
+def run(
+    _config,
+    n_classes,
+    n_epochs,
+    input_height,
+    input_width,
+    weight_decay,
+    weighted_loss,
+    index_start,
+    dir_of_start_model,
+    is_loss_soft_dice,
+    n_batch,
+    patches,
+    augmentation,
+    flip_aug,
+    blur_aug,
+    padding_white,
+    padding_black,
+    scaling,
+    shifting,
+    degrading,
+    channels_shuffling,
+    brightening,
+    binarization,
+    adding_rgb_background,
+    adding_rgb_foreground,
+    add_red_textlines,
+    blur_k,
+    scales,
+    degrade_scales,
+    shuffle_indexes,
+    brightness,
+    dir_train,
+    data_is_provided,
+    scaling_bluring,
+    scaling_brightness,
+    scaling_binarization,
+    rotation,
+    rotation_not_90,
+    thetha,
+    thetha_padd,
+    scaling_flip,
+    continue_training,
+    transformer_projection_dim,
+    transformer_mlp_head_units,
+    transformer_layers,
+    transformer_num_heads,
+    transformer_cnn_first,
+    transformer_patchsize_x,
+    transformer_patchsize_y,
+    transformer_num_patches_xy,
+    backbone_type,
+    save_interval,
+    flip_index,
+    dir_eval,
+    dir_output,
+    pretraining,
+    learning_rate,
+    task,
+    f1_threshold_classification,
+    classification_classes_name,
+    dir_img_bin,
+    number_of_backgrounds_per_image,
+    dir_rgb_backgrounds,
+    dir_rgb_foregrounds,
+    characters_txt_file,
+    color_padding_rotation,
+    bin_deg,
+    image_inversion,
+    white_noise_strap,
+    textline_skewing,
+    textline_skewing_bin,
+    textline_left_in_depth,
+    textline_left_in_depth_bin,
+    textline_right_in_depth,
+    textline_right_in_depth_bin,
+    textline_up_in_depth,
+    textline_up_in_depth_bin,
+    textline_down_in_depth,
+    textline_down_in_depth_bin,
+    pepper_bin_aug,
+    pepper_aug,
+    padd_colors,
+    pepper_indexes,
+    white_padds,
+    skewing_amplitudes,
+    max_len,
+):
     
     if dir_rgb_backgrounds:
         list_all_possible_background_images = os.listdir(dir_rgb_backgrounds)
@@ -201,6 +273,10 @@ def run(_config, n_classes, n_epochs, input_height,
         list_all_possible_foreground_rgbs = os.listdir(dir_rgb_foregrounds)
     else:
         list_all_possible_foreground_rgbs = None
+
+    dir_seg = None
+    weights = None
+    model = None
         
     if task == "segmentation" or task == "enhancement" or task == "binarization":
         if data_is_provided:
@@ -285,6 +361,7 @@ def run(_config, n_classes, n_epochs, input_height,
                         pass
             else:
 
+                assert dir_seg is not None
                 for obj in os.listdir(dir_seg):
                     try:
                         label_obj = cv2.imread(dir_seg + '/' + obj)
@@ -314,6 +391,8 @@ def run(_config, n_classes, n_epochs, input_height,
                     model = load_model(dir_of_start_model, compile=True, custom_objects={'loss': weighted_categorical_crossentropy(weights)})
                 if not is_loss_soft_dice and not weighted_loss:
                     model = load_model(dir_of_start_model , compile=True,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
+            else:
+                raise ValueError("backbone_type must be 'nontransformer' or 'transformer'")
         else:
             index_start = 0
             if backbone_type=='nontransformer':
@@ -348,6 +427,7 @@ def run(_config, n_classes, n_epochs, input_height,
                         sys.exit(1)
                     model = vit_resnet50_unet_transformer_before_cnn(n_classes, transformer_patchsize_x, transformer_patchsize_y, num_patches, transformer_mlp_head_units, transformer_layers, transformer_num_heads, transformer_projection_dim, input_height, input_width, task, weight_decay, pretraining)
         
+        assert model is not None
         #if you want to see the model structure just uncomment model summary.
         model.summary()
 
@@ -377,9 +457,7 @@ def run(_config, n_classes, n_epochs, input_height,
         ##score_best=[]
         ##score_best.append(0)
         
-        if save_interval:
-            save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config)
-            
+        save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config) if save_interval else None
             
         for i in tqdm(range(index_start, n_epochs + index_start)):
             if save_interval:
@@ -459,8 +537,7 @@ def run(_config, n_classes, n_epochs, input_height,
         opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)#1e-4)#(lr_schedule)
         model.compile(optimizer=opt)
         
-        if save_interval:
-            save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config)
+        save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config) if save_interval else None
         
         for i in tqdm(range(index_start, n_epochs + index_start)):
             if save_interval:
@@ -559,8 +636,7 @@ def run(_config, n_classes, n_epochs, input_height,
         model.compile(loss="binary_crossentropy",
                             optimizer = opt_adam,metrics=['accuracy'])
         
-        if save_interval:
-            save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config)
+        save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config) if save_interval else None
             
         for i in range(n_epochs):
             if save_interval:
