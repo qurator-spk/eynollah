@@ -1,3 +1,4 @@
+import sys
 import click
 import tensorflow as tf
 
@@ -5,8 +6,11 @@ from .models import resnet50_unet
 
 
 def configuration():
-    gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
-    session = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
+    try:
+        for device in tf.config.list_physical_devices('GPU'):
+            tf.config.experimental.set_memory_growth(device, True)
+    except:
+        print("no GPU device available", file=sys.stderr)
 
 @click.command()
 def build_model_load_pretrained_weights_and_save():

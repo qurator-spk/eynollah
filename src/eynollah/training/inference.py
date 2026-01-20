@@ -1,16 +1,19 @@
+"""
+Tool to load model and predict for given image.
+"""
+
 import sys
 import os
 import warnings
 import json
 
+import click
 import numpy as np
 import cv2
-from tensorflow.keras.models import load_model
+
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
-from tensorflow.keras import backend as K
-from tensorflow.keras.layers import *
-import click
-from tensorflow.python.keras import backend as tensorflow_backend
+from tensorflow.keras.models import load_model
 import xml.etree.ElementTree as ET
 
 from .gt_gen_utils import (
@@ -24,17 +27,29 @@ from .models import (
     PatchEncoder,
     Patches
 )
+from .metrics import (
+    soft_dice_loss,
+    weighted_categorical_crossentropy,
+)
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     
-__doc__=\
-"""
-Tool to load model and predict for given image.
-"""
+class SBBPredict:
+    def __init__(self,
+                 image,
+                 dir_in,
+                 model,
+                 task,
+                 config_params_model,
+                 patches,
+                 save,
+                 save_layout,
+                 ground_truth,
+                 xml_file,
+                 out,
+                 min_area):
 
-class sbb_predict:
-    def __init__(self,image, dir_in, model, task, config_params_model, patches, save, save_layout, ground_truth, xml_file, out, min_area):
         self.image=image
         self.dir_in=dir_in
         self.patches=patches
@@ -52,8 +67,9 @@ class sbb_predict:
             self.min_area = 0
 
     def resize_image(self,img_in,input_height,input_width):
-        return cv2.resize( img_in, ( input_width,input_height) ,interpolation=cv2.INTER_NEAREST)
-    
+        return cv2.resize(img_in, (input_width,
+                                   input_height),
+                          interpolation=cv2.INTER_NEAREST)
     
     def color_images(self,seg):
         ann_u=range(self.n_classes)
@@ -69,68 +85,6 @@ class sbb_predict:
             seg_img[:,:,2][seg==c]=c
         return seg_img
     
-    def otsu_copy_binary(self,img):
-        img_r=np.zeros((img.shape[0],img.shape[1],3))
-        img1=img[:,:,0]
-
-        #print(img.min())
-        #print(img[:,:,0].min())
-        #blur = cv2.GaussianBlur(img,(5,5))
-        #ret3,th3 = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        retval1, threshold1 = cv2.threshold(img1, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-
-        
-
-        img_r[:,:,0]=threshold1
-        img_r[:,:,1]=threshold1
-        img_r[:,:,2]=threshold1
-        #img_r=img_r/float(np.max(img_r))*255
-        return img_r
-    
-    def otsu_copy(self,img):
-        img_r=np.zeros((img.shape[0],img.shape[1],3))
-        #img1=img[:,:,0]
-
-        #print(img.min())
-        #print(img[:,:,0].min())
-        #blur = cv2.GaussianBlur(img,(5,5))
-        #ret3,th3 = cv2.threshold(blur,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        _, threshold1 = cv2.threshold(img[:,:,0], 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        _, threshold2 = cv2.threshold(img[:,:,1], 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        _, threshold3 = cv2.threshold(img[:,:,2], 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-
-        
-
-        img_r[:,:,0]=threshold1
-        img_r[:,:,1]=threshold2
-        img_r[:,:,2]=threshold3
-        ###img_r=img_r/float(np.max(img_r))*255
-        return img_r
-    
-    def soft_dice_loss(self,y_true, y_pred, epsilon=1e-6): 
-
-        axes = tuple(range(1, len(y_pred.shape)-1))
-        
-        numerator = 2. * K.sum(y_pred * y_true, axes)
-    
-        denominator = K.sum(K.square(y_pred) + K.square(y_true), axes)
-        return 1.00 - K.mean(numerator / (denominator + epsilon)) # average over classes and batch
-    
-    def weighted_categorical_crossentropy(self,weights=None):
-
-        def loss(y_true, y_pred):
-            labels_floats = tf.cast(y_true, tf.float32)
-            per_pixel_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels_floats,logits=y_pred)
-        
-            if weights is not None:
-                weight_mask = tf.maximum(tf.reduce_max(tf.constant(
-                    np.array(weights, dtype=np.float32)[None, None, None])
-                    * labels_floats, axis=-1), 1.0)
-                per_pixel_loss = per_pixel_loss * weight_mask[:, :, :, None]
-            return tf.reduce_mean(per_pixel_loss)
-        return self.loss
-
-
     def IoU(self,Yi,y_predi):
         ## mean Intersection over Union
         ## Mean IoU = TP/(FN + TP + FP)
@@ -157,30 +111,28 @@ class sbb_predict:
             return mIoU
             
     def start_new_session_and_model(self):
-        
-        config = tf.compat.v1.ConfigProto()
-        config.gpu_options.allow_growth = True
+        try:
+            for device in tf.config.list_physical_devices('GPU'):
+                tf.config.experimental.set_memory_growth(device, True)
+        except:
+            print("no GPU device available", file=sys.stderr)
 
-        session = tf.compat.v1.Session(config=config)  # tf.InteractiveSession()
-        tensorflow_backend.set_session(session)
         #tensorflow.keras.layers.custom_layer = PatchEncoder
         #tensorflow.keras.layers.custom_layer = Patches
-        self.model = load_model(self.model_dir , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
-        #config = tf.ConfigProto()
-        #config.gpu_options.allow_growth=True
-    
-        #self.session = tf.InteractiveSession()
-        #keras.losses.custom_loss = self.weighted_categorical_crossentropy
-        #self.model = load_model(self.model_dir , compile=False)
+        self.model = load_model(self.model_dir, compile=False,
+                                custom_objects={"PatchEncoder": PatchEncoder,
+                                                "Patches": Patches})
+        #keras.losses.custom_loss = weighted_categorical_crossentropy
+        #self.model = load_model(self.model_dir, compile=False)
 
-        
         ##if self.weights_dir!=None:
             ##self.model.load_weights(self.weights_dir)
             
         if self.task != 'classification' and self.task != 'reading_order':
-            self.img_height=self.model.layers[len(self.model.layers)-1].output_shape[1]
-            self.img_width=self.model.layers[len(self.model.layers)-1].output_shape[2]
-            self.n_classes=self.model.layers[len(self.model.layers)-1].output_shape[3]
+            last = self.model.layers[-1]
+            self.img_height = last.output_shape[1]
+            self.img_width = last.output_shape[2]
+            self.n_classes = last.output_shape[3]
         
     def visualize_model_output(self, prediction, img, task):
         if task == "binarization":
@@ -208,21 +160,16 @@ class sbb_predict:
                         '15' : [255, 0, 255]}
         
             layout_only = np.zeros(prediction.shape)
-        
             for unq_class in unique_classes:
+                where = prediction[:,:,0]==unq_class
                 rgb_class_unique = rgb_colors[str(int(unq_class))]
-                layout_only[:,:,0][prediction[:,:,0]==unq_class] = rgb_class_unique[0]
-                layout_only[:,:,1][prediction[:,:,0]==unq_class] = rgb_class_unique[1]
-                layout_only[:,:,2][prediction[:,:,0]==unq_class] = rgb_class_unique[2]
-        
-        
+                layout_only[:,:,0][where] = rgb_class_unique[0]
+                layout_only[:,:,1][where] = rgb_class_unique[1]
+                layout_only[:,:,2][where] = rgb_class_unique[2]
+            layout_only = layout_only.astype(np.int32)
         
             img = self.resize_image(img, layout_only.shape[0], layout_only.shape[1])
-        
-            layout_only = layout_only.astype(np.int32)
             img = img.astype(np.int32)
-        
-            
             
             added_image = cv2.addWeighted(img,0.5,layout_only,0.1,0)
             
@@ -231,10 +178,10 @@ class sbb_predict:
     def predict(self, image_dir):
         if self.task == 'classification':
             classes_names = self.config_params_model['classification_classes_name']
-            img_1ch = img=cv2.imread(image_dir, 0)
-
-            img_1ch = img_1ch / 255.0
-            img_1ch = cv2.resize(img_1ch, (self.config_params_model['input_height'], self.config_params_model['input_width']), interpolation=cv2.INTER_NEAREST)
+            img_1ch = cv2.imread(image_dir, 0) / 255.0
+            img_1ch = cv2.resize(img_1ch, (self.config_params_model['input_height'],
+                                           self.config_params_model['input_width']),
+                                 interpolation=cv2.INTER_NEAREST)
             img_in = np.zeros((1, img_1ch.shape[0], img_1ch.shape[1], 3))
             img_in[0, :, :, 0] = img_1ch[:, :]
             img_in[0, :, :, 1] = img_1ch[:, :]
@@ -244,23 +191,27 @@ class sbb_predict:
             index_class = np.argmax(label_p_pred[0])
             
             print("Predicted Class: {}".format(classes_names[str(int(index_class))]))
+
         elif self.task == 'reading_order':
             img_height = self.config_params_model['input_height']
             img_width = self.config_params_model['input_width']
             
-            tree_xml, root_xml, bb_coord_printspace, file_name, id_paragraph, id_header, co_text_paragraph, co_text_header, tot_region_ref, x_len, y_len, index_tot_regions, img_poly = read_xml(self.xml_file)
-            _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(co_text_header)
+            tree_xml, root_xml, bb_coord_printspace, file_name, \
+                id_paragraph, id_header, \
+                co_text_paragraph, co_text_header, \
+                tot_region_ref, x_len, y_len, index_tot_regions, \
+                img_poly = read_xml(self.xml_file)
+            _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = \
+                find_new_features_of_contours(co_text_header)
             
             img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
-            
-
             for j in range(len(cy_main)):
-                img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,int(x_min_main[j]):int(x_max_main[j]) ] = 1
-                
+                img_header_and_sep[int(y_max_main[j]): int(y_max_main[j]) + 12,
+                                   int(x_min_main[j]): int(x_max_main[j])] = 1
+
             co_text_all = co_text_paragraph + co_text_header
             id_all_text = id_paragraph + id_header
             
-
             ##texts_corr_order_index  = [index_tot_regions[tot_region_ref.index(i)] for i in id_all_text ]
             ##texts_corr_order_index_int = [int(x) for x in texts_corr_order_index]
             texts_corr_order_index_int = list(np.array(range(len(co_text_all))))
@@ -271,7 +222,8 @@ class sbb_predict:
             #print(np.shape(co_text_all[0]), len( np.shape(co_text_all[0]) ),'co_text_all')
             #co_text_all = filter_contours_area_of_image_tables(img_poly, co_text_all, _, max_area, min_area)
             #print(co_text_all,'co_text_all')
-            co_text_all, texts_corr_order_index_int, _ = filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int, max_area, self.min_area)
+            co_text_all, texts_corr_order_index_int, _ = filter_contours_area_of_image(
+                img_poly, co_text_all, texts_corr_order_index_int, max_area, self.min_area)
             
             #print(texts_corr_order_index_int)
             
@@ -664,17 +616,15 @@ class sbb_predict:
     help="min area size of regions considered for reading order detection. The default value is zero and means that all text regions are considered for reading order.",
 )
 def main(image, dir_in, model, patches, save, save_layout, ground_truth, xml_file, out, min_area):
-    assert image or dir_in, "Either a single image -i or a dir_in -di is required"
+    assert image or dir_in, "Either a single image -i or a dir_in -di input is required"
     with open(os.path.join(model,'config.json')) as f:
         config_params_model = json.load(f)
     task = config_params_model['task']
     if task != 'classification' and task != 'reading_order':
-        if image and not save:
-            print("Error: You used one of segmentation or binarization task with image input but not set -s, you need a filename to save visualized output with -s")
-            sys.exit(1)
-        if dir_in and not out:
-            print("Error: You used one of segmentation or binarization task with dir_in but not set -out")
-            sys.exit(1)
-    x=sbb_predict(image, dir_in, model, task, config_params_model, patches, save, save_layout, ground_truth, xml_file, out, min_area)
+        assert not image or save, "For segmentation or binarization, an input single image -i also requires an output filename -s"
+        assert not dir_in or out, "For segmentation or binarization, an input directory -di also requires an output directory -o"
+    x = SBBPredict(image, dir_in, model, task, config_params_model,
+                   patches, save, save_layout, ground_truth, xml_file, out,
+                   min_area)
     x.run()
 

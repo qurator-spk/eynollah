@@ -2,19 +2,19 @@
 Tool to load model and binarize a given image.
 """
 
-import sys
 from glob import glob
 import os
 import logging
+from PIL import Image
 
 import numpy as np
-from PIL import Image
 import cv2
 from ocrd_utils import tf_disable_interactive_logs
+
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 tf_disable_interactive_logs()
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from tensorflow.python.keras import backend as tensorflow_backend
 
 from .utils import is_image_filename
 
@@ -27,25 +27,16 @@ class SbbBinarizer:
         self.model_dir = model_dir
         self.logger = logger if logger else logging.getLogger('SbbBinarizer')
 
-        self.start_new_session()
+        try:
+            for device in tf.config.list_physical_devices('GPU'):
+                tf.config.experimental.set_memory_growth(device, True)
+        except:
+            self.logger.warning("no GPU device available")
 
-        self.model_files = glob(self.model_dir+"/*/", recursive = True)
-
+        self.model_files = glob(self.model_dir + "/*/", recursive=True)
         self.models = []
         for model_file in self.model_files:
             self.models.append(self.load_model(model_file))
-
-    def start_new_session(self):
-        config = tf.compat.v1.ConfigProto()
-        config.gpu_options.allow_growth = True
-
-        self.session = tf.compat.v1.Session(config=config)  # tf.InteractiveSession()
-        tensorflow_backend.set_session(self.session)
-
-    def end_session(self):
-        tensorflow_backend.clear_session()
-        self.session.close()
-        del self.session
 
     def load_model(self, model_name):
         model = load_model(os.path.join(self.model_dir, model_name), compile=False)
@@ -55,7 +46,6 @@ class SbbBinarizer:
         return model, model_height, model_width, n_classes
 
     def predict(self, model_in, img, use_patches, n_batch_inference=5):
-        tensorflow_backend.set_session(self.session)
         model, model_height, model_width, n_classes = model_in
         
         img_org_h = img.shape[0]

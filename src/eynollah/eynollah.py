@@ -56,14 +56,12 @@ except ImportError:
     TrOCRProcessor = VisionEncoderDecoderModel = None
 
 #os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 tf_disable_interactive_logs()
 import tensorflow as tf
-from tensorflow.python.keras import backend as K
 from tensorflow.keras.models import load_model
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
-# use tf1 compatibility for keras backend
-from tensorflow.compat.v1.keras.backend import set_session
 from tensorflow.keras import layers
 from tensorflow.keras.layers import StringLookup
 
@@ -277,14 +275,6 @@ class Eynollah:
 
         t_start = time.time()
 
-        # #gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
-        # #gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=7.7, allow_growth=True)
-        # #session = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
-        # config = tf.compat.v1.ConfigProto()
-        # config.gpu_options.allow_growth = True
-        # #session = tf.InteractiveSession()
-        # session = tf.compat.v1.Session(config=config)
-        # set_session(session)
         try:
             for device in tf.config.list_physical_devices('GPU'):
                 tf.config.experimental.set_memory_growth(device, True)

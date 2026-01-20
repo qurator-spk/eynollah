@@ -28,14 +28,14 @@ from eynollah.training.utils import (
 )
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
-from tensorflow.compat.v1.keras.backend import set_session
 from tensorflow.keras.optimizers import SGD, Adam
-from sacred import Experiment
 from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import Callback, TensorBoard
+from sacred import Experiment
 from tqdm import tqdm
 from sklearn.metrics import f1_score
-from tensorflow.keras.callbacks import Callback
 
 import numpy as np
 import cv2
@@ -63,10 +63,11 @@ class SaveWeightsAfterSteps(Callback):
             
             
 def configuration():
-    config = tf.compat.v1.ConfigProto()
-    config.gpu_options.allow_growth = True
-    session = tf.compat.v1.Session(config=config)
-    set_session(session)
+    try:
+        for device in tf.config.list_physical_devices('GPU'):
+            tf.config.experimental.set_memory_growth(device, True)
+    except:
+        print("no GPU device available", file=sys.stderr)
 
 
 def get_dirs_or_files(input_data):
@@ -171,12 +172,11 @@ def run(_config, n_classes, n_epochs, input_height,
     else:
         list_all_possible_foreground_rgbs = None
         
-    if task == "segmentation" or task == "enhancement" or task == "binarization":
+    if task in ["segmentation", "enhancement", "binarization"]:
         if data_is_provided:
             dir_train_flowing = os.path.join(dir_output, 'train')
             dir_eval_flowing = os.path.join(dir_output, 'eval')
                 
-
             dir_flow_train_imgs = os.path.join(dir_train_flowing, 'images')
             dir_flow_train_labels = os.path.join(dir_train_flowing, 'labels')
 
@@ -227,176 +227,228 @@ def run(_config, n_classes, n_epochs, input_height,
             segs_list_test=np.array(os.listdir(dir_seg_val))
 
             # writing patches into a sub-folder in order to be flowed from directory.
-            provide_patches(imgs_list, segs_list, dir_img, dir_seg, dir_flow_train_imgs,
-                            dir_flow_train_labels, input_height, input_width, blur_k,
-                            blur_aug, padding_white, padding_black, flip_aug, binarization, adding_rgb_background,adding_rgb_foreground, add_red_textlines, channels_shuffling,
-                            scaling, shifting, degrading, brightening, scales, degrade_scales, brightness,
-                            flip_index,shuffle_indexes, scaling_bluring, scaling_brightness, scaling_binarization,
-                            rotation, rotation_not_90, thetha, scaling_flip, task, augmentation=augmentation,
-                            patches=patches, dir_img_bin=dir_img_bin,number_of_backgrounds_per_image=number_of_backgrounds_per_image,list_all_possible_background_images=list_all_possible_background_images, dir_rgb_backgrounds=dir_rgb_backgrounds, dir_rgb_foregrounds=dir_rgb_foregrounds,list_all_possible_foreground_rgbs=list_all_possible_foreground_rgbs)
-            
-            provide_patches(imgs_list_test, segs_list_test, dir_img_val, dir_seg_val,
-                            dir_flow_eval_imgs, dir_flow_eval_labels, input_height, input_width,
-                            blur_k, blur_aug, padding_white, padding_black, flip_aug, binarization, adding_rgb_background, adding_rgb_foreground, add_red_textlines, channels_shuffling,
-                            scaling, shifting, degrading, brightening, scales, degrade_scales, brightness,
-                            flip_index, shuffle_indexes, scaling_bluring, scaling_brightness, scaling_binarization,
-                            rotation, rotation_not_90, thetha, scaling_flip, task, augmentation=False, patches=patches,dir_img_bin=dir_img_bin,number_of_backgrounds_per_image=number_of_backgrounds_per_image,list_all_possible_background_images=list_all_possible_background_images, dir_rgb_backgrounds=dir_rgb_backgrounds,dir_rgb_foregrounds=dir_rgb_foregrounds,list_all_possible_foreground_rgbs=list_all_possible_foreground_rgbs )
+            common_args = [input_height, input_width,
+                           blur_k, blur_aug,
+                           padding_white, padding_black,
+                           flip_aug, binarization,
+                           adding_rgb_background,
+                           adding_rgb_foreground,
+                           add_red_textlines,
+                           channels_shuffling,
+                           scaling, shifting, degrading, brightening,
+                           scales, degrade_scales, brightness,
+                           flip_index, shuffle_indexes,
+                           scaling_bluring, scaling_brightness, scaling_binarization,
+                           rotation, rotation_not_90, thetha,
+                           scaling_flip, task,
+            ]
+            common_kwargs = dict(patches=
+                                 patches,
+                                 dir_img_bin=
+                                 dir_img_bin,
+                                 number_of_backgrounds_per_image=
+                                 number_of_backgrounds_per_image,
+                                 list_all_possible_background_images=
+                                 list_all_possible_background_images,
+                                 dir_rgb_backgrounds=
+                                 dir_rgb_backgrounds,
+                                 dir_rgb_foregrounds=
+                                 dir_rgb_foregrounds,
+                                 list_all_possible_foreground_rgbs=
+                                 list_all_possible_foreground_rgbs,
+            )
+            provide_patches(imgs_list, segs_list,
+                            dir_img, dir_seg,
+                            dir_flow_train_imgs,
+                            dir_flow_train_labels,
+                            *common_args,
+                            augmentation=augmentation,
+                            **common_kwargs)
+            provide_patches(imgs_list_test, segs_list_test,
+                            dir_img_val, dir_seg_val,
+                            dir_flow_eval_imgs,
+                            dir_flow_eval_labels,
+                            *common_args,
+                            augmentation=False,
+                            **common_kwargs)
 
         if weighted_loss:
             weights = np.zeros(n_classes)
             if data_is_provided:
-                for obj in os.listdir(dir_flow_train_labels):
-                    try:
-                        label_obj = cv2.imread(dir_flow_train_labels + '/' + obj)
-                        label_obj_one_hot = get_one_hot(label_obj, label_obj.shape[0], label_obj.shape[1], n_classes)
-                        weights += (label_obj_one_hot.sum(axis=0)).sum(axis=0)
-                    except:
-                        pass
+                dirs = dir_flow_train_labels
             else:
-
-                for obj in os.listdir(dir_seg):
-                    try:
-                        label_obj = cv2.imread(dir_seg + '/' + obj)
-                        label_obj_one_hot = get_one_hot(label_obj, label_obj.shape[0], label_obj.shape[1], n_classes)
-                        weights += (label_obj_one_hot.sum(axis=0)).sum(axis=0)
-                    except:
-                        pass
+                dirs = dir_seg
+            for obj in os.listdir(dirs):
+                label_file = os.path.join(dirs, + obj)
+                try:
+                    label_obj = cv2.imread(label_file)
+                    label_obj_one_hot = get_one_hot(label_obj, label_obj.shape[0], label_obj.shape[1], n_classes)
+                    weights += (label_obj_one_hot.sum(axis=0)).sum(axis=0)
+                except Exception as e:
+                    print("error reading data file '%s': %s" % (label_file, e), file=sys.stderr)
 
             weights = 1.00 / weights
-
             weights = weights / float(np.sum(weights))
             weights = weights / float(np.min(weights))
             weights = weights / float(np.sum(weights))
 
         if continue_training:
-            if backbone_type=='nontransformer':
-                if is_loss_soft_dice and (task == "segmentation" or task == "binarization"):
-                    model = load_model(dir_of_start_model, compile=True, custom_objects={'soft_dice_loss': soft_dice_loss})
-                if weighted_loss and (task == "segmentation" or task == "binarization"):
-                    model = load_model(dir_of_start_model, compile=True, custom_objects={'loss': weighted_categorical_crossentropy(weights)})
-                if not is_loss_soft_dice and not weighted_loss:
+            if backbone_type == 'nontransformer':
+                if is_loss_soft_dice and task in ["segmentation", "binarization"]:
+                    model = load_model(dir_of_start_model, compile=True,
+                                       custom_objects={'soft_dice_loss': soft_dice_loss})
+                elif weighted_loss and task in ["segmentation", "binarization"]:
+                    model = load_model(dir_of_start_model, compile=True,
+                                       custom_objects={'loss': weighted_categorical_crossentropy(weights)})
+                else:
                     model = load_model(dir_of_start_model , compile=True)
-            elif backbone_type=='transformer':
-                if is_loss_soft_dice and (task == "segmentation" or task == "binarization"):
-                    model = load_model(dir_of_start_model, compile=True, custom_objects={"PatchEncoder": PatchEncoder, "Patches": Patches,'soft_dice_loss': soft_dice_loss})
-                if weighted_loss and (task == "segmentation" or task == "binarization"):
-                    model = load_model(dir_of_start_model, compile=True, custom_objects={'loss': weighted_categorical_crossentropy(weights)})
-                if not is_loss_soft_dice and not weighted_loss:
-                    model = load_model(dir_of_start_model , compile=True,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
+
+            elif backbone_type == 'transformer':
+                if is_loss_soft_dice and task in ["segmentation", "binarization"]:
+                    model = load_model(dir_of_start_model, compile=True,
+                                       custom_objects={"PatchEncoder": PatchEncoder,
+                                                       "Patches": Patches,
+                                                       'soft_dice_loss': soft_dice_loss})
+                elif weighted_loss and task in ["segmentation", "binarization"]:
+                    model = load_model(dir_of_start_model, compile=True,
+                                       custom_objects={'loss': weighted_categorical_crossentropy(weights)})
+                else:
+                    model = load_model(dir_of_start_model, compile=True,
+                                       custom_objects = {"PatchEncoder": PatchEncoder,
+                                                         "Patches": Patches})
         else:
             index_start = 0
-            if backbone_type=='nontransformer':
-                model = resnet50_unet(n_classes, input_height, input_width, task, weight_decay, pretraining)
-            elif backbone_type=='transformer':
+            if backbone_type == 'nontransformer':
+                model = resnet50_unet(n_classes,
+                                      input_height,
+                                      input_width,
+                                      task,
+                                      weight_decay,
+                                      pretraining)
+            elif backbone_type == 'transformer':
                 num_patches_x = transformer_num_patches_xy[0]
                 num_patches_y = transformer_num_patches_xy[1]
                 num_patches = num_patches_x * num_patches_y
                 
                 if transformer_cnn_first:
-                    if input_height != (num_patches_y * transformer_patchsize_y * 32):
-                        print("Error: transformer_patchsize_y or transformer_num_patches_xy height value error . input_height should be equal to ( transformer_num_patches_xy height value * transformer_patchsize_y * 32)")
-                        sys.exit(1)
-                    if input_width != (num_patches_x * transformer_patchsize_x * 32):
-                        print("Error: transformer_patchsize_x or transformer_num_patches_xy width value error . input_width should be equal to ( transformer_num_patches_xy width value * transformer_patchsize_x * 32)")
-                        sys.exit(1)
-                    if (transformer_projection_dim % (transformer_patchsize_y * transformer_patchsize_x)) != 0:
-                        print("Error: transformer_projection_dim error. The remainder when parameter transformer_projection_dim is divided by (transformer_patchsize_y*transformer_patchsize_x) should be zero")
-                        sys.exit(1)
-                        
-                    
-                    model = vit_resnet50_unet(n_classes, transformer_patchsize_x, transformer_patchsize_y, num_patches, transformer_mlp_head_units, transformer_layers, transformer_num_heads, transformer_projection_dim, input_height, input_width, task, weight_decay, pretraining)
+                    model_builder = vit_resnet50_unet
+                    multiple_of_32 = True
                 else:
-                    if input_height != (num_patches_y * transformer_patchsize_y):
-                        print("Error: transformer_patchsize_y or transformer_num_patches_xy height value error . input_height should be equal to ( transformer_num_patches_xy height value * transformer_patchsize_y)")
-                        sys.exit(1)
-                    if input_width != (num_patches_x * transformer_patchsize_x):
-                        print("Error: transformer_patchsize_x or transformer_num_patches_xy width value error . input_width should be equal to ( transformer_num_patches_xy width value * transformer_patchsize_x)")
-                        sys.exit(1)
-                    if (transformer_projection_dim % (transformer_patchsize_y * transformer_patchsize_x)) != 0:
-                        print("Error: transformer_projection_dim error. The remainder when parameter transformer_projection_dim is divided by (transformer_patchsize_y*transformer_patchsize_x) should be zero")
-                        sys.exit(1)
-                    model = vit_resnet50_unet_transformer_before_cnn(n_classes, transformer_patchsize_x, transformer_patchsize_y, num_patches, transformer_mlp_head_units, transformer_layers, transformer_num_heads, transformer_projection_dim, input_height, input_width, task, weight_decay, pretraining)
+                    model_builder = vit_resnet50_unet_transformer_before_cnn
+                    multiple_of_32 = False
+
+                assert input_height == num_patches_y * transformer_patchsize_y * (32 if multiple_of_32 else 1), \
+                    "transformer_patchsize_y or transformer_num_patches_xy height value error: " \
+                    "input_height should be equal to " \
+                    "(transformer_num_patches_xy height value * transformer_patchsize_y%s)" % \
+                    " * 32" if multiple_of_32 else ""
+                assert input_width == num_patches_x * transformer_patchsize_x * (32 if multiple_of_32 else 1), \
+                    "transformer_patchsize_x or transformer_num_patches_xy width value error: " \
+                    "input_width should be equal to " \
+                    "(transformer_num_patches_xy width value * transformer_patchsize_x%s)" % \
+                    " * 32" if multiple_of_32 else ""
+                assert 0 == transformer_projection_dim % (transformer_patchsize_y * transformer_patchsize_x), \
+                    "transformer_projection_dim error: " \
+                    "The remainder when parameter transformer_projection_dim is divided by " \
+                    "(transformer_patchsize_y*transformer_patchsize_x) should be zero"
+
+                model = model_builder(
+                    n_classes,
+                    transformer_patchsize_x,
+                    transformer_patchsize_y,
+                    num_patches,
+                    transformer_mlp_head_units,
+                    transformer_layers,
+                    transformer_num_heads,
+                    transformer_projection_dim,
+                    input_height,
+                    input_width,
+                    task,
+                    weight_decay,
+                    pretraining)
         
         #if you want to see the model structure just uncomment model summary.
         model.summary()
-
         
-        if task == "segmentation" or task == "binarization":
-            if not is_loss_soft_dice and not weighted_loss:
-                model.compile(loss='categorical_crossentropy',
-                              optimizer=Adam(learning_rate=learning_rate), metrics=['accuracy'])
+        if task in ["segmentation", "binarization"]:
             if is_loss_soft_dice:                    
-                model.compile(loss=soft_dice_loss,
-                              optimizer=Adam(learning_rate=learning_rate), metrics=['accuracy'])
-            if weighted_loss:
-                model.compile(loss=weighted_categorical_crossentropy(weights),
-                              optimizer=Adam(learning_rate=learning_rate), metrics=['accuracy'])
-        elif task == "enhancement":
-            model.compile(loss='mean_squared_error',
-                          optimizer=Adam(learning_rate=learning_rate), metrics=['accuracy'])
-            
+                loss = soft_dice_loss
+            elif weighted_loss:
+                loss = weighted_categorical_crossentropy(weights)
+            else:
+                loss = 'categorical_crossentropy'
+        else: # task == "enhancement"
+            loss = 'mean_squared_error'
+        model.compile(loss=loss,
+                      optimizer=Adam(learning_rate=learning_rate),
+                      metrics=['accuracy'])
         
         # generating train and evaluation data
-        train_gen = data_gen(dir_flow_train_imgs, dir_flow_train_labels, batch_size=n_batch,
-                            input_height=input_height, input_width=input_width, n_classes=n_classes, task=task)
-        val_gen = data_gen(dir_flow_eval_imgs, dir_flow_eval_labels, batch_size=n_batch,
-                        input_height=input_height, input_width=input_width, n_classes=n_classes, task=task)
-        
+        gen_kwargs = dict(batch_size=n_batch,
+                          input_height=input_height,
+                          input_width=input_width,
+                          n_classes=n_classes,
+                          task=task)
+        train_gen = data_gen(dir_flow_train_imgs, dir_flow_train_labels, **gen_kwargs)
+        val_gen = data_gen(dir_flow_eval_imgs, dir_flow_eval_labels, **gen_kwargs)
+
         ##img_validation_patches = os.listdir(dir_flow_eval_imgs)
         ##score_best=[]
         ##score_best.append(0)
         
+        callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False)]
         if save_interval:
-            save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config)
-            
+            callbacks.append(SaveWeightsAfterSteps(save_interval, dir_output, _config))
             
         for i in tqdm(range(index_start, n_epochs + index_start)):
-            if save_interval:
-                model.fit(
-                    train_gen,
-                    steps_per_epoch=int(len(os.listdir(dir_flow_train_imgs)) / n_batch) - 1,
-                    validation_data=val_gen,
-                    validation_steps=1,
-                    epochs=1, callbacks=[save_weights_callback])
-            else:
-                model.fit(
-                    train_gen,
-                    steps_per_epoch=int(len(os.listdir(dir_flow_train_imgs)) / n_batch) - 1,
-                    validation_data=val_gen,
-                    validation_steps=1,
-                    epochs=1)
-                
-            model.save(os.path.join(dir_output,'model_'+str(i)))
-        
-            with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config.json"), "w") as fp:
+            model.fit(
+                train_gen,
+                steps_per_epoch=int(len(os.listdir(dir_flow_train_imgs)) / n_batch) - 1,
+                validation_data=val_gen,
+                validation_steps=1,
+                epochs=1,
+                callbacks=callbacks)
+
+            dir_model = os.path.join(dir_output, 'model_' + str(i))
+            model.save(dir_model)
+            with open(os.path.join(dir_model, "config.json"), "w") as fp:
                 json.dump(_config, fp)  # encode dict into JSON
 
         #os.system('rm -rf '+dir_train_flowing)
         #os.system('rm -rf '+dir_eval_flowing)
 
         #model.save(dir_output+'/'+'model'+'.h5')
+
     elif task=='classification':
         configuration()
-        model = resnet50_classifier(n_classes,  input_height, input_width, weight_decay, pretraining)
+        model = resnet50_classifier(n_classes,
+                                    input_height,
+                                    input_width,
+                                    weight_decay,
+                                    pretraining)
 
-        opt_adam = Adam(learning_rate=0.001)
         model.compile(loss='categorical_crossentropy',
-                            optimizer = opt_adam,metrics=['accuracy'])
-
+                      optimizer=Adam(learning_rate=0.001), # rs: why not learning_rate?
+                      metrics=['accuracy'])
         
         list_classes = list(classification_classes_name.values())
-        testX, testY = generate_data_from_folder_evaluation(dir_eval, input_height, input_width, n_classes, list_classes)
+        trainXY = generate_data_from_folder_training(
+            dir_train, n_batch, input_height, input_width, n_classes, list_classes)
+        testX, testY = generate_data_from_folder_evaluation(
+            dir_eval, input_height, input_width, n_classes, list_classes)
 
-        y_tot=np.zeros((testX.shape[0],n_classes))
-
+        y_tot = np.zeros((testX.shape[0], n_classes))
         score_best= [0]
-
         num_rows = return_number_of_total_training_data(dir_train)
         weights=[]
+        callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False)]
         
         for i in range(n_epochs):
-            history = model.fit( generate_data_from_folder_training(dir_train, n_batch , input_height, input_width, n_classes, list_classes), steps_per_epoch=num_rows / n_batch, verbose=1)#,class_weight=weights)
-            
+            history = model.fit(trainXY,
+                                steps_per_epoch=num_rows / n_batch,
+                                #class_weight=weights)
+                                verbose=1,
+                                callbacks=callbacks)
             y_pr_class = []
             for jj in range(testY.shape[0]):
                 y_pr=model.predict(testX[jj,:,:,:].reshape(1,input_height,input_width,3), verbose=0)
@@ -433,7 +485,8 @@ def run(_config, n_classes, n_epochs, input_height,
             
     elif task=='reading_order':
         configuration()
-        model = machine_based_reading_order_model(n_classes,input_height,input_width,weight_decay,pretraining)
+        model = machine_based_reading_order_model(
+            n_classes, input_height, input_width, weight_decay, pretraining)
         
         dir_flow_train_imgs = os.path.join(dir_train, 'images')
         dir_flow_train_labels = os.path.join(dir_train, 'labels')
@@ -447,20 +500,26 @@ def run(_config, n_classes, n_epochs, input_height,
 
         #f1score_tot = [0]
         indexer_start = 0
-        # opt = SGD(learning_rate=0.01, momentum=0.9)
-        opt_adam = tf.keras.optimizers.Adam(learning_rate=0.0001)
         model.compile(loss="binary_crossentropy",
-                            optimizer = opt_adam,metrics=['accuracy'])
+                      #optimizer=SGD(learning_rate=0.01, momentum=0.9),
+                      optimizer=Adam(learning_rate=0.0001), # rs: why not learning_rate?
+                      metrics=['accuracy'])
         
+        callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False)]
         if save_interval:
-            save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config)
-            
+            callbacks.append(SaveWeightsAfterSteps(save_interval, dir_output, _config))
+
+        trainXY = generate_arrays_from_folder_reading_order(
+            dir_flow_train_labels, dir_flow_train_imgs,
+            n_batch, input_height, input_width, n_classes,
+            thetha, augmentation)
+
         for i in range(n_epochs):
-            if save_interval:
-                history = model.fit(generate_arrays_from_folder_reading_order(dir_flow_train_labels, dir_flow_train_imgs, n_batch, input_height, input_width, n_classes, thetha, augmentation), steps_per_epoch=num_rows / n_batch, verbose=1, callbacks=[save_weights_callback])
-            else:
-                history = model.fit(generate_arrays_from_folder_reading_order(dir_flow_train_labels, dir_flow_train_imgs, n_batch, input_height, input_width, n_classes, thetha, augmentation), steps_per_epoch=num_rows / n_batch, verbose=1)
-            model.save( os.path.join(dir_output,'model_'+str(i+indexer_start) ))
+            history = model.fit(trainXY,
+                                steps_per_epoch=num_rows / n_batch,
+                                verbose=1,
+                                callbacks=callbacks)
+            model.save(os.path.join(dir_output, 'model_'+str(i+indexer_start) ))
             
             with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config.json"), "w") as fp:
                 json.dump(_config, fp)  # encode dict into JSON
