@@ -12,6 +12,7 @@ from shapely import set_precision
 from shapely.ops import unary_union, nearest_points
 
 from .rotate import rotate_image, rotation_image_new
+from . import ensure_array
 
 def contours_in_same_horizon(cy_main_hor):
     """
@@ -248,13 +249,15 @@ def return_contours_of_image(image):
     return contours, hierarchy
 
 def dilate_textline_contours(all_found_textline_polygons):
-    return [[polygon2contour(contour2polygon(contour, dilate=6))
-             for contour in region]
+    return [ensure_array(
+        [polygon2contour(contour2polygon(contour, dilate=6))
+         for contour in region])
             for region in all_found_textline_polygons]
 
-def dilate_textregion_contours(all_found_textline_polygons):
-    return [polygon2contour(contour2polygon(contour, dilate=6))
-            for contour in all_found_textline_polygons]
+def dilate_textregion_contours(all_found_textregion_polygons):
+    return ensure_array(
+        [polygon2contour(contour2polygon(contour, dilate=6))
+         for contour in all_found_textregion_polygons])
 
 def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number]]]], dilate=0):
     polygon = Polygon([point[0] for point in contour])

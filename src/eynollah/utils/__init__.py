@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Iterable, List, Tuple
 from logging import getLogger
 import time
 import math
@@ -1929,3 +1929,11 @@ def is_image_filename(fname: str) -> bool:
 
 def is_xml_filename(fname: str) -> bool:
     return fname.lower().endswith('.xml')
+
+def ensure_array(obj: Iterable) -> np.ndarray:
+    """convert sequence to array of type `object` so items can be of heterogeneous shape
+    (but ensure not to convert inner arrays to `object` if len=1)
+    """
+    if not isinstance(obj, np.ndarray):
+        return np.fromiter(obj, object)
+    return obj
