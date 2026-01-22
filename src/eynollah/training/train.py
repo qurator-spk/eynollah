@@ -2,6 +2,7 @@ import os
 import sys
 import json
 
+import requests
 import click
 
 from eynollah.training.metrics import (
@@ -15,7 +16,9 @@ from eynollah.training.models import (
     resnet50_classifier,
     resnet50_unet,
     vit_resnet50_unet,
-    vit_resnet50_unet_transformer_before_cnn
+    vit_resnet50_unet_transformer_before_cnn,
+    RESNET50_WEIGHTS_PATH,
+    RESNET50_WEIGHTS_URL
 )
 from eynollah.training.utils import (
     data_gen,
@@ -80,6 +83,12 @@ def get_dirs_or_files(input_data):
         assert os.path.isdir(labels_input), "{} is not a directory".format(labels_input)
     return image_input, labels_input
 
+def download_file(url, path):
+    with open(path, 'wb') as f:
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            for data in r.iter_content(chunk_size=4096):
+                f.write(data)
 
 ex = Experiment(save_git_info=False)
 
@@ -163,6 +172,10 @@ def run(_config, n_classes, n_epochs, input_height,
         transformer_patchsize_x, transformer_patchsize_y,
         transformer_num_patches_xy, backbone_type, save_interval, flip_index, dir_eval, dir_output,
         pretraining, learning_rate, task, f1_threshold_classification, classification_classes_name, dir_img_bin, number_of_backgrounds_per_image,dir_rgb_backgrounds, dir_rgb_foregrounds):
+
+    if pretraining and not os.path.isfile(RESNET50_WEIGHTS_PATH):
+        print("downloading RESNET50 pretrained weights to", RESNET50_WEIGHTS_PATH)
+        download_file(RESNET50_WEIGHTS_URL, RESNET50_WEIGHTS_PATH)
     
     if dir_rgb_backgrounds:
         list_all_possible_background_images = os.listdir(dir_rgb_backgrounds)
