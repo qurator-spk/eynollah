@@ -653,6 +653,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     num_col = int(text_comments.split('num_col')[1])
                     comment_is_sub_element = True
             if not comment_is_sub_element:
+                # FIXME: look in /Page/@custom as well
                 num_col = None
                 
             if num_col:

@@ -32,7 +32,7 @@ os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
 from tensorflow.keras.optimizers import SGD, Adam
 from tensorflow.keras.models import load_model
-from tensorflow.keras.callbacks import Callback, TensorBoard
+from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from sacred import Experiment
 from tqdm import tqdm
 from sklearn.metrics import f1_score
@@ -40,26 +40,28 @@ from sklearn.metrics import f1_score
 import numpy as np
 import cv2
 
-class SaveWeightsAfterSteps(Callback):
-    def __init__(self, save_interval, save_path, _config):
-        super(SaveWeightsAfterSteps, self).__init__()
-        self.save_interval = save_interval
-        self.save_path = save_path
-        self.step_count = 0
+class SaveWeightsAfterSteps(ModelCheckpoint):
+    def __init__(self, save_interval, save_path, _config, **kwargs):
+        if save_interval:
+            # batches
+            super().__init__(
+                os.path.join(save_path, "model_step_{batch:04d}"),
+                save_freq=save_interval,
+                verbose=1,
+                **kwargs)
+        else:
+            super().__init__(
+                os.path.join(save_path, "model_{epoch:02d}"),
+                save_freq="epoch",
+                verbose=1,
+                **kwargs)
         self._config = _config
 
-    def on_train_batch_end(self, batch, logs=None):
-        self.step_count += 1
-
-        if self.step_count % self.save_interval ==0:
-            save_file = f"{self.save_path}/model_step_{self.step_count}"
-            #os.system('mkdir '+save_file)
-
-            self.model.save(save_file)
-            
-            with open(os.path.join(os.path.join(self.save_path, f"model_step_{self.step_count}"),"config.json"), "w") as fp:
-                json.dump(self._config, fp)  # encode dict into JSON
-            print(f"saved model as steps {self.step_count} to {save_file}")
+    # overwrite tf-keras (Keras 2) implementation to get our _config JSON in
+    def _save_handler(self, filepath):
+        super()._save_handler(filepath)
+        with open(os.path.join(filepath, "config.json"), "w") as fp:
+            json.dump(self._config, fp)  # encode dict into JSON
             
             
 def configuration():
@@ -396,23 +398,19 @@ def run(_config, n_classes, n_epochs, input_height,
         ##score_best=[]
         ##score_best.append(0)
         
-        callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False)]
+        callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
+                     SaveWeightsAfterSteps(0, dir_output, _config)]
         if save_interval:
             callbacks.append(SaveWeightsAfterSteps(save_interval, dir_output, _config))
             
-        for i in tqdm(range(index_start, n_epochs + index_start)):
-            model.fit(
-                train_gen,
-                steps_per_epoch=int(len(os.listdir(dir_flow_train_imgs)) / n_batch) - 1,
-                validation_data=val_gen,
-                validation_steps=1,
-                epochs=1,
-                callbacks=callbacks)
-
-            dir_model = os.path.join(dir_output, 'model_' + str(i))
-            model.save(dir_model)
-            with open(os.path.join(dir_model, "config.json"), "w") as fp:
-                json.dump(_config, fp)  # encode dict into JSON
+        model.fit(
+            train_gen,
+            steps_per_epoch=len(os.listdir(dir_flow_train_imgs)) // n_batch - 1,
+            validation_data=val_gen,
+            #validation_steps=1, # rs: only one batch??
+            validation_steps=len(os.listdir(dir_flow_eval_imgs)) // n_batch - 1,
+            epochs=n_epochs,
+            callbacks=callbacks)
 
         #os.system('rm -rf '+dir_train_flowing)
         #os.system('rm -rf '+dir_eval_flowing)
@@ -434,54 +432,49 @@ def run(_config, n_classes, n_epochs, input_height,
         list_classes = list(classification_classes_name.values())
         trainXY = generate_data_from_folder_training(
             dir_train, n_batch, input_height, input_width, n_classes, list_classes)
-        testX, testY = generate_data_from_folder_evaluation(
+        testXY = generate_data_from_folder_evaluation(
             dir_eval, input_height, input_width, n_classes, list_classes)
 
         y_tot = np.zeros((testX.shape[0], n_classes))
-        score_best= [0]
         num_rows = return_number_of_total_training_data(dir_train)
-        weights=[]
-        callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False)]
+        callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
+                     SaveWeightsAfterSteps(0, dir_output, _config,
+                                           monitor='val_f1',
+                                           save_best_only=True, mode='max')]
         
-        for i in range(n_epochs):
-            history = model.fit(trainXY,
-                                steps_per_epoch=num_rows / n_batch,
-                                #class_weight=weights)
-                                verbose=1,
-                                callbacks=callbacks)
-            y_pr_class = []
-            for jj in range(testY.shape[0]):
-                y_pr=model.predict(testX[jj,:,:,:].reshape(1,input_height,input_width,3), verbose=0)
-                y_pr_ind= np.argmax(y_pr,axis=1)
-                y_pr_class.append(y_pr_ind)
-            
-            y_pr_class = np.array(y_pr_class)
-            f1score=f1_score(np.argmax(testY,axis=1), y_pr_class, average='macro')
-            print(i,f1score)
-            
-            if f1score>score_best[0]:
-                score_best[0]=f1score
-                model.save(os.path.join(dir_output,'model_best'))
-                
-            if f1score > f1_threshold_classification:
-                weights.append(model.get_weights() )
-                
+        history = model.fit(trainXY,
+                            steps_per_epoch=num_rows / n_batch,
+                            #class_weight=weights)
+                            validation_data=testXY,
+                            verbose=1,
+                            epochs=n_epochs,
+                            metrics=[F1Score(average='macro', name='f1')],
+                            callbacks=callbacks)
 
-        if len(weights) >= 1:
-            new_weights=list()
-            for weights_list_tuple in zip(*weights):
-                new_weights.append( [np.array(weights_).mean(axis=0) for weights_ in zip(*weights_list_tuple)]  )
+        usable_checkpoints = np.flatnonzero(np.array(history['val_f1']) > f1_threshold_classification)
+        if len(usable_checkpoints) >= 1:
+            print("averaging over usable checkpoints", usable_checkpoints)
+            all_weights = []
+            for epoch in usable_checkpoints:
+                cp_path = os.path.join(dir_output, 'model_{epoch:02d}'.format(epoch=epoch))
+                assert os.path.isdir(cp_path)
+                model = load_model(cp_path, compile=False)
+                all_weights.append(model.get_weights())
+
+            new_weights = []
+            for layer_weights in zip(*all_weights):
+                layer_weights = np.array([np.array(weights).mean(axis=0)
+                                          for weights in zip(*layer_weights)])
+                new_weights.append(layer_weights)
                 
-            new_weights = [np.array(x) for x in new_weights]
-            model_weight_averaged=tf.keras.models.clone_model(model)
-            model_weight_averaged.set_weights(new_weights)
-    
-            model_weight_averaged.save(os.path.join(dir_output,'model_ens_avg'))
-            with open(os.path.join( os.path.join(dir_output,'model_ens_avg'), "config.json"), "w") as fp:
+            #model = tf.keras.models.clone_model(model)
+            model.set_weights(new_weights)
+
+            cp_path = os.path.join(dir_output, 'model_ens_avg')
+            model.save(cp_path)
+            with open(os.path.join(cp_path, "config.json"), "w") as fp:
                 json.dump(_config, fp)  # encode dict into JSON
-            
-        with open(os.path.join( os.path.join(dir_output,'model_best'), "config.json"), "w") as fp:
-            json.dump(_config, fp)  # encode dict into JSON
+            print("ensemble model saved under", cp_path)
             
     elif task=='reading_order':
         configuration()
@@ -505,7 +498,8 @@ def run(_config, n_classes, n_epochs, input_height,
                       optimizer=Adam(learning_rate=0.0001), # rs: why not learning_rate?
                       metrics=['accuracy'])
         
-        callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False)]
+        callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
+                     SaveWeightsAfterSteps(0, dir_output, _config)]
         if save_interval:
             callbacks.append(SaveWeightsAfterSteps(save_interval, dir_output, _config))
 
@@ -514,20 +508,16 @@ def run(_config, n_classes, n_epochs, input_height,
             n_batch, input_height, input_width, n_classes,
             thetha, augmentation)
 
-        for i in range(n_epochs):
-            history = model.fit(trainXY,
-                                steps_per_epoch=num_rows / n_batch,
-                                verbose=1,
-                                callbacks=callbacks)
-            model.save(os.path.join(dir_output, 'model_'+str(i+indexer_start) ))
-            
-            with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config.json"), "w") as fp:
-                json.dump(_config, fp)  # encode dict into JSON
-            '''
-            if f1score>f1score_tot[0]:
-                f1score_tot[0] = f1score
-                model_dir = os.path.join(dir_out,'model_best')
-                model.save(model_dir)
-            '''
+        history = model.fit(trainXY,
+                            steps_per_epoch=num_rows / n_batch,
+                            verbose=1,
+                            epochs=n_epochs,
+                            callbacks=callbacks)
+        '''
+        if f1score>f1score_tot[0]:
+            f1score_tot[0] = f1score
+            model_dir = os.path.join(dir_out,'model_best')
+            model.save(model_dir)
+        '''
 
     

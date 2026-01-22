@@ -1,3 +1,6 @@
+import os
+
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import *
