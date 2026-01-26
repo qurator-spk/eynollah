@@ -231,7 +231,12 @@ def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y
         con_eroded = return_contours_of_interested_region(img_boundary_in,pixel, min_size )
         
         try:
-            co_text_eroded.append(con_eroded[0])
+            if len(con_eroded)>1:
+                cnt_size = np.array([cv2.contourArea(con_eroded[j]) for j in range(len(con_eroded))])
+                cnt = contours[np.argmax(cnt_size)]
+                co_text_eroded.append(cnt)
+            else:
+                co_text_eroded.append(con_eroded[0])
         except:
             co_text_eroded.append(con)
         
