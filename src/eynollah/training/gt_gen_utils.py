@@ -627,7 +627,10 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
     
     if dir_images:
         ls_org_imgs = os.listdir(dir_images)
-        ls_org_imgs_stem = [os.path.splitext(item)[0] for item in ls_org_imgs]
+        ls_org_imgs = {os.path.splitext(item)[0]: item
+                       for item in ls_org_imgs
+                       if not item.endswith('.xml')}
+
     for index in tqdm(range(len(gt_list))):
         #try:
         print(gt_list[index])
@@ -802,7 +805,13 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 cv2.imwrite(os.path.join(output_dir, xml_file_stem + '.png'), img_poly)
                 
             if dir_images:
-                org_image_name = ls_org_imgs[ls_org_imgs_stem.index(xml_file_stem)]
+                org_image_name = ls_org_imgs[xml_file_stem]
+                if not org_image_name:
+                    print("image file for XML stem", xml_file_stem, "is missing")
+                    continue
+                if not os.path.isfile(os.path.join(dir_images, org_image_name)):
+                    print("image file for XML stem", xml_file_stem, "is not readable")
+                    continue
                 img_org = cv2.imread(os.path.join(dir_images, org_image_name))
                 
                 if printspace and config_params['use_case']!='printspace':
@@ -1266,7 +1275,13 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 
                 
             if dir_images:
-                org_image_name = ls_org_imgs[ls_org_imgs_stem.index(xml_file_stem)]
+                org_image_name = ls_org_imgs[xml_file_stem]
+                if not org_image_name:
+                    print("image file for XML stem", xml_file_stem, "is missing")
+                    continue
+                if not os.path.isfile(os.path.join(dir_images, org_image_name)):
+                    print("image file for XML stem", xml_file_stem, "is not readable")
+                    continue
                 img_org = cv2.imread(os.path.join(dir_images, org_image_name))
                 
                 if printspace:
