@@ -26,7 +26,7 @@ from eynollah.training.utils import (
     generate_data_from_folder_evaluation,
     generate_data_from_folder_training,
     get_one_hot,
-    provide_patches,
+    preprocess_imgs,
     return_number_of_total_training_data
 )
 
@@ -240,9 +240,9 @@ def run(_config,
             os.mkdir(dir_flow_eval_imgs)
             os.mkdir(dir_flow_eval_labels)
 
-            # set the gpu configuration
-            configuration()
-            
+            dir_img, dir_seg = get_dirs_or_files(dir_train)
+            dir_img_val, dir_seg_val = get_dirs_or_files(dir_eval)
+
             imgs_list=np.array(os.listdir(dir_img))
             segs_list=np.array(os.listdir(dir_seg))
             
@@ -250,50 +250,21 @@ def run(_config,
             segs_list_test=np.array(os.listdir(dir_seg_val))
 
             # writing patches into a sub-folder in order to be flowed from directory.
-            common_args = [input_height, input_width,
-                           blur_k, blur_aug,
-                           padding_white, padding_black,
-                           flip_aug, binarization,
-                           adding_rgb_background,
-                           adding_rgb_foreground,
-                           add_red_textlines,
-                           channels_shuffling,
-                           scaling, shifting, degrading, brightening,
-                           scales, degrade_scales, brightness,
-                           flip_index, shuffle_indexes,
-                           scaling_bluring, scaling_brightness, scaling_binarization,
-                           rotation, rotation_not_90, thetha,
-                           scaling_flip, task,
-            ]
-            common_kwargs = dict(patches=
-                                 patches,
-                                 dir_img_bin=
-                                 dir_img_bin,
-                                 number_of_backgrounds_per_image=
-                                 number_of_backgrounds_per_image,
-                                 list_all_possible_background_images=
-                                 list_all_possible_background_images,
-                                 dir_rgb_backgrounds=
-                                 dir_rgb_backgrounds,
-                                 dir_rgb_foregrounds=
-                                 dir_rgb_foregrounds,
-                                 list_all_possible_foreground_rgbs=
-                                 list_all_possible_foreground_rgbs,
-            )
-            provide_patches(imgs_list, segs_list,
-                            dir_img, dir_seg,
+            preprocess_imgs(_config,
+                            imgs_list,
+                            segs_list,
+                            dir_img,
+                            dir_seg,
                             dir_flow_train_imgs,
-                            dir_flow_train_labels,
-                            *common_args,
-                            augmentation=augmentation,
-                            **common_kwargs)
-            provide_patches(imgs_list_test, segs_list_test,
-                            dir_img_val, dir_seg_val,
+                            dir_flow_train_labels)
+            preprocess_imgs(_config,
+                            imgs_list_test,
+                            segs_list_test,
+                            dir_img_val,
+                            dir_seg_val,
                             dir_flow_eval_imgs,
                             dir_flow_eval_labels,
-                            *common_args,
-                            augmentation=False,
-                            **common_kwargs)
+                            augmentation=False)
 
         if weighted_loss:
             weights = np.zeros(n_classes)
@@ -307,8 +278,8 @@ def run(_config,
                     label_obj = cv2.imread(label_file)
                     label_obj_one_hot = get_one_hot(label_obj, label_obj.shape[0], label_obj.shape[1], n_classes)
                     weights += (label_obj_one_hot.sum(axis=0)).sum(axis=0)
-                except Exception as e:
-                    print("error reading data file '%s': %s" % (label_file, e), file=sys.stderr)
+                except Exception:
+                    _log.exception("error reading data file '%s'", label_file)
 
             weights = 1.00 / weights
             weights = weights / float(np.sum(weights))
@@ -340,7 +311,6 @@ def run(_config,
                                        custom_objects = {"PatchEncoder": PatchEncoder,
                                                          "Patches": Patches})
         else:
-            index_start = 0
             if backbone_type == 'nontransformer':
                 model = resnet50_unet(n_classes,
                                       input_height,
@@ -391,7 +361,7 @@ def run(_config,
                     pretraining)
         
         #if you want to see the model structure just uncomment model summary.
-        model.summary()
+        #model.summary()
         
         if task in ["segmentation", "binarization"]:
             if is_loss_soft_dice:                    
@@ -423,7 +393,12 @@ def run(_config,
                      SaveWeightsAfterSteps(0, dir_output, _config)]
         if save_interval:
             callbacks.append(SaveWeightsAfterSteps(save_interval, dir_output, _config))
-            
+
+        _log.info("training on %d batches in %d epochs",
+                  len(os.listdir(dir_flow_train_imgs)) // n_batch - 1,
+                  n_epochs)
+        _log.info("validating on %d batches",
+                  len(os.listdir(dir_flow_eval_imgs)) // n_batch - 1)
         model.fit(
             train_gen,
             steps_per_epoch=len(os.listdir(dir_flow_train_imgs)) // n_batch - 1,
@@ -439,7 +414,6 @@ def run(_config,
         #model.save(dir_output+'/'+'model'+'.h5')
 
     elif task=='classification':
-        configuration()
         model = resnet50_classifier(n_classes,
                                     input_height,
                                     input_width,
@@ -474,7 +448,7 @@ def run(_config,
 
         usable_checkpoints = np.flatnonzero(np.array(history['val_f1']) > f1_threshold_classification)
         if len(usable_checkpoints) >= 1:
-            print("averaging over usable checkpoints", usable_checkpoints)
+            _log.info("averaging over usable checkpoints: %s", str(usable_checkpoints))
             all_weights = []
             for epoch in usable_checkpoints:
                 cp_path = os.path.join(dir_output, 'model_{epoch:02d}'.format(epoch=epoch))
@@ -495,10 +469,9 @@ def run(_config,
             model.save(cp_path)
             with open(os.path.join(cp_path, "config.json"), "w") as fp:
                 json.dump(_config, fp)  # encode dict into JSON
-            print("ensemble model saved under", cp_path)
+            _log.info("ensemble model saved under '%s'", cp_path)
             
     elif task=='reading_order':
-        configuration()
         model = machine_based_reading_order_model(
             n_classes, input_height, input_width, weight_decay, pretraining)
         
