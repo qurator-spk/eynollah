@@ -196,7 +196,7 @@ class SBBPredict:
             img_height = self.config_params_model['input_height']
             img_width = self.config_params_model['input_width']
             
-            tree_xml, root_xml, bb_coord_printspace, file_name, \
+            tree_xml, root_xml, ps_bbox, file_name, \
                 id_paragraph, id_header, \
                 co_text_paragraph, co_text_header, \
                 tot_region_ref, x_len, y_len, index_tot_regions, \
@@ -236,15 +236,13 @@ class SBBPredict:
                 img_label=cv2.fillPoly(img_label, pts =[co_text_all[i]], color=(1,1,1))
                 labels_con[:,:,i] = img_label[:,:,0]
                 
-            if bb_coord_printspace:
-                #bb_coord_printspace[x,y,w,h,_,_]
-                x = bb_coord_printspace[0]
-                y = bb_coord_printspace[1]
-                w = bb_coord_printspace[2]
-                h = bb_coord_printspace[3]
-                labels_con = labels_con[y:y+h, x:x+w, :]
-                img_poly = img_poly[y:y+h, x:x+w, :]
-                img_header_and_sep = img_header_and_sep[y:y+h, x:x+w]
+            if ps_bbox:
+                labels_con = labels_con[ps_bbox[1]:ps_bbox[3],
+                                        ps_bbox[0]:ps_bbox[2], :]
+                img_poly = img_poly[ps_bbox[1]:ps_bbox[3],
+                                    ps_bbox[0]:ps_bbox[2], :]
+                img_header_and_sep = img_header_and_sep[ps_bbox[1]:ps_bbox[3],
+                                                        ps_bbox[0]:ps_bbox[2]]
                 
 
                 
