@@ -95,136 +95,144 @@ ex = Experiment(save_git_info=False)
 
 @ex.config
 def config_params():
+    task = "segmentation" # This parameter defines task of model which can be segmentation, enhancement or classification.
+    backbone_type = None # Type of image feature map network backbone. Either a vision transformer alongside a CNN we call "transformer", or only a CNN which we call "nontransformer"
     n_classes = None  # Number of classes. In the case of binary classification this should be 2.
-    n_epochs = 1  # Number of epochs.
+    n_epochs = 1  # Number of epochs to train.
+    n_batch = 1  # Number of images per batch at each iteration. (Try as large as fits on VRAM.)
     input_height = 224 * 1  # Height of model's input in pixels.
     input_width = 224 * 1  # Width of model's input in pixels.
     weight_decay = 1e-6  # Weight decay of l2 regularization of model layers.
-    n_batch = 1  # Number of batches at each iteration.
     learning_rate = 1e-4  # Set the learning rate.
-    patches = False  # Divides input image into smaller patches (input size of the model) when set to true. For the model to see the full image, like page extraction, set this to false.
-    augmentation = False  # To apply any kind of augmentation, this parameter must be set to true.
-    flip_aug = False  # If true, different types of flipping will be applied to the image. Types of flips are defined with "flip_index" in config_params.json.
-    blur_aug = False  # If true, different types of blurring will be applied to the image. Types of blur are defined with "blur_k" in config_params.json.
-    padding_white = False # If true, white padding will be applied to the image.
-    padding_black = False # If true, black padding will be applied to the image.
-    scaling = False  # If true, scaling will be applied to the image. The amount of scaling is defined with "scales" in config_params.json.
-    shifting = False
-    degrading = False  # If true, degrading will be applied to the image. The amount of degrading is defined with "degrade_scales" in config_params.json.
-    brightening = False  # If true, brightening will be applied to the image. The amount of brightening is defined with "brightness" in config_params.json.
-    binarization = False  # If true, Otsu thresholding will be applied to augment the input with binarized images.
-    adding_rgb_background = False
-    adding_rgb_foreground = False
-    add_red_textlines = False
-    channels_shuffling = False
-    dir_train = None  # Directory of training dataset with subdirectories having the names "images" and "labels".
-    dir_eval = None  # Directory of validation dataset with subdirectories having the names "images" and "labels".
-    dir_output = None  # Directory where the output model will be saved.
-    pretraining = False  # Set to true to load pretrained weights of ResNet50 encoder.
-    scaling_bluring = False  # If true, a combination of scaling and blurring will be applied to the image.
-    scaling_binarization = False  # If true, a combination of scaling and binarization will be applied to the image.
-    rotation = False # If true, a 90 degree rotation will be implemeneted.
-    rotation_not_90 = False # If true rotation based on provided angles with thetha will be implemeneted.
-    scaling_brightness = False  # If true, a combination of scaling and brightening will be applied to the image.
-    scaling_flip = False  # If true, a combination of scaling and flipping will be applied to the image.
-    thetha = None  # Rotate image by these angles for augmentation.
-    shuffle_indexes = None
-    blur_k = None  # Blur image for augmentation.
-    scales = None  # Scale patches for augmentation.
-    degrade_scales = None  # Degrade image for augmentation.
-    brightness = None #  Brighten image for augmentation.
-    flip_index = None  #  Flip image for augmentation.
-    continue_training = False  # Set to true if you would like to continue training an already trained a model.
-    transformer_patchsize_x = None  # Patch size of vision transformer patches in x direction.
-    transformer_patchsize_y = None # Patch size of vision transformer patches in y direction.
-    transformer_num_patches_xy = None  # Number of patches for vision transformer in x and y direction respectively.
-    transformer_projection_dim = 64 # Transformer projection dimension. Default value is 64.
-    transformer_mlp_head_units = [128, 64] # Transformer Multilayer Perceptron (MLP) head units. Default value is [128, 64]
-    transformer_layers = 8 # transformer layers. Default value is 8.
-    transformer_num_heads = 4 # Transformer number of heads. Default value is 4.
-    transformer_cnn_first = True # We have two types of vision transformers. In one type, a CNN is applied first, followed by a transformer. In the other type, this order is reversed. If transformer_cnn_first is true, it means the CNN will be applied before the transformer. Default value is true.
-    index_start = 0  #  Index of model to continue training from. E.g. if you trained for 3 epochs and last index is 2, to continue from model_1.h5, set "index_start" to 3 to start naming model with index 3.
-    dir_of_start_model = ''  # Directory containing pretrained encoder to continue training the model.
     is_loss_soft_dice = False  # Use soft dice as loss function. When set to true, "weighted_loss" must be false.
     weighted_loss = False  # Use weighted categorical cross entropy as loss fucntion. When set to true, "is_loss_soft_dice" must be false.
-    data_is_provided = False  # Only set this to true when you have already provided the input data and the train and eval data are in "dir_output".
-    task = "segmentation" # This parameter defines task of model which can be segmentation, enhancement or classification.
     f1_threshold_classification = None # This threshold is used to consider models with an evaluation f1 scores bigger than it. The selected model weights undergo a weights ensembling. And avreage ensembled model will be written to output.
     classification_classes_name = None # Dictionary of classification classes names.
-    backbone_type = None # As backbone we have 2 types of backbones. A vision transformer alongside a CNN and we call it "transformer" and only CNN called "nontransformer"
-    save_interval = None
-    dir_img_bin = None
-    number_of_backgrounds_per_image = 1
-    dir_rgb_backgrounds = None
-    dir_rgb_foregrounds = None
+    patches = False  # Divides input image into smaller patches (input size of the model) when set to true. For the model to see the full image, like page extraction, set this to false.
+    augmentation = False  # To apply any kind of augmentation, this parameter must be set to true.
+    if augmentation:
+        flip_aug = False  # If true, different types of flipping will be applied to the image. Types of flips are defined with "flip_index" in config_params.json.
+        if flip_aug:
+            flip_index = None  #  Flip image for augmentation.
+        blur_aug = False  # If true, different types of blurring will be applied to the image. Types of blur are defined with "blur_k" in config_params.json.
+        if blur_aug:
+            blur_k = None  # Blur image for augmentation.
+        padding_white = False # If true, white padding will be applied to the image.
+        padding_black = False # If true, black padding will be applied to the image.
+        scaling = False  # If true, scaling will be applied to the image. The amount of scaling is defined with "scales" in config_params.json.
+        scaling_bluring = False  # If true, a combination of scaling and blurring will be applied to the image.
+        scaling_binarization = False  # If true, a combination of scaling and binarization will be applied to the image.
+        scaling_brightness = False  # If true, a combination of scaling and brightening will be applied to the image.
+        scaling_flip = False  # If true, a combination of scaling and flipping will be applied to the image.
+        if scaling or scaling_brightness or scaling_bluring or scaling_binarization or scaling_flip:
+            scales = None  # Scale patches for augmentation.
+        shifting = False
+        degrading = False  # If true, degrading will be applied to the image. The amount of degrading is defined with "degrade_scales" in config_params.json.
+        if degrading:
+            degrade_scales = None  # Degrade image for augmentation.
+        brightening = False  # If true, brightening will be applied to the image. The amount of brightening is defined with "brightness" in config_params.json.
+        if brightening:
+            brightness = None #  Brighten image for augmentation.
+        binarization = False  # If true, Otsu thresholding will be applied to augment the input with binarized images.
+        if binarization:
+            dir_img_bin = None # Directory of training dataset subdirectory of binarized images
+            add_red_textlines = False
+            adding_rgb_background = False
+            if adding_rgb_background:
+                dir_rgb_backgrounds = None # Directory of texture images for synthetic background
+            adding_rgb_foreground = False
+            if adding_rgb_foreground:
+                dir_rgb_foregrounds = None # Directory of texture images for synthetic foreground
+            if adding_rgb_background or adding_rgb_foreground:
+                number_of_backgrounds_per_image = 1
+        channels_shuffling = False # Re-arrange color channels.
+        if channels_shuffling:
+            shuffle_indexes = None # Which channels to switch between.
+        rotation = False # If true, a 90 degree rotation will be implemeneted.
+        rotation_not_90 = False # If true rotation based on provided angles with thetha will be implemeneted.
+        if rotation_not_90:
+            thetha = None  # Rotate image by these angles for augmentation.
+    dir_train = None  # Directory of training dataset with subdirectories having the names "images" and "labels".
+    dir_eval = None  # Directory of validation dataset with subdirectories having the names "images" and "labels".
+    dir_output = None  # Directory where the augmented training data and the model checkpoints will be saved.
+    pretraining = False  # Set to true to (down)load pretrained weights of ResNet50 encoder.
+    save_interval = None # frequency for writing model checkpoints (nonzero integer for number of batches, or zero for epoch)
+    continue_training = False  # Set to true if you would like to continue training an already trained a model.
+    dir_of_start_model = ''  # Directory containing pretrained encoder to continue training the model.
+    data_is_provided = False  # Only set this to true when you have already provided the input data and the train and eval data are in "dir_output".
+    if backbone_type == "transformer":
+        transformer_patchsize_x = None  # Patch size of vision transformer patches in x direction.
+        transformer_patchsize_y = None # Patch size of vision transformer patches in y direction.
+        transformer_num_patches_xy = None  # Number of patches for vision transformer in x and y direction respectively.
+        transformer_projection_dim = 64 # Transformer projection dimension. Default value is 64.
+        transformer_mlp_head_units = [128, 64] # Transformer Multilayer Perceptron (MLP) head units. Default value is [128, 64]
+        transformer_layers = 8 # transformer layers. Default value is 8.
+        transformer_num_heads = 4 # Transformer number of heads. Default value is 4.
+        transformer_cnn_first = True # We have two types of vision transformers: either the CNN is applied first, followed by the transformer, or reversed.
 
 @ex.automain
-def run(_config, n_classes, n_epochs, input_height,
-        input_width, weight_decay, weighted_loss,
-        index_start, dir_of_start_model, is_loss_soft_dice,
-        n_batch, patches, augmentation, flip_aug,
-        blur_aug, padding_white, padding_black, scaling, shifting, degrading,channels_shuffling,
-        brightening, binarization, adding_rgb_background, adding_rgb_foreground, add_red_textlines, blur_k, scales, degrade_scales,shuffle_indexes,
-        brightness, dir_train, data_is_provided, scaling_bluring,
-        scaling_brightness, scaling_binarization, rotation, rotation_not_90,
-        thetha, scaling_flip, continue_training, transformer_projection_dim,
-        transformer_mlp_head_units, transformer_layers, transformer_num_heads, transformer_cnn_first,
-        transformer_patchsize_x, transformer_patchsize_y,
-        transformer_num_patches_xy, backbone_type, save_interval, flip_index, dir_eval, dir_output,
-        pretraining, learning_rate, task, f1_threshold_classification, classification_classes_name, dir_img_bin, number_of_backgrounds_per_image,dir_rgb_backgrounds, dir_rgb_foregrounds):
+def run(_config,
+        _log,
+        task,
+        pretraining,
+        data_is_provided,
+        dir_train,
+        dir_eval,
+        dir_output,
+        n_classes,
+        n_epochs,
+        n_batch,
+        input_height,
+        input_width,
+        is_loss_soft_dice,
+        weighted_loss,
+        weight_decay,
+        learning_rate,
+        continue_training,
+        dir_of_start_model,
+        save_interval,
+        augmentation,
+        thetha,
+        backbone_type,
+        transformer_projection_dim,
+        transformer_mlp_head_units,
+        transformer_layers,
+        transformer_num_heads,
+        transformer_cnn_first,
+        transformer_patchsize_x,
+        transformer_patchsize_y,
+        transformer_num_patches_xy,
+        f1_threshold_classification,
+        classification_classes_name,
+):
 
     if pretraining and not os.path.isfile(RESNET50_WEIGHTS_PATH):
-        print("downloading RESNET50 pretrained weights to", RESNET50_WEIGHTS_PATH)
+        _log.info("downloading RESNET50 pretrained weights to %s", RESNET50_WEIGHTS_PATH)
         download_file(RESNET50_WEIGHTS_URL, RESNET50_WEIGHTS_PATH)
-    
-    if dir_rgb_backgrounds:
-        list_all_possible_background_images = os.listdir(dir_rgb_backgrounds)
-    else:
-        list_all_possible_background_images = None
-    
-    if dir_rgb_foregrounds:
-        list_all_possible_foreground_rgbs = os.listdir(dir_rgb_foregrounds)
-    else:
-        list_all_possible_foreground_rgbs = None
-        
+
+    # set the gpu configuration
+    configuration()
+
     if task in ["segmentation", "enhancement", "binarization"]:
-        if data_is_provided:
-            dir_train_flowing = os.path.join(dir_output, 'train')
-            dir_eval_flowing = os.path.join(dir_output, 'eval')
-                
-            dir_flow_train_imgs = os.path.join(dir_train_flowing, 'images')
-            dir_flow_train_labels = os.path.join(dir_train_flowing, 'labels')
+        dir_train_flowing = os.path.join(dir_output, 'train')
+        dir_eval_flowing = os.path.join(dir_output, 'eval')
 
-            dir_flow_eval_imgs = os.path.join(dir_eval_flowing, 'images')
-            dir_flow_eval_labels = os.path.join(dir_eval_flowing, 'labels')
+        dir_flow_train_imgs = os.path.join(dir_train_flowing, 'images')
+        dir_flow_train_labels = os.path.join(dir_train_flowing, 'labels')
 
-            configuration()
+        dir_flow_eval_imgs = os.path.join(dir_eval_flowing, 'images')
+        dir_flow_eval_labels = os.path.join(dir_eval_flowing, 'labels')
 
-        else:
-            dir_img, dir_seg = get_dirs_or_files(dir_train)
-            dir_img_val, dir_seg_val = get_dirs_or_files(dir_eval)
-
-            # make first a directory in output for both training and evaluations in order to flow data from these directories.
-            dir_train_flowing = os.path.join(dir_output, 'train')
-            dir_eval_flowing = os.path.join(dir_output, 'eval')
-
-            dir_flow_train_imgs = os.path.join(dir_train_flowing, 'images/')
-            dir_flow_train_labels = os.path.join(dir_train_flowing, 'labels/')
-
-            dir_flow_eval_imgs = os.path.join(dir_eval_flowing, 'images/')
-            dir_flow_eval_labels = os.path.join(dir_eval_flowing, 'labels/')
-
+        if not data_is_provided:
+            # first create a directory in output for both training and evaluations
+            # in order to flow data from these directories.
             if os.path.isdir(dir_train_flowing):
                 os.system('rm -rf ' + dir_train_flowing)
-                os.makedirs(dir_train_flowing)
-            else:
-                os.makedirs(dir_train_flowing)
+            os.makedirs(dir_train_flowing)
 
             if os.path.isdir(dir_eval_flowing):
                 os.system('rm -rf ' + dir_eval_flowing)
-                os.makedirs(dir_eval_flowing)
-            else:
-                os.makedirs(dir_eval_flowing)
+            os.makedirs(dir_eval_flowing)
 
             os.mkdir(dir_flow_train_imgs)
             os.mkdir(dir_flow_train_labels)
