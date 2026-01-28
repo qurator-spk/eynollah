@@ -9,6 +9,7 @@ from .generate_gt_for_training import main as generate_gt_cli
 from .inference import main as inference_cli
 from .train import ex
 from .extract_line_gt import linegt_cli
+from .weights_ensembling import main as ensemble_cli
 
 @click.command(context_settings=dict(
         ignore_unknown_options=True,
@@ -26,3 +27,4 @@ main.add_command(generate_gt_cli, 'generate-gt')
 main.add_command(inference_cli, 'inference')
 main.add_command(train_cli, 'train')
 main.add_command(linegt_cli, 'export_textline_images_and_text')
+main.add_command(ensemble_cli, 'ensembling')
