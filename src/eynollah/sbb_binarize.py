@@ -19,7 +19,7 @@ from eynollah.model_zoo import EynollahModelZoo
 tf_disable_interactive_logs()
 import tensorflow as tf
 from tensorflow.python.keras import backend as tensorflow_backend
-
+from pathlib import Path 
 from .utils import is_image_filename
 
 def resize_image(img_in, input_height, input_width):
@@ -347,7 +347,7 @@ class SbbBinarizer:
             self.logger.info("Found %d image files to binarize in %s", len(ls_imgs), dir_in)
             for i, image_path in enumerate(ls_imgs):
                 self.logger.info('Binarizing [%3d/%d] %s', i + 1, len(ls_imgs), image_path)
-                image_stem = image_path.split('.')[0]
+                image_stem = Path(image_path).stem
                 image = cv2.imread(os.path.join(dir_in,image_path) )
                 img_last = 0
                 model_file, model = self.models

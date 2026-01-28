@@ -734,12 +734,15 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
             _, thresh = cv2.threshold(imgray, 0, 255, 0)
 
             contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
+            
             cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-
-            cnt = contours[np.argmax(cnt_size)]
-
-            x, y, w, h = cv2.boundingRect(cnt)
+            
+            try:
+                cnt = contours[np.argmax(cnt_size)]
+                x, y, w, h = cv2.boundingRect(cnt)
+            except:
+                x, y , w, h = 0, 0, x_len, y_len
+            
             bb_xywh = [x, y, w, h]
             
             
