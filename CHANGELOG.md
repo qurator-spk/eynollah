@@ -5,6 +5,17 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Added:
+
+  * "Model zoo", central place to describe and load models, #207
+  * Training code for the CNN/RNN OCR model
+
+Changed:
+
+  * Lint training code, #204
+  * Update documentation: README, pyproject.toml metadata, guides in `docs/`, #209
+
+
 ## [0.6.0] - 2025-10-17
 
 Added:
