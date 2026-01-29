@@ -2,15 +2,14 @@
 # pylint: disable=import-error
 from pathlib import Path
 import os.path
-import xml.etree.ElementTree as ET
+from typing import Optional
+import logging
 from .utils.xml import create_page_xml, xml_reading_order
 from .utils.counter import EynollahIdCounter
 
-from ocrd_utils import getLogger
 from ocrd_models.ocrd_page import (
         BorderType,
         CoordsType,
-        PcGtsType,
         TextLineType,
         TextEquivType,
         TextRegionType,
@@ -19,23 +18,21 @@ from ocrd_models.ocrd_page import (
         SeparatorRegionType,
         to_xml
         )
-import numpy as np
 
 class EynollahXmlWriter:
 
-    def __init__(self, *, dir_out, image_filename, curved_line,textline_light, pcgts=None):
-        self.logger = getLogger('eynollah.writer')
+    def __init__(self, *, dir_out, image_filename, curved_line, pcgts=None):
+        self.logger = logging.getLogger('eynollah.writer')
         self.counter = EynollahIdCounter()
         self.dir_out = dir_out
         self.image_filename = image_filename
         self.output_filename = os.path.join(self.dir_out or "", self.image_filename_stem) + ".xml"
         self.curved_line = curved_line
-        self.textline_light = textline_light
         self.pcgts = pcgts
-        self.scale_x = None # XXX set outside __init__
-        self.scale_y = None # XXX set outside __init__
-        self.height_org = None # XXX set outside __init__
-        self.width_org = None # XXX set outside __init__
+        self.scale_x: Optional[float] = None # XXX set outside __init__
+        self.scale_y: Optional[float] = None # XXX set outside __init__
+        self.height_org: Optional[int] = None # XXX set outside __init__
+        self.width_org: Optional[int] = None # XXX set outside __init__
 
     @property
     def image_filename_stem(self):
@@ -73,13 +70,9 @@ class EynollahXmlWriter:
                     point = point[0]
                 point_x = point[0] + page_coord[2]
                 point_y = point[1] + page_coord[0]
-                # FIXME: or actually... not self.textline_light and not self.curved_line or np.abs(slopes[region_idx]) > 45?
-                if not self.textline_light and not (self.curved_line and np.abs(slopes[region_idx]) <= 45):
-                    point_x += region_bboxes[2]
-                    point_y += region_bboxes[0]
                 point_x = max(0, int(point_x / self.scale_x))
                 point_y = max(0, int(point_y / self.scale_y))
-                points_co += str(point_x) + ',' + str(point_y) + ' '
+                points_co += f'{point_x},{point_y} '
             coords.set_points(points_co[:-1])
 
     def write_pagexml(self, pcgts):
@@ -88,53 +81,94 @@ class EynollahXmlWriter:
             f.write(to_xml(pcgts))
 
     def build_pagexml_no_full_layout(
-            self, found_polygons_text_region,
-            page_coord, order_of_texts, id_of_texts,
-            all_found_textline_polygons,
-            all_box_coord,
-            found_polygons_text_region_img,
-            found_polygons_marginals_left, found_polygons_marginals_right,
-            all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right,
-            all_box_coord_marginals_left, all_box_coord_marginals_right,
-            slopes, slopes_marginals_left, slopes_marginals_right,
-            cont_page, polygons_seplines,
-            found_polygons_tables,
-            **kwargs):
+        self,
+        *,
+        found_polygons_text_region,
+        page_coord,
+        order_of_texts,
+        all_found_textline_polygons,
+        all_box_coord,
+        found_polygons_text_region_img,
+        found_polygons_marginals_left,
+        found_polygons_marginals_right,
+        all_found_textline_polygons_marginals_left,
+        all_found_textline_polygons_marginals_right,
+        all_box_coord_marginals_left,
+        all_box_coord_marginals_right,
+        slopes,
+        slopes_marginals_left,
+        slopes_marginals_right,
+        cont_page,
+        polygons_seplines,
+        found_polygons_tables,
+    ):
         return self.build_pagexml_full_layout(
-            found_polygons_text_region, [],
-            page_coord, order_of_texts, id_of_texts,
-            all_found_textline_polygons, [],
-            all_box_coord, [],
-            found_polygons_text_region_img, found_polygons_tables, [],
-            found_polygons_marginals_left, found_polygons_marginals_right,
-            all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right,
-            all_box_coord_marginals_left, all_box_coord_marginals_right,
-            slopes, [], slopes_marginals_left, slopes_marginals_right,
-            cont_page, polygons_seplines,
-            **kwargs)
+            found_polygons_text_region=found_polygons_text_region,
+            found_polygons_text_region_h=[],
+            page_coord=page_coord,
+            order_of_texts=order_of_texts,
+            all_found_textline_polygons=all_found_textline_polygons,
+            all_found_textline_polygons_h=[],
+            all_box_coord=all_box_coord,
+            all_box_coord_h=[],
+            found_polygons_text_region_img=found_polygons_text_region_img,
+            found_polygons_tables=found_polygons_tables,
+            found_polygons_drop_capitals=[],
+            found_polygons_marginals_left=found_polygons_marginals_left,
+            found_polygons_marginals_right=found_polygons_marginals_right,
+            all_found_textline_polygons_marginals_left=all_found_textline_polygons_marginals_left,
+            all_found_textline_polygons_marginals_right=all_found_textline_polygons_marginals_right,
+            all_box_coord_marginals_left=all_box_coord_marginals_left,
+            all_box_coord_marginals_right=all_box_coord_marginals_right,
+            slopes=slopes,
+            slopes_h=[],
+            slopes_marginals_left=slopes_marginals_left,
+            slopes_marginals_right=slopes_marginals_right,
+            cont_page=cont_page,
+            polygons_seplines=polygons_seplines,
+        )
 
     def build_pagexml_full_layout(
-            self,
-            found_polygons_text_region, found_polygons_text_region_h,
-            page_coord, order_of_texts, id_of_texts,
-            all_found_textline_polygons, all_found_textline_polygons_h,
-            all_box_coord, all_box_coord_h,
-            found_polygons_text_region_img, found_polygons_tables, found_polygons_drop_capitals,
-            found_polygons_marginals_left,found_polygons_marginals_right,
-            all_found_textline_polygons_marginals_left, all_found_textline_polygons_marginals_right,
-            all_box_coord_marginals_left, all_box_coord_marginals_right,
-            slopes, slopes_h, slopes_marginals_left, slopes_marginals_right,
-            cont_page, polygons_seplines,
-            ocr_all_textlines=None, ocr_all_textlines_h=None,
-            ocr_all_textlines_marginals_left=None, ocr_all_textlines_marginals_right=None,
-            ocr_all_textlines_drop=None,
-            conf_contours_textregions=None, conf_contours_textregions_h=None,
-            skip_layout_reading_order=False):
+        self,
+        *,
+        found_polygons_text_region,
+        found_polygons_text_region_h,
+        page_coord,
+        order_of_texts,
+        all_found_textline_polygons,
+        all_found_textline_polygons_h,
+        all_box_coord,
+        all_box_coord_h,
+        found_polygons_text_region_img,
+        found_polygons_tables,
+        found_polygons_drop_capitals,
+        found_polygons_marginals_left,
+        found_polygons_marginals_right,
+        all_found_textline_polygons_marginals_left,
+        all_found_textline_polygons_marginals_right,
+        all_box_coord_marginals_left,
+        all_box_coord_marginals_right,
+        slopes,
+        slopes_h,
+        slopes_marginals_left,
+        slopes_marginals_right,
+        cont_page,
+        polygons_seplines,
+        ocr_all_textlines=None,
+        ocr_all_textlines_h=None,
+        ocr_all_textlines_marginals_left=None,
+        ocr_all_textlines_marginals_right=None,
+        ocr_all_textlines_drop=None,
+        conf_contours_textregions=None,
+        conf_contours_textregions_h=None,
+        skip_layout_reading_order=False,
+    ):
         self.logger.debug('enter build_pagexml')
 
         # create the file structure
         pcgts = self.pcgts if self.pcgts else create_page_xml(self.image_filename, self.height_org, self.width_org)
         page = pcgts.get_Page()
+        assert page
         page.set_Border(BorderType(Coords=CoordsType(points=self.calculate_page_coords(cont_page))))
 
         counter = EynollahIdCounter()
@@ -152,6 +186,7 @@ class EynollahXmlWriter:
                 Coords=CoordsType(points=self.calculate_polygon_coords(region_contour, page_coord,
                                                                        skip_layout_reading_order))
             )
+            assert textregion.Coords
             if conf_contours_textregions:
                 textregion.Coords.set_conf(conf_contours_textregions[mm])
             page.add_TextRegion(textregion)
@@ -168,6 +203,7 @@ class EynollahXmlWriter:
                 id=counter.next_region_id, type_='heading',
                 Coords=CoordsType(points=self.calculate_polygon_coords(region_contour, page_coord))
             )
+            assert textregion.Coords
             if conf_contours_textregions_h:
                 textregion.Coords.set_conf(conf_contours_textregions_h[mm])
             page.add_TextRegion(textregion)

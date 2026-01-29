@@ -1,6 +1,8 @@
+from functools import cached_property
 from typing import Optional
 
 from PIL import Image
+from frozendict import frozendict
 import numpy as np
 import cv2
 from click import command
@@ -8,6 +10,8 @@ from click import command
 from ocrd import Processor, OcrdPageResult, OcrdPageResultImage
 from ocrd_models.ocrd_page import OcrdPage, AlternativeImageType
 from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
+
+from eynollah.model_zoo.model_zoo import EynollahModelZoo
 
 from .sbb_binarize import SbbBinarizer
 
@@ -25,7 +29,7 @@ class SbbBinarizeProcessor(Processor):
     # already employs GPU (without singleton process atm)
     max_workers = 1
 
-    @property
+    @cached_property
     def executable(self):
         return 'ocrd-sbb-binarize'
 
@@ -34,8 +38,9 @@ class SbbBinarizeProcessor(Processor):
         Set up the model prior to processing.
         """
         # resolve relative path via OCR-D ResourceManager
-        model_path = self.resolve_resource(self.parameter['model'])
-        self.binarizer = SbbBinarizer(model_dir=model_path, logger=self.logger)
+        assert isinstance(self.parameter, frozendict)
+        model_zoo = EynollahModelZoo(basedir=self.parameter['model'])
+        self.binarizer = SbbBinarizer(model_zoo=model_zoo, logger=self.logger)
 
     def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
         """
@@ -98,7 +103,7 @@ class SbbBinarizeProcessor(Processor):
                 line_image_bin = cv2pil(self.binarizer.run(image=pil2cv(line_image), use_patches=True))
                 # update PAGE (reference the image file):
                 line_image_ref = AlternativeImageType(comments=line_xywh['features'] + ',binarized')
-                line.add_AlternativeImage(region_image_ref)
+                line.add_AlternativeImage(line_image_ref)
                 result.images.append(OcrdPageResultImage(line_image_bin, line.id + '.IMG-BIN', line_image_ref))
 
         return result

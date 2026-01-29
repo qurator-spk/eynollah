@@ -30,16 +30,6 @@
           "default": true,
           "description": "Try to detect all element subtypes, including drop-caps and headings"
         },
-         "light_version": {
-          "type": "boolean",
-          "default": true,
-          "description": "Try to detect all element subtypes in light version (faster+simpler method for main region detection and deskewing)"
-        },
-         "textline_light": {
-          "type": "boolean",
-          "default": true,
-          "description": "Light version need textline light. If this parameter set to true, this tool will try to return contoure of textlines instead of rectangle bounding box of textline with a faster method."
-        },
         "tables": {
           "type": "boolean",
           "default": false,
@@ -83,12 +73,20 @@
       },
       "resources": [
         {
-          "url": "https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1",
-          "name": "models_layout_v0_5_0",
+          "url": "https://zenodo.org/records/17580627/files/models_all_v0_7_0.zip?download=1",
+          "name": "models_layout_v0_7_0",
           "type": "archive",
-          "path_in_archive": "models_layout_v0_5_0",
+          "size": 6119874002,
+          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization, image enhancement and OCR",
+          "version_range": ">= v0.7.0"
+        },
+        {
+          "url": "https://zenodo.org/records/17295988/files/models_layout_v0_6_0.tar.gz?download=1",
+          "name": "models_layout_v0_6_0",
+          "type": "archive",
+          "path_in_archive": "models_layout_v0_6_0",
           "size": 3525684179,
-          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization, image enhancement",
+          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization, image enhancement and OCR",
           "version_range": ">= v0.5.0"
         },
         {

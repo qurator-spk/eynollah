@@ -1,8 +1,12 @@
 """
-Image enhancer. The output can be written as same scale of input or in new predicted scale.
+Machine learning based reading order detection
 """
 
-from logging import Logger
+# pyright: reportCallIssue=false
+# pyright: reportUnboundVariable=false
+# pyright: reportArgumentType=false
+
+import logging 
 import os
 import time
 from typing import Optional
@@ -10,12 +14,12 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 import cv2
+from keras.models import Model
 import numpy as np
-from ocrd_utils import getLogger
 import statistics
 import tensorflow as tf
-from tensorflow.keras.models import load_model
 
+from .model_zoo import EynollahModelZoo
 from .utils.resize import resize_image
 from .utils.contour import (
     find_new_features_of_contours,
@@ -23,7 +27,6 @@ from .utils.contour import (
     return_parent_contours,
 )
 from .utils import is_xml_filename
-from .eynollah import PatchEncoder, Patches
 
 DPI_THRESHOLD = 298
 KERNEL = np.ones((5, 5), np.uint8)
@@ -32,12 +35,12 @@ KERNEL = np.ones((5, 5), np.uint8)
 class machine_based_reading_order_on_layout:
     def __init__(
         self,
-        dir_models : str,
-        logger : Optional[Logger] = None,
+        *,
+        model_zoo: EynollahModelZoo,
+        logger : Optional[logging.Logger] = None,
     ):
-        self.logger = logger if logger else getLogger('mbreorder')
-        self.dir_models = dir_models
-        self.model_reading_order_dir = dir_models + "/model_eynollah_reading_order_20250824"
+        self.logger = logger or logging.getLogger('eynollah.mbreorder')
+        self.model_zoo = model_zoo
         
         try:
             for device in tf.config.list_physical_devices('GPU'):
@@ -45,20 +48,7 @@ class machine_based_reading_order_on_layout:
         except:
             self.logger.warning("no GPU device available")
             
-        self.model_reading_order = self.our_load_model(self.model_reading_order_dir)
-        self.light_version = True
-
-    @staticmethod
-    def our_load_model(model_file):
-        if model_file.endswith('.h5') and Path(model_file[:-3]).exists():
-            # prefer SavedModel over HDF5 format if it exists
-            model_file = model_file[:-3]
-        try:
-            model = load_model(model_file, compile=False)
-        except:
-            model = load_model(model_file, compile=False, custom_objects={
-                "PatchEncoder": PatchEncoder, "Patches": Patches})
-        return model
+        self.model_zoo.load_model('reading_order')
 
     def read_xml(self, xml_file):
         tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding='utf-8'))
@@ -69,6 +59,7 @@ class machine_based_reading_order_on_layout:
         index_tot_regions = []
         tot_region_ref = []
 
+        y_len, x_len = 0, 0
         for jj in root1.iter(link+'Page'):
             y_len=int(jj.attrib['imageHeight'])
             x_len=int(jj.attrib['imageWidth'])
@@ -81,13 +72,13 @@ class machine_based_reading_order_on_layout:
             co_printspace = []
             if link+'PrintSpace' in alltags:
                 region_tags_printspace = np.unique([x for x in alltags if x.endswith('PrintSpace')])
-            elif link+'Border' in alltags:
+            else:
                 region_tags_printspace = np.unique([x for x in alltags if x.endswith('Border')])
                 
             for tag in region_tags_printspace:
                 if link+'PrintSpace' in alltags:
                     tag_endings_printspace = ['}PrintSpace','}printspace']
-                elif link+'Border' in alltags:
+                else:
                     tag_endings_printspace = ['}Border','}border']
                     
                 if tag.endswith(tag_endings_printspace[0]) or tag.endswith(tag_endings_printspace[1]):
@@ -524,7 +515,7 @@ class machine_based_reading_order_on_layout:
         
         
         min_cont_size_to_be_dilated = 10
-        if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+        if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
             cx_conts, cy_conts, x_min_conts, x_max_conts, y_min_conts, y_max_conts, _ = find_new_features_of_contours(contours_only_text_parent)
             args_cont_located = np.array(range(len(contours_only_text_parent)))
             
@@ -624,13 +615,13 @@ class machine_based_reading_order_on_layout:
                 img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,
                                    int(x_min_main[j]):int(x_max_main[j])] = 1
             co_text_all_org = contours_only_text_parent + contours_only_text_parent_h
-            if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+            if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
                 co_text_all = contours_only_dilated + contours_only_text_parent_h
             else:
                 co_text_all = contours_only_text_parent + contours_only_text_parent_h
         else:
             co_text_all_org = contours_only_text_parent
-            if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+            if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
                 co_text_all = contours_only_dilated
             else:
                 co_text_all = contours_only_text_parent
@@ -683,7 +674,7 @@ class machine_based_reading_order_on_layout:
                 tot_counter += 1
                 batch.append(j)
                 if tot_counter % inference_bs == 0 or tot_counter == len(ij_list):
-                    y_pr = self.model_reading_order.predict(input_1 , verbose=0)
+                    y_pr = self.model_zoo.get('reading_order', Model).predict(input_1 , verbose='0')
                     for jb, j in enumerate(batch):
                         if y_pr[jb][0]>=0.5:
                             post_list.append(j)
@@ -709,7 +700,7 @@ class machine_based_reading_order_on_layout:
         ##id_all_text = np.array(id_all_text)[index_sort]
         
         
-        if len(contours_only_text_parent)>min_cont_size_to_be_dilated and self.light_version:
+        if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
             org_contours_indexes = []
             for ind in range(len(ordered)):
                 region_with_curr_order = ordered[ind]
@@ -802,6 +793,7 @@ class machine_based_reading_order_on_layout:
             alltags=[elem.tag for elem in root_xml.iter()]
             
             ET.register_namespace("",name_space)
+            assert dir_out
             tree_xml.write(os.path.join(dir_out, file_name+'.xml'),
                            xml_declaration=True,
                            method='xml',

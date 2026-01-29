@@ -128,6 +128,7 @@ def return_textlines_split_if_needed(textline_image, textline_image_bin=None):
             return [image1, image2], None
     else:
         return None, None
+
 def preprocess_and_resize_image_for_ocrcnn_model(img, image_height, image_width):
     if img.shape[0]==0 or img.shape[1]==0:
         img_fin = np.ones((image_height, image_width, 3))
@@ -379,7 +380,6 @@ def return_rnn_cnn_ocr_of_given_textlines(image,
                                           all_box_coord,
                                           prediction_model,
                                           b_s_ocr, num_to_char,
-                                          textline_light=False,
                                           curved_line=False):
     max_len = 512
     padding_token = 299
@@ -404,7 +404,7 @@ def return_rnn_cnn_ocr_of_given_textlines(image,
         else:
             for indexing2, ind_poly in enumerate(ind_poly_first):
                 cropped_lines_region_indexer.append(indexer_text_region)
-                if not (textline_light or curved_line):
+                if not curved_line:
                     ind_poly = copy.deepcopy(ind_poly)
                     box_ind = all_box_coord[indexing]
 
