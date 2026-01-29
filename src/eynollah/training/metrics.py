@@ -147,6 +147,7 @@ def generalized_dice_loss(y_true, y_pred):
     return 1 - generalized_dice_coeff2(y_true, y_pred)
 
 
+# TODO: document where this is from
 def soft_dice_loss(y_true, y_pred, epsilon=1e-6):
     """
     Soft dice loss calculation for arbitrary batch size, number of classes, and number of spatial dimensions.
@@ -175,6 +176,7 @@ def soft_dice_loss(y_true, y_pred, epsilon=1e-6):
     return 1.00 - K.mean(numerator / (denominator + epsilon))  # average over classes and batch
 
 
+# TODO: document where this is from
 def seg_metrics(y_true, y_pred, metric_name, metric_type='standard', drop_last=True, mean_per_class=False,
                 verbose=False):
     """ 
@@ -267,6 +269,8 @@ def seg_metrics(y_true, y_pred, metric_name, metric_type='standard', drop_last=T
     return K.mean(non_zero_sum / non_zero_count)
 
 
+# TODO: document where this is from
+# TODO: Why a different implementation than IoU from utils?
 def mean_iou(y_true, y_pred, **kwargs):
     """
     Compute mean Intersection over Union of two segmentation masks, via Keras.
@@ -311,6 +315,7 @@ def iou_vahid(y_true, y_pred):
     return K.mean(iou)
 
 
+# TODO: copy from utils?
 def IoU_metric(Yi, y_predi):
     #  mean Intersection over Union
     #  Mean IoU = TP/(FN + TP + FP)
@@ -337,6 +342,7 @@ def IoU_metric_keras(y_true, y_pred):
     return IoU_metric(y_true.eval(session=sess), y_pred.eval(session=sess))
 
 
+# TODO: unused, remove?
 def jaccard_distance_loss(y_true, y_pred, smooth=100):
     """
     Jaccard = (|X & Y|)/ (|X|+ |Y| - |X & Y|)
