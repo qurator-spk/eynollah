@@ -15,7 +15,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     
     
-def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_image, co_marginal, co_table, img):
+def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_image, co_marginal, co_table, co_map, img):
     alpha = 0.5
     
     blank_image = np.ones( (img.shape[:]), dtype=np.uint8) * 255
@@ -28,6 +28,7 @@ def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_
     col_sep = (255, 0, 0)
     col_marginal =  (106, 90, 205)
     col_table =  (0, 90, 205)
+    col_map =  (90, 90, 205)
     
     if len(co_image)>0:
         cv2.drawContours(blank_image, co_image, -1, col_image, thickness=cv2.FILLED)  # Fill the contour
@@ -52,6 +53,9 @@ def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_
         
     if len(co_table)>0:
         cv2.drawContours(blank_image, co_table, -1, col_table, thickness=cv2.FILLED)  # Fill the contour
+        
+    if len(co_map)>0:
+        cv2.drawContours(blank_image, co_map, -1, col_map, thickness=cv2.FILLED)  # Fill the contour
     
     img_final =cv2.cvtColor(blank_image, cv2.COLOR_BGR2RGB)
     
@@ -231,7 +235,12 @@ def update_region_contours(co_text, img_boundary, erosion_rate, dilation_rate, y
         con_eroded = return_contours_of_interested_region(img_boundary_in,pixel, min_size )
         
         try:
-            co_text_eroded.append(con_eroded[0])
+            if len(con_eroded)>1:
+                cnt_size = np.array([cv2.contourArea(con_eroded[j]) for j in range(len(con_eroded))])
+                cnt = contours[np.argmax(cnt_size)]
+                co_text_eroded.append(cnt)
+            else:
+                co_text_eroded.append(con_eroded[0])
         except:
             co_text_eroded.append(con)
         
@@ -377,6 +386,7 @@ def get_layout_contours_for_visualization(xml_file):
     co_sep=[]
     co_img=[]
     co_table=[]
+    co_map=[]
     co_noise=[]
     
     types_text = []
@@ -593,6 +603,31 @@ def get_layout_contours_for_visualization(xml_file):
                     elif vv.tag!=link+'Point' and sumi>=1:
                         break
                 co_table.append(np.array(c_t_in))
+                
+        if tag.endswith('}MapRegion') or tag.endswith('}mapregion'):
+            #print('sth')
+            for nn in root1.iter(tag):
+                c_t_in=[]
+                sumi=0
+                for vv in nn.iter():
+                    # check the format of coords
+                    if vv.tag==link+'Coords':
+                        coords=bool(vv.attrib)
+                        if coords:
+                            p_h=vv.attrib['points'].split(' ')
+                            c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                            break
+                        else:
+                            pass
+    
+    
+                    if vv.tag==link+'Point':
+                        c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
+                        sumi+=1
+                    #print(vv.tag,'in')
+                    elif vv.tag!=link+'Point' and sumi>=1:
+                        break
+                co_map.append(np.array(c_t_in))
     
 
         if tag.endswith('}NoiseRegion') or tag.endswith('}noiseregion'):
@@ -619,7 +654,7 @@ def get_layout_contours_for_visualization(xml_file):
                     elif vv.tag!=link+'Point' and sumi>=1:
                         break
                 co_noise.append(np.array(c_t_in))
-    return co_text, co_graphic, co_sep, co_img, co_table, co_noise, y_len, x_len
+    return co_text, co_graphic, co_sep, co_img, co_table, co_map, co_noise, y_len, x_len
     
 def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_file, config_params, printspace, dir_images, dir_out_images):
     """
@@ -698,12 +733,15 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
             _, thresh = cv2.threshold(imgray, 0, 255, 0)
 
             contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
+            
             cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-
-            cnt = contours[np.argmax(cnt_size)]
-
-            x, y, w, h = cv2.boundingRect(cnt)
+            
+            try:
+                cnt = contours[np.argmax(cnt_size)]
+                x, y, w, h = cv2.boundingRect(cnt)
+            except:
+                x, y , w, h = 0, 0, x_len, y_len
+            
             bb_xywh = [x, y, w, h]
             
             
@@ -835,7 +873,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 types_graphic_label = list(types_graphic_dict.values())
 
                 
-            labels_rgb_color = [ (0,0,0), (255,0,0), (255,125,0), (255,0,125), (125,255,125), (125,125,0), (0,125,255), (0,125,0), (125,125,125), (255,0,255), (125,0,125), (0,255,0),(0,0,255), (0,255,255), (255,125,125),  (0,125,125), (0,255,125), (255,125,255), (125,255,0)]
+            labels_rgb_color = [ (0,0,0), (255,0,0), (255,125,0), (255,0,125), (125,255,125), (125,125,0), (0,125,255), (0,125,0), (125,125,125), (255,0,255), (125,0,125), (0,255,0),(0,0,255), (0,255,255), (255,125,125),  (0,125,125), (0,255,125), (255,125,255), (125,255,0), (125,255,255)]
             
             
             region_tags=np.unique([x for x in alltags if x.endswith('Region')])   
@@ -846,6 +884,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
             co_sep=[]
             co_img=[]
             co_table=[]
+            co_map=[]
             co_noise=[]
             
             for tag in region_tags:
@@ -1056,6 +1095,32 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                 elif vv.tag!=link+'Point' and sumi>=1:
                                     break
                             co_table.append(np.array(c_t_in))
+                            
+                if 'mapregion' in keys:
+                    if tag.endswith('}MapRegion') or tag.endswith('}mapregion'):
+                        #print('sth')
+                        for nn in root1.iter(tag):
+                            c_t_in=[]
+                            sumi=0
+                            for vv in nn.iter():
+                                # check the format of coords
+                                if vv.tag==link+'Coords':
+                                    coords=bool(vv.attrib)
+                                    if coords:
+                                        p_h=vv.attrib['points'].split(' ')
+                                        c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                        break
+                                    else:
+                                        pass
+                
+                
+                                if vv.tag==link+'Point':
+                                    c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
+                                    sumi+=1
+                                #print(vv.tag,'in')
+                                elif vv.tag!=link+'Point' and sumi>=1:
+                                    break
+                            co_map.append(np.array(c_t_in))
             
                 if 'noiseregion' in keys:
                     if tag.endswith('}NoiseRegion') or tag.endswith('}noiseregion'):
@@ -1129,6 +1194,10 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     erosion_rate = 0#2
                     dilation_rate = 3#4
                     co_table, img_boundary = update_region_contours(co_table, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                if "mapregion" in elements_with_artificial_class:
+                    erosion_rate = 0#2
+                    dilation_rate = 3#4
+                    co_map, img_boundary = update_region_contours(co_map, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                     
                     
                 
@@ -1154,6 +1223,8 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     img_poly=cv2.fillPoly(img, pts =co_img, color=labels_rgb_color[ config_params['imageregion']])
                 if 'tableregion' in keys:  
                     img_poly=cv2.fillPoly(img, pts =co_table, color=labels_rgb_color[ config_params['tableregion']])
+                if 'mapregion' in keys:  
+                    img_poly=cv2.fillPoly(img, pts =co_map, color=labels_rgb_color[ config_params['mapregion']])
                 if 'noiseregion' in keys:  
                     img_poly=cv2.fillPoly(img, pts =co_noise, color=labels_rgb_color[ config_params['noiseregion']])
                     
@@ -1214,6 +1285,9 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 if 'tableregion' in keys:
                     color_label = config_params['tableregion']
                     img_poly=cv2.fillPoly(img, pts =co_table, color=(color_label,color_label,color_label))
+                if 'mapregion' in keys:
+                    color_label = config_params['mapregion']
+                    img_poly=cv2.fillPoly(img, pts =co_map, color=(color_label,color_label,color_label))
                 if 'noiseregion' in keys:
                     color_label = config_params['noiseregion']
                     img_poly=cv2.fillPoly(img, pts =co_noise, color=(color_label,color_label,color_label))

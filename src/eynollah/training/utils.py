@@ -1,7 +1,7 @@
 import os
 import math
 import random
-
+from pathlib import Path
 import cv2
 import numpy as np
 import seaborn as sns
@@ -30,6 +30,9 @@ def scale_padd_image_for_ocr(img, height, width):
     if w_ratio<=width:
         width_new = w_ratio
     else:
+        width_new = width
+
+    if width_new <= 0:
         width_new = width
 
     img_res= resize_image (img, height, width_new)
@@ -1335,7 +1338,8 @@ def data_gen_ocr(
     # TODO: Why while True + yield, why not return a list?
     while True:
         for i in ls_files_images:
-            f_name = i.split('.')[0]
+            print(i, 'i')
+            f_name = Path(i).stem#.split('.')[0]
 
             txt_inp  = open(os.path.join(dir_train, "labels/"+f_name+'.txt'),'r').read().split('\n')[0]
             

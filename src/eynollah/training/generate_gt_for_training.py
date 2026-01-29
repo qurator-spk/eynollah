@@ -474,7 +474,7 @@ def visualize_layout_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
         img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
         img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
             
-        co_text, co_graphic, co_sep, co_img, co_table, co_noise, y_len, x_len = get_layout_contours_for_visualization(xml_file)
+        co_text, co_graphic, co_sep, co_img, co_table, co_map, co_noise, y_len, x_len = get_layout_contours_for_visualization(xml_file)
         
         
         added_image = visualize_image_from_contours_layout(co_text['paragraph'], co_text['header']+co_text['heading'], co_text['drop-capital'], co_sep, co_img, co_text['marginalia'], co_table, img)
