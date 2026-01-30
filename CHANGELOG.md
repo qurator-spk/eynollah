@@ -318,6 +318,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.7.0]: ../../compare/v0.7.0...v0.6.0
 [0.6.0]: ../../compare/v0.6.0...v0.6.0rc2
 [0.6.0rc2]: ../../compare/v0.6.0rc2...v0.6.0rc1
 [0.6.0rc1]: ../../compare/v0.6.0rc1...v0.5.0
