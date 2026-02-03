@@ -36,21 +36,21 @@ def run_character_list_update(dir_labels, out, current_character_list):
 @click.option(
     "--dir_labels",
     "-dl",
-    help="directory of labels which are txt files",
+    help="directory of labels which are .txt files",
     type=click.Path(exists=True, file_okay=False),
     required=True,
 )
 @click.option(
     "--current_character_list",
     "-ccl",
-    help="current exsiting character list which is txt file and wished to be updated with a set of labels",
+    help="existing character list in a .txt file that needs to be updated with a set of labels",
     type=click.Path(exists=True, file_okay=True),
     required=False,
 )
 @click.option(
     "--out",
     "-o",
-    help="output file which is a txt file where generated or updated character list will be written",
+    help="An output .txt file where the generated or updated character list will be written",
     type=click.Path(exists=False, file_okay=True),
 )
 
