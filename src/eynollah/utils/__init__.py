@@ -1881,7 +1881,10 @@ def return_boxes_of_images_by_order_of_reading_new(
                                       y_mid[nxt]])
                         # dbg_plt(boxes[-1], "recursive column %d:%d box [%d]" % (column, last, len(boxes)))
                         column = last
-                        if last == x_ending[nxt] and x_ending[nxt] <= x_ending[cur] and nxt in args:
+                        if (last == x_ending[nxt] and
+                            x_ending[nxt] <= x_ending[cur] and
+                            x_starting[nxt] >= x_starting[cur] and
+                            nxt in args):
                             # child – recur
                             # print("recur", nxt, y_mid[nxt], "%d:%d" % (x_starting[nxt], x_ending[nxt]))
                             args.remove(nxt)
