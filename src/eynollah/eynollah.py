@@ -56,14 +56,12 @@ except ImportError:
     TrOCRProcessor = VisionEncoderDecoderModel = None
 
 #os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 tf_disable_interactive_logs()
 import tensorflow as tf
-from tensorflow.python.keras import backend as K
 from tensorflow.keras.models import load_model
 tf.get_logger().setLevel("ERROR")
 warnings.filterwarnings("ignore")
-# use tf1 compatibility for keras backend
-from tensorflow.compat.v1.keras.backend import set_session
 from tensorflow.keras import layers
 from tensorflow.keras.layers import StringLookup
 
@@ -117,6 +115,7 @@ from .utils.marginals import get_marginals
 from .utils.resize import resize_image
 from .utils.shm import share_ndarray
 from .utils import (
+    ensure_array,
     is_image_filename,
     boosting_headers_by_longshot_region_segmentation,
     crop_image_inside_box,
@@ -276,14 +275,6 @@ class Eynollah:
 
         t_start = time.time()
 
-        # #gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
-        # #gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=7.7, allow_growth=True)
-        # #session = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
-        # config = tf.compat.v1.ConfigProto()
-        # config.gpu_options.allow_growth = True
-        # #session = tf.InteractiveSession()
-        # session = tf.compat.v1.Session(config=config)
-        # set_session(session)
         try:
             for device in tf.config.list_physical_devices('GPU'):
                 tf.config.experimental.set_memory_growth(device, True)
@@ -2475,8 +2466,8 @@ class Eynollah:
             self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
 
         self.logger.debug("enter do_order_of_regions")
-        contours_only_text_parent = np.array(contours_only_text_parent)
-        contours_only_text_parent_h = np.array(contours_only_text_parent_h)
+        contours_only_text_parent = ensure_array(contours_only_text_parent)
+        contours_only_text_parent_h = ensure_array(contours_only_text_parent_h)
         boxes = np.array(boxes, dtype=int) # to be on the safe side
         c_boxes = np.stack((0.5 * boxes[:, 2:4].sum(axis=1),
                             0.5 * boxes[:, 0:2].sum(axis=1)))
@@ -3987,7 +3978,7 @@ class Eynollah:
         def filterfun(lis):
             if len(lis) == 0:
                 return []
-            return list(np.array(lis)[indices])
+            return list(ensure_array(lis)[indices])
 
         return (filterfun(contours_par),
                 filterfun(contours_textline),
@@ -4378,7 +4369,8 @@ class Eynollah:
             areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
             areas_cnt_text = areas_cnt_text / float(areas_tot_text)
             #self.logger.info('areas_cnt_text %s', areas_cnt_text)
-            contours_only_text_parent = np.array(contours_only_text_parent)[areas_cnt_text > MIN_AREA_REGION]
+            contours_only_text_parent = ensure_array(contours_only_text_parent)
+            contours_only_text_parent = contours_only_text_parent[areas_cnt_text > MIN_AREA_REGION]
             areas_cnt_text_parent = areas_cnt_text[areas_cnt_text > MIN_AREA_REGION]
 
             index_con_parents = np.argsort(areas_cnt_text_parent)
@@ -4397,12 +4389,13 @@ class Eynollah:
                 areas_cnt_text_d = np.array([cv2.contourArea(c) for c in contours_only_text_parent_d])
                 areas_cnt_text_d = areas_cnt_text_d / float(areas_tot_text_d)
 
-                contours_only_text_parent_d = np.array(contours_only_text_parent_d)[areas_cnt_text_d > MIN_AREA_REGION]
+                contours_only_text_parent_d = ensure_array(contours_only_text_parent_d)
+                contours_only_text_parent_d = contours_only_text_parent_d[areas_cnt_text_d > MIN_AREA_REGION]
                 areas_cnt_text_d = areas_cnt_text_d[areas_cnt_text_d > MIN_AREA_REGION]
 
                 if len(contours_only_text_parent_d):
                     index_con_parents_d = np.argsort(areas_cnt_text_d)
-                    contours_only_text_parent_d = np.array(contours_only_text_parent_d)[index_con_parents_d]
+                    contours_only_text_parent_d = contours_only_text_parent_d[index_con_parents_d]
                     areas_cnt_text_d = areas_cnt_text_d[index_con_parents_d]
 
                     centers_d = np.stack(find_center_of_contours(contours_only_text_parent_d)) # [2, N]
@@ -4546,9 +4539,10 @@ class Eynollah:
         #print("text region early 3 in %.1fs", time.time() - t0)
         if self.light_version:
             contours_only_text_parent = dilate_textregion_contours(contours_only_text_parent)
-            contours_only_text_parent , contours_only_text_parent_d_ordered = self.filter_contours_inside_a_bigger_one(
-                contours_only_text_parent, contours_only_text_parent_d_ordered, text_only,
-                marginal_cnts=polygons_of_marginals)
+            contours_only_text_parent, contours_only_text_parent_d_ordered = \
+                self.filter_contours_inside_a_bigger_one(
+                    contours_only_text_parent, contours_only_text_parent_d_ordered, text_only,
+                    marginal_cnts=polygons_of_marginals)
             #print("text region early 3.5 in %.1fs", time.time() - t0)
             conf_contours_textregions = get_textregion_contours_in_org_image_light(
                 contours_only_text_parent, self.image, confidence_matrix)

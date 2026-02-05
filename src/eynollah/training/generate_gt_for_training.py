@@ -205,14 +205,20 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
         img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
 
         for j in range(len(cy_main)):
-            img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,int(x_min_main[j]):int(x_max_main[j]) ] = 1
+            img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,
+                               int(x_min_main[j]):int(x_max_main[j]) ] = 1
 
 
-        texts_corr_order_index  = [index_tot_regions[tot_region_ref.index(i)] for i in id_all_text ]
-        texts_corr_order_index_int = [int(x) for x in texts_corr_order_index]
-        
+        try:
+            texts_corr_order_index_int  = [int(index_tot_regions[tot_region_ref.index(i)])
+                                           for i in id_all_text]
+        except ValueError as e:
+            print("incomplete ReadingOrder in", xml_file, "- skipping:", str(e))
+            continue
 
-        co_text_all, texts_corr_order_index_int, regions_ar_less_than_early_min = filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int, max_area, min_area, min_area_early)
+        co_text_all, texts_corr_order_index_int, regions_ar_less_than_early_min = \
+            filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int,
+                                          max_area, min_area, min_area_early)
         
         
         arg_array = np.array(range(len(texts_corr_order_index_int)))

@@ -1,8 +1,9 @@
 # ocrd includes opencv, numpy, shapely, click
 ocrd >= 3.3.0
-numpy <1.24.0
+numpy < 2.0
 scikit-learn >= 0.23.2
-tensorflow < 2.13
+tensorflow
+tf-keras # avoid keras 3 (also needs TF_USE_LEGACY_KERAS=1)
 numba <= 0.58.1
 scikit-image
 biopython
