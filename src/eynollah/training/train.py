@@ -430,13 +430,13 @@ def run(_config,
                       metrics=['accuracy', F1Score(average='macro', name='f1')])
 
         list_classes = list(classification_classes_name.values())
-        trainXY = generate_data_from_folder_training(
-            dir_train, n_batch, input_height, input_width, n_classes, list_classes)
-        testXY = generate_data_from_folder_evaluation(
-            dir_eval, input_height, input_width, n_classes, list_classes)
+        trainXY = generate_data_from_folder(
+            dir_train, n_batch, input_height, input_width, n_classes, list_classes, shuffle=True)
+        testXY = generate_data_from_folder(
+            dir_eval, n_batch, input_height, input_width, n_classes, list_classes)
+        epoch_size_train = return_number_of_total_training_data(dir_train)
+        epoch_size_eval = return_number_of_total_training_data(dir_eval)
 
-        y_tot = np.zeros((testX.shape[0], n_classes))
-        num_rows = return_number_of_total_training_data(dir_train)
         callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
                      SaveWeightsAfterSteps(0, dir_output, _config,
                                            monitor='val_f1',
@@ -444,9 +444,10 @@ def run(_config,
                                            mode='max')]
         
         history = model.fit(trainXY,
-                            steps_per_epoch=num_rows / n_batch,
+                            steps_per_epoch=epoch_size_train // n_batch,
                             #class_weight=weights)
                             validation_data=testXY,
+                            validation_steps=epoch_size_eval // n_batch,
                             verbose=1,
                             epochs=n_epochs,
                             callbacks=callbacks,
