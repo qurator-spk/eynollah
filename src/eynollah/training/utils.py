@@ -9,11 +9,15 @@ from scipy.ndimage.interpolation import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
 from tqdm import tqdm
 import imutils
-import tensorflow as tf
-from tensorflow.keras.utils import to_categorical
+##import tensorflow as tf
+##from tensorflow.keras.utils import to_categorical
 from PIL import Image, ImageFile, ImageEnhance
 
+import torch
+from torch.utils.data import IterableDataset
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 
 def vectorize_label(label, char_to_num, padding_token, max_len):
     label = char_to_num(tf.strings.unicode_split(label, input_encoding="UTF-8"))
@@ -75,6 +79,7 @@ def add_salt_and_pepper_noise(img, salt_prob, pepper_prob):
     noisy_image[coords[0], coords[1]] = 0  # black pixels
     
     return noisy_image
+
 
 def invert_image(img):
     img_inv = 255 - img
@@ -1668,3 +1673,411 @@ def return_multiplier_based_on_augmnentations(
         aug_multip += len(pepper_indexes)
             
     return aug_multip
+
+
+class OCRDatasetYieldAugmentations(IterableDataset):
+    def __init__(
+        self,
+        dir_img,
+        dir_img_bin,
+        dir_lab,
+        processor,
+        max_target_length=128,
+        augmentation = None,
+        binarization = None,
+        add_red_textlines = None,
+        white_noise_strap = None,
+        adding_rgb_foreground = None,
+        adding_rgb_background = None,
+        bin_deg = None,
+        blur_aug = None,
+        brightening = None,
+        padding_white = None,
+        color_padding_rotation = None,
+        rotation_not_90 = None,
+        degrading = None,
+        channels_shuffling = None,
+        textline_skewing = None,
+        textline_skewing_bin = None,
+        textline_right_in_depth = None,
+        textline_left_in_depth = None,
+        textline_up_in_depth = None,
+        textline_down_in_depth = None,
+        textline_right_in_depth_bin = None,
+        textline_left_in_depth_bin = None,
+        textline_up_in_depth_bin = None,
+        textline_down_in_depth_bin = None,
+        pepper_aug = None,
+        pepper_bin_aug = None,
+        list_all_possible_background_images=None,
+        list_all_possible_foreground_rgbs=None,
+        blur_k = None,
+        degrade_scales = None,
+        white_padds = None,
+        thetha_padd = None,
+        thetha = None,
+        brightness = None,
+        padd_colors = None,
+        number_of_backgrounds_per_image = None,
+        shuffle_indexes = None,
+        pepper_indexes = None,
+        skewing_amplitudes = None,
+        dir_rgb_backgrounds = None,
+        dir_rgb_foregrounds = None,
+        len_data=None,
+    ):
+        """
+        Args:
+            images_dir (str): Path to the directory containing images.
+            labels_dir (str): Path to the directory containing label text files.
+            tokenizer: Tokenizer for processing labels.
+            transform: Transformations applied after augmentation (e.g., ToTensor, normalization).
+            image_size (tuple): Size to resize images to.
+            max_seq_len (int): Maximum sequence length for tokenized labels.
+            scales (list or None): List of scale factors to apply.
+        """
+        self.dir_img = dir_img
+        self.dir_img_bin = dir_img_bin
+        self.dir_lab = dir_lab
+        self.processor = processor
+        self.max_target_length = max_target_length
+        #self.scales = scales if scales else []
+        
+        self.augmentation = augmentation
+        self.binarization = binarization
+        self.add_red_textlines = add_red_textlines
+        self.white_noise_strap = white_noise_strap
+        self.adding_rgb_foreground = adding_rgb_foreground
+        self.adding_rgb_background = adding_rgb_background
+        self.bin_deg = bin_deg
+        self.blur_aug = blur_aug
+        self.brightening = brightening
+        self.padding_white = padding_white
+        self.color_padding_rotation = color_padding_rotation
+        self.rotation_not_90 = rotation_not_90
+        self.degrading = degrading
+        self.channels_shuffling = channels_shuffling
+        self.textline_skewing = textline_skewing
+        self.textline_skewing_bin = textline_skewing_bin
+        self.textline_right_in_depth = textline_right_in_depth
+        self.textline_left_in_depth = textline_left_in_depth
+        self.textline_up_in_depth = textline_up_in_depth
+        self.textline_down_in_depth = textline_down_in_depth
+        self.textline_right_in_depth_bin = textline_right_in_depth_bin
+        self.textline_left_in_depth_bin = textline_left_in_depth_bin
+        self.textline_up_in_depth_bin = textline_up_in_depth_bin
+        self.textline_down_in_depth_bin = textline_down_in_depth_bin
+        self.pepper_aug = pepper_aug
+        self.pepper_bin_aug = pepper_bin_aug
+        self.list_all_possible_background_images=list_all_possible_background_images
+        self.list_all_possible_foreground_rgbs=list_all_possible_foreground_rgbs
+        self.blur_k = blur_k
+        self.degrade_scales = degrade_scales
+        self.white_padds = white_padds
+        self.thetha_padd = thetha_padd
+        self.thetha = thetha
+        self.brightness = brightness
+        self.padd_colors = padd_colors
+        self.number_of_backgrounds_per_image = number_of_backgrounds_per_image
+        self.shuffle_indexes = shuffle_indexes
+        self.pepper_indexes = pepper_indexes
+        self.skewing_amplitudes = skewing_amplitudes
+        self.dir_rgb_backgrounds = dir_rgb_backgrounds
+        self.dir_rgb_foregrounds = dir_rgb_foregrounds
+        self.image_files = os.listdir(dir_img)#sorted([f for f in os.listdir(images_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
+        self.len_data = len_data
+        #assert len(self.image_files) == len(self.label_files), "Number of images and labels must match!"
+
+    def __len__(self):
+        return self.len_data
+    
+    def __iter__(self):
+        for img_file in self.image_files:
+            # Load image
+            f_name = img_file.split('.')[0]
+            
+            txt_inp  = open(os.path.join(self.dir_lab, f_name+'.txt'),'r').read().split('\n')[0]
+            
+            img = cv2.imread(os.path.join(self.dir_img, img_file))
+            img = img.astype(np.uint8)
+            
+            
+            if self.dir_img_bin:
+                img_bin_corr = cv2.imread(os.path.join(self.dir_img_bin, f_name+'.png') )
+                img_bin_corr = img_bin_corr.astype(np.uint8)
+            else:
+                img_bin_corr = None
+
+            
+            labels = self.processor.tokenizer(txt_inp, 
+                                            padding="max_length", 
+                                            max_length=self.max_target_length).input_ids
+            
+            labels = [label if label != self.processor.tokenizer.pad_token_id else -100 for label in labels]
+            
+            
+            if self.augmentation:
+                pixel_values = self.processor(Image.fromarray(img), return_tensors="pt").pixel_values
+                encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                yield encoding
+                
+
+                if self.color_padding_rotation:
+                    for index, thetha_ind in enumerate(self.thetha_padd):
+                        for padd_col in self.padd_colors:
+                            img_out = rotation_not_90_func_single_image(do_padding_for_ocr(img, 1.2, padd_col), thetha_ind)
+                            img_out = img_out.astype(np.uint8)
+                            pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                            encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                            yield encoding
+                        
+                if self.rotation_not_90:
+                    for index, thetha_ind in enumerate(self.thetha):
+                        img_out = rotation_not_90_func_single_image(img, thetha_ind)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+
+                    
+                if self.blur_aug:
+                    for index, blur_type in enumerate(self.blur_k):
+                        img_out = bluring(img, blur_type)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+                    
+                if self.degrading:
+                    for index, deg_scale_ind in enumerate(self.degrade_scales):
+                        try:
+                            img_out  = do_degrading(img, deg_scale_ind)
+                        except:
+                            img_out = np.copy(img)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+                            
+                if self.bin_deg:
+                    for index, deg_scale_ind in enumerate(self.degrade_scales):
+                        try:
+                            img_out  = self.do_degrading(img_bin_corr, deg_scale_ind)
+                        except:
+                            img_out = np.copy(img_bin_corr)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+                    
+                
+                if self.brightening:
+                    for index, bright_scale_ind in enumerate(self.brightness):
+                        try:
+                            img_out  = do_brightening(dir_img, bright_scale_ind)
+                        except:
+                            img_out = np.copy(img)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+
+                        
+                if self.padding_white:
+                    for index, padding_size in enumerate(self.white_padds):
+                        for padd_col in self.padd_colors:
+                            img_out  = do_padding_for_ocr(img, padding_size, padd_col)
+                            img_out = img_out.astype(np.uint8)
+                            pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                            encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                            yield encoding
+                            
+                            
+                if self.adding_rgb_foreground:
+                    for i_n in range(self.number_of_backgrounds_per_image):
+                        background_image_chosen_name = random.choice(self.list_all_possible_background_images)
+                        foreground_rgb_chosen_name = random.choice(self.list_all_possible_foreground_rgbs)
+
+                        img_rgb_background_chosen = cv2.imread(self.dir_rgb_backgrounds + '/' + background_image_chosen_name)
+                        foreground_rgb_chosen = np.load(self.dir_rgb_foregrounds + '/' + foreground_rgb_chosen_name)
+
+                        img_out = return_binary_image_with_given_rgb_background_and_given_foreground_rgb(img_bin_corr, img_rgb_background_chosen, foreground_rgb_chosen)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+                        
+
+                        
+                       
+                if self.adding_rgb_background:
+                    for i_n in range(self.number_of_backgrounds_per_image):
+                        background_image_chosen_name = random.choice(self.list_all_possible_background_images)
+                        img_rgb_background_chosen = cv2.imread(self.dir_rgb_backgrounds + '/' + background_image_chosen_name)
+                        img_out = return_binary_image_with_given_rgb_background(img_bin_corr, img_rgb_background_chosen)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+                        
+                if self.binarization:
+                    pixel_values = self.processor(Image.fromarray(img_bin_corr), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                
+                if self.channels_shuffling:
+                    for shuffle_index in self.shuffle_indexes:
+                        img_out  = return_shuffled_channels(img, shuffle_index)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+                        
+                if self.add_red_textlines:
+                    img_out = return_image_with_red_elements(img, img_bin_corr)
+                    img_out = img_out.astype(np.uint8)
+                    pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                if self.white_noise_strap:
+                    img_out  = return_image_with_strapped_white_noises(img)
+                    img_out = img_out.astype(np.uint8)
+                    pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                if self.textline_skewing:
+                    for index, des_scale_ind in enumerate(self.skewing_amplitudes):
+                        try:
+                            img_out  = do_deskewing(img, des_scale_ind)
+                        except:
+                            img_out = np.copy(img)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+                            
+                if self.textline_skewing_bin:
+                    for index, des_scale_ind in enumerate(self.skewing_amplitudes):
+                        try:
+                            img_out  = do_deskewing(img_bin_corr, des_scale_ind)
+                        except:
+                            img_out = np.copy(img_bin_corr)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+                            
+                            
+                if self.textline_left_in_depth:
+                    try:
+                        img_out  = do_direction_in_depth(img, 'left')
+                    except:
+                        img_out = np.copy(img)
+                    img_out = img_out.astype(np.uint8)
+                    pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                        
+                if self.textline_left_in_depth_bin:
+                    try:
+                        img_out  = do_direction_in_depth(img_bin_corr, 'left')
+                    except:
+                        img_out = np.copy(img_bin_corr)
+                    img_out = img_out.astype(np.uint8)
+                    pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                        
+                if self.textline_right_in_depth:
+                    try:
+                        img_out  = do_direction_in_depth(img, 'right')
+                    except:
+                        img_out = np.copy(img)
+                    img_out = img_out.astype(np.uint8)
+                    pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                        
+                if self.textline_right_in_depth_bin:
+                    try:
+                        img_out  = do_direction_in_depth(img_bin_corr, 'right')
+                    except:
+                        img_out = np.copy(img_bin_corr)
+                    img_out = img_out.astype(np.uint8)
+                    pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                        
+                if self.textline_up_in_depth:
+                    try:
+                        img_out  = do_direction_in_depth(img, 'up')
+                    except:
+                        img_out = np.copy(img)
+                    img_out = img_out.astype(np.uint8)
+                    pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                        
+                if self.textline_up_in_depth_bin:
+                    try:
+                        img_out  = do_direction_in_depth(img_bin_corr, 'up')
+                    except:
+                        img_out = np.copy(img_bin_corr)
+                    img_out = img_out.astype(np.uint8)
+                    pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                        
+                if self.textline_down_in_depth:
+                    try:
+                        img_out  = do_direction_in_depth(img, 'down')
+                    except:
+                        img_out = np.copy(img)
+                    img_out = img_out.astype(np.uint8)
+                    pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                        
+                if self.textline_down_in_depth_bin:
+                    try:
+                        img_out  = do_direction_in_depth(img_bin_corr, 'down')
+                    except:
+                        img_out = np.copy(img_bin_corr)
+                    img_out = img_out.astype(np.uint8)
+                    pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                    encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                    yield encoding
+                        
+                if self.pepper_bin_aug:
+                    for index, pepper_ind in enumerate(self.pepper_indexes):
+                        img_out  = add_salt_and_pepper_noise(img_bin_corr, pepper_ind, pepper_ind)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+                            
+                            
+                if self.pepper_aug:
+                    for index, pepper_ind in enumerate(self.pepper_indexes):
+                        img_out  = add_salt_and_pepper_noise(img, pepper_ind, pepper_ind)
+                        img_out = img_out.astype(np.uint8)
+                        pixel_values = self.processor(Image.fromarray(img_out), return_tensors="pt").pixel_values
+                        encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                        yield encoding
+
+
+
+            else:
+                pixel_values = self.processor(Image.fromarray(img), return_tensors="pt").pixel_values
+                encoding = {"pixel_values": pixel_values.squeeze(), "labels": torch.tensor(labels)}
+                yield encoding
