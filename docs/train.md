@@ -343,51 +343,17 @@ The following parameter configuration can be applied to all segmentation use cas
 its sub-parameters, and continued training are defined only for segmentation use cases and enhancements, not for
 classification and machine-based reading order, as you can see in their example config files.
 
-* `backbone_type`: For segmentation tasks (such as text line, binarization, and layout detection) and enhancement, we
-  offer two backbone options: a "nontransformer" and a "transformer" backbone. For the "transformer" backbone, we first
-  apply a CNN followed by a transformer. In contrast, the "nontransformer" backbone utilizes only a CNN ResNet-50.
-* `task`: The task parameter can have values such as "segmentation", "enhancement", "classification", and "reading_order".
-* `patches`: If you want to break input images into smaller patches (input size of the model) you need to set this
-* parameter to `true`. In the case that the model should see the image once, like page extraction, patches should be
-  set to ``false``.
-* `n_batch`: Number of batches at each iteration.
-* `n_classes`: Number of classes. In the case of binary classification this should be 2. In the case of reading_order it
-  should set to 1. And for the case of layout detection just the unique number of classes should be given.
-* `n_epochs`: Number of epochs.
-* `input_height`: This indicates the height of model's input.
-* `input_width`: This indicates the width of model's input.
-* `weight_decay`: Weight decay of l2 regularization of model layers.
-* `pretraining`: Set to `true` to load pretrained weights of ResNet50 encoder. The downloaded weights should be saved
-  in a folder named "pretrained_model" in the same directory of "train.py" script.
-* `augmentation`: If you want to apply any kind of augmentation this parameter should first set to `true`.
-* `flip_aug`: If `true`, different types of filp will be applied on image. Type of flips is given with "flip_index" parameter.
-* `blur_aug`: If `true`, different types of blurring will be applied on image. Type of blurrings is given with "blur_k" parameter.
-* `scaling`: If `true`, scaling will be applied on image. Scale of scaling is given with "scales" parameter.
-* `degrading`: If `true`, degrading will be applied to the image. The amount of degrading is defined with "degrade_scales" parameter.
-* `brightening`: If `true`, brightening will be applied to the image. The amount of brightening is defined with "brightness" parameter.
-* `rotation_not_90`: If `true`, rotation (not 90 degree) will be applied on image. Rotation angles are given with "thetha" parameter.
-* `rotation`: If `true`, 90 degree rotation will be applied on image.
-* `binarization`: If `true`,Otsu thresholding will be applied to augment the input data with binarized images.
-* `scaling_bluring`: If `true`, combination of scaling and blurring will be applied on image.
-* `scaling_binarization`: If `true`, combination of scaling and binarization will be applied on image.
-* `scaling_flip`: If `true`, combination of scaling and flip will be applied on image.
-* `flip_index`: Type of flips.
-* `blur_k`: Type of blurrings.
-* `scales`: Scales of scaling.
-* `brightness`: The amount of brightenings.
-* `thetha`: Rotation angles.
-* `degrade_scales`: The amount of degradings.
-* `continue_training`: If `true`, it means that you have already trained a  model and you would like to continue the
-  training. So it is needed to providethe dir of trained model with "dir_of_start_model" and index for naming
-  themodels. For example if you have already trained for 3 epochs then your lastindex is 2 and if you want to continue
-  from model_1.h5, you can set `index_start` to 3 to start naming model with index 3.
-* `weighted_loss`: If `true`, this means that you want to apply weighted categorical_crossentropy as loss fucntion. Be carefull if you set to `true`the parameter "is_loss_soft_dice" should be ``false``
-* `data_is_provided`: If you have already provided the input data you can set  this to `true`. Be sure that the train
-  and eval data are in"dir_output".Since when once we provide training data we resize and augmentthem and then wewrite
-  them in sub-directories train and eval in "dir_output".
-* `dir_train`: This is the directory of "images" and "labels" (dir_train should include two subdirectories with names of images and labels ) for raw images and labels. Namely they are not prepared (not resized and not augmented) yet for training the model. When we run this tool these raw data will be transformed to suitable size needed for the model and they will be written in "dir_output" in train and eval directories. Each of train and eval include "images" and "labels" sub-directories.
-* `index_start`: Starting index for saved models in the case that "continue_training"  is `true`.
-* `dir_of_start_model`: Directory containing pretrained model to continue training the model in the case that "continue_training"  is `true`.
+* `task`: The task parameter must be one of the following values:
+  - `binarization`,
+  - `enhancement`,
+  - `segmentation`,
+  - `classification`,
+  - `reading_order`.
+* `backbone_type`: For the tasks `segmentation` (such as text line, and region layout detection),
+  `binarization` and `enhancement`, we offer two backbone options:
+  - `nontransformer` (only a CNN ResNet-50).
+  - `transformer` (first apply a CNN, followed by a transformer)
+* `transformer_cnn_first`: Whether to apply the CNN first (followed by the transformer) when using `transformer` backbone.
 * `transformer_num_patches_xy`: Number of patches for vision transformer in x and y direction respectively.
 * `transformer_patchsize_x`: Patch size of vision transformer patches in x direction.
 * `transformer_patchsize_y`: Patch size of vision transformer patches in y direction.
@@ -395,7 +361,59 @@ classification and machine-based reading order, as you can see in their example 
 * `transformer_mlp_head_units`: Transformer Multilayer Perceptron (MLP) head units. Default value is [128, 64].
 * `transformer_layers`: transformer layers. Default value is 8.
 * `transformer_num_heads`: Transformer number of heads. Default value is 4.
-* `transformer_cnn_first`: We have two types of vision transformers. In one type, a CNN is applied first, followed by a transformer. In the other type, this order is reversed. If transformer_cnn_first is true, it means the CNN will be applied before the transformer. Default value is true.
+* `patches`: Whether to break up (tile) input images into smaller patches (input size of the model).
+  If `false`, the model will see the image once (resized to the input size of the model).  
+  Should be set to `false` for cases like page extraction.
+* `n_batch`: Number of batches at each iteration.
+* `n_classes`: Number of classes. In the case of binary classification this should be 2. In the case of reading_order it
+  should set to 1. And for the case of layout detection just the unique number of classes should be given.
+* `n_epochs`: Number of epochs (iterations over the data) to train.
+* `input_height`: the image height for the model's input.
+* `input_width`: the image width for the model's input.
+* `weight_decay`: Weight decay of l2 regularization of model layers.
+* `weighted_loss`: If `true`, this means that you want to apply weighted categorical crossentropy as loss function.  
+   (Mutually exclusive with `is_loss_soft_dice`, and only applies for `segmentation` and `binarization` tasks.)
+* `pretraining`: Set to `true` to (download and) initialise pretrained weights of ResNet50 encoder.
+* `dir_train`: Path to directory of raw training data (as extracted via `pagexml2labels`, i.e. with subdirectories
+  `images` and `labels` for input images and output labels.  
+   (These are not prepared for training the model, yet. Upon first run, the raw data will be transformed to suitable size
+    needed for the model, and written in `dir_output` under `train` and `eval` subdirectories. See `data_is_provided`.)
+* `dir_eval`: Ditto for raw evaluation data.
+* `dir_output`: Directory to write model checkpoints, logs (for Tensorboard) and precomputed images to.
+* `data_is_provided`: If you have already trained at least one complete epoch (using the same data settings) before,
+  you can set  this to `true` to avoid computing the resized / patched / augmented image files again.  
+  Be sure that there are subdirectories `train` and `eval` data are in `dir_output` (each with subdirectories `images`
+  and `labels`, respectively).
+* `continue_training`: If `true`, continue training a model checkpoint from a previous run.  
+  This requires providing the directory of the model checkpoint to load via `dir_of_start_model`
+  and setting `index_start` counter for naming new checkpoints.
+  For example if you have already trained for 3 epochs, then your last index is 2, so if you want
+  to continue with `model_04`, `model_05` etc., set `index_start=3`.
+* `index_start`: Starting index for saving models in the case that `continue_training` is `true`.  
+   (Existing checkpoints above this will be overwritten.)
+* `dir_of_start_model`: Directory containing existing model checkpoint to initialise model weights from when `continue_training=true`.  
+   (Can be an epoch-interval checkpoint, or batch-interval checkpoint from `save_interval`.)
+* `augmentation`: If you want to apply any kind of augmentation this parameter should first set to `true`.  
+   The remaining settings pertain to that...
+* `flip_aug`: If `true`, different types of flipping over the image arrays. Requires `flip_index` parameter.
+* `flip_index`: List of flip codes (as in `cv2.flip`, i.e. 0 for vertical, positive for horizontal shift, negative for vertical and horizontal shift).
+* `blur_aug`: If `true`, different types of blurring will be applied on image. Requires `blur_k` parameter.
+* `blur_k`: Method of blurring (`gauss`, `median` or `blur`).
+* `scaling`: If `true`, scaling will be applied on image. Requires `scales` parameter.
+* `scales`: List of scale factors for scaling.
+* `scaling_bluring`: If `true`, combination of scaling and blurring will be applied on image.
+* `scaling_binarization`: If `true`, combination of scaling and binarization will be applied on image.
+* `scaling_flip`: If `true`, combination of scaling and flip will be applied on image.
+* `degrading`: If `true`, degrading will be applied to the image. Requires `degrade_scales` parameter.
+* `degrade_scales`: List of intensity factors for degrading.
+* `brightening`: If `true`, brightening will be applied to the image. Requires `brightness` parameter.
+* `brightness`: List of intensity factors for brightening.
+* `binarization`: If `true`, Otsu thresholding will be applied to augment the input data with binarized images.
+* `dir_img_bin`: With `binarization`, use this directory to read precomputed binarized images instead of ad-hoc Otsu.  
+   (Base names should correspond to the files in `dir_train/images`.)
+* `rotation`: If `true`, 90° rotation will be applied on images.
+* `rotation_not_90`: If `true`, random rotation (other than 90°) will be applied on image. Requires `thetha` parameter.
+* `thetha`: List of rotation angles (in degrees).
 
 In case of segmentation and enhancement the train and evaluation data should be organised as follows.
 
