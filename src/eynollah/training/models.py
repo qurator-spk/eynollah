@@ -400,9 +400,21 @@ def resnet50_unet(n_classes, input_height=224, input_width=224, task="segmentati
     return model
 
 
-def vit_resnet50_unet(n_classes, patch_size_x, patch_size_y, num_patches, mlp_head_units=None, transformer_layers=8, num_heads =4, projection_dim = 64, input_height=224, input_width=224, task="segmentation", weight_decay=1e-6, pretraining=False):
-    if mlp_head_units is None:
-        mlp_head_units = [128, 64]
+def vit_resnet50_unet(num_patches,
+                      n_classes,
+                      transformer_patchsize_x,
+                      transformer_patchsize_y,
+                      transformer_mlp_head_units=None,
+                      transformer_layers=8,
+                      transformer_num_heads=4,
+                      transformer_projection_dim=64,
+                      input_height=224,
+                      input_width=224,
+                      task="segmentation",
+                      weight_decay=1e-6,
+                      pretraining=False):
+    if transformer_mlp_head_units is None:
+        transformer_mlp_head_units = [128, 64]
     inputs = layers.Input(shape=(input_height, input_width, 3))
     
     #transformer_units = [
@@ -449,30 +461,30 @@ def vit_resnet50_unet(n_classes, patch_size_x, patch_size_y, num_patches, mlp_he
 
     #num_patches = x.shape[1]*x.shape[2]
     
-    #patch_size_y = input_height / x.shape[1]
-    #patch_size_x = input_width / x.shape[2]
-    #patch_size = patch_size_x * patch_size_y
-    patches = Patches(patch_size_x, patch_size_y)(x)
+    patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(x)
     # Encode patches.
-    encoded_patches = PatchEncoder(num_patches, projection_dim)(patches)
+    encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
     
     for _ in range(transformer_layers):
         # Layer normalization 1.
         x1 = layers.LayerNormalization(epsilon=1e-6)(encoded_patches)
         # Create a multi-head attention layer.
         attention_output = layers.MultiHeadAttention(
-            num_heads=num_heads, key_dim=projection_dim, dropout=0.1
+            num_heads=transformer_num_heads, key_dim=transformer_projection_dim, dropout=0.1
         )(x1, x1)
         # Skip connection 1.
         x2 = layers.Add()([attention_output, encoded_patches])
         # Layer normalization 2.
         x3 = layers.LayerNormalization(epsilon=1e-6)(x2)
         # MLP.
-        x3 = mlp(x3, hidden_units=mlp_head_units, dropout_rate=0.1)
+        x3 = mlp(x3, hidden_units=transformer_mlp_head_units, dropout_rate=0.1)
         # Skip connection 2.
         encoded_patches = layers.Add()([x3, x2])
     
-    encoded_patches = tf.reshape(encoded_patches, [-1, x.shape[1], x.shape[2] , int( projection_dim / (patch_size_x * patch_size_y) )])
+    encoded_patches = tf.reshape(encoded_patches,
+                                 [-1, x.shape[1], x.shape[2],
+                                  transformer_projection_dim // (transformer_patchsize_x *
+                                                                 transformer_patchsize_y)])
 
     v1024_2048 = Conv2D( 1024 , (1, 1), padding='same', data_format=IMAGE_ORDERING,kernel_regularizer=l2(weight_decay))(encoded_patches)
     v1024_2048 = (BatchNormalization(axis=bn_axis))(v1024_2048)
@@ -524,9 +536,21 @@ def vit_resnet50_unet(n_classes, patch_size_x, patch_size_y, num_patches, mlp_he
     
     return model
 
-def vit_resnet50_unet_transformer_before_cnn(n_classes, patch_size_x, patch_size_y, num_patches, mlp_head_units=None, transformer_layers=8, num_heads =4, projection_dim = 64, input_height=224, input_width=224, task="segmentation", weight_decay=1e-6, pretraining=False):
-    if mlp_head_units is None:
-        mlp_head_units = [128, 64]
+def vit_resnet50_unet_transformer_before_cnn(num_patches,
+                                             n_classes,
+                                             transformer_patchsize_x,
+                                             transformer_patchsize_y,
+                                             transformer_mlp_head_units=None,
+                                             transformer_layers=8,
+                                             transformer_num_heads=4,
+                                             transformer_projection_dim=64,
+                                             input_height=224,
+                                             input_width=224,
+                                             task="segmentation",
+                                             weight_decay=1e-6,
+                                             pretraining=False):
+    if transformer_mlp_head_units is None:
+        transformer_mlp_head_units = [128, 64]
     inputs = layers.Input(shape=(input_height, input_width, 3))
     
     ##transformer_units = [
@@ -536,27 +560,32 @@ def vit_resnet50_unet_transformer_before_cnn(n_classes, patch_size_x, patch_size
     IMAGE_ORDERING = 'channels_last'
     bn_axis=3
     
-    patches = Patches(patch_size_x, patch_size_y)(inputs)
+    patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(inputs)
     # Encode patches.
-    encoded_patches = PatchEncoder(num_patches, projection_dim)(patches)
+    encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
     
     for _ in range(transformer_layers):
         # Layer normalization 1.
         x1 = layers.LayerNormalization(epsilon=1e-6)(encoded_patches)
         # Create a multi-head attention layer.
         attention_output = layers.MultiHeadAttention(
-            num_heads=num_heads, key_dim=projection_dim, dropout=0.1
+            num_heads=transformer_num_heads, key_dim=transformer_projection_dim, dropout=0.1
         )(x1, x1)
         # Skip connection 1.
         x2 = layers.Add()([attention_output, encoded_patches])
         # Layer normalization 2.
         x3 = layers.LayerNormalization(epsilon=1e-6)(x2)
         # MLP.
-        x3 = mlp(x3, hidden_units=mlp_head_units, dropout_rate=0.1)
+        x3 = mlp(x3, hidden_units=transformer_mlp_head_units, dropout_rate=0.1)
         # Skip connection 2.
         encoded_patches = layers.Add()([x3, x2])
     
-    encoded_patches = tf.reshape(encoded_patches, [-1, input_height, input_width , int( projection_dim / (patch_size_x * patch_size_y) )])
+    encoded_patches = tf.reshape(encoded_patches,
+                                 [-1,
+                                  input_height,
+                                  input_width,
+                                  transformer_projection_dim // (transformer_patchsize_x *
+                                                                 transformer_patchsize_y)])
     
     encoded_patches = Conv2D(3, (1, 1), padding='same', data_format=IMAGE_ORDERING, kernel_regularizer=l2(weight_decay), name='convinput')(encoded_patches)
     

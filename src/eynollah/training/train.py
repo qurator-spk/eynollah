@@ -38,6 +38,7 @@ from tensorflow.keras.metrics import MeanIoU
 from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from sacred import Experiment
+from sacred.config import create_captured_function
 from tqdm import tqdm
 from sklearn.metrics import f1_score
 
@@ -318,7 +319,7 @@ def run(_config,
                                       task,
                                       weight_decay,
                                       pretraining)
-            elif backbone_type == 'transformer':
+            else:
                 num_patches_x = transformer_num_patches_xy[0]
                 num_patches_y = transformer_num_patches_xy[1]
                 num_patches = num_patches_x * num_patches_y
@@ -330,35 +331,31 @@ def run(_config,
                     model_builder = vit_resnet50_unet_transformer_before_cnn
                     multiple_of_32 = False
 
-                assert input_height == num_patches_y * transformer_patchsize_y * (32 if multiple_of_32 else 1), \
+                assert input_height == (num_patches_y *
+                                        transformer_patchsize_y *
+                                        (32 if multiple_of_32 else 1)), \
                     "transformer_patchsize_y or transformer_num_patches_xy height value error: " \
                     "input_height should be equal to " \
                     "(transformer_num_patches_xy height value * transformer_patchsize_y%s)" % \
                     " * 32" if multiple_of_32 else ""
-                assert input_width == num_patches_x * transformer_patchsize_x * (32 if multiple_of_32 else 1), \
+                assert input_width == (num_patches_x *
+                                       transformer_patchsize_x *
+                                       (32 if multiple_of_32 else 1)), \
                     "transformer_patchsize_x or transformer_num_patches_xy width value error: " \
                     "input_width should be equal to " \
                     "(transformer_num_patches_xy width value * transformer_patchsize_x%s)" % \
                     " * 32" if multiple_of_32 else ""
-                assert 0 == transformer_projection_dim % (transformer_patchsize_y * transformer_patchsize_x), \
+                assert 0 == (transformer_projection_dim %
+                             (transformer_patchsize_y *
+                              transformer_patchsize_x)), \
                     "transformer_projection_dim error: " \
                     "The remainder when parameter transformer_projection_dim is divided by " \
                     "(transformer_patchsize_y*transformer_patchsize_x) should be zero"
 
-                model = model_builder(
-                    n_classes,
-                    transformer_patchsize_x,
-                    transformer_patchsize_y,
-                    num_patches,
-                    transformer_mlp_head_units,
-                    transformer_layers,
-                    transformer_num_heads,
-                    transformer_projection_dim,
-                    input_height,
-                    input_width,
-                    task,
-                    weight_decay,
-                    pretraining)
+                model_builder = create_captured_function(model_builder)
+                model_builder.config = _config
+                model_builder.logger = _log
+                model = model_builder(num_patches)
         
         #if you want to see the model structure just uncomment model summary.
         #model.summary()
