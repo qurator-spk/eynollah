@@ -6,7 +6,7 @@ from .contour import find_new_features_of_contours, return_contours_of_intereste
 from .resize import resize_image
 from .rotate import rotate_image
 
-def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_version=False, kernel=None):
+def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, kernel=None):
     mask_marginals=np.zeros((text_with_lines.shape[0],text_with_lines.shape[1]))
     mask_marginals=mask_marginals.astype(np.uint8)
 
@@ -27,9 +27,8 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
         text_with_lines=resize_image(text_with_lines,text_with_lines_eroded.shape[0],text_with_lines_eroded.shape[1])
         
         
-    if light_version:
-        kernel_hor = np.ones((1, 5), dtype=np.uint8)
-        text_with_lines = cv2.erode(text_with_lines,kernel_hor,iterations=6)
+    kernel_hor = np.ones((1, 5), dtype=np.uint8)
+    text_with_lines = cv2.erode(text_with_lines,kernel_hor,iterations=6)
     
     text_with_lines_y=text_with_lines.sum(axis=0)
     text_with_lines_y_eroded=text_with_lines_eroded.sum(axis=0)
@@ -43,10 +42,7 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
     elif thickness_along_y_percent>=30 and thickness_along_y_percent<50:
         min_textline_thickness=20
     else:
-        if light_version:
-            min_textline_thickness=45
-        else:
-            min_textline_thickness=40
+        min_textline_thickness=45
 
 
     if thickness_along_y_percent>=14:
@@ -128,92 +124,39 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, light_ve
         if max_point_of_right_marginal>=text_regions.shape[1]:
             max_point_of_right_marginal=text_regions.shape[1]-1
 
-        if light_version:
-            text_regions_org = np.copy(text_regions)
-            text_regions[text_regions[:,:]==1]=4
+        text_regions_org = np.copy(text_regions)
+        text_regions[text_regions[:,:]==1]=4
+        
+        pixel_img=4
+        min_area_text=0.00001
+        
+        polygon_mask_marginals_rotated = return_contours_of_interested_region(mask_marginals,1,min_area_text)
+        
+        polygon_mask_marginals_rotated = polygon_mask_marginals_rotated[0]
+
+        polygons_of_marginals=return_contours_of_interested_region(text_regions,pixel_img,min_area_text)
+
+        cx_text_only,cy_text_only ,x_min_text_only,x_max_text_only, y_min_text_only ,y_max_text_only,y_cor_x_min_main=find_new_features_of_contours(polygons_of_marginals)
+
+        text_regions[(text_regions[:,:]==4)]=1
+
+        marginlas_should_be_main_text=[]
+
+        x_min_marginals_left=[]
+        x_min_marginals_right=[]
+
+        for i in range(len(cx_text_only)):
+            results = cv2.pointPolygonTest(polygon_mask_marginals_rotated, (cx_text_only[i], cy_text_only[i]), False)
+
+            if results == -1:
+                marginlas_should_be_main_text.append(polygons_of_marginals[i])
+
+
+
+        text_regions_org=cv2.fillPoly(text_regions_org, pts =marginlas_should_be_main_text, color=(4,4))
+        text_regions = np.copy(text_regions_org)
             
-            pixel_img=4
-            min_area_text=0.00001
-            
-            polygon_mask_marginals_rotated = return_contours_of_interested_region(mask_marginals,1,min_area_text)
-            
-            polygon_mask_marginals_rotated = polygon_mask_marginals_rotated[0]
 
-            polygons_of_marginals=return_contours_of_interested_region(text_regions,pixel_img,min_area_text)
-
-            cx_text_only,cy_text_only ,x_min_text_only,x_max_text_only, y_min_text_only ,y_max_text_only,y_cor_x_min_main=find_new_features_of_contours(polygons_of_marginals)
-
-            text_regions[(text_regions[:,:]==4)]=1
-
-            marginlas_should_be_main_text=[]
-
-            x_min_marginals_left=[]
-            x_min_marginals_right=[]
-
-            for i in range(len(cx_text_only)):
-                results = cv2.pointPolygonTest(polygon_mask_marginals_rotated, (cx_text_only[i], cy_text_only[i]), False)
-
-                if results == -1:
-                    marginlas_should_be_main_text.append(polygons_of_marginals[i])
-
-
-
-            text_regions_org=cv2.fillPoly(text_regions_org, pts =marginlas_should_be_main_text, color=(4,4))
-            text_regions = np.copy(text_regions_org)
-            
-
-        else:
-            
-            text_regions[(mask_marginals_rotated[:,:]!=1) & (text_regions[:,:]==1)]=4
-
-            pixel_img=4
-            min_area_text=0.00001
-
-            polygons_of_marginals=return_contours_of_interested_region(text_regions,pixel_img,min_area_text)
-
-            cx_text_only,cy_text_only ,x_min_text_only,x_max_text_only, y_min_text_only ,y_max_text_only,y_cor_x_min_main=find_new_features_of_contours(polygons_of_marginals)
-
-            text_regions[(text_regions[:,:]==4)]=1
-
-            marginlas_should_be_main_text=[]
-
-            x_min_marginals_left=[]
-            x_min_marginals_right=[]
-
-            for i in range(len(cx_text_only)):
-                x_width_mar=abs(x_min_text_only[i]-x_max_text_only[i])
-                y_height_mar=abs(y_min_text_only[i]-y_max_text_only[i])
-
-                if x_width_mar>16 and y_height_mar/x_width_mar<18:
-                    marginlas_should_be_main_text.append(polygons_of_marginals[i])
-                    if x_min_text_only[i]<(mid_point-one_third_left):
-                        x_min_marginals_left_new=x_min_text_only[i]
-                        if len(x_min_marginals_left)==0:
-                            x_min_marginals_left.append(x_min_marginals_left_new)
-                        else:
-                            x_min_marginals_left[0]=min(x_min_marginals_left[0],x_min_marginals_left_new)
-                    else:
-                        x_min_marginals_right_new=x_min_text_only[i]
-                        if len(x_min_marginals_right)==0:
-                            x_min_marginals_right.append(x_min_marginals_right_new)
-                        else:
-                            x_min_marginals_right[0]=min(x_min_marginals_right[0],x_min_marginals_right_new)
-
-            if len(x_min_marginals_left)==0:
-                x_min_marginals_left=[0]
-            if len(x_min_marginals_right)==0:
-                x_min_marginals_right=[text_regions.shape[1]-1]
-
-
-            text_regions=cv2.fillPoly(text_regions, pts =marginlas_should_be_main_text, color=(4,4))
-
-
-            #text_regions[:,:int(x_min_marginals_left[0])][text_regions[:,:int(x_min_marginals_left[0])]==1]=0
-            #text_regions[:,int(x_min_marginals_right[0]):][text_regions[:,int(x_min_marginals_right[0]):]==1]=0
-            
-            
-            text_regions[:,:int(min_point_of_left_marginal)][text_regions[:,:int(min_point_of_left_marginal)]==1]=0
-            text_regions[:,int(max_point_of_right_marginal):][text_regions[:,int(max_point_of_right_marginal):]==1]=0
 
         ###text_regions[:,0:point_left][text_regions[:,0:point_left]==1]=4
 

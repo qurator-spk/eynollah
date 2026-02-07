@@ -19,7 +19,6 @@ def adhere_drop_capital_region_into_corresponding_textline(
     all_found_textline_polygons_h,
     kernel=None,
     curved_line=False,
-    textline_light=False,
 ):
     # print(np.shape(all_found_textline_polygons),np.shape(all_found_textline_polygons[3]),'all_found_textline_polygonsshape')
     # print(all_found_textline_polygons[3])
@@ -79,7 +78,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
             # region_with_intersected_drop=region_with_intersected_drop/3
             region_with_intersected_drop = region_with_intersected_drop.astype(np.uint8)
         # print(np.unique(img_con_all_copy[:,:,0]))
-        if curved_line or textline_light:
+        if curved_line:
 
             if len(region_with_intersected_drop) > 1:
                 sum_pixels_of_intersection = []

@@ -4,17 +4,19 @@ Tool to load model and predict for given image.
 
 import sys
 import os
+from typing import Tuple
 import warnings
 import json
 
 import click
 import numpy as np
+from numpy._typing import NDArray
 import cv2
+import xml.etree.ElementTree as ET
 
 os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
-from tensorflow.keras.models import load_model
-import xml.etree.ElementTree as ET
+from tensorflow.keras.models import Model, load_model
 
 from .gt_gen_utils import (
     filter_contours_area_of_image,
@@ -32,6 +34,9 @@ from .metrics import (
     weighted_categorical_crossentropy,
 )
 
+from.utils import (scale_padd_image_for_ocr)
+from eynollah.utils.utils_ocr import (decode_batch_predictions)
+
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     
@@ -47,9 +52,10 @@ class SBBPredict:
                  save_layout,
                  ground_truth,
                  xml_file,
+                 cpu,
                  out,
-                 min_area):
-
+                 min_area,
+    ):
         self.image=image
         self.dir_in=dir_in
         self.patches=patches
@@ -61,6 +67,7 @@ class SBBPredict:
         self.config_params_model=config_params_model
         self.xml_file = xml_file
         self.out = out
+        self.cpu = cpu
         if min_area:
             self.min_area = float(min_area)
         else:
@@ -111,30 +118,35 @@ class SBBPredict:
             return mIoU
             
     def start_new_session_and_model(self):
-        try:
-            for device in tf.config.list_physical_devices('GPU'):
-                tf.config.experimental.set_memory_growth(device, True)
-        except:
-            print("no GPU device available", file=sys.stderr)
+        if self.cpu:
+            tf.config.set_visible_devices([], 'GPU')
+        else:
+            try:
+                for device in tf.config.list_physical_devices('GPU'):
+                    tf.config.experimental.set_memory_growth(device, True)
+            except:
+                print("no GPU device available", file=sys.stderr)
 
-        #tensorflow.keras.layers.custom_layer = PatchEncoder
-        #tensorflow.keras.layers.custom_layer = Patches
-        self.model = load_model(self.model_dir, compile=False,
-                                custom_objects={"PatchEncoder": PatchEncoder,
-                                                "Patches": Patches})
-        #keras.losses.custom_loss = weighted_categorical_crossentropy
-        #self.model = load_model(self.model_dir, compile=False)
+        if self.task == "cnn-rnn-ocr":
+            self.model = Model(
+                self.model.get_layer(name = "image").input, 
+                self.model.get_layer(name = "dense2").output)
+        else:
+            self.model = load_model(self.model_dir, compile=False,
+                                    custom_objects={"PatchEncoder": PatchEncoder,
+                                                    "Patches": Patches})
 
         ##if self.weights_dir!=None:
             ##self.model.load_weights(self.weights_dir)
             
+        assert isinstance(self.model, Model)
         if self.task != 'classification' and self.task != 'reading_order':
             last = self.model.layers[-1]
             self.img_height = last.output_shape[1]
             self.img_width = last.output_shape[2]
             self.n_classes = last.output_shape[3]
         
-    def visualize_model_output(self, prediction, img, task):
+    def visualize_model_output(self, prediction, img, task) -> Tuple[NDArray, NDArray]:
         if task == "binarization":
             prediction = prediction * -1
             prediction = prediction + 1
@@ -173,9 +185,12 @@ class SBBPredict:
             
             added_image = cv2.addWeighted(img,0.5,layout_only,0.1,0)
             
+        assert isinstance(added_image, np.ndarray)
+        assert isinstance(layout_only, np.ndarray)
         return added_image, layout_only
 
     def predict(self, image_dir):
+        assert isinstance(self.model, Model)
         if self.task == 'classification':
             classes_names = self.config_params_model['classification_classes_name']
             img_1ch = cv2.imread(image_dir, 0) / 255.0
@@ -187,11 +202,35 @@ class SBBPredict:
             img_in[0, :, :, 1] = img_1ch[:, :]
             img_in[0, :, :, 2] = img_1ch[:, :]
                       
-            label_p_pred = self.model.predict(img_in, verbose=0)
+            label_p_pred = self.model.predict(img_in, verbose='0')
             index_class = np.argmax(label_p_pred[0])
             
             print("Predicted Class: {}".format(classes_names[str(int(index_class))]))
 
+        elif self.task == "cnn-rnn-ocr":
+            img=cv2.imread(image_dir)
+            img = scale_padd_image_for_ocr(img, self.config_params_model['input_height'], self.config_params_model['input_width'])
+            
+            img = img / 255.
+            
+            with open(os.path.join(self.model_dir, "characters_org.txt"), 'r') as char_txt_f:
+                characters = json.load(char_txt_f)
+                
+            AUTOTUNE = tf.data.AUTOTUNE
+
+            # Mapping characters to integers.
+            char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
+            
+            # Mapping integers back to original characters.
+            num_to_char = StringLookup(
+                vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
+            )
+            preds = self.model.predict(img.reshape(1, img.shape[0], img.shape[1], img.shape[2]), verbose=0)
+            pred_texts = decode_batch_predictions(preds, num_to_char)
+            pred_texts = pred_texts[0].replace("[UNK]", "")
+            return pred_texts
+            
+            
         elif self.task == 'reading_order':
             img_height = self.config_params_model['input_height']
             img_width = self.config_params_model['input_width']
@@ -311,7 +350,7 @@ class SBBPredict:
                     #input_1[:,:,1] = img3[:,:,0]/5.
                     
                     if batch_counter==inference_bs or ( (tot_counter//inference_bs)==full_bs_ite and tot_counter%inference_bs==last_bs):
-                        y_pr = self.model.predict(input_1 , verbose=0)
+                        y_pr = self.model.predict(input_1 , verbose='0')
                         scalibility_num = scalibility_num+1
                         
                         if batch_counter==inference_bs:
@@ -345,6 +384,7 @@ class SBBPredict:
             name_space = name_space.split('{')[1]
             
             page_element = root_xml.find(link+'Page')
+            assert isinstance(page_element, ET.Element)
             
             """
             ro_subelement = ET.SubElement(page_element, 'ReadingOrder')
@@ -439,7 +479,7 @@ class SBBPredict:
 
                         img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
                         label_p_pred = self.model.predict(img_patch.reshape(1, img_patch.shape[0], img_patch.shape[1], img_patch.shape[2]),
-                                                                verbose=0)
+                                                                verbose='0')
                         
                         if self.task == 'enhancement':
                             seg = label_p_pred[0, :, :, :]
@@ -447,6 +487,8 @@ class SBBPredict:
                         elif self.task == 'segmentation' or self.task == 'binarization':
                             seg = np.argmax(label_p_pred, axis=3)[0]
                             seg = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
+                        else:
+                            raise ValueError(f"Unhandled task {self.task}")
                             
 
                         if i == 0 and j == 0:
@@ -501,6 +543,8 @@ class SBBPredict:
                 elif self.task == 'segmentation' or self.task == 'binarization':
                     seg = np.argmax(label_p_pred, axis=3)[0]
                     seg = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
+                else:
+                    raise ValueError(f"Unhandled task {self.task}")
                     
                 prediction_true = seg.astype(int)
 
@@ -519,6 +563,8 @@ class SBBPredict:
             elif self.task == 'enhancement':
                 if self.save:
                     cv2.imwrite(self.save,res)
+            elif self.task == "cnn-rnn-ocr":
+                print(f"Detected text: {res}")
             else:
                 img_seg_overlayed, only_layout  = self.visualize_model_output(res, self.img_org, self.task)
                 if self.save:
@@ -526,9 +572,9 @@ class SBBPredict:
                 if self.save_layout:
                     cv2.imwrite(self.save_layout, only_layout)
                     
-            if self.ground_truth:
-                gt_img=cv2.imread(self.ground_truth)
-                self.IoU(gt_img[:,:,0],res[:,:,0])
+                if self.ground_truth:
+                    gt_img=cv2.imread(self.ground_truth)
+                    self.IoU(gt_img[:,:,0],res[:,:,0])
             
         else:
             ls_images = os.listdir(self.dir_in)
@@ -542,6 +588,8 @@ class SBBPredict:
                 elif self.task == 'enhancement':
                     self.save = os.path.join(self.out, f_name+'.png')
                     cv2.imwrite(self.save,res)
+                elif self.task == "cnn-rnn-ocr":
+                    print(f"Detected text for file name {f_name} is: {res}")
                 else:
                     img_seg_overlayed, only_layout  = self.visualize_model_output(res, self.img_org, self.task)
                     self.save = os.path.join(self.out, f_name+'_overlayed.png')
@@ -549,9 +597,9 @@ class SBBPredict:
                     self.save_layout = os.path.join(self.out, f_name+'_layout.png')
                     cv2.imwrite(self.save_layout, only_layout)
                         
-                if self.ground_truth:
-                    gt_img=cv2.imread(self.ground_truth)
-                    self.IoU(gt_img[:,:,0],res[:,:,0])
+                    if self.ground_truth:
+                        gt_img=cv2.imread(self.ground_truth)
+                        self.IoU(gt_img[:,:,0],res[:,:,0])
             
 
         
@@ -607,22 +655,27 @@ class SBBPredict:
     "-xml",
     help="xml file with layout coordinates that reading order detection will be implemented on. The result will be written in the same xml file.",
 )
-
+@click.option(
+    "--cpu",
+    "-cpu",
+    help="For OCR, the default device is the GPU. If this parameter is set to true, inference will be performed on the CPU",
+    is_flag=True,
+)
 @click.option(
     "--min_area",
     "-min",
     help="min area size of regions considered for reading order detection. The default value is zero and means that all text regions are considered for reading order.",
 )
-def main(image, dir_in, model, patches, save, save_layout, ground_truth, xml_file, out, min_area):
+def main(image, dir_in, model, patches, save, save_layout, ground_truth, xml_file, cpu, out, min_area):
     assert image or dir_in, "Either a single image -i or a dir_in -di input is required"
     with open(os.path.join(model,'config.json')) as f:
         config_params_model = json.load(f)
     task = config_params_model['task']
-    if task != 'classification' and task != 'reading_order':
+    if task not in ['classification', 'reading_order', "cnn-rnn-ocr"]:
         assert not image or save, "For segmentation or binarization, an input single image -i also requires an output filename -s"
         assert not dir_in or out, "For segmentation or binarization, an input directory -di also requires an output directory -o"
     x = SBBPredict(image, dir_in, model, task, config_params_model,
-                   patches, save, save_layout, ground_truth, xml_file, out,
-                   min_area)
+                   patches, save, save_layout, ground_truth, xml_file,
+                   cpu, out, min_area)
     x.run()
 

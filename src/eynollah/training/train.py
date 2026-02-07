@@ -17,6 +17,7 @@ from eynollah.training.models import (
     resnet50_unet,
     vit_resnet50_unet,
     vit_resnet50_unet_transformer_before_cnn,
+    cnn_rnn_ocr_model,
     RESNET50_WEIGHTS_PATH,
     RESNET50_WEIGHTS_URL
 )
@@ -25,7 +26,6 @@ from eynollah.training.utils import (
     generate_arrays_from_folder_reading_order,
     get_one_hot,
     preprocess_imgs,
-    return_number_of_total_training_data
 )
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
@@ -35,11 +35,10 @@ from tensorflow.keras.optimizers import SGD, Adam
 from tensorflow.keras.metrics import MeanIoU, F1Score
 from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
+from tensorflow.keras.layers import StringLookup
 from tensorflow.keras.utils import image_dataset_from_directory
 from sacred import Experiment
 from sacred.config import create_captured_function
-from tqdm import tqdm
-from sklearn.metrics import f1_score
 
 import numpy as np
 import cv2
@@ -66,6 +65,7 @@ class SaveWeightsAfterSteps(ModelCheckpoint):
         super()._save_handler(filepath)
         with open(os.path.join(filepath, "config.json"), "w") as fp:
             json.dump(self._config, fp)  # encode dict into JSON
+            
             
             
 def configuration():
@@ -111,6 +111,9 @@ def config_params():
     n_classes = None  # Number of classes. In the case of binary classification this should be 2.
     n_epochs = 1  # Number of epochs to train.
     n_batch = 1  # Number of images per batch at each iteration. (Try as large as fits on VRAM.)
+    if task == 'cnn-rnn-ocr':
+        max_len = None # Maximum sequence length (characters per line) for OCR output.
+        characters_txt_file = None # Path of JSON file defining character set needed of OCR model.
     input_height = 224 * 1  # Height of model's input in pixels.
     input_width = 224 * 1  # Width of model's input in pixels.
     weight_decay = 1e-6  # Weight decay of l2 regularization of model layers.
@@ -124,47 +127,74 @@ def config_params():
     patches = False  # Divides input image into smaller patches (input size of the model) when set to true. For the model to see the full image, like page extraction, set this to false.
     augmentation = False  # To apply any kind of augmentation, this parameter must be set to true.
     if augmentation:
-        flip_aug = False  # If true, different types of flipping will be applied to the image. Types of flips are defined with "flip_index" in config_params.json.
+        flip_aug = False  # Whether different types of flipping will be applied to the image. Requires "flip_index" setting.
         if flip_aug:
-            flip_index = None  #  Flip image for augmentation.
-        blur_aug = False  # If true, different types of blurring will be applied to the image. Types of blur are defined with "blur_k" in config_params.json.
+            flip_index = None  # List of codes (as in cv2.flip) for flip augmentation.
+        blur_aug = False  # Whether images will be blurred. Requires "blur_k" setting.
         if blur_aug:
-            blur_k = None  # Blur image for augmentation.
+            blur_k = None  # Method of blurring (gauss, median or blur).
         padding_white = False # If true, white padding will be applied to the image.
+        if padding_white and task == 'cnn-rnn-ocr':
+            white_padds = None # List of padding sizes.
+            padd_colors = None # List of padding colors, but only "white" or "black" or both.
         padding_black = False # If true, black padding will be applied to the image.
-        scaling = False  # If true, scaling will be applied to the image. The amount of scaling is defined with "scales" in config_params.json.
-        scaling_bluring = False  # If true, a combination of scaling and blurring will be applied to the image.
-        scaling_binarization = False  # If true, a combination of scaling and binarization will be applied to the image.
-        scaling_brightness = False  # If true, a combination of scaling and brightening will be applied to the image.
-        scaling_flip = False  # If true, a combination of scaling and flipping will be applied to the image.
+        scaling = False  # Whether images will be scaled up or down. Requires "scales" setting.
+        scaling_bluring = False  # Whether a combination of scaling and blurring will be applied to the image.
+        scaling_binarization = False  # Whether a combination of scaling and binarization will be applied to the image.
+        scaling_brightness = False  # Whether a combination of scaling and brightening will be applied to the image.
+        scaling_flip = False  # Whether a combination of scaling and flipping will be applied to the image.
         if scaling or scaling_brightness or scaling_bluring or scaling_binarization or scaling_flip:
             scales = None  # Scale patches for augmentation.
         shifting = False
-        degrading = False  # If true, degrading will be applied to the image. The amount of degrading is defined with "degrade_scales" in config_params.json.
-        if degrading:
-            degrade_scales = None  # Degrade image for augmentation.
-        brightening = False  # If true, brightening will be applied to the image. The amount of brightening is defined with "brightness" in config_params.json.
+        brightening = False  # Whether images will be brightened. Requires "brightness" setting.
         if brightening:
-            brightness = None #  Brighten image for augmentation.
-        binarization = False  # If true, Otsu thresholding will be applied to augment the input with binarized images.
+            brightness = None #  List of intensity factors for brightening.
+        binarization = False  # Whether binary images will be used, too. (Will use Otsu thresholding unless supplying precomputed images in "dir_img_bin".)
         if binarization:
             dir_img_bin = None # Directory of training dataset subdirectory of binarized images
             add_red_textlines = False
-            adding_rgb_background = False
+            adding_rgb_background = False # Whether texture images will be added as artificial background.
             if adding_rgb_background:
                 dir_rgb_backgrounds = None # Directory of texture images for synthetic background
-            adding_rgb_foreground = False
+            adding_rgb_foreground = False # Whether texture images will be added as artificial foreground.
             if adding_rgb_foreground:
                 dir_rgb_foregrounds = None # Directory of texture images for synthetic foreground
             if adding_rgb_background or adding_rgb_foreground:
                 number_of_backgrounds_per_image = 1
+            if task == 'cnn-rnn-ocr':
+                image_inversion = False # Whether the binarized images will be inverted.
+                textline_skewing_bin = False # Whether binarized textline images will be rotated.
+                textline_left_in_depth_bin = False # Whether left side of binary textline image will be displayed in depth.
+                textline_right_in_depth_bin = False # Whether right side of binary textline image will be displayed in depth.
+                textline_up_in_depth_bin = False # Whether upper side of binary textline image will be displayed in depth.
+                textline_down_in_depth_bin = False # Whether lower side of binary textline image will be displayed in depth.
+                pepper_bin_aug = False # Whether pepper noise will be added to binary textline images.
+                bin_deg = False # Whether a combination of degrading and binarization will be applied to the image.
+        degrading = False  # Whether images will be artificially degraded. Requires the "degrade_scales" setting.
+        if degrading or binarization and task == 'cnn-rnn-ocr' and bin_deg:
+            degrade_scales = None  # List of quality factors for degradation.
         channels_shuffling = False # Re-arrange color channels.
         if channels_shuffling:
-            shuffle_indexes = None # Which channels to switch between.
-        rotation = False # If true, a 90 degree rotation will be implemeneted.
-        rotation_not_90 = False # If true rotation based on provided angles with thetha will be implemeneted.
+            shuffle_indexes = None # List of channels to switch between.
+        rotation = False # Whether images will be rotated by 90 degrees.
+        rotation_not_90 = False # Whether images will be rotated arbitrarily (skewed). Requires "thetha" setting.
         if rotation_not_90:
-            thetha = None  # Rotate image by these angles for augmentation.
+            thetha = None  # List of rotation angles in degrees.
+        if task == 'cnn-rnn-ocr':
+            white_noise_strap = False # Whether white noise will be applied on some straps on the textline image.
+            textline_skewing = False # Whether textline images will be skewed for augmentation.
+            if textline_skewing or binarization and textline_skewing_bin:
+                skewing_amplitudes = None # List of skewing angles in degrees like [5, 8]
+            textline_left_in_depth = False # If true, left side of textline image will be displayed in depth.
+            textline_right_in_depth = False # If true, right side of textline image will be displayed in depth.
+            textline_up_in_depth = False # If true, upper side of textline image will be displayed in depth.
+            textline_down_in_depth = False # If true, lower side of textline image will be displayed in depth.
+            pepper_aug = False # Whether pepper noise will be added to textline images.
+            if pepper_aug or binarization and pepper_bin_aug:
+                pepper_indexes = None # List of pepper noise factors, e.g. [0.01, 0.005].
+            color_padding_rotation = False # Whether images will be rotated with color padding. Requires "thetha_padd" setting.
+            if color_padding_rotation:
+                thetha_padd = None # List of angles (in degrees) used for rotation alongside padding.
     dir_train = None  # Directory of training dataset with subdirectories having the names "images" and "labels".
     dir_eval = None  # Directory of validation dataset with subdirectories having the names "images" and "labels".
     dir_output = None  # Directory where the augmented training data and the model checkpoints will be saved.
@@ -197,12 +227,15 @@ def run(_config,
         augmentation,
         # dependent config keys need a default,
         # otherwise yields sacred.utils.ConfigAddedError
+        ## if rotation_not_90
         thetha=None,
         is_loss_soft_dice=False,
         weighted_loss=False,
+        ## if continue_training
         index_start=0,
         dir_of_start_model=None,
         backbone_type=None,
+        ## if backbone_type=transformer
         transformer_projection_dim=None,
         transformer_mlp_head_units=None,
         transformer_layers=None,
@@ -211,8 +244,33 @@ def run(_config,
         transformer_patchsize_x=None,
         transformer_patchsize_y=None,
         transformer_num_patches_xy=None,
+        ## if task=classification
         f1_threshold_classification=None,
         classification_classes_name=None,
+        ## if task=cnn-rnn-ocr
+        characters_txt_file=None,
+        color_padding_rotation=False,
+        thetha_padd=None,
+        bin_deg=False,
+        image_inversion=False,
+        white_noise_strap=False,
+        textline_skewing=False,
+        textline_skewing_bin=False,
+        textline_left_in_depth=False,
+        textline_left_in_depth_bin=False,
+        textline_right_in_depth=False,
+        textline_right_in_depth_bin=False,
+        textline_up_in_depth=False,
+        textline_up_in_depth_bin=False,
+        textline_down_in_depth=False,
+        textline_down_in_depth_bin=False,
+        pepper_aug=False,
+        pepper_bin_aug=False,
+        pepper_indexes=None,
+        padd_colors=None,
+        white_padds=None,
+        skewing_amplitudes=None,
+        max_len=None,
 ):
 
     if pretraining and not os.path.isfile(RESNET50_WEIGHTS_PATH):
@@ -252,11 +310,11 @@ def run(_config,
             dir_img, dir_seg = get_dirs_or_files(dir_train)
             dir_img_val, dir_seg_val = get_dirs_or_files(dir_eval)
 
-            imgs_list=np.array(os.listdir(dir_img))
-            segs_list=np.array(os.listdir(dir_seg))
+            imgs_list = list(os.listdir(dir_img))
+            segs_list = list(os.listdir(dir_seg))
             
-            imgs_list_test=np.array(os.listdir(dir_img_val))
-            segs_list_test=np.array(os.listdir(dir_seg_val))
+            imgs_list_test = list(os.listdir(dir_img_val))
+            segs_list_test = list(os.listdir(dir_seg_val))
 
             # writing patches into a sub-folder in order to be flowed from directory.
             preprocess_imgs(_config,
@@ -356,6 +414,7 @@ def run(_config,
                 model_builder.logger = _log
                 model = model_builder(num_patches)
         
+        assert model is not None
         #if you want to see the model structure just uncomment model summary.
         #model.summary()
         
@@ -412,7 +471,80 @@ def run(_config,
         #os.system('rm -rf '+dir_eval_flowing)
 
         #model.save(dir_output+'/'+'model'+'.h5')
+        
+    elif task=="cnn-rnn-ocr":
 
+        dir_img, dir_lab = get_dirs_or_files(dir_train)
+        dir_img_val, dir_lab_val = get_dirs_or_files(dir_eval)
+        imgs_list = list(os.listdir(dir_img))
+        labs_list = list(os.listdir(dir_lab))
+        imgs_list_val = list(os.listdir(dir_img_val))
+        labs_list_val = list(os.listdir(dir_lab_val))
+        
+        with open(characters_txt_file, 'r') as char_txt_f:
+            characters = json.load(char_txt_f)
+        padding_token = len(characters) + 5
+        # Mapping characters to integers.
+        char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
+
+        # Mapping integers back to original characters.
+        ##num_to_char = StringLookup(
+            ##vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
+        ##)
+        n_classes = len(char_to_num.get_vocabulary()) + 2
+
+        if continue_training:
+            model = load_model(dir_of_start_model)
+        else:
+            index_start = 0
+            model = cnn_rnn_ocr_model(image_height=input_height,
+                                      image_width=input_width,
+                                      n_classes=n_classes,
+                                      max_seq=max_len)
+        #print(model.summary())
+
+        # todo: use Dataset.map() on Dataset.list_files()
+        # todo: test_ds
+        def gen():
+            return preprocess_imgs(_config,
+                                   imgs_list,
+                                   labs_list,
+                                   dir_img,
+                                   dir_lab,
+                                   None, # no file I/O, but in-memory
+                                   None, # no file I/O, but in-memory
+                                   # extra+overrides
+                                   char_to_num=char_to_num,
+                                   padding_token=padding_token
+            )
+        train_ds = tf.data.Dataset.from_generator(gen)
+        train_ds = train_ds.padded_batch(n_batch,
+                                         padded_shapes=([image_height, image_width, 3], [None]),
+                                         padding_values=(0, padding_token),
+                                         drop_remainder=True,
+                                         #num_parallel_calls=tf.data.AUTOTUNE,
+        )
+        train_ds = train_ds.repeat().shuffle().prefetch(20)
+
+        #initial_learning_rate = 1e-4
+        #decay_steps = int (n_epochs * ( len_dataset / n_batch ))
+        #alpha = 0.01
+        #lr_schedule = 1e-4
+        #tf.keras.optimizers.schedules.CosineDecay(initial_learning_rate, decay_steps, alpha)
+        opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        model.compile(optimizer=opt) # rs: loss seems to be (ctc_batch_cost) in last layer
+        
+        callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
+                     SaveWeightsAfterSteps(0, dir_output, _config)]
+        if save_interval:
+            callbacks.append(SaveWeightsAfterSteps(save_interval, dir_output, _config))
+        model.fit(
+            train_ds,
+            #validation_data=test_ds,
+            epochs=n_epochs,
+            callbacks=callbacks,
+            initial_epoch=index_start)
+        
     elif task=='classification':
         if continue_training:
             model = load_model(dir_of_start_model, compile=False)

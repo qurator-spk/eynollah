@@ -7,3 +7,4 @@ tf-keras # avoid keras 3 (also needs TF_USE_LEGACY_KERAS=1)
 numba <= 0.58.1
 scikit-image
 biopython
+tabulate

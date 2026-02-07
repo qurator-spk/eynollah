@@ -356,7 +356,7 @@ def join_polygons(polygons: Sequence[Polygon], scale=20) -> Polygon:
     assert jointp.geom_type == 'Polygon', jointp.wkt
     # follow-up calculations will necessarily be integer;
     # so anticipate rounding here and then ensure validity
-    jointp2 = set_precision(jointp, 1.0)
+    jointp2 = set_precision(jointp, 1.0, mode="keep_collapsed")
     if jointp2.geom_type != 'Polygon' or not jointp2.is_valid:
         jointp2 = Polygon(np.round(jointp.exterior.coords))
         jointp2 = make_valid(jointp2)

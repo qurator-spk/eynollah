@@ -2,11 +2,35 @@ import os
 
 os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras.models import *
-from tensorflow.keras.layers import *
-from tensorflow.keras import layers
+from tensorflow.keras.layers import (
+    Activation,
+    Add,
+    AveragePooling2D,
+    BatchNormalization,
+    Bidirectional,
+    Conv1D,
+    Conv2D,
+    Dense,
+    Dropout,
+    Embedding,
+    Flatten,
+    Input,
+    Lambda,
+    Layer,
+    LayerNormalization,
+    LSTM,
+    MaxPooling2D,
+    MultiHeadAttention,
+    Reshape,
+    UpSampling2D,
+    ZeroPadding2D,
+    add,
+    concatenate
+)
+from tensorflow.keras.models import Model
 from tensorflow.keras.regularizers import l2
+
+from eynollah.patch_encoder import Patches, PatchEncoder
 
 ##mlp_head_units = [512, 256]#[2048, 1024]
 ###projection_dim = 64
@@ -19,96 +43,34 @@ RESNET50_WEIGHTS_URL = ('https://github.com/fchollet/deep-learning-models/releas
 IMAGE_ORDERING = 'channels_last'
 MERGE_AXIS = -1
 
+
+class CTCLayer(Layer):
+    def __init__(self, name=None):
+        super().__init__(name=name)
+        self.loss_fn = tf.keras.backend.ctc_batch_cost
+
+    def call(self, y_true, y_pred):
+        batch_len = tf.cast(tf.shape(y_true)[0], dtype="int64")
+        input_length = tf.cast(tf.shape(y_pred)[1], dtype="int64")
+        label_length = tf.cast(tf.shape(y_true)[1], dtype="int64")
+
+        input_length = input_length * tf.ones(shape=(batch_len, 1), dtype="int64")
+        label_length = label_length * tf.ones(shape=(batch_len, 1), dtype="int64")
+        loss = self.loss_fn(y_true, y_pred, input_length, label_length)
+        self.add_loss(loss)
+
+        # At test time, just return the computed predictions.
+        return y_pred
+    
 def mlp(x, hidden_units, dropout_rate):
     for units in hidden_units:
-        x = layers.Dense(units, activation=tf.nn.gelu)(x)
-        x = layers.Dropout(dropout_rate)(x)
+        x = Dense(units, activation=tf.nn.gelu)(x)
+        x = Dropout(dropout_rate)(x)
     return x
 
-class Patches(layers.Layer):
-    def __init__(self, patch_size_x, patch_size_y):#__init__(self, **kwargs):#:__init__(self, patch_size):#__init__(self, **kwargs):
-        super(Patches, self).__init__()
-        self.patch_size_x = patch_size_x
-        self.patch_size_y = patch_size_y
-
-    def call(self, images):
-        #print(tf.shape(images)[1],'images')
-        #print(self.patch_size,'self.patch_size')
-        batch_size = tf.shape(images)[0]
-        patches = tf.image.extract_patches(
-            images=images,
-            sizes=[1, self.patch_size_y, self.patch_size_x, 1],
-            strides=[1, self.patch_size_y, self.patch_size_x, 1],
-            rates=[1, 1, 1, 1],
-            padding="VALID",
-        )
-        #patch_dims = patches.shape[-1]
-        patch_dims = tf.shape(patches)[-1]
-        patches = tf.reshape(patches, [batch_size, -1, patch_dims])
-        return patches
-    def get_config(self):
-
-        config = super().get_config().copy()
-        config.update({
-            'patch_size_x': self.patch_size_x,
-            'patch_size_y': self.patch_size_y,
-        })
-        return config
-
-class Patches_old(layers.Layer):
-    def __init__(self, patch_size):#__init__(self, **kwargs):#:__init__(self, patch_size):#__init__(self, **kwargs):
-        super(Patches, self).__init__()
-        self.patch_size = patch_size
-
-    def call(self, images):
-        #print(tf.shape(images)[1],'images')
-        #print(self.patch_size,'self.patch_size')
-        batch_size = tf.shape(images)[0]
-        patches = tf.image.extract_patches(
-            images=images,
-            sizes=[1, self.patch_size, self.patch_size, 1],
-            strides=[1, self.patch_size, self.patch_size, 1],
-            rates=[1, 1, 1, 1],
-            padding="VALID",
-        )
-        patch_dims = patches.shape[-1]
-        #print(patches.shape,patch_dims,'patch_dims')
-        patches = tf.reshape(patches, [batch_size, -1, patch_dims])
-        return patches
-    def get_config(self):
-
-        config = super().get_config().copy()
-        config.update({
-            'patch_size': self.patch_size,
-        })
-        return config
-
-    
-class PatchEncoder(layers.Layer):
-    def __init__(self, num_patches, projection_dim):
-        super(PatchEncoder, self).__init__()
-        self.num_patches = num_patches
-        self.projection = layers.Dense(units=projection_dim)
-        self.position_embedding = layers.Embedding(
-            input_dim=num_patches, output_dim=projection_dim
-        )
-
-    def call(self, patch):
-        positions = tf.range(start=0, limit=self.num_patches, delta=1)
-        encoded = self.projection(patch) + self.position_embedding(positions)
-        return encoded
-    def get_config(self):
-
-        config = super().get_config().copy()
-        config.update({
-            'num_patches': self.num_patches,
-            'projection': self.projection,
-            'position_embedding': self.position_embedding,
-        })
-        return config
-    
-    
 def one_side_pad(x):
+    # rs: fixme: lambda layers are problematic for de/serialization!
+    #     - can we use ZeroPadding1D instead of ZeroPadding2D+Lambda?
     x = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(x)
     if IMAGE_ORDERING == 'channels_first':
         x = Lambda(lambda x: x[:, :, :-1, :-1])(x)
@@ -150,7 +112,7 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
     x = Conv2D(filters3, (1, 1), data_format=IMAGE_ORDERING, name=conv_name_base + '2c')(x)
     x = BatchNormalization(axis=bn_axis, name=bn_name_base + '2c')(x)
 
-    x = layers.add([x, input_tensor])
+    x = add([x, input_tensor])
     x = Activation('relu')(x)
     return x
 
@@ -195,12 +157,12 @@ def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2))
                       name=conv_name_base + '1')(input_tensor)
     shortcut = BatchNormalization(axis=bn_axis, name=bn_name_base + '1')(shortcut)
 
-    x = layers.add([x, shortcut])
+    x = add([x, shortcut])
     x = Activation('relu')(x)
     return x
 
 
-def resnet50_unet_light(n_classes, input_height=224, input_width=224, taks="segmentation", weight_decay=1e-6, pretraining=False):
+def resnet50_unet_light(n_classes, input_height=224, input_width=224, task="segmentation", weight_decay=1e-6, pretraining=False):
     assert input_height % 32 == 0
     assert input_width % 32 == 0
 
@@ -415,7 +377,7 @@ def vit_resnet50_unet(num_patches,
                       pretraining=False):
     if transformer_mlp_head_units is None:
         transformer_mlp_head_units = [128, 64]
-    inputs = layers.Input(shape=(input_height, input_width, 3))
+    inputs = Input(shape=(input_height, input_width, 3))
     
     #transformer_units = [
         #projection_dim * 2,
@@ -460,27 +422,35 @@ def vit_resnet50_unet(num_patches,
         model = Model(inputs, x).load_weights(RESNET50_WEIGHTS_PATH)
 
     #num_patches = x.shape[1]*x.shape[2]
-    
-    patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(x)
+
+    # rs: fixme patch size not configurable anymore...
+    #patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(inputs)
+    patches = Patches()(x)
+    assert transformer_patchsize_x == transformer_patchsize_y == 1
     # Encode patches.
-    encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
+    # rs: fixme num patches and dim not configurable anymore...
+    #encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
+    encoded_patches = PatchEncoder()(patches)
+    assert num_patches == 21 * 21
+    assert transformer_projection_dim == 64
     
     for _ in range(transformer_layers):
         # Layer normalization 1.
-        x1 = layers.LayerNormalization(epsilon=1e-6)(encoded_patches)
+        x1 = LayerNormalization(epsilon=1e-6)(encoded_patches)
         # Create a multi-head attention layer.
-        attention_output = layers.MultiHeadAttention(
+        attention_output = MultiHeadAttention(
             num_heads=transformer_num_heads, key_dim=transformer_projection_dim, dropout=0.1
         )(x1, x1)
         # Skip connection 1.
-        x2 = layers.Add()([attention_output, encoded_patches])
+        x2 = Add()([attention_output, encoded_patches])
         # Layer normalization 2.
-        x3 = layers.LayerNormalization(epsilon=1e-6)(x2)
+        x3 = LayerNormalization(epsilon=1e-6)(x2)
         # MLP.
         x3 = mlp(x3, hidden_units=transformer_mlp_head_units, dropout_rate=0.1)
         # Skip connection 2.
-        encoded_patches = layers.Add()([x3, x2])
+        encoded_patches = Add()([x3, x2])
     
+    assert isinstance(x, Layer)
     encoded_patches = tf.reshape(encoded_patches,
                                  [-1, x.shape[1], x.shape[2],
                                   transformer_projection_dim // (transformer_patchsize_x *
@@ -551,7 +521,7 @@ def vit_resnet50_unet_transformer_before_cnn(num_patches,
                                              pretraining=False):
     if transformer_mlp_head_units is None:
         transformer_mlp_head_units = [128, 64]
-    inputs = layers.Input(shape=(input_height, input_width, 3))
+    inputs = Input(shape=(input_height, input_width, 3))
     
     ##transformer_units = [
         ##projection_dim * 2,
@@ -560,25 +530,32 @@ def vit_resnet50_unet_transformer_before_cnn(num_patches,
     IMAGE_ORDERING = 'channels_last'
     bn_axis=3
     
-    patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(inputs)
+    # rs: fixme patch size not configurable anymore...
+    #patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(inputs)
+    patches = Patches()(inputs)
+    assert transformer_patchsize_x == transformer_patchsize_y == 1
     # Encode patches.
-    encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
+    # rs: fixme num patches and dim not configurable anymore...
+    #encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
+    encoded_patches = PatchEncoder()(patches)
+    assert num_patches == 21 * 21
+    assert transformer_projection_dim == 64
     
     for _ in range(transformer_layers):
         # Layer normalization 1.
-        x1 = layers.LayerNormalization(epsilon=1e-6)(encoded_patches)
+        x1 = LayerNormalization(epsilon=1e-6)(encoded_patches)
         # Create a multi-head attention layer.
-        attention_output = layers.MultiHeadAttention(
+        attention_output = MultiHeadAttention(
             num_heads=transformer_num_heads, key_dim=transformer_projection_dim, dropout=0.1
         )(x1, x1)
         # Skip connection 1.
-        x2 = layers.Add()([attention_output, encoded_patches])
+        x2 = Add()([attention_output, encoded_patches])
         # Layer normalization 2.
-        x3 = layers.LayerNormalization(epsilon=1e-6)(x2)
+        x3 = LayerNormalization(epsilon=1e-6)(x2)
         # MLP.
         x3 = mlp(x3, hidden_units=transformer_mlp_head_units, dropout_rate=0.1)
         # Skip connection 2.
-        encoded_patches = layers.Add()([x3, x2])
+        encoded_patches = Add()([x3, x2])
     
     encoded_patches = tf.reshape(encoded_patches,
                                  [-1,
@@ -734,9 +711,6 @@ def resnet50_classifier(n_classes,input_height=224,input_width=224,weight_decay=
     x = Dense(n_classes, activation='softmax', name='fc1000')(x)
     model = Model(img_input, x)
     
-    
-
-
     return model
 
 def machine_based_reading_order_model(n_classes,input_height=224,input_width=224,weight_decay=1e-6,pretraining=False):
@@ -791,5 +765,83 @@ def machine_based_reading_order_model(n_classes,input_height=224,input_width=224
 
     o = Dense(n_classes, activation='sigmoid', name='fc1000')(o)
     model = Model(img_input , o)
+
+    return model
+
+def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_seq=None):
+    input_img = Input(shape=(image_height, image_width, 3), name="image")
+    labels = Input(name="label", shape=(None,))
+
+    x = Conv2D(64,kernel_size=(3,3),padding="same")(input_img)
+    x = BatchNormalization(name="bn1")(x)
+    x = Activation("relu", name="relu1")(x)
+    x = Conv2D(64,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn2")(x)
+    x = Activation("relu", name="relu2")(x)
+    x = MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+
+    x = Conv2D(128,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn3")(x)
+    x = Activation("relu", name="relu3")(x)
+    x = Conv2D(128,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn4")(x)
+    x = Activation("relu", name="relu4")(x)
+    x = MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+
+    x = Conv2D(256,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn5")(x)
+    x = Activation("relu", name="relu5")(x)
+    x = Conv2D(256,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn6")(x)
+    x = Activation("relu", name="relu6")(x)
+    x = MaxPool2D(pool_size=(2,2),strides=(2,2))(x)
+
+    x = Conv2D(image_width,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn7")(x)
+    x = Activation("relu", name="relu7")(x)
+    x = Conv2D(image_width,kernel_size=(16,1))(x)
+    x = BatchNormalization(name="bn8")(x)
+    x = Activation("relu", name="relu8")(x)
+    x2d = MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+    x4d = MaxPool2D(pool_size=(1,2),strides=(1,2))(x2d)
+    
+
+    new_shape = (x.shape[1]*x.shape[2], x.shape[3])
+    new_shape2 = (x2d.shape[1]*x2d.shape[2], x2d.shape[3])
+    new_shape4 = (x4d.shape[1]*x4d.shape[2], x4d.shape[3])
+    
+    x = Reshape(target_shape=new_shape, name="reshape")(x)
+    x2d = Reshape(target_shape=new_shape2, name="reshape2")(x2d)
+    x4d = Reshape(target_shape=new_shape4, name="reshape4")(x4d)
+    
+    xrnnorg = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x)
+    xrnn2d = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x2d)
+    xrnn4d = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x4d)
+    
+    xrnn2d = Reshape(target_shape=(1, xrnn2d.shape[1], xrnn2d.shape[2]), name="reshape6")(xrnn2d)
+    xrnn4d = Reshape(target_shape=(1, xrnn4d.shape[1], xrnn4d.shape[2]), name="reshape8")(xrnn4d)
+    
+
+    xrnn2dup = UpSampling2D(size=(1, 2), interpolation="nearest")(xrnn2d)
+    xrnn4dup = UpSampling2D(size=(1, 4), interpolation="nearest")(xrnn4d)
+    
+    xrnn2dup = Reshape(target_shape=(xrnn2dup.shape[2], xrnn2dup.shape[3]), name="reshape10")(xrnn2dup)
+    xrnn4dup = Reshape(target_shape=(xrnn4dup.shape[2], xrnn4dup.shape[3]), name="reshape12")(xrnn4dup)
+
+    addition = Add()([xrnnorg, xrnn2dup, xrnn4dup])
+    
+    addition_rnn = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(addition)
+    
+    out = Conv1D(max_seq, 1, data_format="channels_first")(addition_rnn)
+    out = BatchNormalization(name="bn9")(out)
+    out = Activation("relu", name="relu9")(out)
+    #out = Conv1D(n_classes, 1, activation='relu', data_format="channels_last")(out)
+
+    out = Dense(n_classes, activation="softmax", name="dense2")(out)
+
+    # Add CTC layer for calculating CTC loss at each step.
+    output = CTCLayer(name="ctc_loss")(labels, out)
+    
+    model = Model(inputs=[input_img, labels], outputs=output, name="handwriting_recognizer")
 
     return model

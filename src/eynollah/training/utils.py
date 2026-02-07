@@ -2,6 +2,7 @@ import os
 import math
 import random
 from logging import getLogger
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -10,8 +11,218 @@ from scipy.ndimage.interpolation import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
 from tqdm import tqdm
 import imutils
-from tensorflow.keras.utils import to_categorical
-from PIL import Image, ImageEnhance
+import tensorflow as tf
+
+from PIL import Image, ImageFile, ImageEnhance
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+
+def vectorize_label(label, char_to_num, padding_token, max_len):
+    label = char_to_num(tf.strings.unicode_split(label, input_encoding="UTF-8"))
+    length = tf.shape(label)[0]
+    pad_amount = max_len - length
+    label = tf.pad(label, paddings=[[0, pad_amount]], constant_values=padding_token)
+    return label
+
+def scale_padd_image_for_ocr(img, height, width):
+    ratio = height /float(img.shape[0])
+
+    w_ratio = int(ratio * img.shape[1])
+
+    if w_ratio<=width:
+        width_new = w_ratio
+    else:
+        width_new = width
+
+    if width_new <= 0:
+        width_new = width
+
+    img_res= resize_image (img, height, width_new)
+    img_fin = np.ones((height, width, 3))*255
+
+    img_fin[:,:width_new,:] = img_res[:,:,:]
+    return img_fin
+
+# TODO: document where this is from
+def add_salt_and_pepper_noise(img, salt_prob, pepper_prob):
+    """
+    Add salt-and-pepper noise to an image.
+    
+    Parameters:
+        image: ndarray
+            Input image.
+        salt_prob: float
+            Probability of salt noise.
+        pepper_prob: float
+            Probability of pepper noise.
+            
+    Returns:
+        noisy_image: ndarray
+            Image with salt-and-pepper noise.
+    """
+    # Make a copy of the image
+    noisy_image = np.copy(img)
+    
+    # Generate random noise
+    total_pixels = img.size
+    num_salt = int(salt_prob * total_pixels)
+    num_pepper = int(pepper_prob * total_pixels)
+    
+    # Add salt noise
+    coords = [np.random.randint(0, i - 1, num_salt) for i in img.shape[:2]]
+    noisy_image[coords[0], coords[1]] = 255  # white pixels
+    
+    # Add pepper noise
+    coords = [np.random.randint(0, i - 1, num_pepper) for i in img.shape[:2]]
+    noisy_image[coords[0], coords[1]] = 0  # black pixels
+    
+    return noisy_image
+
+def invert_image(img):
+    img_inv = 255 - img
+    return img_inv
+
+def return_image_with_strapped_white_noises(img):
+    img_w_noised = np.copy(img)
+    img_h, img_width = img.shape[0], img.shape[1]
+    n = 9
+    p = 0.3
+    num_windows = np.random.binomial(n, p, 1)[0]
+    
+    if num_windows<1:
+        num_windows = 1
+        
+    loc_of_windows = np.random.uniform(0,img_width,num_windows).astype(np.int64)
+    width_windows = np.random.uniform(10,50,num_windows).astype(np.int64)
+    
+    for i, loc in enumerate(loc_of_windows):
+        noise = np.random.normal(0, 50, (img_h, width_windows[i], 3))
+        
+        try:
+            img_w_noised[:, loc:loc+width_windows[i], : ] = noise[:,:,:]
+        except:
+            pass
+    return img_w_noised
+
+def do_padding_for_ocr(img, percent_height, padding_color):
+    padding_size = int( img.shape[0]*percent_height/2. )
+    height_new = img.shape[0] + 2*padding_size
+    width_new = img.shape[1] + 2*padding_size
+
+    h_start = padding_size
+    w_start = padding_size
+
+    if padding_color == 'white':
+        img_new = np.ones((height_new, width_new, img.shape[2])).astype(float) * 255
+    elif padding_color == 'black':
+        img_new = np.zeros((height_new, width_new, img.shape[2])).astype(float)
+    else:
+        raise ValueError("padding_color must be 'white' or 'black'")
+
+    img_new[h_start:h_start + img.shape[0], w_start:w_start + img.shape[1], :] = np.copy(img[:, :, :])
+
+
+    return img_new
+
+# TODO: document where this is from
+def do_deskewing(img, amplitude):
+    height, width = img.shape[:2]
+
+    # Generate sinusoidal wave distortion with reduced amplitude
+    #amplitude = 8 # 5 # Reduce the amplitude for less curvature
+    frequency = 300  # Increase frequency to stretch the curve
+    x_indices = np.tile(np.arange(width), (height, 1))
+    y_indices = np.arange(height).reshape(-1, 1) + amplitude * np.sin(2 * np.pi * x_indices / frequency)
+
+    # Convert indices to float32 for remapping
+    map_x = x_indices.astype(np.float32)
+    map_y = y_indices.astype(np.float32)
+
+    # Apply the remap to create the curve
+    curved_image = cv2.remap(img, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+    return curved_image
+
+# TODO: document where this is from
+def do_direction_in_depth(img, direction: str):
+    height, width = img.shape[:2]
+
+    if direction == 'left':
+        # Define the original corner points of the image
+        src_points = np.float32([
+            [0, 0],          # Top-left corner
+            [width, 0],      # Top-right corner
+            [0, height],     # Bottom-left corner
+            [width, height]  # Bottom-right corner
+        ])
+
+        # Define the new corner points for a subtle right-to-left tilt
+        dst_points = np.float32([
+            [2, 13],                # Slight inward shift for top-left
+            [width, 0],            # Slight downward shift for top-right
+            [2, height-13],           # Slight inward shift for bottom-left
+            [width, height]    # Slight upward shift for bottom-right
+        ])
+    elif direction == 'right':
+        # Define the original corner points of the image
+        src_points = np.float32([
+            [0, 0],          # Top-left corner
+            [width, 0],      # Top-right corner
+            [0, height],     # Bottom-left corner
+            [width, height]  # Bottom-right corner
+        ])
+
+        # Define the new corner points for a subtle right-to-left tilt
+        dst_points = np.float32([
+            [0, 0],                # Slight inward shift for top-left
+            [width, 13],            # Slight downward shift for top-right
+            [0, height],           # Slight inward shift for bottom-left
+            [width, height - 13]    # Slight upward shift for bottom-right
+        ])
+
+    elif direction == 'up':
+        # Define the original corner points of the image
+        src_points = np.float32([
+            [0, 0],          # Top-left corner
+            [width, 0],      # Top-right corner
+            [0, height],     # Bottom-left corner
+            [width, height]  # Bottom-right corner
+        ])
+
+        # Define the new corner points to simulate a tilted perspective
+        # Make the top part appear closer and the bottom part farther
+        dst_points = np.float32([
+            [50, 0],                 # Top-left moved inward
+            [width - 50, 0],         # Top-right moved inward
+            [0, height],             # Bottom-left remains the same
+            [width, height]          # Bottom-right remains the same
+        ])
+    elif direction == 'down':
+        # Define the original corner points of the image
+        src_points = np.float32([
+            [0, 0],          # Top-left corner
+            [width, 0],      # Top-right corner
+            [0, height],     # Bottom-left corner
+            [width, height]  # Bottom-right corner
+        ])
+
+        # Define the new corner points to simulate a tilted perspective
+        # Make the top part appear closer and the bottom part farther
+        dst_points = np.float32([
+            [0, 0],                 # Top-left moved inward
+            [width, 0],         # Top-right moved inward
+            [50, height],             # Bottom-left remains the same
+            [width - 50, height]          # Bottom-right remains the same
+        ])
+    else:
+        raise ValueError("direction must be 'left', 'right', 'up' or 'down'")
+
+    # Compute the perspective transformation matrix
+    matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+
+    # Apply the perspective warp
+    warped_image = cv2.warpPerspective(img, matrix, (width, height))
+    return warped_image
 
 
 def return_shuffled_channels(img, channels_order):
@@ -25,6 +236,7 @@ def return_shuffled_channels(img, channels_order):
     img_sh[:,:,2]= img[:,:,channels_order[2]]
     return img_sh
 
+# TODO: Refactor into one {{{
 def return_binary_image_with_red_textlines(img_bin):
     img_red = np.copy(img_bin)
     
@@ -79,6 +291,8 @@ def return_image_with_red_elements(img, img_bin):
     img_final[:,:,1][img_bin[:,:,0]==0] = 0
     img_final[:,:,2][img_bin[:,:,0]==0] = 255
     return img_final
+
+# }}}
     
 def shift_image_and_label(img, label, type_shift):
     h_n = int(img.shape[0]*1.06)
@@ -164,64 +378,6 @@ def return_number_of_total_training_data(path_classes):
         n_tot = n_tot + len(sub_files)
     return n_tot
         
-    
-    
-def generate_data_from_folder(path_classes, batchsize, height, width, n_classes, list_classes, shuffle=False):
-    #sub_classes = os.listdir(path_classes)
-    #n_classes = len(sub_classes)
-
-    all_imgs = []
-    labels = []
-    #dicts =dict()
-    #indexer= 0
-    for indexer, sub_c in enumerate(list_classes):
-        sub_files =  os.listdir(os.path.join(path_classes,sub_c  )) 
-        sub_files = [os.path.join(path_classes,sub_c  )+'/' + x for x in sub_files]
-        #print(     os.listdir(os.path.join(path_classes,sub_c  ))     )
-        all_imgs = all_imgs + sub_files
-        sub_labels = list( np.zeros( len(sub_files) ) +indexer )
-
-        #print( len(sub_labels) )
-        labels = labels + sub_labels
-        #dicts[sub_c] = indexer
-        #indexer +=1 
-
-    if shuffle:
-        ids = np.array(range(len(labels)))
-        random.shuffle(ids)
-        labels = np.array(labels)[ids]
-        all_imgs = np.array(all_imgs)[ids]
-
-    categories = to_categorical(range(n_classes)).astype(np.int16)#[  [1 , 0, 0 , 0 , 0 , 0]  , [0 , 1, 0 , 0 , 0 , 0]  , [0 , 0, 1 , 0 , 0 , 0] , [0 , 0, 0 , 1 , 0 , 0] , [0 , 0, 0 , 0 , 1 , 0]  , [0 , 0, 0 , 0 , 0 , 1] ]
-    ret_x= np.zeros((batchsize, height,width, 3)).astype(np.uint8)
-    ret_y= np.zeros((batchsize, n_classes)).astype(float)
-    batchcount = 0
-    while True:
-        for lab, img in zip(labels, all_imgs):
-            ###img = cv2.imread(img, 0)
-            ###img= resize_image (img, height, width)
-            ###img = img.astype(np.uint16)
-            ###ret_x[batchcount, :,:,0] = img[:,:]
-            ###ret_x[batchcount, :,:,1] = img[:,:]
-            ###ret_x[batchcount, :,:,2] = img[:,:]
-            
-            img = cv2.imread(img)
-            img= resize_image (img, height, width)
-            img = img.astype(np.uint16)
-            ret_x[batchcount, :,:,:] = img[:,:,:]
-            
-            #print(int(shuffled_labels[i]) )
-            #print( categories[int(shuffled_labels[i])] )
-            ret_y[batchcount, :] =  categories[int(lab)][:]
-            
-            batchcount+=1
-            
-            if batchcount>=batchsize:
-                ret_x = ret_x//255
-                yield ret_x, ret_y
-                ret_x[:] = 0
-                ret_y[:] = 0
-                batchcount = 0
 
 def do_brightening(img, factor):
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -241,9 +397,12 @@ def bluring(img_in, kind):
         img_blur = cv2.medianBlur(img_in, 5)
     elif kind == 'blur':
         img_blur = cv2.blur(img_in, (5, 5))
+    else:
+        raise ValueError("kind must be 'gauss', 'median' or 'blur'")
     return img_blur
 
 
+# TODO: document where this is from
 def elastic_transform(image, alpha, sigma, seedj, random_state=None):
     """Elastic deformation of images as described in [Simard2003]_.
     .. [Simard2003] Simard, Steinkraus and Platt, "Best Practices for
@@ -266,6 +425,7 @@ def elastic_transform(image, alpha, sigma, seedj, random_state=None):
     return distored_image.reshape(image.shape)
 
 
+# TODO: Use one of the utils/rotate.py functions for this
 def rotation_90(img):
     img_rot = np.zeros((img.shape[1], img.shape[0], img.shape[2]))
     img_rot[:, :, 0] = img[:, :, 0].T
@@ -274,6 +434,8 @@ def rotation_90(img):
     return img_rot
 
 
+# TODO: document where this is from
+# TODO: Use one of the utils/rotate.py functions for this
 def rotatedRectWithMaxArea(w, h, angle):
     """
   Given a rectangle of size wxh that has been rotated by 'angle' (in
@@ -302,6 +464,7 @@ def rotatedRectWithMaxArea(w, h, angle):
     return wr, hr
 
 
+# TODO: Use one of the utils/rotate.py functions for this
 def rotate_max_area(image, rotated, rotated_label, angle):
     """ image: cv2 image matrix object
         angle: in degree
@@ -315,6 +478,7 @@ def rotate_max_area(image, rotated, rotated_label, angle):
     x2 = x1 + int(wr)
     return rotated[y1:y2, x1:x2], rotated_label[y1:y2, x1:x2]
 
+# TODO: Use one of the utils/rotate.py functions for this
 def rotate_max_area_single_image(image, rotated, angle):
     """ image: cv2 image matrix object
         angle: in degree
@@ -328,12 +492,14 @@ def rotate_max_area_single_image(image, rotated, angle):
     x2 = x1 + int(wr)
     return rotated[y1:y2, x1:x2]
 
+# TODO: Use one of the utils/rotate.py functions for this
 def rotation_not_90_func(img, label, thetha):
     rotated = imutils.rotate(img, thetha)
     rotated_label = imutils.rotate(label, thetha)
     return rotate_max_area(img, rotated, rotated_label, thetha)
 
 
+# TODO: Use one of the utils/rotate.py functions for this
 def rotation_not_90_func_single_image(img, thetha):
     rotated = imutils.rotate(img, thetha)
     return rotate_max_area_single_image(img, rotated, thetha)
@@ -356,6 +522,7 @@ def color_images(seg, n_classes):
     return seg_img
 
 
+# TODO: use resize_image from utils
 def resize_image(seg_in, input_height, input_width):
     return cv2.resize(seg_in, (input_width, input_height), interpolation=cv2.INTER_NEAREST)
 
@@ -368,6 +535,7 @@ def get_one_hot(seg, input_height, input_width, n_classes):
     return seg_f
 
 
+# TODO: document where this is from
 def IoU(Yi, y_predi):
     ## mean Intersection over Union
     ## Mean IoU = TP/(FN + TP + FP)
@@ -386,10 +554,10 @@ def IoU(Yi, y_predi):
     #print("Mean IoU: {:4.3f}".format(mIoU))
     return mIoU
 
-def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batchsize, height, width, n_classes, thetha, augmentation=False):
+def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, n_batch, height, width, n_classes, thetha, augmentation=False):
     all_labels_files = os.listdir(classes_file_dir)
-    ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
-    ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+    ret_x= np.zeros((n_batch, height, width, 3))#.astype(np.int16)
+    ret_y= np.zeros((n_batch, n_classes)).astype(np.int16)
     batchcount = 0
     while True:
         for i in all_labels_files:
@@ -404,10 +572,10 @@ def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batch
 
             ret_y[batchcount, :] =  label_class
             batchcount+=1
-            if batchcount>=batchsize:
+            if batchcount>=n_batch:
                 yield ret_x, ret_y
-                ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
-                ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+                ret_x= np.zeros((n_batch, height, width, 3))#.astype(np.int16)
+                ret_y= np.zeros((n_batch, n_classes)).astype(np.int16)
                 batchcount = 0
                 
             if augmentation:
@@ -422,10 +590,10 @@ def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, batch
 
                     ret_y[batchcount, :] =  label_class
                     batchcount+=1
-                    if batchcount>=batchsize:
+                    if batchcount>=n_batch:
                         yield ret_x, ret_y
-                        ret_x= np.zeros((batchsize, height, width, 3))#.astype(np.int16)
-                        ret_y= np.zeros((batchsize, n_classes)).astype(np.int16)
+                        ret_x= np.zeros((n_batch, height, width, 3))#.astype(np.int16)
+                        ret_y= np.zeros((n_batch, n_classes)).astype(np.int16)
                         batchcount = 0
 
 def data_gen(img_folder, mask_folder, batch_size, input_height, input_width, n_classes, task='segmentation'):
@@ -467,6 +635,7 @@ def data_gen(img_folder, mask_folder, batch_size, input_height, input_width, n_c
         yield img, mask
 
 
+# TODO: Use otsu_copy from utils
 def otsu_copy(img):
     img_r = np.zeros(img.shape)
     img1 = img[:, :, 0]
@@ -481,7 +650,7 @@ def otsu_copy(img):
     return img_r
 
 
-def get_patches(dir_img_f, dir_seg_f, img, label, height, width, indexer):
+def get_patches(img, label, height, width):
     if img.shape[0] < height or img.shape[1] < width:
         img, label = do_padding(img, label, height, width)
 
@@ -517,21 +686,16 @@ def get_patches(dir_img_f, dir_seg_f, img, label, height, width, indexer):
             img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
             label_patch = label[index_y_d:index_y_u, index_x_d:index_x_u, :]
 
-            cv2.imwrite(dir_img_f + '/img_' + str(indexer) + '.png', img_patch)
-            cv2.imwrite(dir_seg_f + '/img_' + str(indexer) + '.png', label_patch)
-            indexer += 1
-
-    return indexer
+            yield img_patch, label_patch
 
 
-def do_padding_white(img):
-    img_org_h = img.shape[0]
-    img_org_w = img.shape[1]
-    
+def do_padding_with_color(img, padding_color='black'):
     index_start_h = 4
     index_start_w = 4
     
-    img_padded = np.zeros((img.shape[0] + 2*index_start_h, img.shape[1]+ 2*index_start_w, img.shape[2])) + 255
+    img_padded = np.zeros((img.shape[0] + 2*index_start_h, img.shape[1]+ 2*index_start_w, img.shape[2]))
+    if padding_color == 'white':
+        img_padded += 255
     img_padded[index_start_h: index_start_h + img.shape[0], index_start_w: index_start_w + img.shape[1], :] = img[:, :, :]
     
     return img_padded.astype(float)
@@ -545,20 +709,7 @@ def do_degrading(img, scale):
     
     return resize_image(img_res, img_org_h, img_org_w)
     
-    
-def do_padding_black(img):
-    img_org_h = img.shape[0]
-    img_org_w = img.shape[1]
-    
-    index_start_h = 4
-    index_start_w = 4
-    
-    img_padded = np.zeros((img.shape[0] + 2*index_start_h, img.shape[1] + 2*index_start_w, img.shape[2]))
-    img_padded[index_start_h: index_start_h + img.shape[0], index_start_w: index_start_w + img.shape[1], :] = img[:, :, :]
-    
-    return img_padded.astype(float)
-
-
+# TODO: How is this different from do_padding_black?
 def do_padding_label(img):
     img_org_h = img.shape[0]
     img_org_w = img.shape[1]
@@ -595,58 +746,7 @@ def do_padding(img, label, height, width):
     return img_new,label_new
 
 
-def get_patches_num_scale(dir_img_f, dir_seg_f, img, label, height, width, indexer, n_patches, scaler):
-    if img.shape[0] < height or img.shape[1] < width:
-        img, label = do_padding(img, label, height, width)
-    
-    img_h = img.shape[0]
-    img_w = img.shape[1]
-    
-    height_scale = int(height * scaler)
-    width_scale = int(width * scaler)
-    
-    
-    nxf = img_w / float(width_scale)
-    nyf = img_h / float(height_scale)
-    
-    if nxf > int(nxf):
-        nxf = int(nxf) + 1
-    if nyf > int(nyf):
-        nyf = int(nyf) + 1
-        
-    nxf = int(nxf)
-    nyf = int(nyf)
-        
-    for i in range(nxf):
-        for j in range(nyf):
-            index_x_d = i * width_scale
-            index_x_u = (i + 1) * width_scale
-            
-            index_y_d = j * height_scale
-            index_y_u = (j + 1) * height_scale
-            
-            if index_x_u > img_w:
-                index_x_u = img_w
-                index_x_d = img_w - width_scale
-            if index_y_u > img_h:
-                index_y_u = img_h
-                index_y_d = img_h - height_scale
-                
-            
-            img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
-            label_patch = label[index_y_d:index_y_u, index_x_d:index_x_u, :]
-            
-            img_patch = resize_image(img_patch, height, width)
-            label_patch = resize_image(label_patch, height, width)
-            
-            cv2.imwrite(dir_img_f + '/img_' + str(indexer) + '.png', img_patch)
-            cv2.imwrite(dir_seg_f + '/img_' + str(indexer) + '.png', label_patch)
-            indexer += 1
-            
-    return indexer
-
-
-def get_patches_num_scale_new(dir_img_f, dir_seg_f, img, label, height, width, indexer, scaler):
+def get_patches_num_scale_new(img, label, height, width, scaler=1.0):
     img = resize_image(img, int(img.shape[0] * scaler), int(img.shape[1] * scaler))
     label = resize_image(label, int(label.shape[0] * scaler), int(label.shape[1] * scaler))
     
@@ -688,20 +788,17 @@ def get_patches_num_scale_new(dir_img_f, dir_seg_f, img, label, height, width, i
             img_patch = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
             label_patch = label[index_y_d:index_y_u, index_x_d:index_x_u, :]
             
-            cv2.imwrite(dir_img_f + '/img_' + str(indexer) + '.png', img_patch)
-            cv2.imwrite(dir_seg_f + '/img_' + str(indexer) + '.png', label_patch)
-            indexer += 1
-
-    return indexer
+            yield img_patch, label_patch
 
 
+# TODO: refactor to combine with data_gen_ocr
 def preprocess_imgs(config,
                     imgs_list,
-                    segs_list,
+                    labs_list,
                     dir_img,
-                    dir_seg,
+                    dir_lab,
                     dir_flow_imgs,
-                    dir_flow_labels,
+                    dir_flow_lbls,
                     logger=None,
                     **kwargs,
 ):
@@ -720,32 +817,49 @@ def preprocess_imgs(config,
     # override keys from call
     config.update(kwargs)
 
+    seed = random.random()
+    random.shuffle(imgs_list, random=lambda: seed)
+    random.shuffle(labs_list, random=lambda: seed)
+
+    # labs_list not used because stem matching more robust
     indexer = 0
-    for im, seg_i in tqdm(zip(imgs_list, segs_list)):
-        img = cv2.imread(os.path.join(dir_img, im))
-        img_name = os.path.splitext(im)[0]
+    for img, lab in tqdm(zip(imgs_list, labs_list)):
+        img = cv2.imread(os.path.join(dir_img, img))
+        img_name = os.path.splitext(img)[0]
         if config['task'] in ["segmentation", "binarization"]:
-            lab = cv2.imread(os.path.join(dir_seg, img_name + '.png'))
+            # assert lab == img_name + '.png'
+            lab = cv2.imread(os.path.join(dir_lab, img_name + '.png'))
         elif config['task'] == "enhancement":
-            lab = cv2.imread(os.path.join(dir_seg, im))
+            lab = cv2.imread(os.path.join(dir_lab, img))
+        elif config['task'] == "cnn-rnn-ocr":
+            # assert lab == 'img_name + '.txt'
+            with open(os.path.join(dir_lab, img_name + '.txt'), 'r') as f:
+                lab = f.read().split('\n')[0]
         else:
             lab = None
 
         try:
-            indexer = preprocess_img(indexer, img, img_name, lab,
-                                     dir_flow_imgs,
-                                     dir_flow_labels,
-                                     **config)
-
+            if config['task'] == "cnn-rnn-ocr":
+                yield from preprocess_img_ocr(img, img_name, lab,
+                                              **config)
+                continue
+            for img, lab in preprocess_img(img, img_name, lab,
+                                           **config):
+                cv2.imwrite(os.path.join(dir_flow_imgs, '/img_%d.png' % indexer),
+                            resize_image(img,
+                                         config['input_height'],
+                                         config['input_width']))
+                cv2.imwrite(os.path.join(dir_flow_lbls, '/img_%d.png' % indexer),
+                            resize_image(lab,
+                                         config['input_height'],
+                                         config['input_width']))
+                indexer += 1
         except:
             logger.exception("skipping image %s", img_name)
 
-def preprocess_img(indexer,
-                   img,
+def preprocess_img(img,
                    img_name,
                    lab,
-                   dir_flow_train_imgs,
-                   dir_flow_train_labels,
                    input_height=None,
                    input_width=None,
                    augmentation=False,
@@ -785,128 +899,39 @@ def preprocess_img(indexer,
                    **kwargs,
 ):
     if not patches:
-        cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                    resize_image(img,
-                                 input_height,
-                                 input_width))
-        cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                    resize_image(lab,
-                                 input_height,
-                                 input_width))
-        indexer += 1
+        yield img, lab
         if augmentation:
             if flip_aug:
                 for f_i in flip_index:
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                resize_image(cv2.flip(img, f_i),
-                                             input_height,
-                                             input_width))
-                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(cv2.flip(lab, f_i),
-                                             input_height,
-                                             input_width))
-                    indexer += 1
+                    yield cv2.flip(img, f_i), cv2.flip(lab, f_i)
             if blur_aug:
                 for blur_i in blur_k:
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                (resize_image(bluring(img, blur_i),
-                                              input_height,
-                                              input_width)))
-                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(lab,
-                                             input_height,
-                                             input_width))
-                    indexer += 1
+                    yield bluring(img, blur_i), lab
             if brightening:
                 for factor in brightness:
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                (resize_image(do_brightening(img, factor),
-                                              input_height,
-                                              input_width)))
-                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(lab,
-                                             input_height,
-                                             input_width))
-                    indexer += 1
+                    yield do_brightening(img, factor), lab
             if binarization:
                 if dir_img_bin:
                     img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                resize_image(img_bin_corr,
-                                             input_height,
-                                             input_width))
                 else:
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                resize_image(otsu_copy(img),
-                                             input_height,
-                                             input_width))
-                cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                            resize_image(lab,
-                                         input_height,
-                                         input_width))
-                indexer += 1
+                    img_bin_corr = otsu_copy(img)
+                yield img_bin_corr, lab
             if degrading:
                 for degrade_scale_ind in degrade_scales:
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                (resize_image(do_degrading(img, degrade_scale_ind),
-                                              input_height,
-                                              input_width)))
-                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(lab,
-                                             input_height,
-                                             input_width))
-                    indexer += 1
+                    yield do_degrading(img, degrade_scale_ind), lab
             if rotation_not_90:
                 for thetha_i in thetha:
-                    img_max_rotated, label_max_rotated = \
-                        rotation_not_90_func(img, lab, thetha_i)
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                resize_image(img_max_rotated,
-                                             input_height,
-                                             input_width))
-                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(label_max_rotated,
-                                             input_height,
-                                             input_width))
-                    indexer += 1
+                    yield rotation_not_90_func(img, lab, thetha_i)
             if channels_shuffling:
                 for shuffle_index in shuffle_indexes:
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                (resize_image(return_shuffled_channels(img, shuffle_index),
-                                              input_height,
-                                              input_width)))
-                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(lab,
-                                             input_height,
-                                             input_width))
-                    indexer += 1
+                    yield return_shuffled_channels(img, shuffle_index), lab
             if scaling:
                 for sc_ind in scales:
-                    img_scaled, label_scaled = \
-                        scale_image_for_no_patch(img, lab, sc_ind)
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                resize_image(img_scaled,
-                                             input_height,
-                                             input_width))
-                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(label_scaled,
-                                             input_height,
-                                             input_width))
-                    indexer += 1
+                    yield scale_image_for_no_patch(img, lab, sc_ind)
             if shifting:
                 shift_types = ['xpos', 'xmin', 'ypos', 'ymin', 'xypos', 'xymin']
                 for st_ind in shift_types:
-                    img_shifted, label_shifted = \
-                        shift_image_and_label(img, lab, st_ind)
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                resize_image(img_shifted,
-                                             input_height,
-                                             input_width))
-                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(label_shifted,
-                                             input_height,
-                                             input_width))
-                    indexer += 1
+                    yield shift_image_and_label(img, lab, st_ind)
             if adding_rgb_background:
                 img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
                 for i_n in range(number_of_backgrounds_per_image):
@@ -916,15 +941,7 @@ def preprocess_img(indexer,
                     img_with_overlayed_background = \
                         return_binary_image_with_given_rgb_background(
                             img_bin_corr, img_rgb_background_chosen)
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                resize_image(img_with_overlayed_background,
-                                             input_height,
-                                             input_width))
-                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(lab,
-                                             input_height,
-                                             input_width))
-                    indexer += 1
+                    yield img_with_overlayed_background, lab
             if adding_rgb_foreground:
                 img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
                 for i_n in range(number_of_backgrounds_per_image):
@@ -937,67 +954,37 @@ def preprocess_img(indexer,
                     img_with_overlayed_background = \
                         return_binary_image_with_given_rgb_background_and_given_foreground_rgb(
                             img_bin_corr, img_rgb_background_chosen, foreground_rgb_chosen)
-                    cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                                resize_image(img_with_overlayed_background,
-                                             input_height,
-                                             input_width))
-                    cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                                resize_image(lab,
-                                             input_height,
-                                             input_width))
-                    indexer += 1
+                    yield img_with_overlayed_background, lab
             if add_red_textlines:
                 img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
-                img_red_context = \
-                    return_image_with_red_elements(img, img_bin_corr)
-                cv2.imwrite(dir_flow_train_imgs + '/img_' + str(indexer) + '.png',
-                            resize_image(img_red_context,
-                                         input_height,
-                                         input_width))
-                cv2.imwrite(dir_flow_train_labels + '/img_' + str(indexer) + '.png',
-                            resize_image(lab,
-                                         input_height,
-                                         input_width))
-                indexer += 1
+                yield return_image_with_red_elements(img, img_bin_corr), lab
     else:
-        indexer = get_patches(dir_flow_train_imgs,
-                              dir_flow_train_labels,
-                              img,
-                              lab,
-                              input_height,
-                              input_width,
-                              indexer=indexer)
+        yield from get_patches(img,
+                               lab,
+                               input_height,
+                               input_width)
         if augmentation:
             if rotation:
-                indexer = get_patches(dir_flow_train_imgs,
-                                      dir_flow_train_labels,
-                                      rotation_90(img),
-                                      rotation_90(lab),
-                                      input_height,
-                                      input_width,
-                                      indexer=indexer)
+                yield from get_patches(rotation_90(img),
+                                       rotation_90(lab),
+                                       input_height,
+                                       input_width)
             if rotation_not_90:
                 for thetha_i in thetha:
                     img_max_rotated, label_max_rotated = \
                         rotation_not_90_func(img, lab, thetha_i)
-                    indexer = get_patches(dir_flow_train_imgs,
-                                          dir_flow_train_labels,
-                                          img_max_rotated,
-                                          label_max_rotated,
-                                          input_height,
-                                          input_width,
-                                          indexer=indexer)
+                    yield from get_patches(img_max_rotated,
+                                           label_max_rotated,
+                                           input_height,
+                                           input_width)
             if channels_shuffling:
                 for shuffle_index in shuffle_indexes:
                     img_shuffled = \
                         return_shuffled_channels(img, shuffle_index),
-                    indexer = get_patches(dir_flow_train_imgs,
-                                          dir_flow_train_labels,
-                                          img_shuffled,
-                                          lab,
-                                          input_height,
-                                          input_width,
-                                          indexer=indexer)
+                    yield from get_patches(img_shuffled,
+                                           lab,
+                                           input_height,
+                                           input_width)
             if adding_rgb_background:
                 img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
                 for i_n in range(number_of_backgrounds_per_image):
@@ -1007,13 +994,10 @@ def preprocess_img(indexer,
                     img_with_overlayed_background = \
                         return_binary_image_with_given_rgb_background(
                             img_bin_corr, img_rgb_background_chosen)
-                    indexer = get_patches(dir_flow_train_imgs,
-                                          dir_flow_train_labels,
-                                          img_with_overlayed_background,
-                                          lab,
-                                          input_height,
-                                          input_width,
-                                          indexer=indexer)
+                    yield from get_patches(img_with_overlayed_background,
+                                           lab,
+                                           input_height,
+                                           input_width)
             if adding_rgb_foreground:
                 img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
                 for i_n in range(number_of_backgrounds_per_image):
@@ -1026,155 +1010,280 @@ def preprocess_img(indexer,
                     img_with_overlayed_background = \
                         return_binary_image_with_given_rgb_background_and_given_foreground_rgb(
                             img_bin_corr, img_rgb_background_chosen, foreground_rgb_chosen)
-                    indexer = get_patches(dir_flow_train_imgs,
-                                          dir_flow_train_labels,
-                                          img_with_overlayed_background,
-                                          lab,
-                                          input_height,
-                                          input_width,
-                                          indexer=indexer)
+                    yield from get_patches(img_with_overlayed_background,
+                                           lab,
+                                           input_height,
+                                           input_width)
             if add_red_textlines:
-                img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
+                img_bin_corr = cv2.imread(os.path.join(dir_img_bin, img_name + '.png'))
                 img_red_context = \
                     return_image_with_red_elements(img, img_bin_corr)
-                indexer = get_patches(dir_flow_train_imgs,
-                                      dir_flow_train_labels,
-                                      img_red_context,
-                                      lab,
-                                      input_height,
-                                      input_width,
-                                      indexer=indexer)
+                yield from get_patches(img_red_context,
+                                       lab,
+                                       input_height,
+                                       input_width)
             if flip_aug:
                 for f_i in flip_index:
-                    indexer = get_patches(dir_flow_train_imgs,
-                                          dir_flow_train_labels,
-                                          cv2.flip(img, f_i),
-                                          cv2.flip(lab, f_i),
-                                          input_height,
-                                          input_width,
-                                          indexer=indexer)
+                    yield from get_patches(cv2.flip(img, f_i),
+                                           cv2.flip(lab, f_i),
+                                           input_height,
+                                           input_width)
             if blur_aug:
                 for blur_i in blur_k:
-                    indexer = get_patches(dir_flow_train_imgs,
-                                          dir_flow_train_labels,
-                                          bluring(img, blur_i),
-                                          lab,
-                                          input_height,
-                                          input_width,
-                                          indexer=indexer)
+                    yield from get_patches(bluring(img, blur_i),
+                                           lab,
+                                           input_height,
+                                           input_width)
             if padding_black:
-                indexer = get_patches(dir_flow_train_imgs,
-                                      dir_flow_train_labels,
-                                      do_padding_black(img),
-                                      do_padding_label(lab),
-                                      input_height,
-                                      input_width,
-                                      indexer=indexer)
+                yield from get_patches(do_padding_black(img),
+                                       do_padding_label(lab),
+                                       input_height,
+                                       input_width)
             if padding_white:
-                indexer = get_patches(dir_flow_train_imgs,
-                                      dir_flow_train_labels,
-                                      do_padding_white(img),
-                                      do_padding_label(lab),
-                                      input_height,
-                                      input_width,
-                                      indexer=indexer)
+                yield from get_patches(do_padding_white(img),
+                                       do_padding_label(lab),
+                                       input_height,
+                                       input_width)
             if brightening:
                 for factor in brightness:
-                    indexer = get_patches(dir_flow_train_imgs,
-                                          dir_flow_train_labels,
-                                          do_brightening(img, factor),
-                                          lab,
-                                          input_height,
-                                          input_width,
-                                          indexer=indexer)
+                    yield from get_patches(do_brightening(img, factor),
+                                           lab,
+                                           input_height,
+                                           input_width)
             if scaling:
                 for sc_ind in scales:
-                    indexer = get_patches_num_scale_new(
-                        dir_flow_train_imgs,
-                        dir_flow_train_labels,
-                        img ,
-                        lab,
-                        input_height,
-                        input_width,
-                        indexer=indexer,
-                        scaler=sc_ind)
+                    yield from get_patches_num_scale_new(img,
+                                                         lab,
+                                                         input_height,
+                                                         input_width,
+                                                         scaler=sc_ind)
             if degrading:
                 for degrade_scale_ind in degrade_scales:
                     img_deg = \
                         do_degrading(img, degrade_scale_ind),
-                    indexer = get_patches(dir_flow_train_imgs,
-                                          dir_flow_train_labels,
-                                          img_deg,
-                                          lab,
-                                          input_height,
-                                          input_width,
-                                          indexer=indexer)
+                    yield from get_patches(img_deg,
+                                           lab,
+                                           input_height,
+                                           input_width)
             if binarization:
                 if dir_img_bin:
-                    img_bin_corr = cv2.imread(dir_img_bin + '/' + img_name+'.png')
-                    indexer = get_patches(dir_flow_train_imgs,
-                                          dir_flow_train_labels,
-                                          img_bin_corr,
-                                          lab,
-                                          input_height,
-                                          input_width,
-                                          indexer=indexer)
+                    img_bin_corr = cv2.imread(os.path.join(dir_img_bin, img_name + '.png'))
                 else:
-                    indexer = get_patches(dir_flow_train_imgs,
-                                          dir_flow_train_labels,
-                                          otsu_copy(img),
-                                          lab,
-                                          input_height,
-                                          input_width,
-                                          indexer=indexer)
+                    img_bin_corr = otsu_copy(img)
+                yield from get_patches(img_bin_corr,
+                                       lab,
+                                       input_height,
+                                       input_width)
             if scaling_brightness:
                 for sc_ind in scales:
                     for factor in brightness:
                         img_bright = do_brightening(img, factor)
-                        indexer = get_patches_num_scale_new(
-                            dir_flow_train_imgs,
-                            dir_flow_train_labels,
-                            img_bright,
-                            lab,
-                            input_height,
-                            input_width,
-                            indexer=indexer,
-                            scaler=sc_ind)
+                        yield from get_patches_num_scale_new(img_bright,
+                                                             lab,
+                                                             input_height,
+                                                             input_width,
+                                                             scaler=sc_ind)
             if scaling_bluring:
                 for sc_ind in scales:
                     for blur_i in blur_k:
                         img_blur = bluring(img, blur_i),
-                        indexer = get_patches_num_scale_new(
-                            dir_flow_train_imgs,
-                            dir_flow_train_labels,
-                            img_blur,
-                            lab,
-                            input_height,
-                            input_width,
-                            indexer=indexer,
-                            scaler=sc_ind)
+                        yield from get_patches_num_scale_new(img_blur,
+                                                             lab,
+                                                             input_height,
+                                                             input_width,
+                                                             scaler=sc_ind)
             if scaling_binarization:
                 for sc_ind in scales:
                     img_bin = otsu_copy(img),
-                    indexer = get_patches_num_scale_new(
-                        dir_flow_train_imgs,
-                        dir_flow_train_labels,
-                        img_bin,
-                        lab,
-                        input_height,
-                        input_width,
-                        indexer=indexer,
-                        scaler=sc_ind)
+                    yield from get_patches_num_scale_new(img_bin,
+                                                         lab,
+                                                         input_height,
+                                                         input_width,
+                                                         scaler=sc_ind)
             if scaling_flip:
                 for sc_ind in scales:
                     for f_i in flip_index:
-                        indexer = get_patches_num_scale_new(
-                            dir_flow_train_imgs,
-                            dir_flow_train_labels,
-                            cv2.flip(img, f_i),
-                            cv2.flip(lab, f_i),
-                            input_height,
-                            input_width,
-                            indexer=indexer,
-                            scaler=sc_ind)
-    return indexer
+                        yield from get_patches_num_scale_new(cv2.flip(img, f_i),
+                                                             cv2.flip(lab, f_i),
+                                                             input_height,
+                                                             input_width,
+                                                             scaler=sc_ind)
+                            
+def preprocess_img_ocr(
+    img,
+    img_name,
+    lab,
+    char_to_num=None,
+    padding_token=-1,
+    max_len=500,
+    n_batch=1,
+    input_height=None,
+    input_width=None,
+    augmentation=False,
+    color_padding_rotation=None,
+    thetha_padd=None,
+    padd_colors=None,
+    rotation_not_90=None,
+    thetha=None,
+    padding_white=None,
+    white_padds=None,
+    degrading=False,
+    bin_deg=None,
+    degrade_scales=None,
+    blur_aug=False,
+    blur_k=None,
+    brightening=False,
+    brightness=None,
+    binarization=False,
+    image_inversion=False,
+    channels_shuffling=False,
+    shuffle_indexes=None,
+    white_noise_strap=False,
+    textline_skewing=False,
+    textline_skewing_bin=False,
+    skewing_amplitudes=None,
+    textline_left_in_depth=False,
+    textline_left_in_depth_bin=False,
+    textline_right_in_depth=False,
+    textline_right_in_depth_bin=False,
+    textline_up_in_depth=False,
+    textline_up_in_depth_bin=False,
+    textline_down_in_depth=False,
+    textline_down_in_depth_bin=False,
+    pepper_aug=False,
+    pepper_bin_aug=False,
+    pepper_indexes=None,
+    dir_img_bin=None,
+    add_red_textlines=False,
+    adding_rgb_background=False,
+    dir_rgb_backgrounds=None,
+    adding_rgb_foreground=False,
+    dir_rgb_foregrounds=None,
+    number_of_backgrounds_per_image=None,
+    list_all_possible_background_images=None,
+    list_all_possible_foreground_rgbs=None,
+):
+    def scale_image(img):
+        return scale_padd_image_for_ocr(img, input_height, input_width).astype(np.float32) / 255.
+    #lab = vectorize_label(lab, char_to_num, padding_token, max_len)
+    # now padded at Dataset.padded_batch
+    lab = char_to_num(tf.strings.unicode_split(label, input_encoding="UTF-8"))
+    yield scale_image(img), lab
+    #to_yield = {"image": ret_x, "label": ret_y}
+
+    if dir_img_bin:
+        img_bin_corr = cv2.imread(os.path.join(dir_img_bin, img_name + '.png'))
+    else:
+        img_bin_corr = None
+
+    if not augmentation:
+        return
+
+    if color_padding_rotation:
+        for thetha_ind in thetha_padd:
+            for padd_col in padd_colors:
+                img_pad = do_padding_for_ocr(img, 1.2, padd_col)
+                img_rot = rotation_not_90_func_single_image(img_pad, thetha_ind)
+                yield scale_image(img_rot), lab
+    if rotation_not_90:
+        for thetha_ind in thetha:
+            img_rot = rotation_not_90_func_single_image(img, thetha_ind)
+            yield scale_image(img_rot), lab
+    if blur_aug:
+        for blur_type in blur_k:
+            img_blur = bluring(img, blur_type)
+            yield scale_image(img_blur), lab
+    if degrading:
+        for deg_scale_ind in degrade_scales:
+            img_deg = do_degrading(img, deg_scale_ind)
+            yield scale_image(img_deg), lab
+    if bin_deg:
+        for deg_scale_ind in degrade_scales:
+            img_deg  = do_degrading(img_bin_corr, deg_scale_ind)
+            yield scale_image(img_deg), lab
+    if brightening:
+        for bright_scale_ind in brightness:
+            img_bright  = do_brightening(img, bright_scale_ind)
+            yield scale_image(img_bright), lab
+    if padding_white:
+        for padding_size in white_padds:
+            for padd_col in padd_colors:
+                img_pad = do_padding_for_ocr(img, padding_size, padd_col)
+                yield scale_image(img_pad), lab
+    if adding_rgb_foreground:
+        for i_n in range(number_of_backgrounds_per_image):
+            background_image_chosen_name = random.choice(list_all_possible_background_images)
+            foreground_rgb_chosen_name = random.choice(list_all_possible_foreground_rgbs)
+
+            img_rgb_background_chosen = \
+                cv2.imread(dir_rgb_backgrounds + '/' + background_image_chosen_name)
+            foreground_rgb_chosen = \
+                np.load(dir_rgb_foregrounds + '/' + foreground_rgb_chosen_name)
+
+            img_fg = \
+                return_binary_image_with_given_rgb_background_and_given_foreground_rgb(
+                    img_bin_corr, img_rgb_background_chosen, foreground_rgb_chosen)
+            yield scale_image(img_fg), lab
+    if adding_rgb_background:
+        for i_n in range(number_of_backgrounds_per_image):
+            background_image_chosen_name = random.choice(list_all_possible_background_images)
+            img_rgb_background_chosen = \
+                cv2.imread(dir_rgb_backgrounds + '/' + background_image_chosen_name)
+            img_bg = \
+                return_binary_image_with_given_rgb_background(img_bin_corr, img_rgb_background_chosen)
+            yield scale_image(img_bg), lab
+    if binarization:
+        yield scale_image(img_bin_corr), lab
+    if image_inversion:
+        img_inv = invert_image(img_bin_corr)
+        yield scale_image(img_inv), lab
+    if channels_shuffling:
+        for shuffle_index in shuffle_indexes:
+            img_shuf = return_shuffled_channels(img, shuffle_index)
+            yield scale_image(img_shuf), lab
+    if add_red_textlines:
+        img_red = return_image_with_red_elements(img, img_bin_corr)
+        yield scale_image(img_red), lab
+    if white_noise_strap:
+        img_noisy = return_image_with_strapped_white_noises(img)
+        yield scale_image(img_noisy), lab
+    if textline_skewing:
+        for des_scale_ind in skewing_amplitudes:
+            img_rot  = do_deskewing(img, des_scale_ind)
+            yield scale_image(img_rot), lab
+    if textline_skewing_bin:
+        for des_scale_ind in skewing_amplitudes:
+            img_rot  = do_deskewing(img_bin_corr, des_scale_ind)
+            yield scale_image(img_rot), lab
+    if textline_left_in_depth:
+        img_warp  = do_direction_in_depth(img, 'left')
+        yield scale_image(img_warp), lab
+    if textline_left_in_depth_bin:
+        img_warp  = do_direction_in_depth(img_bin_corr, 'left')
+        yield scale_image(img_warp), lab
+    if textline_right_in_depth:
+        img_warp  = do_direction_in_depth(img, 'right')
+        yield scale_image(img_warp), lab
+    if textline_right_in_depth_bin:
+        img_warp  = do_direction_in_depth(img_bin_corr, 'right')
+        yield scale_image(img_warp), lab
+    if textline_up_in_depth:
+        img_warp  = do_direction_in_depth(img, 'up')
+        yield scale_image(img_warp), lab
+    if textline_up_in_depth_bin:
+        img_warp  = do_direction_in_depth(img_bin_corr, 'up')
+        yield scale_image(img_warp), lab
+    if textline_down_in_depth:
+        img_warp  = do_direction_in_depth(img, 'down')
+        yield scale_image(img_warp), lab
+    if textline_down_in_depth_bin:
+        img_warp  = do_direction_in_depth(img_bin_corr, 'down')
+        yield scale_image(img_warp), lab
+    if pepper_aug:
+        for pepper_ind in pepper_indexes:
+            img_noisy = add_salt_and_pepper_noise(img, pepper_ind, pepper_ind)
+            yield scale_image(img_noisy), lab
+    if pepper_bin_aug:
+        for pepper_ind in pepper_indexes:
+            img_noisy = add_salt_and_pepper_noise(img_bin_corr, pepper_ind, pepper_ind)
+            yield scale_image(img_noisy), lab
