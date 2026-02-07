@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 import cv2
 import numpy as np
 
-from eynollah.training.gt_gen_utils import (
+from .gt_gen_utils import (
     filter_contours_area_of_image,
     find_format_of_given_filename_in_dir,
     find_new_features_of_contours,
@@ -26,6 +26,9 @@ from eynollah.training.gt_gen_utils import (
 
 @click.group()
 def main():
+    """
+    extract GT data suitable for model training for various tasks
+    """
     pass
 
 @main.command()
@@ -74,6 +77,9 @@ def main():
 )
 
 def pagexml2label(dir_xml,dir_out,type_output,config, printspace, dir_images, dir_out_images):
+    """
+    extract PAGE-XML GT data suitable for model training for segmentation tasks
+    """
     if config:
         with open(config) as f:
             config_params = json.load(f)
@@ -110,6 +116,9 @@ def pagexml2label(dir_xml,dir_out,type_output,config, printspace, dir_images, di
     type=click.Path(exists=True, dir_okay=False),
 )
 def image_enhancement(dir_imgs, dir_out_images, dir_out_labels, scales):
+    """
+    extract image GT data suitable for model training for image enhancement tasks
+    """
     ls_imgs = os.listdir(dir_imgs)
     with open(scales) as f:
         scale_dict = json.load(f)
@@ -175,6 +184,9 @@ def image_enhancement(dir_imgs, dir_out_images, dir_out_labels, scales):
 )
 
 def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size, min_area_early):
+    """
+    extract PAGE-XML GT data suitable for model training for reading-order task
+    """
     xml_files_ind = os.listdir(dir_xml)
     xml_files_ind = [ind_xml for ind_xml in xml_files_ind if ind_xml.endswith('.xml')]
     input_height = int(input_height)

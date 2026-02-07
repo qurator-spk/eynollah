@@ -3,32 +3,8 @@ import sys
 import json
 
 import requests
-import click
 
-from eynollah.training.metrics import (
-    soft_dice_loss,
-    weighted_categorical_crossentropy
-)
-from eynollah.training.models import (
-    PatchEncoder,
-    Patches,
-    machine_based_reading_order_model,
-    resnet50_classifier,
-    resnet50_unet,
-    vit_resnet50_unet,
-    vit_resnet50_unet_transformer_before_cnn,
-    cnn_rnn_ocr_model,
-    RESNET50_WEIGHTS_PATH,
-    RESNET50_WEIGHTS_URL
-)
-from eynollah.training.utils import (
-    data_gen,
-    generate_arrays_from_folder_reading_order,
-    get_one_hot,
-    preprocess_imgs,
-)
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
 from tensorflow.keras.optimizers import SGD, Adam
@@ -42,6 +18,31 @@ from sacred.config import create_captured_function
 
 import numpy as np
 import cv2
+
+from .metrics import (
+    soft_dice_loss,
+    weighted_categorical_crossentropy
+)
+from .models import (
+    PatchEncoder,
+    Patches,
+    machine_based_reading_order_model,
+    resnet50_classifier,
+    resnet50_unet,
+    vit_resnet50_unet,
+    vit_resnet50_unet_transformer_before_cnn,
+    cnn_rnn_ocr_model,
+    RESNET50_WEIGHTS_PATH,
+    RESNET50_WEIGHTS_URL
+)
+from .utils import (
+    data_gen,
+    generate_arrays_from_folder_reading_order,
+    get_one_hot,
+    preprocess_imgs,
+)
+from .weights_ensembling import run_ensembling
+
 
 class SaveWeightsAfterSteps(ModelCheckpoint):
     def __init__(self, save_interval, save_path, _config, **kwargs):
@@ -65,9 +66,7 @@ class SaveWeightsAfterSteps(ModelCheckpoint):
         super()._save_handler(filepath)
         with open(os.path.join(filepath, "config.json"), "w") as fp:
             json.dump(self._config, fp)  # encode dict into JSON
-            
-            
-            
+
 def configuration():
     try:
         for device in tf.config.list_physical_devices('GPU'):
@@ -272,6 +271,9 @@ def run(_config,
         skewing_amplitudes=None,
         max_len=None,
 ):
+    """
+    run configured experiment via sacred
+    """
 
     if pretraining and not os.path.isfile(RESNET50_WEIGHTS_PATH):
         _log.info("downloading RESNET50 pretrained weights to %s", RESNET50_WEIGHTS_PATH)
@@ -312,7 +314,7 @@ def run(_config,
 
             imgs_list = list(os.listdir(dir_img))
             segs_list = list(os.listdir(dir_seg))
-            
+
             imgs_list_test = list(os.listdir(dir_img_val))
             segs_list_test = list(os.listdir(dir_seg_val))
 
@@ -380,7 +382,7 @@ def run(_config,
                 num_patches_x = transformer_num_patches_xy[0]
                 num_patches_y = transformer_num_patches_xy[1]
                 num_patches = num_patches_x * num_patches_y
-                
+
                 if transformer_cnn_first:
                     model_builder = vit_resnet50_unet
                     multiple_of_32 = True
@@ -413,13 +415,13 @@ def run(_config,
                 model_builder.config = _config
                 model_builder.logger = _log
                 model = model_builder(num_patches)
-        
+
         assert model is not None
         #if you want to see the model structure just uncomment model summary.
         #model.summary()
-        
+
         if task in ["segmentation", "binarization"]:
-            if is_loss_soft_dice:                    
+            if is_loss_soft_dice:
                 loss = soft_dice_loss
             elif weighted_loss:
                 loss = weighted_categorical_crossentropy(weights)
@@ -434,7 +436,7 @@ def run(_config,
                                                    ignore_class=0,
                                                    sparse_y_true=False,
                                                    sparse_y_pred=False)])
-        
+
         # generating train and evaluation data
         gen_kwargs = dict(batch_size=n_batch,
                           input_height=input_height,
@@ -447,7 +449,7 @@ def run(_config,
         ##img_validation_patches = os.listdir(dir_flow_eval_imgs)
         ##score_best=[]
         ##score_best.append(0)
-        
+
         callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
                      SaveWeightsAfterSteps(0, dir_output, _config)]
         if save_interval:
@@ -471,7 +473,7 @@ def run(_config,
         #os.system('rm -rf '+dir_eval_flowing)
 
         #model.save(dir_output+'/'+'model'+'.h5')
-        
+
     elif task=="cnn-rnn-ocr":
 
         dir_img, dir_lab = get_dirs_or_files(dir_train)
@@ -480,7 +482,7 @@ def run(_config,
         labs_list = list(os.listdir(dir_lab))
         imgs_list_val = list(os.listdir(dir_img_val))
         labs_list_val = list(os.listdir(dir_lab_val))
-        
+
         with open(characters_txt_file, 'r') as char_txt_f:
             characters = json.load(char_txt_f)
         padding_token = len(characters) + 5
@@ -533,7 +535,7 @@ def run(_config,
         #tf.keras.optimizers.schedules.CosineDecay(initial_learning_rate, decay_steps, alpha)
         opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
         model.compile(optimizer=opt) # rs: loss seems to be (ctc_batch_cost) in last layer
-        
+
         callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
                      SaveWeightsAfterSteps(0, dir_output, _config)]
         if save_interval:
@@ -544,7 +546,7 @@ def run(_config,
             epochs=n_epochs,
             callbacks=callbacks,
             initial_epoch=index_start)
-        
+
     elif task=='classification':
         if continue_training:
             model = load_model(dir_of_start_model, compile=False)
@@ -573,7 +575,7 @@ def run(_config,
                                            monitor='val_f1',
                                            #save_best_only=True, # we need all for ensembling
                                            mode='max')]
-        
+
         history = model.fit(trainXY,
                             #class_weight=weights)
                             validation_data=testXY,
@@ -586,28 +588,12 @@ def run(_config,
                                             f1_threshold_classification)
         if len(usable_checkpoints) >= 1:
             _log.info("averaging over usable checkpoints: %s", str(usable_checkpoints))
-            all_weights = []
-            for epoch in usable_checkpoints:
-                cp_path = os.path.join(dir_output, 'model_{epoch:02d}'.format(epoch=epoch + 1))
-                assert os.path.isdir(cp_path), cp_path
-                model = load_model(cp_path, compile=False)
-                all_weights.append(model.get_weights())
+            usable_checkpoints = [os.path.join(dir_output, 'model_{epoch:02d}'.format(epoch=epoch + 1))
+                                  for epoch in usable_checkpoints]
+            ens_path = os.path.join(dir_output, 'model_ens_avg')
+            run_ensembling(usable_checkpoints, ens_path)
+            _log.info("ensemble model saved under '%s'", ens_path)
 
-            new_weights = []
-            for layer_weights in zip(*all_weights):
-                layer_weights = np.array([np.array(weights).mean(axis=0)
-                                          for weights in zip(*layer_weights)])
-                new_weights.append(layer_weights)
-                
-            #model = tf.keras.models.clone_model(model)
-            model.set_weights(new_weights)
-
-            cp_path = os.path.join(dir_output, 'model_ens_avg')
-            model.save(cp_path)
-            with open(os.path.join(cp_path, "config.json"), "w") as fp:
-                json.dump(_config, fp)  # encode dict into JSON
-            _log.info("ensemble model saved under '%s'", cp_path)
-            
     elif task=='reading_order':
         if continue_training:
             model = load_model(dir_of_start_model, compile=False)
@@ -618,10 +604,10 @@ def run(_config,
                                                       input_width,
                                                       weight_decay,
                                                       pretraining)
-        
+
         dir_flow_train_imgs = os.path.join(dir_train, 'images')
         dir_flow_train_labels = os.path.join(dir_train, 'labels')
-        
+
         classes = os.listdir(dir_flow_train_labels)
         if augmentation:
             num_rows = len(classes)*(len(thetha) + 1)
@@ -634,7 +620,7 @@ def run(_config,
                       #optimizer=SGD(learning_rate=0.01, momentum=0.9),
                       optimizer=Adam(learning_rate=0.0001), # rs: why not learning_rate?
                       metrics=['accuracy'])
-        
+
         callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
                      SaveWeightsAfterSteps(0, dir_output, _config)]
         if save_interval:
@@ -657,5 +643,3 @@ def run(_config,
             model_dir = os.path.join(dir_out,'model_best')
             model.save(model_dir)
         '''
-
-    

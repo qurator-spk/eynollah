@@ -33,9 +33,9 @@ from .metrics import (
     soft_dice_loss,
     weighted_categorical_crossentropy,
 )
+from.utils import scale_padd_image_for_ocr
+from ..utils.utils_ocr import decode_batch_predictions
 
-from.utils import (scale_padd_image_for_ocr)
-from eynollah.utils.utils_ocr import (decode_batch_predictions)
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
