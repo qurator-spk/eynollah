@@ -69,15 +69,8 @@ def mlp(x, hidden_units, dropout_rate):
     return x
 
 def one_side_pad(x):
-    # rs: fixme: lambda layers are problematic for de/serialization!
-    #     - can we use ZeroPadding1D instead of ZeroPadding2D+Lambda?
-    x = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(x)
-    if IMAGE_ORDERING == 'channels_first':
-        x = Lambda(lambda x: x[:, :, :-1, :-1])(x)
-    elif IMAGE_ORDERING == 'channels_last':
-        x = Lambda(lambda x: x[:, :-1, :-1, :])(x)
+    x = ZeroPadding2D(((1, 0), (1, 0)), data_format=IMAGE_ORDERING)(x)
     return x
-
 
 def identity_block(input_tensor, kernel_size, filters, stage, block):
     """The identity block is the block that has no conv layer at shortcut.
