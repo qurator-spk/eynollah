@@ -1,16 +1,19 @@
+import os
 import json
 import logging
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Type, Union
 
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 from ocrd_utils import tf_disable_interactive_logs
 tf_disable_interactive_logs()
 
-from keras.layers import StringLookup
-from keras.models import Model as KerasModel
-from keras.models import load_model
+from tensorflow.keras.layers import StringLookup
+from tensorflow.keras.models import Model as KerasModel
+from tensorflow.keras.models import load_model
 from tabulate import tabulate
+
 from ..patch_encoder import PatchEncoder, Patches
 from .specs import EynollahModelSpecSet
 from .default_specs import DEFAULT_MODEL_SPECS

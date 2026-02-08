@@ -116,19 +116,19 @@ class EynollahImageExtractor(Eynollah):
         prediction_regions_org = prediction_regions_org[page_coord[0] : page_coord[1], page_coord[2] : page_coord[3]]
         prediction_regions_org=prediction_regions_org[:,:,0]
 
-        mask_lines_only = (prediction_regions_org[:,:] ==3)*1
+        mask_seps_only = (prediction_regions_org[:,:] ==3)*1
         mask_texts_only = (prediction_regions_org[:,:] ==1)*1
         mask_images_only=(prediction_regions_org[:,:] ==2)*1
 
-        polygons_seplines, hir_seplines = return_contours_of_image(mask_lines_only)
+        polygons_seplines, hir_seplines = return_contours_of_image(mask_seps_only)
         polygons_seplines = filter_contours_area_of_image(
-            mask_lines_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001, dilate=1)
+            mask_seps_only, polygons_seplines, hir_seplines, max_area=1, min_area=0.00001, dilate=1)
 
         polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
-        polygons_of_only_lines = return_contours_of_interested_region(mask_lines_only,1,0.00001)
+        polygons_of_only_seps = return_contours_of_interested_region(mask_seps_only,1,0.00001)
 
         text_regions_p_true = np.zeros(prediction_regions_org.shape)
-        text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_lines, color=(3,3,3))
+        text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts = polygons_of_only_seps, color=(3,3,3))
 
         text_regions_p_true[:,:][mask_images_only[:,:] == 1] = 2
         text_regions_p_true = cv2.fillPoly(text_regions_p_true, pts=polygons_of_only_texts, color=(1,1,1))
@@ -255,24 +255,24 @@ class EynollahImageExtractor(Eynollah):
             self.get_regions_light_v_extract_only_images(img_res, num_col_classifier)
 
         pcgts = self.writer.build_pagexml_no_full_layout(
-            found_polygons_text_region=[],                   
-            page_coord=page_coord,                  
-            order_of_texts=[],              
-            all_found_textline_polygons=[],   
-            all_box_coord=[],                  
-            found_polygons_text_region_img=polygons_of_images,                          
-            found_polygons_marginals_left=[],                           
-            found_polygons_marginals_right=[],                            
-            all_found_textline_polygons_marginals_left=[],                                           
-            all_found_textline_polygons_marginals_right=[],                                            
-            all_box_coord_marginals_left=[],                             
-            all_box_coord_marginals_right=[],                              
-            slopes=[],                      
-            slopes_marginals_left=[],                          
-            slopes_marginals_right=[],                          
-            cont_page=cont_page,                   
-            polygons_seplines=[],                          
-            found_polygons_tables=[],                          
+            found_polygons_text_region=[],
+            page_coord=page_coord,
+            order_of_texts=[],
+            all_found_textline_polygons=[],
+            all_box_coord=[],
+            found_polygons_text_region_img=polygons_of_images,
+            found_polygons_marginals_left=[],
+            found_polygons_marginals_right=[],
+            all_found_textline_polygons_marginals_left=[],
+            all_found_textline_polygons_marginals_right=[],
+            all_box_coord_marginals_left=[],
+            all_box_coord_marginals_right=[],
+            slopes=[],
+            slopes_marginals_left=[],
+            slopes_marginals_right=[],
+            cont_page=cont_page,
+            polygons_seplines=[],
+            found_polygons_tables=[],
         )
         if self.plotter:
             self.plotter.write_images_into_directory(polygons_of_images, image_page)

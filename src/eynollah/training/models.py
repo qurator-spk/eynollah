@@ -1,9 +1,14 @@
-from tensorflow import keras
-from keras.layers import (
+import os
+
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
+import tensorflow as tf
+from tensorflow.keras.layers import (
     Activation,
     Add,
     AveragePooling2D,
     BatchNormalization,
+    Bidirectional,
+    Conv1D,
     Conv2D,
     Dense,
     Dropout,
@@ -13,30 +18,33 @@ from keras.layers import (
     Lambda,
     Layer,
     LayerNormalization,
+    LSTM,
     MaxPooling2D,
     MultiHeadAttention,
+    Reshape,
     UpSampling2D,
     ZeroPadding2D,
     add,
     concatenate
 )
-from keras.models import Model
-import tensorflow as tf
-# from keras import layers, models
-from keras.regularizers import l2
+from tensorflow.keras.models import Model
+from tensorflow.keras.regularizers import l2
 
-from eynollah.patch_encoder import Patches, PatchEncoder
+from ..patch_encoder import Patches, PatchEncoder
 
 ##mlp_head_units = [512, 256]#[2048, 1024]
 ###projection_dim = 64
 ##transformer_layers = 2#8
 ##num_heads = 1#4
-resnet50_Weights_path = './pretrained_model/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5'
+RESNET50_WEIGHTS_PATH = './pretrained_model/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5'
+RESNET50_WEIGHTS_URL = ('https://github.com/fchollet/deep-learning-models/releases/download/v0.2/'
+                        'resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5')
+
 IMAGE_ORDERING = 'channels_last'
 MERGE_AXIS = -1
 
 
-class CTCLayer(tf.keras.layers.Layer):
+class CTCLayer(Layer):
     def __init__(self, name=None):
         super().__init__(name=name)
         self.loss_fn = tf.keras.backend.ctc_batch_cost
@@ -61,13 +69,8 @@ def mlp(x, hidden_units, dropout_rate):
     return x
 
 def one_side_pad(x):
-    x = ZeroPadding2D((1, 1), data_format=IMAGE_ORDERING)(x)
-    if IMAGE_ORDERING == 'channels_first':
-        x = Lambda(lambda x: x[:, :, :-1, :-1])(x)
-    elif IMAGE_ORDERING == 'channels_last':
-        x = Lambda(lambda x: x[:, :-1, :-1, :])(x)
+    x = ZeroPadding2D(((1, 0), (1, 0)), data_format=IMAGE_ORDERING)(x)
     return x
-
 
 def identity_block(input_tensor, kernel_size, filters, stage, block):
     """The identity block is the block that has no conv layer at shortcut.
@@ -197,7 +200,7 @@ def resnet50_unet_light(n_classes, input_height=224, input_width=224, task="segm
     f5 = x
 
     if pretraining:
-        model = Model(img_input, x).load_weights(resnet50_Weights_path)
+        model = Model(img_input, x).load_weights(RESNET50_WEIGHTS_PATH)
 
     v512_2048 = Conv2D(512, (1, 1), padding='same', data_format=IMAGE_ORDERING, kernel_regularizer=l2(weight_decay))(f5)
     v512_2048 = (BatchNormalization(axis=bn_axis))(v512_2048)
@@ -298,7 +301,7 @@ def resnet50_unet(n_classes, input_height=224, input_width=224, task="segmentati
     f5 = x
 
     if pretraining:
-        Model(img_input, x).load_weights(resnet50_Weights_path)
+        Model(img_input, x).load_weights(RESNET50_WEIGHTS_PATH)
 
     v1024_2048 = Conv2D(1024, (1, 1), padding='same', data_format=IMAGE_ORDERING, kernel_regularizer=l2(weight_decay))(
         f5)
@@ -352,9 +355,21 @@ def resnet50_unet(n_classes, input_height=224, input_width=224, task="segmentati
     return model
 
 
-def vit_resnet50_unet(n_classes, patch_size_x, patch_size_y, num_patches, mlp_head_units=None, transformer_layers=8, num_heads =4, projection_dim = 64, input_height=224, input_width=224, task="segmentation", weight_decay=1e-6, pretraining=False):
-    if mlp_head_units is None:
-        mlp_head_units = [128, 64]
+def vit_resnet50_unet(num_patches,
+                      n_classes,
+                      transformer_patchsize_x,
+                      transformer_patchsize_y,
+                      transformer_mlp_head_units=None,
+                      transformer_layers=8,
+                      transformer_num_heads=4,
+                      transformer_projection_dim=64,
+                      input_height=224,
+                      input_width=224,
+                      task="segmentation",
+                      weight_decay=1e-6,
+                      pretraining=False):
+    if transformer_mlp_head_units is None:
+        transformer_mlp_head_units = [128, 64]
     inputs = Input(shape=(input_height, input_width, 3))
     
     #transformer_units = [
@@ -397,35 +412,34 @@ def vit_resnet50_unet(n_classes, patch_size_x, patch_size_y, num_patches, mlp_he
     f5 = x 
     
     if pretraining:
-        model = Model(inputs, x).load_weights(resnet50_Weights_path)
+        model = Model(inputs, x).load_weights(RESNET50_WEIGHTS_PATH)
 
     #num_patches = x.shape[1]*x.shape[2]
-    
-    #patch_size_y = input_height / x.shape[1]
-    #patch_size_x = input_width / x.shape[2]
-    #patch_size = patch_size_x * patch_size_y
-    patches = Patches(patch_size_x, patch_size_y)(x)
+
+    patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(inputs)
     # Encode patches.
-    encoded_patches = PatchEncoder(num_patches, projection_dim)(patches)
+    encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
     
     for _ in range(transformer_layers):
         # Layer normalization 1.
         x1 = LayerNormalization(epsilon=1e-6)(encoded_patches)
         # Create a multi-head attention layer.
         attention_output = MultiHeadAttention(
-            num_heads=num_heads, key_dim=projection_dim, dropout=0.1
+            num_heads=transformer_num_heads, key_dim=transformer_projection_dim, dropout=0.1
         )(x1, x1)
         # Skip connection 1.
         x2 = Add()([attention_output, encoded_patches])
         # Layer normalization 2.
         x3 = LayerNormalization(epsilon=1e-6)(x2)
         # MLP.
-        x3 = mlp(x3, hidden_units=mlp_head_units, dropout_rate=0.1)
+        x3 = mlp(x3, hidden_units=transformer_mlp_head_units, dropout_rate=0.1)
         # Skip connection 2.
         encoded_patches = Add()([x3, x2])
     
-    assert isinstance(x, Layer)
-    encoded_patches = tf.reshape(encoded_patches, [-1, x.shape[1], x.shape[2] , int( projection_dim / (patch_size_x * patch_size_y) )])
+    encoded_patches = tf.reshape(encoded_patches,
+                                 [-1, x.shape[1], x.shape[2],
+                                  transformer_projection_dim // (transformer_patchsize_x *
+                                                                 transformer_patchsize_y)])
 
     v1024_2048 = Conv2D( 1024 , (1, 1), padding='same', data_format=IMAGE_ORDERING,kernel_regularizer=l2(weight_decay))(encoded_patches)
     v1024_2048 = (BatchNormalization(axis=bn_axis))(v1024_2048)
@@ -477,9 +491,21 @@ def vit_resnet50_unet(n_classes, patch_size_x, patch_size_y, num_patches, mlp_he
     
     return model
 
-def vit_resnet50_unet_transformer_before_cnn(n_classes, patch_size_x, patch_size_y, num_patches, mlp_head_units=None, transformer_layers=8, num_heads =4, projection_dim = 64, input_height=224, input_width=224, task="segmentation", weight_decay=1e-6, pretraining=False):
-    if mlp_head_units is None:
-        mlp_head_units = [128, 64]
+def vit_resnet50_unet_transformer_before_cnn(num_patches,
+                                             n_classes,
+                                             transformer_patchsize_x,
+                                             transformer_patchsize_y,
+                                             transformer_mlp_head_units=None,
+                                             transformer_layers=8,
+                                             transformer_num_heads=4,
+                                             transformer_projection_dim=64,
+                                             input_height=224,
+                                             input_width=224,
+                                             task="segmentation",
+                                             weight_decay=1e-6,
+                                             pretraining=False):
+    if transformer_mlp_head_units is None:
+        transformer_mlp_head_units = [128, 64]
     inputs = Input(shape=(input_height, input_width, 3))
     
     ##transformer_units = [
@@ -489,27 +515,32 @@ def vit_resnet50_unet_transformer_before_cnn(n_classes, patch_size_x, patch_size
     IMAGE_ORDERING = 'channels_last'
     bn_axis=3
     
-    patches = Patches(patch_size_x, patch_size_y)(inputs)
+    patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(inputs)
     # Encode patches.
-    encoded_patches = PatchEncoder(num_patches, projection_dim)(patches)
+    encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
     
     for _ in range(transformer_layers):
         # Layer normalization 1.
         x1 = LayerNormalization(epsilon=1e-6)(encoded_patches)
         # Create a multi-head attention layer.
         attention_output = MultiHeadAttention(
-            num_heads=num_heads, key_dim=projection_dim, dropout=0.1
+            num_heads=transformer_num_heads, key_dim=transformer_projection_dim, dropout=0.1
         )(x1, x1)
         # Skip connection 1.
         x2 = Add()([attention_output, encoded_patches])
         # Layer normalization 2.
         x3 = LayerNormalization(epsilon=1e-6)(x2)
         # MLP.
-        x3 = mlp(x3, hidden_units=mlp_head_units, dropout_rate=0.1)
+        x3 = mlp(x3, hidden_units=transformer_mlp_head_units, dropout_rate=0.1)
         # Skip connection 2.
         encoded_patches = Add()([x3, x2])
     
-    encoded_patches = tf.reshape(encoded_patches, [-1, input_height, input_width , int( projection_dim / (patch_size_x * patch_size_y) )])
+    encoded_patches = tf.reshape(encoded_patches,
+                                 [-1,
+                                  input_height,
+                                  input_width,
+                                  transformer_projection_dim // (transformer_patchsize_x *
+                                                                 transformer_patchsize_y)])
     
     encoded_patches = Conv2D(3, (1, 1), padding='same', data_format=IMAGE_ORDERING, kernel_regularizer=l2(weight_decay), name='convinput')(encoded_patches)
     
@@ -546,7 +577,7 @@ def vit_resnet50_unet_transformer_before_cnn(n_classes, patch_size_x, patch_size
     f5 = x 
     
     if pretraining:
-        model = Model(encoded_patches, x).load_weights(resnet50_Weights_path)
+        model = Model(encoded_patches, x).load_weights(RESNET50_WEIGHTS_PATH)
 
     v1024_2048 = Conv2D( 1024 , (1, 1), padding='same', data_format=IMAGE_ORDERING,kernel_regularizer=l2(weight_decay))(x)
     v1024_2048 = (BatchNormalization(axis=bn_axis))(v1024_2048)
@@ -646,7 +677,7 @@ def resnet50_classifier(n_classes,input_height=224,input_width=224,weight_decay=
     f5 = x 
 
     if pretraining:
-        Model(img_input, x).load_weights(resnet50_Weights_path)
+        Model(img_input, x).load_weights(RESNET50_WEIGHTS_PATH)
 
     x = AveragePooling2D((7, 7), name='avg_pool')(x)
     x = Flatten()(x)
@@ -658,9 +689,6 @@ def resnet50_classifier(n_classes,input_height=224,input_width=224,weight_decay=
     x = Dense(n_classes, activation='softmax', name='fc1000')(x)
     model = Model(img_input, x)
     
-    
-
-
     return model
 
 def machine_based_reading_order_model(n_classes,input_height=224,input_width=224,weight_decay=1e-6,pretraining=False):
@@ -702,7 +730,7 @@ def machine_based_reading_order_model(n_classes,input_height=224,input_width=224
     x1 = identity_block(x1, 3, [512, 512, 2048], stage=5, block='c')
     
     if pretraining:
-        Model(img_input , x1).load_weights(resnet50_Weights_path)
+        Model(img_input , x1).load_weights(RESNET50_WEIGHTS_PATH)
     
     x1 = AveragePooling2D((7, 7), name='avg_pool1')(x1)
     flattened = Flatten()(x1)
@@ -719,83 +747,79 @@ def machine_based_reading_order_model(n_classes,input_height=224,input_width=224
     return model
 
 def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_seq=None):
-    input_img = tf.keras.Input(shape=(image_height, image_width, 3), name="image")
-    labels = tf.keras.layers.Input(name="label", shape=(None,))
+    input_img = Input(shape=(image_height, image_width, 3), name="image")
+    labels = Input(name="label", shape=(None,))
 
-    x = tf.keras.layers.Conv2D(64,kernel_size=(3,3),padding="same")(input_img)
-    x = tf.keras.layers.BatchNormalization(name="bn1")(x)
-    x = tf.keras.layers.Activation("relu", name="relu1")(x)
-    x = tf.keras.layers.Conv2D(64,kernel_size=(3,3),padding="same")(x)
-    x = tf.keras.layers.BatchNormalization(name="bn2")(x)
-    x = tf.keras.layers.Activation("relu", name="relu2")(x)
-    x = tf.keras.layers.MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+    x = Conv2D(64,kernel_size=(3,3),padding="same")(input_img)
+    x = BatchNormalization(name="bn1")(x)
+    x = Activation("relu", name="relu1")(x)
+    x = Conv2D(64,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn2")(x)
+    x = Activation("relu", name="relu2")(x)
+    x = MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
 
-    x = tf.keras.layers.Conv2D(128,kernel_size=(3,3),padding="same")(x)
-    x = tf.keras.layers.BatchNormalization(name="bn3")(x)
-    x = tf.keras.layers.Activation("relu", name="relu3")(x)
-    x = tf.keras.layers.Conv2D(128,kernel_size=(3,3),padding="same")(x)
-    x = tf.keras.layers.BatchNormalization(name="bn4")(x)
-    x = tf.keras.layers.Activation("relu", name="relu4")(x)
-    x = tf.keras.layers.MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+    x = Conv2D(128,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn3")(x)
+    x = Activation("relu", name="relu3")(x)
+    x = Conv2D(128,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn4")(x)
+    x = Activation("relu", name="relu4")(x)
+    x = MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
 
-    x = tf.keras.layers.Conv2D(256,kernel_size=(3,3),padding="same")(x)
-    x = tf.keras.layers.BatchNormalization(name="bn5")(x)
-    x = tf.keras.layers.Activation("relu", name="relu5")(x)
-    x = tf.keras.layers.Conv2D(256,kernel_size=(3,3),padding="same")(x)
-    x = tf.keras.layers.BatchNormalization(name="bn6")(x)
-    x = tf.keras.layers.Activation("relu", name="relu6")(x)
-    x = tf.keras.layers.MaxPool2D(pool_size=(2,2),strides=(2,2))(x)
+    x = Conv2D(256,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn5")(x)
+    x = Activation("relu", name="relu5")(x)
+    x = Conv2D(256,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn6")(x)
+    x = Activation("relu", name="relu6")(x)
+    x = MaxPool2D(pool_size=(2,2),strides=(2,2))(x)
 
-    x = tf.keras.layers.Conv2D(image_width,kernel_size=(3,3),padding="same")(x)
-    x = tf.keras.layers.BatchNormalization(name="bn7")(x)
-    x = tf.keras.layers.Activation("relu", name="relu7")(x)
-    x = tf.keras.layers.Conv2D(image_width,kernel_size=(16,1))(x)
-    x = tf.keras.layers.BatchNormalization(name="bn8")(x)
-    x = tf.keras.layers.Activation("relu", name="relu8")(x)
-    x2d = tf.keras.layers.MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
-    x4d = tf.keras.layers.MaxPool2D(pool_size=(1,2),strides=(1,2))(x2d)
+    x = Conv2D(image_width,kernel_size=(3,3),padding="same")(x)
+    x = BatchNormalization(name="bn7")(x)
+    x = Activation("relu", name="relu7")(x)
+    x = Conv2D(image_width,kernel_size=(16,1))(x)
+    x = BatchNormalization(name="bn8")(x)
+    x = Activation("relu", name="relu8")(x)
+    x2d = MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+    x4d = MaxPool2D(pool_size=(1,2),strides=(1,2))(x2d)
     
 
     new_shape = (x.shape[1]*x.shape[2], x.shape[3])
     new_shape2 = (x2d.shape[1]*x2d.shape[2], x2d.shape[3])
     new_shape4 = (x4d.shape[1]*x4d.shape[2], x4d.shape[3])
     
-    x = tf.keras.layers.Reshape(target_shape=new_shape, name="reshape")(x)
-    x2d = tf.keras.layers.Reshape(target_shape=new_shape2, name="reshape2")(x2d)
-    x4d = tf.keras.layers.Reshape(target_shape=new_shape4, name="reshape4")(x4d)
+    x = Reshape(target_shape=new_shape, name="reshape")(x)
+    x2d = Reshape(target_shape=new_shape2, name="reshape2")(x2d)
+    x4d = Reshape(target_shape=new_shape4, name="reshape4")(x4d)
+    
+    xrnnorg = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x)
+    xrnn2d = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x2d)
+    xrnn4d = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x4d)
+    
+    xrnn2d = Reshape(target_shape=(1, xrnn2d.shape[1], xrnn2d.shape[2]), name="reshape6")(xrnn2d)
+    xrnn4d = Reshape(target_shape=(1, xrnn4d.shape[1], xrnn4d.shape[2]), name="reshape8")(xrnn4d)
     
 
-    xrnnorg = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(image_width, return_sequences=True, dropout=0.25))(x)
-    xrnn2d = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(image_width, return_sequences=True, dropout=0.25))(x2d)
-    xrnn4d = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(image_width, return_sequences=True, dropout=0.25))(x4d)
+    xrnn2dup = UpSampling2D(size=(1, 2), interpolation="nearest")(xrnn2d)
+    xrnn4dup = UpSampling2D(size=(1, 4), interpolation="nearest")(xrnn4d)
     
-    xrnn2d = tf.keras.layers.Reshape(target_shape=(1, xrnn2d.shape[1], xrnn2d.shape[2]), name="reshape6")(xrnn2d)
-    xrnn4d = tf.keras.layers.Reshape(target_shape=(1, xrnn4d.shape[1], xrnn4d.shape[2]), name="reshape8")(xrnn4d)
-    
+    xrnn2dup = Reshape(target_shape=(xrnn2dup.shape[2], xrnn2dup.shape[3]), name="reshape10")(xrnn2dup)
+    xrnn4dup = Reshape(target_shape=(xrnn4dup.shape[2], xrnn4dup.shape[3]), name="reshape12")(xrnn4dup)
 
-    xrnn2dup = tf.keras.layers.UpSampling2D(size=(1, 2), interpolation="nearest")(xrnn2d)
-    xrnn4dup = tf.keras.layers.UpSampling2D(size=(1, 4), interpolation="nearest")(xrnn4d)
+    addition = Add()([xrnnorg, xrnn2dup, xrnn4dup])
     
-    xrnn2dup = tf.keras.layers.Reshape(target_shape=(xrnn2dup.shape[2], xrnn2dup.shape[3]), name="reshape10")(xrnn2dup)
-    xrnn4dup = tf.keras.layers.Reshape(target_shape=(xrnn4dup.shape[2], xrnn4dup.shape[3]), name="reshape12")(xrnn4dup)
+    addition_rnn = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(addition)
+    
+    out = Conv1D(max_seq, 1, data_format="channels_first")(addition_rnn)
+    out = BatchNormalization(name="bn9")(out)
+    out = Activation("relu", name="relu9")(out)
+    #out = Conv1D(n_classes, 1, activation='relu', data_format="channels_last")(out)
 
-    addition = tf.keras.layers.Add()([xrnnorg, xrnn2dup, xrnn4dup])
-    
-    addition_rnn = tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(image_width, return_sequences=True, dropout=0.25))(addition)
-    
-    out = tf.keras.layers.Conv1D(max_seq, 1, data_format="channels_first")(addition_rnn)
-    out = tf.keras.layers.BatchNormalization(name="bn9")(out)
-    out = tf.keras.layers.Activation("relu", name="relu9")(out)
-    #out = tf.keras.layers.Conv1D(n_classes, 1, activation='relu', data_format="channels_last")(out)
-
-    out = tf.keras.layers.Dense(
-        n_classes, activation="softmax", name="dense2"
-    )(out)
+    out = Dense(n_classes, activation="softmax", name="dense2")(out)
 
     # Add CTC layer for calculating CTC loss at each step.
     output = CTCLayer(name="ctc_loss")(labels, out)
     
-    model = tf.keras.models.Model(inputs=[input_img, labels], outputs=output, name="handwriting_recognizer")
+    model = Model(inputs=[input_img, labels], outputs=output, name="handwriting_recognizer")
 
     return model
-    
