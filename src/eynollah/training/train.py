@@ -13,6 +13,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.layers import StringLookup
 from tensorflow.keras.utils import image_dataset_from_directory
+from tensorflow.keras.backend import one_hot
 from sacred import Experiment
 from sacred.config import create_captured_function
 
@@ -36,7 +37,6 @@ from .models import (
     RESNET50_WEIGHTS_URL
 )
 from .utils import (
-    data_gen,
     generate_arrays_from_folder_reading_order,
     get_one_hot,
     preprocess_imgs,
@@ -435,42 +435,45 @@ def run(_config,
                                                    sparse_y_true=False,
                                                    sparse_y_pred=False)])
 
-        # generating train and evaluation data
-        gen_kwargs = dict(batch_size=n_batch,
-                          input_height=input_height,
-                          input_width=input_width,
-                          n_classes=n_classes,
-                          task=task)
-        train_gen = data_gen(dir_flow_train_imgs, dir_flow_train_labels, **gen_kwargs)
-        val_gen = data_gen(dir_flow_eval_imgs, dir_flow_eval_labels, **gen_kwargs)
-
-        ##img_validation_patches = os.listdir(dir_flow_eval_imgs)
-        ##score_best=[]
-        ##score_best.append(0)
+        def get_dataset(dir_imgs, dir_labs, shuffle=None):
+            gen_kwargs = dict(labels=None,
+                              label_mode=None,
+                              batch_size=1, # batch after zip below
+                              image_size=(input_height, input_width),
+                              color_mode='rgb',
+                              shuffle=shuffle is not None,
+                              seed=shuffle,
+                              interpolation='nearest',
+                              crop_to_aspect_ratio=False,
+                              # Keras 3 only...
+                              #pad_to_aspect_ratio=False,
+                              #data_format='channel_last',
+                              #verbose=False,
+            )
+            img_gen = image_dataset_from_directory(dir_imgs, **gen_kwargs)
+            lab_gen = image_dataset_from_directory(dir_labs, **gen_kwargs)
+            if task in ["segmentation", "binarization"]:
+                @tf.function
+                def to_categorical(seg):
+                    seg = tf.image.rgb_to_grayscale(seg)
+                    seg = tf.cast(seg, tf.int8)
+                    seg = tf.squeeze(seg, axis=-1)
+                    return one_hot(seg, n_classes)
+                lab_gen = lab_gen.map(to_categorical)
+            return tf.data.Dataset.zip(img_gen, lab_gen).rebatch(n_batch, drop_remainder=True)
+        train_gen = get_dataset(dir_flow_train_imgs, dir_flow_train_labels, shuffle=np.random.randint(1e6))
+        val_gen = get_dataset(dir_flow_eval_imgs, dir_flow_eval_labels)
 
         callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
                      SaveWeightsAfterSteps(0, dir_output, _config)]
         if save_interval:
             callbacks.append(SaveWeightsAfterSteps(save_interval, dir_output, _config))
-
-        steps_train = len(os.listdir(dir_flow_train_imgs)) // n_batch # - 1
-        steps_val = len(os.listdir(dir_flow_eval_imgs)) // n_batch
-        _log.info("training on %d batches in %d epochs", steps_train, n_epochs)
-        _log.info("validating on %d batches", steps_val)
         model.fit(
-            train_gen,
-            steps_per_epoch=steps_train,
-            validation_data=val_gen,
-            #validation_steps=1, # rs: only one batch??
-            validation_steps=steps_val,
+            train_gen.prefetch(tf.data.AUTOTUNE), # .repeat()??
+            validation_data=val_gen.prefetch(tf.data.AUTOTUNE),
             epochs=n_epochs,
             callbacks=callbacks,
             initial_epoch=index_start)
-
-        #os.system('rm -rf '+dir_train_flowing)
-        #os.system('rm -rf '+dir_eval_flowing)
-
-        #model.save(dir_output+'/'+'model'+'.h5')
 
     elif task=="cnn-rnn-ocr":
 
@@ -524,7 +527,7 @@ def run(_config,
                                          drop_remainder=True,
                                          #num_parallel_calls=tf.data.AUTOTUNE,
         )
-        train_ds = train_ds.repeat().shuffle().prefetch(20)
+        train_ds = train_ds.prefetch(tf.data.AUTOTUNE)
 
         #initial_learning_rate = 1e-4
         #decay_steps = int (n_epochs * ( len_dataset / n_batch ))
