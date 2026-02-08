@@ -443,7 +443,6 @@ def vit_resnet50_unet(num_patches,
         # Skip connection 2.
         encoded_patches = Add()([x3, x2])
     
-    assert isinstance(x, Layer)
     encoded_patches = tf.reshape(encoded_patches,
                                  [-1, x.shape[1], x.shape[2],
                                   transformer_projection_dim // (transformer_patchsize_x *
