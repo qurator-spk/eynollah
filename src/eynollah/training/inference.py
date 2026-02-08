@@ -25,7 +25,7 @@ from .gt_gen_utils import (
     resize_image,
     update_list_and_return_first_with_length_bigger_than_one
 )
-from .models import (
+from ..patch_encoder import (
     PatchEncoder,
     Patches
 )
