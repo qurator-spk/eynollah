@@ -30,7 +30,7 @@ from tensorflow.keras.layers import (
 from tensorflow.keras.models import Model
 from tensorflow.keras.regularizers import l2
 
-from eynollah.patch_encoder import Patches, PatchEncoder
+from ..patch_encoder import Patches, PatchEncoder
 
 ##mlp_head_units = [512, 256]#[2048, 1024]
 ###projection_dim = 64

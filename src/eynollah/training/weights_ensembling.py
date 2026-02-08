@@ -12,7 +12,7 @@ tf_disable_interactive_logs()
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 
-from .models import (
+from ..patch_encoder import (
     PatchEncoder,
     Patches,
 )
