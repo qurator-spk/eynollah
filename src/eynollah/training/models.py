@@ -423,16 +423,9 @@ def vit_resnet50_unet(num_patches,
 
     #num_patches = x.shape[1]*x.shape[2]
 
-    # rs: fixme patch size not configurable anymore...
-    #patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(inputs)
-    patches = Patches()(x)
-    assert transformer_patchsize_x == transformer_patchsize_y == 1
+    patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(inputs)
     # Encode patches.
-    # rs: fixme num patches and dim not configurable anymore...
-    #encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
-    encoded_patches = PatchEncoder()(patches)
-    assert num_patches == 21 * 21
-    assert transformer_projection_dim == 64
+    encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
     
     for _ in range(transformer_layers):
         # Layer normalization 1.
@@ -530,16 +523,9 @@ def vit_resnet50_unet_transformer_before_cnn(num_patches,
     IMAGE_ORDERING = 'channels_last'
     bn_axis=3
     
-    # rs: fixme patch size not configurable anymore...
-    #patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(inputs)
-    patches = Patches()(inputs)
-    assert transformer_patchsize_x == transformer_patchsize_y == 1
+    patches = Patches(transformer_patchsize_x, transformer_patchsize_y)(inputs)
     # Encode patches.
-    # rs: fixme num patches and dim not configurable anymore...
-    #encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
-    encoded_patches = PatchEncoder()(patches)
-    assert num_patches == 21 * 21
-    assert transformer_projection_dim == 64
+    encoded_patches = PatchEncoder(num_patches, transformer_projection_dim)(patches)
     
     for _ in range(transformer_layers):
         # Layer normalization 1.
