@@ -50,6 +50,18 @@ from ..utils import is_image_filename
     is_flag=True,
     help="if this parameter set to true, cropped textline images will not be masked with textline contour.",
 )
+@click.option(
+    "--exclude_vertical_lines",
+    "-exv",
+    is_flag=True,
+    help="if this parameter set to true, vertical textline images will be excluded.",
+)
+@click.option(
+    "--page_alto",
+    "-alto",
+    is_flag=True,
+    help="If this parameter is set to True, text line image cropping and text extraction are performed using PAGE/ALTO files. Otherwise, the default method for PAGE XML files is used.",
+)
 def linegt_cli(
     image,
     dir_in,
@@ -57,6 +69,8 @@ def linegt_cli(
     dir_out,
     pref_of_dataset,
     do_not_mask_with_textline_contour,
+    exclude_vertical_lines,
+    page_alto,
 ):
     assert bool(dir_in) ^ bool(image), "Set --dir-in or --image-filename, not both"
     if dir_in:
@@ -70,65 +84,149 @@ def linegt_cli(
     for dir_img in ls_imgs:
         file_name = Path(dir_img).stem
         dir_xml = os.path.join(dir_xmls, file_name + '.xml')
-
         img = cv2.imread(dir_img)
+        
+        if page_alto:
+            h, w = img.shape[:2]
+            
+            tree = ET.parse(dir_xml)
+            root = tree.getroot()
 
-        total_bb_coordinates = []
+            NS = {"alto": "http://www.loc.gov/standards/alto/ns-v4#"}
 
-        tree1 = ET.parse(dir_xml, parser=ET.XMLParser(encoding="utf-8"))
-        root1 = tree1.getroot()
-        alltags = [elem.tag for elem in root1.iter()]
+            results = []
+            
+            indexer_textlines = 0
+            for line in root.findall(".//alto:TextLine", NS):
+                string_el = line.find("alto:String", NS)
+                textline_text = string_el.attrib["CONTENT"] if string_el is not None else None
 
-        name_space = alltags[0].split('}')[0]
-        name_space = name_space.split('{')[1]
+                polygon_el = line.find("alto:Shape/alto:Polygon", NS)
+                if polygon_el is None:
+                    continue
 
-        region_tags = np.unique([x for x in alltags if x.endswith('TextRegion')])
+                points = polygon_el.attrib["POINTS"].split()
+                coords = [
+                    (int(points[i]), int(points[i + 1]))
+                    for i in range(0, len(points), 2)
+                ]
+                
+                coords = np.array(coords, dtype=np.int32)
+                x, y, w, h = cv2.boundingRect(coords)
+                
+                
+                if exclude_vertical_lines and h > 2 * w:
+                    img_crop = None
+                    continue
+                
+                img_poly_on_img = np.copy(img)
 
-        cropped_lines_region_indexer = []
+                mask_poly = np.zeros(img.shape)
+                mask_poly = cv2.fillPoly(mask_poly, pts=[coords], color=(1, 1, 1))
 
-        indexer_text_region = 0
-        indexer_textlines = 0
-        # FIXME: non recursive, use OCR-D PAGE generateDS API. Or use an existing tool for this purpose altogether
-        for nn in root1.iter(region_tags):
-            for child_textregion in nn:
-                if child_textregion.tag.endswith("TextLine"):
-                    for child_textlines in child_textregion:
-                        if child_textlines.tag.endswith("Coords"):
-                            cropped_lines_region_indexer.append(indexer_text_region)
-                            p_h = child_textlines.attrib['points'].split(' ')
-                            textline_coords = np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h])
+                mask_poly = mask_poly[y : y + h, x : x + w, :]
+                img_crop = img_poly_on_img[y : y + h, x : x + w, :]
 
-                            x, y, w, h = cv2.boundingRect(textline_coords)
+                if not do_not_mask_with_textline_contour:
+                    img_crop[mask_poly == 0] = 255
 
-                            total_bb_coordinates.append([x, y, w, h])
+                if img_crop.shape[0] == 0 or img_crop.shape[1] == 0:
+                    img_crop = None
+                    continue
+                
+                if textline_text and img_crop is not None:
+                    base_name = os.path.join(
+                        dir_out, file_name + '_line_' + str(indexer_textlines)
+                    )
+                    if pref_of_dataset:
+                        base_name += '_' + pref_of_dataset
+                    if not do_not_mask_with_textline_contour:
+                        base_name += '_masked'
 
-                            img_poly_on_img = np.copy(img)
+                    with open(base_name + '.txt', 'w') as text_file:
+                        text_file.write(textline_text)
+                    cv2.imwrite(base_name + '.png', img_crop)
+                    indexer_textlines += 1
+                
+                
 
-                            mask_poly = np.zeros(img.shape)
-                            mask_poly = cv2.fillPoly(mask_poly, pts=[textline_coords], color=(1, 1, 1))
 
-                            mask_poly = mask_poly[y : y + h, x : x + w, :]
-                            img_crop = img_poly_on_img[y : y + h, x : x + w, :]
 
-                            if not do_not_mask_with_textline_contour:
-                                img_crop[mask_poly == 0] = 255
 
-                            if img_crop.shape[0] == 0 or img_crop.shape[1] == 0:
-                                continue
-                        if child_textlines.tag.endswith("TextEquiv"):
-                            for cheild_text in child_textlines:
-                                if cheild_text.tag.endswith("Unicode"):
-                                    textline_text = cheild_text.text
-                                    if textline_text:
-                                        base_name = os.path.join(
-                                            dir_out, file_name + '_line_' + str(indexer_textlines)
-                                        )
-                                        if pref_of_dataset:
-                                            base_name += '_' + pref_of_dataset
-                                        if not do_not_mask_with_textline_contour:
-                                            base_name += '_masked'
+            
 
-                                        with open(base_name + '.txt', 'w') as text_file:
-                                            text_file.write(textline_text)
-                                        cv2.imwrite(base_name + '.png', img_crop)
-                                    indexer_textlines += 1
+            
+
+            
+
+            
+
+
+            
+        else:
+            total_bb_coordinates = []
+
+            tree = ET.parse(dir_xml, parser=ET.XMLParser(encoding="utf-8"))
+            root = tree.getroot()
+            alltags = [elem.tag for elem in root.iter()]
+
+            name_space = alltags[0].split('}')[0]
+            name_space = name_space.split('{')[1]
+
+            region_tags = np.unique([x for x in alltags if x.endswith('TextRegion')])
+
+            cropped_lines_region_indexer = []
+
+            indexer_text_region = 0
+            indexer_textlines = 0
+            # FIXME: non recursive, use OCR-D PAGE generateDS API. Or use an existing tool for this purpose altogether
+            for nn in root.iter(region_tags):
+                for child_textregion in nn:
+                    if child_textregion.tag.endswith("TextLine"):
+                        for child_textlines in child_textregion:
+                            if child_textlines.tag.endswith("Coords"):
+                                cropped_lines_region_indexer.append(indexer_text_region)
+                                p_h = child_textlines.attrib['points'].split(' ')
+                                textline_coords = np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h])
+
+                                x, y, w, h = cv2.boundingRect(textline_coords)
+                                
+                                if exclude_vertical_lines and h > 2 * w:
+                                    img_crop = None
+                                    continue
+
+                                total_bb_coordinates.append([x, y, w, h])
+
+                                img_poly_on_img = np.copy(img)
+
+                                mask_poly = np.zeros(img.shape)
+                                mask_poly = cv2.fillPoly(mask_poly, pts=[textline_coords], color=(1, 1, 1))
+
+                                mask_poly = mask_poly[y : y + h, x : x + w, :]
+                                img_crop = img_poly_on_img[y : y + h, x : x + w, :]
+
+                                if not do_not_mask_with_textline_contour:
+                                    img_crop[mask_poly == 0] = 255
+
+                                if img_crop.shape[0] == 0 or img_crop.shape[1] == 0:
+                                    img_crop = None
+                                    continue
+                            
+                            
+                            if child_textlines.tag.endswith("TextEquiv"):
+                                for cheild_text in child_textlines:
+                                    if cheild_text.tag.endswith("Unicode"):
+                                        textline_text = cheild_text.text
+                                        if textline_text and img_crop is not None:
+                                            base_name = os.path.join(
+                                                dir_out, file_name + '_line_' + str(indexer_textlines)
+                                            )
+                                            if pref_of_dataset:
+                                                base_name += '_' + pref_of_dataset
+                                            if not do_not_mask_with_textline_contour:
+                                                base_name += '_masked'
+
+                                            with open(base_name + '.txt', 'w') as text_file:
+                                                text_file.write(textline_text)
+                                            cv2.imwrite(base_name + '.png', img_crop)
+                                            indexer_textlines += 1
