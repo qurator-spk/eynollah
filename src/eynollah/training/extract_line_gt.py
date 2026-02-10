@@ -115,7 +115,7 @@ def linegt_cli(
                 x, y, w, h = cv2.boundingRect(coords)
                 
                 
-                if exclude_vertical_lines and h > 2 * w:
+                if exclude_vertical_lines and h > 1.4 * w:
                     img_crop = None
                     continue
                 
@@ -191,7 +191,7 @@ def linegt_cli(
 
                                 x, y, w, h = cv2.boundingRect(textline_coords)
                                 
-                                if exclude_vertical_lines and h > 2 * w:
+                                if exclude_vertical_lines and h > 1.4 * w:
                                     img_crop = None
                                     continue
 
