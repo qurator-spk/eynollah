@@ -9,8 +9,8 @@ from scipy.ndimage.interpolation import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
 from tqdm import tqdm
 import imutils
-##import tensorflow as tf
-##from tensorflow.keras.utils import to_categorical
+import tensorflow as tf
+from tensorflow.keras.utils import to_categorical
 from PIL import Image, ImageFile, ImageEnhance
 
 import torch
