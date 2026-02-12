@@ -12,7 +12,7 @@ from keras.models import Model, load_model
 from keras import backend as K
 import click
 from tensorflow.python.keras import backend as tensorflow_backend
-from tensorflow.python.keras.layers import StringLookup
+from tensorflow.keras.layers import StringLookup
 import xml.etree.ElementTree as ET
 
 from .gt_gen_utils import (
