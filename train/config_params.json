@@ -1,17 +1,17 @@
 {
     "backbone_type" : "transformer",
-    "task": "cnn-rnn-ocr",
+    "task": "transformer-ocr",
     "n_classes" : 2,
-    "max_len": 280,
-    "n_epochs" : 3,
+    "max_len": 192,
+    "n_epochs" : 1,
     "input_height" : 32,
     "input_width" : 512,
     "weight_decay" : 1e-6,
-    "n_batch" : 4,
+    "n_batch" : 1,
     "learning_rate": 1e-5,
     "save_interval": 1500,
     "patches" : false,
-    "pretraining" : true,
+    "pretraining" : false,
     "augmentation" : true,
     "flip_aug" : false,
     "blur_aug" : true,
@@ -77,7 +77,6 @@
     "dir_output": "/home/vahid/extracted_lines/1919_bin/output",
     "dir_rgb_backgrounds": "/home/vahid/Documents/1_2_test_eynollah/set_rgb_background",
     "dir_rgb_foregrounds": "/home/vahid/Documents/1_2_test_eynollah/out_set_rgb_foreground",
-    "dir_img_bin": "/home/vahid/extracted_lines/1919_bin/images_bin",
-    "characters_txt_file":"/home/vahid/Downloads/models_eynollah/model_eynollah_ocr_cnnrnn_20250930/characters_org.txt"
+    "dir_img_bin": "/home/vahid/extracted_lines/1919_bin/images_bin"
     
 }

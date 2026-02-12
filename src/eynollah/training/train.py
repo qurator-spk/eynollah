@@ -1,7 +1,8 @@
 import os
 import sys
 import json
-
+import numpy as np
+import cv2
 import click
 
 from eynollah.training.metrics import (
@@ -27,7 +28,8 @@ from eynollah.training.utils import (
     generate_data_from_folder_training,
     get_one_hot,
     provide_patches,
-    return_number_of_total_training_data
+    return_number_of_total_training_data,
+    OCRDatasetYieldAugmentations
 )
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
@@ -41,8 +43,13 @@ from sklearn.metrics import f1_score
 from tensorflow.keras.callbacks import Callback
 from tensorflow.keras.layers import StringLookup
 
-import numpy as np
-import cv2
+
+import torch
+from transformers import TrOCRProcessor
+import evaluate
+from transformers import default_data_collator
+from transformers import VisionEncoderDecoderModel
+from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 
 class SaveWeightsAfterSteps(Callback):
     def __init__(self, save_interval, save_path, _config):
@@ -558,6 +565,121 @@ def run(
                 model.save( os.path.join(dir_output,'model_'+str(i) ))
                 with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config.json"), "w") as fp:
                     json.dump(_config, fp)  # encode dict into JSON
+        
+        
+    elif task=="transformer-ocr":
+        dir_img, dir_lab = get_dirs_or_files(dir_train)
+        
+        processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
+        
+        ls_files_images = os.listdir(dir_img)
+        
+        aug_multip = return_multiplier_based_on_augmnentations(augmentation, color_padding_rotation, rotation_not_90, blur_aug, degrading, bin_deg,
+                                                  brightening, padding_white, adding_rgb_foreground, adding_rgb_background, binarization,
+                                                  image_inversion, channels_shuffling, add_red_textlines, white_noise_strap, textline_skewing, textline_skewing_bin, textline_left_in_depth, textline_left_in_depth_bin, textline_right_in_depth, textline_right_in_depth_bin, textline_up_in_depth, textline_up_in_depth_bin, textline_down_in_depth, textline_down_in_depth_bin, pepper_bin_aug, pepper_aug, degrade_scales, number_of_backgrounds_per_image, thetha, thetha_padd, brightness, padd_colors, shuffle_indexes, pepper_indexes, skewing_amplitudes, blur_k, white_padds)
+        
+        len_dataset = aug_multip*len(ls_files_images) 
+        
+        dataset = OCRDatasetYieldAugmentations(
+            dir_img=dir_img,
+            dir_img_bin=dir_img_bin,
+            dir_lab=dir_lab,
+            processor=processor,
+            max_target_length=max_len,
+            augmentation = augmentation,
+            binarization = binarization,
+            add_red_textlines = add_red_textlines,
+            white_noise_strap = white_noise_strap,
+            adding_rgb_foreground = adding_rgb_foreground,
+            adding_rgb_background = adding_rgb_background,
+            bin_deg = bin_deg,
+            blur_aug = blur_aug,
+            brightening = brightening,
+            padding_white = padding_white,
+            color_padding_rotation = color_padding_rotation,
+            rotation_not_90 = rotation_not_90,
+            degrading = degrading,
+            channels_shuffling = channels_shuffling,
+            textline_skewing = textline_skewing,
+            textline_skewing_bin = textline_skewing_bin,
+            textline_right_in_depth = textline_right_in_depth,
+            textline_left_in_depth = textline_left_in_depth,
+            textline_up_in_depth = textline_up_in_depth,
+            textline_down_in_depth = textline_down_in_depth,
+            textline_right_in_depth_bin = textline_right_in_depth_bin,
+            textline_left_in_depth_bin = textline_left_in_depth_bin,
+            textline_up_in_depth_bin = textline_up_in_depth_bin,
+            textline_down_in_depth_bin = textline_down_in_depth_bin,
+            pepper_aug = pepper_aug,
+            pepper_bin_aug = pepper_bin_aug,
+            list_all_possible_background_images=list_all_possible_background_images,
+            list_all_possible_foreground_rgbs=list_all_possible_foreground_rgbs,
+            blur_k = blur_k,
+            degrade_scales = degrade_scales,
+            white_padds = white_padds,
+            thetha_padd = thetha_padd,
+            thetha = thetha,
+            brightness = brightness,
+            padd_colors = padd_colors,
+            number_of_backgrounds_per_image = number_of_backgrounds_per_image,
+            shuffle_indexes = shuffle_indexes,
+            pepper_indexes = pepper_indexes,
+            skewing_amplitudes = skewing_amplitudes,
+            dir_rgb_backgrounds = dir_rgb_backgrounds,
+            dir_rgb_foregrounds = dir_rgb_foregrounds,
+            len_data=len_dataset,
+        )
+        
+        # Create a DataLoader
+        data_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
+        train_dataset = data_loader.dataset
+        
+        
+        if continue_training:
+            model = VisionEncoderDecoderModel.from_pretrained(dir_of_start_model)
+        else:
+            model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-printed")
+            
+            
+        # set special tokens used for creating the decoder_input_ids from the labels
+        model.config.decoder_start_token_id = processor.tokenizer.cls_token_id
+        model.config.pad_token_id = processor.tokenizer.pad_token_id
+        # make sure vocab size is set correctly
+        model.config.vocab_size = model.config.decoder.vocab_size
+
+        # set beam search parameters
+        model.config.eos_token_id = processor.tokenizer.sep_token_id
+        model.config.max_length = max_len
+        model.config.early_stopping = True
+        model.config.no_repeat_ngram_size = 3
+        model.config.length_penalty = 2.0
+        model.config.num_beams = 4
+        
+        
+        training_args = Seq2SeqTrainingArguments(
+            predict_with_generate=True,
+            num_train_epochs=n_epochs,
+            learning_rate=learning_rate,
+            per_device_train_batch_size=n_batch,
+            fp16=True, 
+            output_dir=dir_output,
+            logging_steps=2,
+            save_steps=save_interval,
+        )
+        
+
+        cer_metric = evaluate.load("cer")
+
+        # instantiate trainer
+        trainer = Seq2SeqTrainer(
+            model=model,
+            tokenizer=processor.feature_extractor,
+            args=training_args,
+            train_dataset=train_dataset,
+            data_collator=default_data_collator,
+        )
+        trainer.train()
+
         
     elif task=='classification':
         configuration()
