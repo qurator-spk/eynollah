@@ -70,6 +70,7 @@ class Eynollah_ocr:
             self.model_zoo.get('ocr').to(self.device)
         else:
             self.model_zoo.load_model('ocr', '')
+            self.input_shape = self.model_zoo.get('ocr').input_shape[1:3]
             self.model_zoo.load_model('num_to_char')
             self.model_zoo.load_model('characters')
             self.end_character = len(self.model_zoo.get('characters', list)) + 2
@@ -823,8 +824,8 @@ class Eynollah_ocr:
                     page_ns=page_ns,
 
                     img_bin=img_bin,
-                    image_width=512,
-                    image_height=32,
+                    image_width=self.input_shape[1],
+                    image_height=self.input_shape[0],
                 )
 
             self.write_ocr(
