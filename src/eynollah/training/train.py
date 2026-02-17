@@ -471,6 +471,7 @@ def run(_config,
         model.fit(
             train_gen.prefetch(tf.data.AUTOTUNE), # .repeat()??
             validation_data=val_gen.prefetch(tf.data.AUTOTUNE),
+            verbose=1,
             epochs=n_epochs,
             callbacks=callbacks,
             initial_epoch=index_start)
@@ -544,6 +545,7 @@ def run(_config,
         model.fit(
             train_ds,
             #validation_data=test_ds,
+            verbose=1,
             epochs=n_epochs,
             callbacks=callbacks,
             initial_epoch=index_start)
