@@ -441,7 +441,7 @@ def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_s
     x = Conv2D(64,kernel_size=(3,3),padding="same")(x)
     x = BatchNormalization(name="bn2")(x)
     x = Activation("relu", name="relu2")(x)
-    x = MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+    x = MaxPooling2D(pool_size=(1,2),strides=(1,2))(x)
 
     x = Conv2D(128,kernel_size=(3,3),padding="same")(x)
     x = BatchNormalization(name="bn3")(x)
@@ -449,7 +449,7 @@ def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_s
     x = Conv2D(128,kernel_size=(3,3),padding="same")(x)
     x = BatchNormalization(name="bn4")(x)
     x = Activation("relu", name="relu4")(x)
-    x = MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
+    x = MaxPooling2D(pool_size=(1,2),strides=(1,2))(x)
 
     x = Conv2D(256,kernel_size=(3,3),padding="same")(x)
     x = BatchNormalization(name="bn5")(x)
@@ -457,7 +457,7 @@ def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_s
     x = Conv2D(256,kernel_size=(3,3),padding="same")(x)
     x = BatchNormalization(name="bn6")(x)
     x = Activation("relu", name="relu6")(x)
-    x = MaxPool2D(pool_size=(2,2),strides=(2,2))(x)
+    x = MaxPooling2D(pool_size=(2,2),strides=(2,2))(x)
 
     x = Conv2D(image_width,kernel_size=(3,3),padding="same")(x)
     x = BatchNormalization(name="bn7")(x)
@@ -465,8 +465,8 @@ def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_s
     x = Conv2D(image_width,kernel_size=(16,1))(x)
     x = BatchNormalization(name="bn8")(x)
     x = Activation("relu", name="relu8")(x)
-    x2d = MaxPool2D(pool_size=(1,2),strides=(1,2))(x)
-    x4d = MaxPool2D(pool_size=(1,2),strides=(1,2))(x2d)
+    x2d = MaxPooling2D(pool_size=(1,2),strides=(1,2))(x)
+    x4d = MaxPooling2D(pool_size=(1,2),strides=(1,2))(x2d)
     
 
     new_shape = (x.shape[1]*x.shape[2], x.shape[3])
