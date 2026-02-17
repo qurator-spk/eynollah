@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
 from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.layers import StringLookup
 
 from .gt_gen_utils import (
     filter_contours_area_of_image,
