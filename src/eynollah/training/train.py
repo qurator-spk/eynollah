@@ -360,7 +360,7 @@ def run(_config,
 
         if task == "enhancement":
             assert not is_loss_soft_dice, "for enhancement, soft_dice loss does not apply"
-            assert not weighted_dice, "for enhancement, weighted loss does not apply"
+            assert not weighted_loss, "for enhancement, weighted loss does not apply"
         if continue_training:
             custom_objects = dict()
             if is_loss_soft_dice:
