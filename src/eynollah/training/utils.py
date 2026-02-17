@@ -997,12 +997,12 @@ def preprocess_img(img,
                                            input_height,
                                            input_width)
             if padding_black:
-                yield from get_patches(do_padding_black(img),
+                yield from get_patches(do_padding_with_color(img, 'black'),
                                        do_padding_label(lab),
                                        input_height,
                                        input_width)
             if padding_white:
-                yield from get_patches(do_padding_white(img),
+                yield from get_patches(do_padding_with_color(img, 'white'),
                                        do_padding_label(lab),
                                        input_height,
                                        input_width)
@@ -1129,7 +1129,7 @@ def preprocess_img_ocr(
         return scale_padd_image_for_ocr(img, input_height, input_width).astype(np.float32) / 255.
     #lab = vectorize_label(lab, char_to_num, padding_token, max_len)
     # now padded at Dataset.padded_batch
-    lab = char_to_num(tf.strings.unicode_split(label, input_encoding="UTF-8"))
+    lab = char_to_num(tf.strings.unicode_split(lab, input_encoding="UTF-8"))
     yield scale_image(img), lab
     #to_yield = {"image": ret_x, "label": ret_y}
 

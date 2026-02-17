@@ -523,7 +523,7 @@ def run(_config,
             )
         train_ds = tf.data.Dataset.from_generator(gen)
         train_ds = train_ds.padded_batch(n_batch,
-                                         padded_shapes=([image_height, image_width, 3], [None]),
+                                         padded_shapes=([input_height, input_width, 3], [None]),
                                          padding_values=(0, padding_token),
                                          drop_remainder=True,
                                          #num_parallel_calls=tf.data.AUTOTUNE,
