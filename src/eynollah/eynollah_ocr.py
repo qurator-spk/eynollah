@@ -658,7 +658,7 @@ class Eynollah_ocr:
         if out_image_with_text:
             image_text = Image.new("RGB", (img.shape[1], img.shape[0]), "white")
             draw = ImageDraw.Draw(image_text)
-            font = get_font()
+            font = get_font(font_size=40)
             
             for indexer_text, bb_ind in enumerate(total_bb_coordinates):
                 x_bb = bb_ind[0]

@@ -7,7 +7,7 @@ import cv2
 from shapely import geometry
 from pathlib import Path
 from PIL import ImageFont
-
+from eynollah.utils.font import get_font
 
 KERNEL = np.ones((5, 5), np.uint8)
 
@@ -350,11 +350,11 @@ def get_textline_contours_and_ocr_text(xml_file):
                 ocr_textlines.append(ocr_text_in[0])
     return co_use_case, y_len, x_len, ocr_textlines
 
-def fit_text_single_line(draw, text, font_path, max_width, max_height):
+def fit_text_single_line(draw, text, max_width, max_height):
     initial_font_size = 50
     font_size = initial_font_size
     while font_size > 10:  # Minimum font size
-        font = ImageFont.truetype(font_path, font_size)
+        font = get_font(font_size=font_size)# ImageFont.truetype(font_path, font_size)
         text_bbox = draw.textbbox((0, 0), text, font=font)  # Get text bounding box
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
@@ -364,7 +364,7 @@ def fit_text_single_line(draw, text, font_path, max_width, max_height):
 
         font_size -= 2  # Reduce font size and retry
 
-    return ImageFont.truetype(font_path, 10)  # Smallest font fallback
+    return get_font(font_size=10)#ImageFont.truetype(font_path, 10)  # Smallest font fallback
 
 def get_layout_contours_for_visualization(xml_file):
     tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding='utf-8'))

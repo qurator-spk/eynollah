@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import cv2
 import numpy as np
+from eynollah.utils.font import get_font
 
 from eynollah.training.gt_gen_utils import (
     filter_contours_area_of_image,
@@ -514,8 +515,8 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
     else:
         xml_files_ind = [xml_file]
         
-    font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
-    font = ImageFont.truetype(font_path, 40)
+    ###font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
+    font = get_font(font_size=40)#ImageFont.truetype(font_path, 40)
         
     for ind_xml in tqdm(xml_files_ind):
         indexer = 0
@@ -552,11 +553,11 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
                 
                 
                 is_vertical = h > 2*w  # Check orientation
-                font = fit_text_single_line(draw, ocr_texts[index], font_path, w, int(h*0.4) )
+                font = fit_text_single_line(draw, ocr_texts[index], w, int(h*0.4) )
                 
                 if is_vertical:
                     
-                    vertical_font = fit_text_single_line(draw, ocr_texts[index], font_path, h, int(w * 0.8))
+                    vertical_font = fit_text_single_line(draw, ocr_texts[index], h, int(w * 0.8))
 
                     text_img = Image.new("RGBA", (h, w), (255, 255, 255, 0))  # Note: dimensions are swapped
                     text_draw = ImageDraw.Draw(text_img)
