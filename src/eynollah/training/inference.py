@@ -740,12 +740,10 @@ class sbb_predict:
 )
 def main(image, dir_in, model, patches, save, save_layout, ground_truth, xml_file, cpu, out, min_area):
     assert image or dir_in, "Either a single image -i or a dir_in -di is required"
-    try:
-        with open(os.path.join(model,'config_eynollah.json')) as f:
-            config_params_model = json.load(f)
-    except:
-        with open(os.path.join(model,'config.json')) as f:
-            config_params_model = json.load(f)
+
+    with open(os.path.join(model,'config_eynollah.json')) as f:
+        config_params_model = json.load(f)
+
     task = config_params_model['task']
     if task != 'classification' and task != 'reading_order' and task != "cnn-rnn-ocr" and task != "trocr":
         if image and not save:

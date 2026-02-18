@@ -68,7 +68,7 @@ class SaveWeightsAfterSteps(Callback):
 
             self.model.save(save_file)
             
-            with open(os.path.join(os.path.join(self.save_path, f"model_step_{self.step_count}"),"config.json"), "w") as fp:
+            with open(os.path.join(os.path.join(self.save_path, f"model_step_{self.step_count}"),"config_eynollah.json"), "w") as fp:
                 json.dump(self._config, fp)  # encode dict into JSON
             print(f"saved model as steps {self.step_count} to {save_file}")
             
@@ -484,7 +484,7 @@ def run(
                 
             model.save(os.path.join(dir_output,'model_'+str(i)))
         
-            with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config.json"), "w") as fp:
+            with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config_eynollah.json"), "w") as fp:
                 json.dump(_config, fp)  # encode dict into JSON
 
         #os.system('rm -rf '+dir_train_flowing)
@@ -563,7 +563,7 @@ def run(
             
             if i >=0:
                 model.save( os.path.join(dir_output,'model_'+str(i) ))
-                with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config.json"), "w") as fp:
+                with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config_eynollah.json"), "w") as fp:
                     json.dump(_config, fp)  # encode dict into JSON
         
         
@@ -731,10 +731,10 @@ def run(
             model_weight_averaged.set_weights(new_weights)
     
             model_weight_averaged.save(os.path.join(dir_output,'model_ens_avg'))
-            with open(os.path.join( os.path.join(dir_output,'model_ens_avg'), "config.json"), "w") as fp:
+            with open(os.path.join( os.path.join(dir_output,'model_ens_avg'), "config_eynollah.json"), "w") as fp:
                 json.dump(_config, fp)  # encode dict into JSON
             
-        with open(os.path.join( os.path.join(dir_output,'model_best'), "config.json"), "w") as fp:
+        with open(os.path.join( os.path.join(dir_output,'model_best'), "config_eynollah.json"), "w") as fp:
             json.dump(_config, fp)  # encode dict into JSON
             
     elif task=='reading_order':
@@ -767,7 +767,7 @@ def run(
                 history = model.fit(generate_arrays_from_folder_reading_order(dir_flow_train_labels, dir_flow_train_imgs, n_batch, input_height, input_width, n_classes, thetha, augmentation), steps_per_epoch=num_rows / n_batch, verbose=1)
             model.save( os.path.join(dir_output,'model_'+str(i+indexer_start) ))
             
-            with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config.json"), "w") as fp:
+            with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config_eynollah.json"), "w") as fp:
                 json.dump(_config, fp)  # encode dict into JSON
             '''
             if f1score>f1score_tot[0]:

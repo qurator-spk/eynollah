@@ -113,7 +113,7 @@ def run_ensembling(dir_models, out, framework):
         model.load_state_dict(sd_models[0])
         os.system("mkdir "+out)
         torch.save(model.state_dict(), os.path.join(out, "pytorch_model.bin"))
-        os.system('cp '+os.path.join(os.path.join(dir_models,model_name) , "config.json ")+out)
+        os.system('cp '+os.path.join(os.path.join(dir_models,model_name) , "config_eynollah.json ")+out)
         
     else:
         weights=[]
@@ -135,7 +135,7 @@ def run_ensembling(dir_models, out, framework):
             
         model.set_weights(new_weights)
         model.save(out)
-        os.system('cp '+os.path.join(os.path.join(dir_models,model_name) , "config.json ")+out)
+        os.system('cp '+os.path.join(os.path.join(dir_models,model_name) , "config_eynollah.json ")+out)
 
 @click.command()
 @click.option(
