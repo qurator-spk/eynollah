@@ -566,7 +566,7 @@ def run(
             
             if i >=0:
                 model.save( os.path.join(dir_output,'model_'+str(i) ))
-                os.system("cp "+characters_txt_file+" "+os.path.join(os.path.join(dir_output,'model_'+str(i)),"characters_org.txt")
+                os.system("cp "+characters_txt_file+" "+os.path.join(os.path.join(dir_output,'model_'+str(i)),"characters_org.txt"))
                 with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config_eynollah.json"), "w") as fp:
                     json.dump(_config, fp)  # encode dict into JSON
         
