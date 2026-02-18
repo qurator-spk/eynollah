@@ -52,7 +52,7 @@ from transformers import VisionEncoderDecoderModel
 from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 
 class SaveWeightsAfterSteps(Callback):
-    def __init__(self, save_interval, save_path, _config):
+    def __init__(self, save_interval, save_path, _config, characters_cnnrnn_ocr=None):
         super(SaveWeightsAfterSteps, self).__init__()
         self.save_interval = save_interval
         self.save_path = save_path
@@ -67,6 +67,9 @@ class SaveWeightsAfterSteps(Callback):
             #os.system('mkdir '+save_file)
 
             self.model.save(save_file)
+            
+            if characters_cnnrnn_ocr:
+                os.system("cp "+characters_cnnrnn_ocr+" "+os.path.join(os.path.join(self.save_path, f"model_step_{self.step_count}"),"characters_org.txt"))
             
             with open(os.path.join(os.path.join(self.save_path, f"model_step_{self.step_count}"),"config_eynollah.json"), "w") as fp:
                 json.dump(self._config, fp)  # encode dict into JSON
@@ -544,7 +547,7 @@ def run(
         opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)#1e-4)#(lr_schedule)
         model.compile(optimizer=opt)
         
-        save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config) if save_interval else None
+        save_weights_callback = SaveWeightsAfterSteps(save_interval, dir_output, _config, characters_cnnrnn_ocr=characters_txt_file) if save_interval else None
         
         for i in tqdm(range(index_start, n_epochs + index_start)):
             if save_interval:
@@ -563,6 +566,7 @@ def run(
             
             if i >=0:
                 model.save( os.path.join(dir_output,'model_'+str(i) ))
+                os.system("cp "+characters_txt_file+" "+os.path.join(os.path.join(dir_output,'model_'+str(i)),"characters_org.txt")
                 with open(os.path.join(os.path.join(dir_output,'model_'+str(i)),"config_eynollah.json"), "w") as fp:
                     json.dump(_config, fp)  # encode dict into JSON
         
