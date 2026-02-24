@@ -969,19 +969,21 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                         if "rest_as_decoration" in types_graphic:
                                             types_graphic_without_decoration = [element for element in types_graphic if element!='rest_as_decoration' and element!='decoration']
                                             if len(types_graphic_without_decoration) == 0:
-                                                if "type" in nn.attrib:
-                                                    c_t_in_graphic['decoration'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                                #if "type" in nn.attrib:
+                                                c_t_in_graphic['decoration'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                                             elif len(types_graphic_without_decoration) >= 1:
                                                 if "type" in nn.attrib:
                                                     if nn.attrib['type'] in types_graphic_without_decoration:
                                                         c_t_in_graphic[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                                                     else:
                                                         c_t_in_graphic['decoration'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
-                                                        
+                                                else:
+                                                    c_t_in_graphic['decoration'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                                         else:
                                             if "type" in nn.attrib:
                                                 if nn.attrib['type'] in all_defined_graphic_types:
-                                                    c_t_in_graphic[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )        
+                                                    c_t_in_graphic[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) ) 
+                                            
                                         
                                         break
                                     else:
@@ -992,9 +994,9 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                     if "rest_as_decoration" in types_graphic:
                                         types_graphic_without_decoration = [element for element in types_graphic if element!='rest_as_decoration' and element!='decoration']
                                         if len(types_graphic_without_decoration) == 0:
-                                            if "type" in nn.attrib:
-                                                c_t_in_graphic['decoration'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
-                                                sumi+=1
+                                            #if "type" in nn.attrib:
+                                            c_t_in_graphic['decoration'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                            sumi+=1
                                         elif len(types_graphic_without_decoration) >= 1:
                                             if "type" in nn.attrib:
                                                 if nn.attrib['type'] in types_graphic_without_decoration:
@@ -1003,6 +1005,9 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                                 else:
                                                     c_t_in_graphic['decoration'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
                                                     sumi+=1
+                                            else:
+                                                c_t_in_graphic['decoration'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                                sumi+=1
                                                     
                                     else:
                                         if "type" in nn.attrib:

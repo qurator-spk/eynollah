@@ -356,11 +356,15 @@ def visualize_reading_order(xml_file, dir_xml, dir_out, dir_imgs):
             layout = np.zeros( (y_len,x_len,3) ) 
             layout = cv2.fillPoly(layout, pts =co_text_all, color=(1,1,1))
                 
-            img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
-            img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
-            
-            overlayed = overlay_layout_on_image(layout, img, cx_ordered, cy_ordered, color, thickness)
-            cv2.imwrite(os.path.join(dir_out, f_name+'.png'), overlayed)
+            try:
+                img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
+                img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+                
+                overlayed = overlay_layout_on_image(layout, img, cx_ordered, cy_ordered, color, thickness)
+                cv2.imwrite(os.path.join(dir_out, f_name+'.png'), overlayed)
+            except:
+                pass
+
             
         else:
             img = np.zeros( (y_len,x_len,3) ) 
@@ -415,14 +419,17 @@ def visualize_textline_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
         xml_file = os.path.join(dir_xml,ind_xml )
         f_name = Path(ind_xml).stem
         
-        img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
-        img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+        try:
+            img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
+            img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+                
+            co_tetxlines, y_len, x_len = get_textline_contours_for_visualization(xml_file)
             
-        co_tetxlines, y_len, x_len = get_textline_contours_for_visualization(xml_file)
-        
-        added_image = visualize_image_from_contours(co_tetxlines, img)
-        
-        cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
+            added_image = visualize_image_from_contours(co_tetxlines, img)
+            
+            cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
+        except:
+            pass
 
         
         
@@ -472,15 +479,17 @@ def visualize_layout_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
             f_name = Path(ind_xml).stem
         print(f_name, 'f_name')
         
-        img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
-        img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+        try:
+            img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
+            img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+                
+            co_text, co_graphic, co_sep, co_img, co_table, co_map, co_noise, y_len, x_len = get_layout_contours_for_visualization(xml_file)
             
-        co_text, co_graphic, co_sep, co_img, co_table, co_map, co_noise, y_len, x_len = get_layout_contours_for_visualization(xml_file)
-        
-        
-        added_image = visualize_image_from_contours_layout(co_text['paragraph'], co_text['header']+co_text['heading'], co_text['drop-capital'], co_sep, co_img, co_text['marginalia'], co_table, co_map, img)
+            added_image = visualize_image_from_contours_layout(co_text['paragraph'], co_text['header']+co_text['heading'], co_text['drop-capital'], co_sep, co_img, co_text['marginalia'], co_table, co_map, img)
 
-        cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
+            cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
+        except:
+            pass
 
 
 
