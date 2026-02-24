@@ -618,11 +618,6 @@ def run(_config,
         padding_token = len(characters) + 5
         # Mapping characters to integers.
         char_to_num = StringLookup(vocabulary=list(characters), mask_token=None)
-
-        # Mapping integers back to original characters.
-        ##num_to_char = StringLookup(
-            ##vocabulary=char_to_num.get_vocabulary(), mask_token=None, invert=True
-        ##)
         n_classes = len(char_to_num.get_vocabulary()) + 2
 
         if continue_training:
@@ -649,21 +644,23 @@ def run(_config,
                                    char_to_num=char_to_num,
                                    padding_token=padding_token
             )
-        train_ds = tf.data.Dataset.from_generator(gen)
-        train_ds = train_ds.padded_batch(n_batch,
-                                         padded_shapes=([input_height, input_width, 3], [None]),
-                                         padding_values=(0, padding_token),
-                                         drop_remainder=True,
-                                         #num_parallel_calls=tf.data.AUTOTUNE,
+        train_ds = (tf.data.Dataset.from_generator(gen, (tf.float32, tf.int64))
+                    .padded_batch(n_batch,
+                                  padded_shapes=([input_height, input_width, 3], [None]),
+                                  padding_values=(None, tf.constant(padding_token, dtype=tf.int64)),
+                                  drop_remainder=True,
+                                  #num_parallel_calls=tf.data.AUTOTUNE,
+                    )
+                    .map(lambda x, y: {"image": x, "label": y})
+                    .prefetch(tf.data.AUTOTUNE)
         )
-        train_ds = train_ds.prefetch(tf.data.AUTOTUNE)
 
         #initial_learning_rate = 1e-4
         #decay_steps = int (n_epochs * ( len_dataset / n_batch ))
         #alpha = 0.01
         #lr_schedule = 1e-4
         #tf.keras.optimizers.schedules.CosineDecay(initial_learning_rate, decay_steps, alpha)
-        opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        opt = Adam(learning_rate=learning_rate)
         model.compile(optimizer=opt) # rs: loss seems to be (ctc_batch_cost) in last layer
 
         callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
