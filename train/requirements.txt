@@ -4,3 +4,4 @@ numpy
 tqdm
 imutils
 scipy
+tensorflow-addons # for connected_components
