@@ -672,6 +672,7 @@ def run(_config,
         model.compile(optimizer=opt) # rs: loss seems to be (ctc_batch_cost) in last layer
 
         callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
+                     EarlyStopping(verbose=1, patience=3, restore_best_weights=False, start_from_epoch=3),
                      SaveWeightsAfterSteps(0, dir_output, _config)]
         if save_interval:
             callbacks.append(SaveWeightsAfterSteps(save_interval, dir_output, _config))
