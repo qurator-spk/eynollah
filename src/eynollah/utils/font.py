@@ -11,6 +11,6 @@ else:
 
 def get_font(font_size):
     #font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
-    font = importlib_resources.files(__package__) / "../Charis-Regular.ttf"
+    font = importlib_resources.files(__package__) / "../Amiri-Regular.ttf"
     with importlib_resources.as_file(font) as font:
         return ImageFont.truetype(font=font, size=font_size)
