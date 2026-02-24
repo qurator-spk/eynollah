@@ -787,8 +787,8 @@ def preprocess_imgs(config,
     # labs_list not used because stem matching more robust
     indexer = 0
     for img, lab in tqdm(zip(imgs_list, labs_list)):
-        img = cv2.imread(os.path.join(dir_img, img))
         img_name = os.path.splitext(img)[0]
+        img = cv2.imread(os.path.join(dir_img, img))
         if config['task'] in ["segmentation", "binarization"]:
             # assert lab == img_name + '.png'
             lab = cv2.imread(os.path.join(dir_lab, img_name + '.png'))
