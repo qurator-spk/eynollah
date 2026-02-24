@@ -779,9 +779,10 @@ def preprocess_imgs(config,
     # override keys from call
     config.update(kwargs)
 
-    seed = random.random()
-    random.shuffle(imgs_list, random=lambda: seed)
-    random.shuffle(labs_list, random=lambda: seed)
+    seed = random.getstate()
+    random.shuffle(imgs_list)
+    random.setstate(seed)
+    random.shuffle(labs_list)
 
     # labs_list not used because stem matching more robust
     indexer = 0
