@@ -237,8 +237,6 @@ def config_params():
     augmentation = False  # To apply any kind of augmentation, this parameter must be set to true.
     if augmentation:
         flip_aug = False  # Whether different types of flipping will be applied to the image. Requires "flip_index" setting.
-        if flip_aug:
-            flip_index = None  # List of codes (as in cv2.flip) for flip augmentation.
         blur_aug = False  # Whether images will be blurred. Requires "blur_k" setting.
         if blur_aug:
             blur_k = None  # Method of blurring (gauss, median or blur).
@@ -254,6 +252,8 @@ def config_params():
         scaling_flip = False  # Whether a combination of scaling and flipping will be applied to the image.
         if scaling or scaling_brightness or scaling_bluring or scaling_binarization or scaling_flip:
             scales = None  # Scale patches for augmentation.
+        if flip_aug or scaling_flip:
+            flip_index = None  # List of codes (as in cv2.flip) for flip augmentation.
         shifting = False
         brightening = False  # Whether images will be brightened. Requires "brightness" setting.
         if brightening:
