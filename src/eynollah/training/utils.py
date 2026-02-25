@@ -9,7 +9,6 @@ import numpy as np
 import seaborn as sns
 from scipy.ndimage.interpolation import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
-from tqdm import tqdm
 import imutils
 import tensorflow as tf
 
@@ -753,17 +752,11 @@ def get_patches_num_scale_new(img, label, height, width, scaler=1.0):
             yield img_patch, label_patch
 
 
-# TODO: refactor to combine with data_gen_ocr
 def preprocess_imgs(config,
-                    imgs_list,
-                    labs_list,
                     dir_img,
                     dir_lab,
-                    dir_flow_imgs,
-                    dir_flow_lbls,
                     logger=None,
-                    **kwargs,
-):
+                    **kwargs):
     if logger is None:
         logger = getLogger('')
 
@@ -779,14 +772,16 @@ def preprocess_imgs(config,
     # override keys from call
     config.update(kwargs)
 
+    imgs_list = list(sorted(os.listdir(dir_img)))
+    labs_list = list(sorted(os.listdir(dir_lab)))
+
     seed = random.getstate()
     random.shuffle(imgs_list)
     random.setstate(seed)
     random.shuffle(labs_list)
 
     # labs_list not used because stem matching more robust
-    indexer = 0
-    for img, lab in tqdm(zip(imgs_list, labs_list)):
+    for img, lab in zip(imgs_list, labs_list):
         img_name = os.path.splitext(img)[0]
         img = cv2.imread(os.path.join(dir_img, img))
         if config['task'] in ["segmentation", "binarization"]:
@@ -803,20 +798,16 @@ def preprocess_imgs(config,
 
         try:
             if config['task'] == "cnn-rnn-ocr":
-                yield from preprocess_img_ocr(img, img_name, lab,
-                                              **config)
+                yield from preprocess_img_ocr(img, img_name, lab, **config)
                 continue
-            for img, lab in preprocess_img(img, img_name, lab,
-                                           **config):
-                cv2.imwrite(os.path.join(dir_flow_imgs, '/img_%d.png' % indexer),
-                            resize_image(img,
-                                         config['input_height'],
-                                         config['input_width']))
-                cv2.imwrite(os.path.join(dir_flow_lbls, '/img_%d.png' % indexer),
-                            resize_image(lab,
-                                         config['input_height'],
-                                         config['input_width']))
-                indexer += 1
+            else:
+                for img, lab in preprocess_img(img, img_name, lab, **config):
+                    yield (resize_image(img,
+                                        config['input_height'],
+                                        config['input_width']),
+                           resize_image(lab,
+                                        config['input_height'],
+                                        config['input_width']))
         except:
             logger.exception("skipping image %s", img_name)
 

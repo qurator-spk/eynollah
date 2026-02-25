@@ -2,6 +2,7 @@ import os
 import sys
 import json
 
+from tqdm import tqdm
 import requests
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -422,31 +423,25 @@ def run(_config,
             os.mkdir(dir_flow_eval_imgs)
             os.mkdir(dir_flow_eval_labels)
 
-            dir_img, dir_seg = get_dirs_or_files(dir_train)
-            dir_img_val, dir_seg_val = get_dirs_or_files(dir_eval)
-
-            imgs_list = list(os.listdir(dir_img))
-            segs_list = list(os.listdir(dir_seg))
-
-            imgs_list_test = list(os.listdir(dir_img_val))
-            segs_list_test = list(os.listdir(dir_seg_val))
-
             # writing patches into a sub-folder in order to be flowed from directory.
-            preprocess_imgs(_config,
-                            imgs_list,
-                            segs_list,
-                            dir_img,
-                            dir_seg,
-                            dir_flow_train_imgs,
-                            dir_flow_train_labels)
-            preprocess_imgs(_config,
-                            imgs_list_test,
-                            segs_list_test,
-                            dir_img_val,
-                            dir_seg_val,
-                            dir_flow_eval_imgs,
-                            dir_flow_eval_labels,
-                            augmentation=False)
+            def gen(dir_img, dir_lab, dir_flow_imgs, dir_flow_labs, augmentation=True):
+                indexer = 0
+                for img, lab in tqdm(preprocess_imgs(_config,
+                                                     dir_img,
+                                                     dir_lab,
+                                                     augmentation=augmentation),
+                                     desc="data_is_provided"):
+                    fname = 'img_%d.png' % indexer
+                    cv2.imwrite(os.path.join(dir_flow_imgs, fname), img)
+                    cv2.imwrite(os.path.join(dir_flow_labs, fname), lab)
+                    indexer += 1
+            gen(*get_dirs_or_files(dir_train),
+                dir_flow_train_imgs,
+                dir_flow_train_labels)
+            gen(*get_dirs_or_files(dir_eval),
+                dir_flow_eval_imgs,
+                dir_flow_eval_labels,
+                augmentation=False)
 
         if weighted_loss:
             weights = np.zeros(n_classes)
@@ -606,13 +601,6 @@ def run(_config,
 
     elif task=="cnn-rnn-ocr":
 
-        dir_img_train, dir_lab_train = get_dirs_or_files(dir_train)
-        dir_img_valdn, dir_lab_valdn = get_dirs_or_files(dir_eval)
-        imgs_list_train = list(os.listdir(dir_img_train))
-        labs_list_train = list(os.listdir(dir_lab_train))
-        imgs_list_valdn = list(os.listdir(dir_img_valdn))
-        labs_list_valdn = list(os.listdir(dir_lab_valdn))
-
         with open(characters_txt_file, 'r') as char_txt_f:
             characters = json.load(char_txt_f)
         padding_token = len(characters) + 5
@@ -631,15 +619,11 @@ def run(_config,
         #print(model.summary())
 
         # todo: use Dataset.map() on Dataset.list_files()
-        def get_dataset(imgs_list, labs_list, dir_img, dir_lab):
+        def get_dataset(dir_img, dir_lab):
             def gen():
                 return preprocess_imgs(_config,
-                                       imgs_list,
-                                       labs_list,
                                        dir_img,
                                        dir_lab,
-                                       None, # no file I/O, but in-memory
-                                       None, # no file I/O, but in-memory
                                        # extra+overrides
                                        char_to_num=char_to_num,
                                        padding_token=padding_token
@@ -654,14 +638,8 @@ def run(_config,
                     .map(lambda x, y: {"image": x, "label": y})
                     .prefetch(tf.data.AUTOTUNE)
             )
-        train_ds = get_dataset(imgs_list_train,
-                               labs_list_train,
-                               dir_img_train,
-                               dir_lab_train)
-        valdn_ds = get_dataset(imgs_list_valdn,
-                               labs_list_valdn,
-                               dir_img_valdn,
-                               dir_lab_valdn)
+        train_ds = get_dataset(*get_dirs_or_files(dir_train))
+        valdn_ds = get_dataset(*get_dirs_or_files(dir_eval))
 
         #initial_learning_rate = 1e-4
         #decay_steps = int (n_epochs * ( len_dataset / n_batch ))
