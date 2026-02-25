@@ -658,7 +658,18 @@ def get_layout_contours_for_visualization(xml_file):
                 co_noise.append(np.array(c_t_in))
     return co_text, co_graphic, co_sep, co_img, co_table, co_map, co_noise, y_len, x_len
     
-def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_file, config_params, printspace, dir_images, dir_out_images):
+def get_images_of_ground_truth(
+        gt_list,
+        dir_in,
+        output_dir,
+        output_type,
+        config_file,
+        config_params,
+        printspace,
+        missing_printspace,
+        dir_images,
+        dir_out_images
+):
     """
     Reading the page xml files and write the ground truth images into given output directory.
     """
@@ -702,10 +713,20 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
         if printspace or "printspace_as_class_in_layout" in list(config_params.keys()):
             ps = (root1.xpath('/pc:PcGts/pc:Page/pc:Border', namespaces=NS) +
                   root1.xpath('/pc:PcGts/pc:Page/pc:PrintSpace', namespaces=NS))
+            coords = root1.xpath('//pc:Coords/@points', namespaces=NS)
             if len(ps):
                 points = ps[0].find('pc:Coords', NS).get('points')
                 ps_bbox = bbox_from_points(points)
+            elif missing_printspace == 'skip':
+                print(gt_list[index], "has no Border or PrintSpace - skipping file")
+                continue
+            elif missing_printspace == 'project' and len(coords):
+                print(gt_list[index], "has no Border or PrintSpace - projecting hull of segments")
+                bboxes = list(map(bbox_from_points, coords))
+                left, top, right, bottom = zip(*bboxes)
+                ps_bbox = [min(left), min(top), max(right), max(bottom)]
             else:
+                print(gt_list[index], "has no Border or PrintSpace - using full page")
                 ps_bbox = [0, 0, None, None]
             
             

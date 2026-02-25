@@ -35,26 +35,28 @@ def main():
 @click.option(
     "--dir_xml",
     "-dx",
-    help="directory of GT page-xml files",
+    help="input directory of GT PAGE-XML files",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
 @click.option(
     "--dir_images",
     "-di",
-    help="directory of org images. If print space cropping or scaling is needed for labels it would be great to provide the original images to apply the same function on them. So if -ps is not set true or in config files no columns_width key is given this argumnet can be ignored. File stems in this directory should be the same as those in dir_xml.",
+    help="input directory of GT image files (only needed for '--printspace' or scaling configured via 'columns_width'; filename stems should match those in --dir_xml)",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
     "--dir_out_images",
     "-doi",
-    help="directory where the output org images after undergoing a process (like print space cropping or scaling) will be written.",
+    help="output directory for training image files (for printspace cropping or scaling)",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
     "--dir_out",
     "-do",
-    help="directory where ground truth label images would be written",
+    help="output directory for training label files",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
 
 @click.option(
@@ -67,16 +69,25 @@ def main():
 @click.option(
     "--type_output",
     "-to",
-    help="this defines how output should be. A 2d image array or a 3d image array encoded with RGB color. Just pass 2d or 3d. The file will be saved one directory up. 2D image array is 3d but only information of one channel would be enough since all channels have the same values.",
+    type=click.Choice(["2d", "3d"]),
+    default="2d",
+    help="generate labels as [H, W] array pseudo index-color images for training ('2d') or [H, W, C] array RGB color images for plotting ('3d')",
 )
 @click.option(
     "--printspace",
     "-ps",
     is_flag=True,
-    help="if this parameter set to true, generated labels and in the case of provided org images cropping will be imposed and cropped labels and images will be written in output directories.",
+    help="crop pages from annotated PrintSpace or Border to generate labels and images (will also require -di for so original images so output images are cropped along with labels)",
+)
+@click.option(
+    "--missing-printspace",
+    "-mps",
+    type=click.Choice(["full", "skip", "project"]),
+    default="full",
+    help="if -ps is set, what to do in case a PAGE-XML has no PrintSpace or Border annotation: keep entire page ('full'), ignore file ('skip') or crop artificially from outer hull of all segments ('project')",
 )
 
-def pagexml2label(dir_xml,dir_out,type_output,config, printspace, dir_images, dir_out_images):
+def pagexml2label(dir_xml, dir_out, type_output, config, printspace, missing_printspace, dir_images, dir_out_images):
     """
     extract PAGE-XML GT data suitable for model training for segmentation tasks
     """
@@ -86,8 +97,17 @@ def pagexml2label(dir_xml,dir_out,type_output,config, printspace, dir_images, di
     else:
         print("passed")
         config_params = None
-    gt_list = get_content_of_dir(dir_xml)
-    get_images_of_ground_truth(gt_list,dir_xml,dir_out,type_output, config, config_params, printspace, dir_images, dir_out_images)
+    get_images_of_ground_truth(get_content_of_dir(dir_xml),
+                               dir_xml,
+                               dir_out,
+                               type_output,
+                               config,
+                               config_params,
+                               printspace,
+                               missing_printspace,
+                               dir_images,
+                               dir_out_images
+    )
     
 @main.command()
 @click.option(
