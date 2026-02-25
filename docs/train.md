@@ -271,6 +271,11 @@ eynollah-training generate-gt pagexml2label \
   -doi "dir of output cropped images"
 ```
 
+Also, note that it can be detrimental to layout training if there are visible segments which
+the annotation does not account for (and thus the model must learn to ignore). So if the images
+are not cropped, the `-ps` _should_ be used. If a PAGE XML file is missing `PrintSpace` (or `Border`)
+annotations, use `-mps` to either `skip` these or `project` (i.e. crop from existing segments).
+
 ## Train a model
 
 ### classification

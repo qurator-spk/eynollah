@@ -724,7 +724,11 @@ def get_images_of_ground_truth(
                 print(gt_list[index], "has no Border or PrintSpace - projecting hull of segments")
                 bboxes = list(map(bbox_from_points, coords))
                 left, top, right, bottom = zip(*bboxes)
-                ps_bbox = [min(left), min(top), max(right), max(bottom)]
+                left = max(0, min(left) - 5)
+                top = max(0, min(top) - 5)
+                right = min(x_len, max(right) + 5)
+                bottom = min(y_len, max(bottom) + 5)
+                ps_bbox = [left, top, right, bottom]
             else:
                 print(gt_list[index], "has no Border or PrintSpace - using full page")
                 ps_bbox = [0, 0, None, None]
