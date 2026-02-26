@@ -1,5 +1,10 @@
-from tensorflow.keras import backend as K
+import os
+
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
+from tensorflow.keras import backend as K
+from tensorflow.keras.metrics import Metric
+from tensorflow.keras.initializers import Zeros
 import numpy as np
 
 
@@ -361,3 +366,47 @@ def jaccard_distance_loss(y_true, y_pred, smooth=100):
     sum_ = K.sum(K.abs(y_true) + K.abs(y_pred), axis=-1)
     jac = (intersection + smooth) / (sum_ - intersection + smooth)
     return (1 - jac) * smooth
+
+
+class ConfusionMatrix(Metric):
+    def __init__(self, nlabels=None, nrm="all", name="confusion_matrix", dtype=tf.float32):
+        super().__init__(name=name, dtype=dtype)
+        assert nlabels is not None
+        self._nlabels = nlabels
+        self._shape = (self._nlabels, self._nlabels)
+        self._matrix = self.add_weight(name, shape=self._shape,
+                                       initializer=Zeros)
+        assert nrm in ("all", "true", "pred", "none")
+        self._nrm = nrm
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_pred = tf.math.argmax(y_pred, axis=-1)
+        y_true = tf.math.argmax(y_true, axis=-1)
+
+        y_pred = tf.reshape(y_pred, shape=(-1,))
+        y_true = tf.reshape(y_true, shape=(-1,))
+
+        y_pred.shape.assert_is_compatible_with(y_true.shape)
+        confusion = tf.math.confusion_matrix(y_true, y_pred, num_classes=self._nlabels, dtype=self._dtype)
+
+        return self._matrix.assign_add(confusion)
+
+    def result(self):
+        """normalize"""
+        if self._nrm == "all":
+            denom = tf.math.reduce_sum(self._matrix, axis=(0, 1))
+        elif self._nrm == "true":
+            denom = tf.math.reduce_sum(self._matrix, axis=1, keepdims=True)
+        elif self._nrm == "pred":
+            denom = tf.math.reduce_sum(self._matrix, axis=0, keepdims=True)
+        else:
+            denom = tf.constant(1.0)
+        return tf.math.divide_no_nan(self._matrix, denom)
+
+    def reset_state(self):
+        for v in self.variables:
+            v.assign(tf.zeros(shape=self._shape))
+
+    def get_config(self):
+        return dict(nlabels=self._nlabels,
+                    **super().get_config())
