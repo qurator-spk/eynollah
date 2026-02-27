@@ -76,6 +76,8 @@ def configuration():
     try:
         for device in tf.config.list_physical_devices('GPU'):
             tf.config.experimental.set_memory_growth(device, True)
+        #tf.keras.mixed_precision.set_global_policy('mixed_float16')
+        #tf.keras.backend.set_epsilon(1e-4) # avoid NaN from smaller defaults
     except:
         print("no GPU device available", file=sys.stderr)
 
@@ -614,6 +616,7 @@ def run(_config,
         else: # task == "enhancement"
             loss = 'mean_squared_error'
         model.compile(loss=loss,
+                      #jit_compile=True,
                       optimizer=Adam(learning_rate=learning_rate),
                       metrics=metrics)
 

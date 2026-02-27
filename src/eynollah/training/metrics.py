@@ -8,7 +8,9 @@ from tensorflow.keras.initializers import Zeros
 import numpy as np
 
 
-def focal_loss(gamma=2., alpha=4.):
+EPS = K.epsilon()
+
+def focal_loss(gamma=2., alpha=4., epsilon=EPS):
     gamma = float(gamma)
     alpha = float(alpha)
 
@@ -32,7 +34,6 @@ def focal_loss(gamma=2., alpha=4.):
         Returns:
             [tensor] -- loss.
         """
-        epsilon = 1.e-9
         y_true = tf.convert_to_tensor(y_true, tf.float32)
         y_pred = tf.convert_to_tensor(y_pred, tf.float32)
 
@@ -153,7 +154,7 @@ def generalized_dice_loss(y_true, y_pred):
 
 
 # TODO: document where this is from
-def soft_dice_loss(y_true, y_pred, epsilon=1e-6):
+def soft_dice_loss(y_true, y_pred, epsilon=EPS):
     """
     Soft dice loss calculation for arbitrary batch size, number of classes, and number of spatial dimensions.
     Assumes the `channels_last` format.
