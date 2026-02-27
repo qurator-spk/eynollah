@@ -27,6 +27,8 @@ from matplotlib import pyplot as plt # for plot_confusion_matrix
 from .metrics import (
     soft_dice_loss,
     weighted_categorical_crossentropy,
+    get as get_metric,
+    metrics_superposition,
     ConfusionMatrix,
 )
 from .models import (
@@ -306,6 +308,7 @@ def config_params():
     if task in ["segmentation", "binarization"]:
         is_loss_soft_dice = False  # Use soft dice as loss function. When set to true, "weighted_loss" must be false.
         weighted_loss = False  # Use weighted categorical cross entropy as loss fucntion. When set to true, "is_loss_soft_dice" must be false.
+        add_ncc_loss = 0 # Add regression loss for number of connected components. When non-zero, use this as weight for the nCC term.
     elif task == "classification":
         f1_threshold_classification = None # This threshold is used to consider models with an evaluation f1 scores bigger than it. The selected model weights undergo a weights ensembling. And avreage ensembled model will be written to output.
         classification_classes_name = None # Dictionary of classification classes names.
@@ -416,6 +419,7 @@ def run(_config,
         thetha=None,
         is_loss_soft_dice=False,
         weighted_loss=False,
+        add_ncc_loss=None,
         ## if continue_training
         index_start=0,
         dir_of_start_model=None,
@@ -605,7 +609,10 @@ def run(_config,
             elif weighted_loss:
                 loss = weighted_categorical_crossentropy(weights)
             else:
-                loss = 'categorical_crossentropy'
+                loss = get_metric('categorical_crossentropy')
+            if add_ncc_loss:
+                loss = metrics_superposition(loss, num_connected_components_regression(0.1),
+                                             weights=[1 - add_ncc_loss, add_ncc_loss])
             metrics.append(num_connected_components_regression(0.1))
             metrics.append(MeanIoU(n_classes,
                                    name='iou',

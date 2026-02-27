@@ -3,7 +3,7 @@ import os
 os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras.metrics import Metric
+from tensorflow.keras.metrics import Metric, MeanMetricWrapper, get
 from tensorflow.keras.initializers import Zeros
 import numpy as np
 
@@ -368,6 +368,34 @@ def jaccard_distance_loss(y_true, y_pred, smooth=100):
     jac = (intersection + smooth) / (sum_ - intersection + smooth)
     return (1 - jac) * smooth
 
+
+def metrics_superposition(*metrics, weights=None):
+    """
+    return a single metric derived by adding all given metrics
+
+    default weights are uniform
+    """
+    if weights is None:
+        weights = len(metrics) * [tf.constant(1.0)]
+    def mixed(y_true, y_pred):
+        results = []
+        for metric, weight in zip(metrics, weights):
+            results.append(metric(y_true, y_pred) * weight)
+        return tf.reduce_mean(tf.stack(results), 0)
+    mixed.__name__ = '/'.join(m.__name__ for m in metrics)
+    return mixed
+
+
+class Superposition(MeanMetricWrapper):
+    def __init__(self, metrics, weights=None, dtype=None):
+        self._metrics = metrics
+        self._weights = weights
+        mixed = metrics_superposition(*metrics, weights=weights)
+        super().__init__(mixed, name=mixed.__name__, dtype=dtype)
+    def get_config(self):
+        return dict(metrics=self._metrics,
+                    weights=self._weights,
+                    **super().get_config())
 
 class ConfusionMatrix(Metric):
     def __init__(self, nlabels=None, nrm="all", name="confusion_matrix", dtype=tf.float32):
