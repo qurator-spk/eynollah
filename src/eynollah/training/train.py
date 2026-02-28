@@ -58,6 +58,7 @@ class SaveWeightsAfterSteps(Callback):
         self.save_path = save_path
         self.step_count = 0
         self._config = _config
+        self.characters_cnnrnn_ocr = characters_cnnrnn_ocr
 
     def on_train_batch_end(self, batch, logs=None):
         self.step_count += 1
@@ -68,8 +69,8 @@ class SaveWeightsAfterSteps(Callback):
 
             self.model.save(save_file)
             
-            if characters_cnnrnn_ocr:
-                os.system("cp "+characters_cnnrnn_ocr+" "+os.path.join(os.path.join(self.save_path, f"model_step_{self.step_count}"),"characters_org.txt"))
+            if self.characters_cnnrnn_ocr:
+                os.system("cp "+self.characters_cnnrnn_ocr+" "+os.path.join(os.path.join(self.save_path, f"model_step_{self.step_count}"),"characters_org.txt"))
             
             with open(os.path.join(os.path.join(self.save_path, f"model_step_{self.step_count}"),"config_eynollah.json"), "w") as fp:
                 json.dump(self._config, fp)  # encode dict into JSON
