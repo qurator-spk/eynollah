@@ -491,7 +491,7 @@ def run(_config,
             if data_is_provided:
                 dirs = dir_flow_train_labels
             else:
-                dirs = dir_seg
+                dirs = os.path.join(dir_train, "labels")
             for obj in os.listdir(dirs):
                 label_file = os.path.join(dirs, + obj)
                 try:
