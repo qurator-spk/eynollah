@@ -393,16 +393,16 @@ class Eynollah:
 
         if label_p_pred[0][int(num_col - 1)] < 0.9 and img_w_new < width_early:
             img_new = np.copy(img)
-            num_column_is_classified = False
+            img_is_resized = False
         #elif label_p_pred[0][int(num_col - 1)] < 0.8 and img_h_new >= 8000:
         elif img_h_new >= 8000:
             img_new = np.copy(img)
-            num_column_is_classified = False
+            img_is_resized = False
         else:
             img_new = resize_image(img, img_h_new, img_w_new)
-            num_column_is_classified = True
+            img_is_resized = True
 
-        return img_new, num_column_is_classified
+        return img_new, img_is_resized
 
     def calculate_width_height_by_columns_1_2(self, img, num_col, width_early, label_p_pred):
         self.logger.debug("enter calculate_width_height_by_columns")
@@ -414,16 +414,16 @@ class Eynollah:
 
         if label_p_pred[0][int(num_col - 1)] < 0.9 and img_w_new < width_early:
             img_new = np.copy(img)
-            num_column_is_classified = False
+            img_is_resized = False
         #elif label_p_pred[0][int(num_col - 1)] < 0.8 and img_h_new >= 8000:
         elif img_h_new >= 8000:
             img_new = np.copy(img)
-            num_column_is_classified = False
+            img_is_resized = False
         else:
             img_new = resize_image(img, img_h_new, img_w_new)
-            num_column_is_classified = True
+            img_is_resized = True
 
-        return img_new, num_column_is_classified
+        return img_new, img_is_resized
 
     def resize_image_with_column_classifier(self, is_image_enhanced, img_bin):
         self.logger.debug("enter resize_image_with_column_classifier")
@@ -624,10 +624,12 @@ class Eynollah:
     def do_prediction(
             self, patches, img, model,
             n_batch_inference=1, marginal_of_patch_percent=0.1,
-            thresholding_for_some_classes_in_light_version=False,
-            thresholding_for_artificial_class_in_light_version=False,
-            thresholding_for_fl_light_version=False,
-            threshold_art_class_textline=0.1):
+            thresholding_for_some_classes=False,
+            thresholding_for_heading=False,
+            thresholding_for_artificial_class=False,
+            threshold_art_class=0.1,
+            artificial_class=2,
+    ):
 
         self.logger.debug("enter do_prediction (patches=%d)", patches)
         img_height_model = model.layers[-1].output_shape[1]
@@ -639,27 +641,19 @@ class Eynollah:
             img = img / float(255.0)
             img = resize_image(img, img_height_model, img_width_model)
 
-            label_p_pred = model.predict(img[np.newaxis], verbose=0)
-            seg = np.argmax(label_p_pred, axis=3)[0]
+            label_p_pred = model.predict(img[np.newaxis], verbose=0)[0]
+            seg = np.argmax(label_p_pred, axis=2)
 
-            if thresholding_for_artificial_class_in_light_version:
-                seg_art = label_p_pred[0,:,:,2]
+            if thresholding_for_artificial_class:
+                seg_art = label_p_pred[:, :, artificial_class]
+                seg_art = (seg_art >= threshold_art_class).astype(int)
 
-                seg_art[seg_art<threshold_art_class_textline] = 0
-                seg_art[seg_art>0] =1
+                seg[skeletonize(seg_art)] = artificial_class
 
-                skeleton_art = skeletonize(seg_art)
-                skeleton_art = skeleton_art*1
+            if thresholding_for_heading:
+                seg_header = label_p_pred[:, :, 2]
 
-                seg[skeleton_art==1]=2
-
-            if thresholding_for_fl_light_version:
-                seg_header = label_p_pred[0,:,:,2]
-
-                seg_header[seg_header<0.2] = 0
-                seg_header[seg_header>0] =1
-
-                seg[seg_header==1]=2
+                seg[seg_header >= 0.2] = 2
 
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
             prediction_true = resize_image(seg_color, img_h_page, img_w_page).astype(np.uint8)
@@ -722,7 +716,7 @@ class Eynollah:
                     label_p_pred = model.predict(img_patch, verbose=0)
                     seg = np.argmax(label_p_pred, axis=3)
 
-                    if thresholding_for_some_classes_in_light_version:
+                    if thresholding_for_some_classes:
                         seg_not_base = label_p_pred[:,:,:,4]
                         seg_not_base = (seg_not_base > 0.03).astype(int)
 
@@ -736,17 +730,17 @@ class Eynollah:
                         seg[seg_background==1]=0
                         seg[(seg_line==1) & (seg==0)]=3
 
-                    if thresholding_for_artificial_class_in_light_version:
-                        seg_art = label_p_pred[:,:,:,2]
-                        seg_art = (seg_art >= threshold_art_class_textline).astype(int)
+                    if thresholding_for_artificial_class:
+                        seg_art = label_p_pred[:, :, :, artificial_class]
+                        seg_art = (seg_art >= threshold_art_class).astype(int)
 
-                        ##seg[seg_art==1]=2
+                        ##seg[seg_art==1]=artificial_class
 
                     indexer_inside_batch = 0
                     for i_batch, j_batch in zip(list_i_s, list_j_s):
                         seg_in = seg[indexer_inside_batch]
 
-                        if thresholding_for_artificial_class_in_light_version:
+                        if thresholding_for_artificial_class:
                             seg_in_art = seg_art[indexer_inside_batch]
 
                         index_y_u_in = list_y_u[indexer_inside_batch]
@@ -797,7 +791,7 @@ class Eynollah:
                             inbox = np.index_exp[margin:-margin or None,
                                                  margin:-margin or None]
                         prediction_true[where][inbox] = seg_in[inbox + (np.newaxis,)]
-                        if thresholding_for_artificial_class_in_light_version:
+                        if thresholding_for_artificial_class:
                             prediction_true[where][inbox + (1,)] = seg_in_art[inbox]
 
                         indexer_inside_batch += 1
@@ -815,14 +809,14 @@ class Eynollah:
 
         prediction_true = prediction_true.astype(np.uint8)
 
-        if thresholding_for_artificial_class_in_light_version:
+        if thresholding_for_artificial_class:
             kernel_min = np.ones((3, 3), np.uint8)
-            prediction_true[:,:,0][prediction_true[:,:,0]==2] = 0
+            prediction_true[:,:,0][prediction_true[:,:,0]==artificial_class] = 0
 
             skeleton_art = skeletonize(prediction_true[:,:,1]).astype(np.uint8)
             skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
 
-            prediction_true[:,:,0][skeleton_art==1]=2
+            prediction_true[:,:,0][skeleton_art==1]=artificial_class
         #del model
         gc.collect()
         return prediction_true
@@ -830,10 +824,10 @@ class Eynollah:
     def do_prediction_new_concept(
             self, patches, img, model,
             n_batch_inference=1, marginal_of_patch_percent=0.1,
-            thresholding_for_some_classes_in_light_version=False,
-            thresholding_for_artificial_class_in_light_version=False,
-            threshold_art_class_textline=0.1,
-            threshold_art_class_layout=0.1):
+            thresholding_for_artificial_class=False,
+            threshold_art_class=0.1,
+            artificial_class=4,
+    ):
 
         self.logger.debug("enter do_prediction_new_concept")
         img_height_model = model.layers[-1].output_shape[1]
@@ -845,27 +839,28 @@ class Eynollah:
             img = img / 255.0
             img = resize_image(img, img_height_model, img_width_model)
 
-            label_p_pred = model.predict(img[np.newaxis], verbose=0)
-            seg = np.argmax(label_p_pred, axis=3)[0]
+            label_p_pred = model.predict(img[np.newaxis], verbose=0)[0]
+            seg = np.argmax(label_p_pred, axis=2)
 
             seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
             prediction_true = resize_image(seg_color, img_h_page, img_w_page).astype(np.uint8)
 
-            if thresholding_for_artificial_class_in_light_version:
+            if thresholding_for_artificial_class:
                 kernel_min = np.ones((3, 3), np.uint8)
-                seg_art = label_p_pred[0,:,:,4]
-                seg_art = (seg_art >= threshold_art_class_layout).astype(int)
+                seg_art = label_p_pred[:, :, artificial_class]
+                seg_art = (seg_art >= threshold_art_class).astype(int)
                 #seg[seg_art==1]=4
                 seg_art = resize_image(seg_art, img_h_page, img_w_page).astype(np.uint8)
 
-                prediction_true[:,:,0][prediction_true[:,:,0]==4] = 0
+                prediction_true[:,:,0][prediction_true[:,:,0]==artificial_class] = 0
 
                 skeleton_art = skeletonize(seg_art).astype(np.uint8)
                 skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
 
-                prediction_true[:,:,0][skeleton_art==1] = 4
+                prediction_true[:,:,0][skeleton_art==1] = artificial_class
 
-            return prediction_true , resize_image(label_p_pred[0, :, :, 1] , img_h_page, img_w_page)
+            seg_text = resize_image(label_p_pred[:, :, 1] , img_h_page, img_w_page)
+            return prediction_true, seg_text
 
         if img.shape[0] < img_height_model:
             img = resize_image(img, img_height_model, img.shape[1])
@@ -873,8 +868,6 @@ class Eynollah:
             img = resize_image(img, img.shape[0], img_width_model)
 
         self.logger.debug("Patch size: %sx%s", img_height_model, img_width_model)
-        thresholding = (thresholding_for_artificial_class_in_light_version or
-                        thresholding_for_some_classes_in_light_version)
         margin = int(marginal_of_patch_percent * img_height_model)
         width_mid = img_width_model - 2 * margin
         height_mid = img_height_model - 2 * margin
@@ -930,27 +923,15 @@ class Eynollah:
                     label_p_pred = model.predict(img_patch,verbose=0)
                     seg = np.argmax(label_p_pred, axis=3)
 
-                    if thresholding_for_some_classes_in_light_version:
-                        seg_art = label_p_pred[:,:,:,4]
-
-                        seg_art = (seg_art >= threshold_art_class_layout).astype(int)
-
-                        seg_line = label_p_pred[:,:,:,3]
-                        seg_line = (seg_line > 0.4).astype(int)
-
-                        ##seg[seg_art==1]=4
-                        #seg[(seg_line==1) & (seg==0)]=3
-                    if thresholding_for_artificial_class_in_light_version:
-                        seg_art = label_p_pred[:,:,:,2]
-
-                        seg_art = (seg_art >= threshold_art_class_textline).astype(int)
-                        ##seg[seg_art==1]=2
+                    if thresholding_for_artificial_class:
+                        seg_art = label_p_pred[:, :, :, artificial_class]
+                        seg_art = (seg_art >= threshold_art_class).astype(int)
 
                     indexer_inside_batch = 0
                     for i_batch, j_batch in zip(list_i_s, list_j_s):
                         seg_in = seg[indexer_inside_batch]
 
-                        if thresholding:
+                        if thresholding_for_artificial_class:
                             seg_in_art = seg_art[indexer_inside_batch]
 
                         index_y_u_in = list_y_u[indexer_inside_batch]
@@ -1006,7 +987,7 @@ class Eynollah:
                         #     artificial boundary class map should be extra array
                         # rs: why does confidence_matrix only get text-label scores?
                         #     should be scores at final argmax
-                        if thresholding:
+                        if thresholding_for_artificial_class:
                             prediction_true[where][inbox + (1,)] = seg_in_art[inbox]
 
                         indexer_inside_batch += 1
@@ -1023,23 +1004,14 @@ class Eynollah:
 
         prediction_true = prediction_true.astype(np.uint8)
 
-        if thresholding_for_artificial_class_in_light_version:
+        if thresholding_for_artificial_class:
             kernel_min = np.ones((3, 3), np.uint8)
-            prediction_true[:,:,0][prediction_true[:,:,0]==2] = 0
+            prediction_true[:,:,0][prediction_true[:,:,0]==artificial_class] = 0
 
             skeleton_art = skeletonize(prediction_true[:,:,1]).astype(np.uint8)
             skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
 
-            prediction_true[:,:,0][skeleton_art==1]=2
-
-        if thresholding_for_some_classes_in_light_version:
-            kernel_min = np.ones((3, 3), np.uint8)
-            prediction_true[:,:,0][prediction_true[:,:,0]==4] = 0
-
-            skeleton_art = skeletonize(prediction_true[:,:,1]).astype(np.uint8)
-            skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
-
-            prediction_true[:,:,0][skeleton_art==1]=4
+            prediction_true[:,:,0][skeleton_art==1]=artificial_class
         gc.collect()
         return prediction_true, confidence_matrix
 
@@ -1124,11 +1096,11 @@ class Eynollah:
         img_width_h = img.shape[1]
         model_region = self.model_zoo.get("region_fl") if patches else self.model_zoo.get("region_fl_np")
 
-        thresholding_for_fl_light_version = True
+        thresholding_for_heading = True
         if not patches:
             img = otsu_copy_binary(img).astype(np.uint8)
             prediction_regions = None
-            thresholding_for_fl_light_version = False
+            thresholding_for_heading = False
         elif cols:
             img = otsu_copy_binary(img).astype(np.uint8)
             if cols == 1:
@@ -1147,7 +1119,7 @@ class Eynollah:
         prediction_regions = self.do_prediction(patches, img, model_region,
                                                 marginal_of_patch_percent=0.1,
                                                 n_batch_inference=3,
-                                                thresholding_for_fl_light_version=thresholding_for_fl_light_version)
+                                                thresholding_for_heading=thresholding_for_heading)
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
         return prediction_regions, prediction_regions
@@ -1305,7 +1277,7 @@ class Eynollah:
         prediction_textline = self.do_prediction(use_patches, img, self.model_zoo.get("textline"),
                                                  marginal_of_patch_percent=0.15,
                                                  n_batch_inference=3,
-                                                 threshold_art_class_textline=self.threshold_art_class_textline)
+                                                 threshold_art_class=self.threshold_art_class_textline)
 
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
         textline_mask_tot_ea_art = (prediction_textline[:,:]==2)*1
@@ -1399,15 +1371,15 @@ class Eynollah:
                                   img_resized.shape[1], img_resized.shape[0], num_col_classifier)
                 prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
                     True, img_resized, self.model_zoo.get("region_1_2"), n_batch_inference=1,
-                    thresholding_for_some_classes_in_light_version=True,
-                    threshold_art_class_layout=self.threshold_art_class_layout)
+                    thresholding_for_artificial_class=True,
+                    threshold_art_class=self.threshold_art_class_layout)
             else:
                 prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
                 confidence_matrix = np.zeros((self.image_org.shape[0], self.image_org.shape[1]))
                 prediction_regions_page, confidence_matrix_page = self.do_prediction_new_concept(
                     False, self.image_page_org_size, self.model_zoo.get("region_1_2"), n_batch_inference=1,
-                    thresholding_for_artificial_class_in_light_version=True,
-                    threshold_art_class_layout=self.threshold_art_class_layout)
+                    thresholding_for_artificial_class=True,
+                    threshold_art_class=self.threshold_art_class_layout)
                 ys = slice(*self.page_coord[0:2])
                 xs = slice(*self.page_coord[2:4])
                 prediction_regions_org[ys, xs] = prediction_regions_page
@@ -1420,11 +1392,11 @@ class Eynollah:
                               img_resized.shape[1], img_resized.shape[0], new_h, num_col_classifier)
             prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
                 True, img_resized, self.model_zoo.get("region_1_2"), n_batch_inference=2,
-                thresholding_for_some_classes_in_light_version=True,
-                threshold_art_class_layout=self.threshold_art_class_layout)
+                thresholding_for_artificial_class=True,
+                threshold_art_class=self.threshold_art_class_layout)
         ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_zoo.get_model("region"),
         ###n_batch_inference=3,
-        ###thresholding_for_some_classes_in_light_version=True)
+        ###thresholding_for_some_classes=True)
         #print("inside 3 ", time.time()-t_in)
         #plt.imshow(prediction_regions_org[:,:,0])
         #plt.show()
