@@ -13,6 +13,7 @@ from shapely import geometry
 import cv2
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
+from skimage import morphology
 
 from .is_nan import isNaN
 from .contour import (contours_in_same_horizon,
@@ -220,20 +221,20 @@ def find_features_of_lines(contours_main):
 def boosting_headers_by_longshot_region_segmentation(textregion_pre_p, textregion_pre_np, img_only_text):
     textregion_pre_p_org = np.copy(textregion_pre_p)
     # 4 is drop capitals
-    headers_in_longshot = textregion_pre_np[:, :, 0] == 2
-    #headers_in_longshot = ((textregion_pre_np[:,:,0]==2) |
-    #                       (textregion_pre_np[:,:,0]==1))
-    textregion_pre_p[:, :, 0][headers_in_longshot &
-                              (textregion_pre_p[:, :, 0] != 4)] = 2
-    textregion_pre_p[:, :, 0][textregion_pre_p[:, :, 0] == 1] = 0
+    headers_in_longshot = textregion_pre_np == 2
+    #headers_in_longshot = ((textregion_pre_np==2) |
+    #                       (textregion_pre_np==1))
+    textregion_pre_p[headers_in_longshot &
+                     (textregion_pre_p != 4)] = 2
+    textregion_pre_p[textregion_pre_p == 1] = 0
     # earlier it was so, but by this manner the drop capitals are also deleted
-    # textregion_pre_p[:,:,0][(img_only_text[:,:]==1) &
-    #                         (textregion_pre_p[:,:,0]!=7) &
-    #                         (textregion_pre_p[:,:,0]!=2)] = 1
-    textregion_pre_p[:, :, 0][(img_only_text[:, :] == 1) &
-                              (textregion_pre_p[:, :, 0] != 7) &
-                              (textregion_pre_p[:, :, 0] != 4) &
-                              (textregion_pre_p[:, :, 0] != 2)] = 1
+    # textregion_pre_p[(img_only_text[:,:]==1) &
+    #                  (textregion_pre_p!=7) &
+    #                  (textregion_pre_p!=2)] = 1
+    textregion_pre_p[(img_only_text[:, :] == 1) &
+                     (textregion_pre_p != 7) &
+                     (textregion_pre_p != 4) &
+                     (textregion_pre_p != 2)] = 1
     return textregion_pre_p
 
 def find_num_col_deskew(regions_without_separators, sigma_, multiplier=3.8):
@@ -754,7 +755,7 @@ def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
     return layout_no_patch
 
 def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop_capital_label, text_regions_p):
-    drop_only = (layout_in_patch[:, :, 0] == drop_capital_label) * 1
+    drop_only = (layout_in_patch == drop_capital_label) * 1
     contours_drop, hir_on_drop = return_contours_of_image(drop_only)
     contours_drop_parent = return_parent_contours(contours_drop, hir_on_drop)
 
@@ -772,7 +773,6 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop
     for jj in range(len(contours_drop_parent)):
         x, y, w, h = cv2.boundingRect(contours_drop_parent[jj])
         box = slice(y, y + h), slice(x, x + w)
-        box0 = box + (0,)
         mask_of_drop_cpaital_in_early_layout = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1]))
         mask_of_drop_cpaital_in_early_layout[box] = text_regions_p[box]
 
@@ -783,12 +783,12 @@ def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop
         percent_text_to_all_in_drop = all_drop_capital_pixels_which_is_text_in_early_lo / float(all_drop_capital_pixels)
         if (areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) / float(w * h) > 0.6 and
             percent_text_to_all_in_drop >= 0.3):
-            layout_in_patch[box0] = drop_capital_label
+            layout_in_patch[box] = drop_capital_label
         else:
-            layout_in_patch[box0][layout_in_patch[box0] == drop_capital_label] = drop_capital_label
-            layout_in_patch[box0][layout_in_patch[box0] == 0] = drop_capital_label
-            layout_in_patch[box0][layout_in_patch[box0] == 4] = drop_capital_label# images
-            #layout_in_patch[box0][layout_in_patch[box0] == drop_capital_label] = 1#drop_capital_label
+            mask = ((layout_in_patch[box] == drop_capital_label) |
+                    (layout_in_patch[box] == 0) |
+                    (layout_in_patch[box] == 4))
+            layout_in_patch[box][mask] = drop_capital_label
 
     return layout_in_patch
 
@@ -917,7 +917,7 @@ def check_any_text_region_in_model_one_is_main_or_header_light(
 
         all_pixels = (img == 255).sum()
         pixels_header=((img == 255) &
-                       (regions_model_full[:,:,0]==2)).sum()
+                       (regions_model_full==2)).sum()
         pixels_main = all_pixels - pixels_header
 
         if (( pixels_header / float(pixels_main) >= 0.6 and
@@ -1947,3 +1947,38 @@ def ensure_array(obj: Iterable) -> np.ndarray:
     if not isinstance(obj, np.ndarray):
         return np.fromiter(obj, object)
     return obj
+
+def seg_mask_label(segmap:np.ndarray,
+                   mask:np.ndarray,
+                   only:bool=False,
+                   label:int=2,
+                   skeletonize:bool=False,
+                   dilate:int=0
+) -> None:
+    """
+    overwrite an existing segmentation map from a binary mask with a given label
+
+    Args:
+        segmap: integer array of existing segmentation labels ([H, W] or [B, H, W] shape)
+        mask: boolean array for specific label
+    Keyword Args:
+        label: the class label to be written
+        only: whether to suppress the `label` outside `mask`
+        skeletonize: whether to transform the mask to its skeleton
+        dilate: whether to also apply dilatation after this (convolution with square kernel of given size)
+
+    Use this to enforce specific confidence thresholds or rules after segmentation.
+    """
+    if not mask.any():
+        return
+    if only:
+        segmap[segmap == label] = 0
+    if skeletonize:
+        if mask.ndim == 3:
+            mask = np.stack(morphology.skeletonize(m) for m in mask)
+        else:
+            mask = morphology.skeletonize(mask)
+        if dilate:
+            kernel = np.ones((dilate, dilate), np.uint8)
+            mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1) > 0
+    segmap[mask] = label

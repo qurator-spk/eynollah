@@ -35,7 +35,6 @@ import numpy as np
 import shapely.affinity
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-from skimage.morphology import skeletonize
 from ocrd_utils import tf_disable_interactive_logs
 import statistics
 
@@ -86,6 +85,7 @@ from .utils import (
     box2rect,
     find_num_col,
     otsu_copy_binary,
+    seg_mask_label,
     putt_bb_of_drop_capitals_of_model_in_patches_in_layout,
     check_any_text_region_in_model_one_is_main_or_header_light,
     small_textlines_to_parent_adherence2,
@@ -474,7 +474,7 @@ class Eynollah:
         if self.input_binary:
             img = self.imread()
             prediction_bin = self.do_prediction(True, img, self.model_zoo.get("binarization"), n_batch_inference=5)
-            prediction_bin = 255 * (prediction_bin[:,:,0] == 0)
+            prediction_bin = 255 * (prediction_bin == 0)
             prediction_bin = np.repeat(prediction_bin[:, :, np.newaxis], 3, axis=2).astype(np.uint8)
             img= np.copy(prediction_bin)
             img_bin = prediction_bin
@@ -623,7 +623,8 @@ class Eynollah:
 
     def do_prediction(
             self, patches, img, model,
-            n_batch_inference=1, marginal_of_patch_percent=0.1,
+            n_batch_inference=1,
+            marginal_of_patch_percent=0.1,
             thresholding_for_some_classes=False,
             thresholding_for_heading=False,
             thresholding_for_artificial_class=False,
@@ -638,26 +639,24 @@ class Eynollah:
         if not patches:
             img_h_page = img.shape[0]
             img_w_page = img.shape[1]
-            img = img / float(255.0)
+            img = img / 255.0
             img = resize_image(img, img_height_model, img_width_model)
 
             label_p_pred = model.predict(img[np.newaxis], verbose=0)[0]
             seg = np.argmax(label_p_pred, axis=2)
 
             if thresholding_for_artificial_class:
-                seg_art = label_p_pred[:, :, artificial_class]
-                seg_art = (seg_art >= threshold_art_class).astype(int)
-
-                seg[skeletonize(seg_art)] = artificial_class
+                seg_mask_label(
+                    seg, label_p_pred[:, :, artificial_class] >= threshold_art_class,
+                    label=artificial_class,
+                    skeletonize=True)
 
             if thresholding_for_heading:
-                seg_header = label_p_pred[:, :, 2]
+                seg_mask_label(
+                    seg, label_p_pred[:, :, 2] >= 0.2,
+                    label=2)
 
-                seg[seg_header >= 0.2] = 2
-
-            seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
-            prediction_true = resize_image(seg_color, img_h_page, img_w_page).astype(np.uint8)
-            return prediction_true
+            return resize_image(seg, img_h_page, img_w_page).astype(np.uint8)
 
         if img.shape[0] < img_height_model:
             img = resize_image(img, img_height_model, img.shape[1])
@@ -672,8 +671,9 @@ class Eynollah:
         #img = img.astype(np.float16)
         img_h = img.shape[0]
         img_w = img.shape[1]
-        prediction_true = np.zeros((img_h, img_w, 3))
-        mask_true = np.zeros((img_h, img_w))
+        prediction = np.zeros((img_h, img_w), dtype=np.uint8)
+        if thresholding_for_artificial_class:
+            mask_artificial_class = np.zeros((img_h, img_w), dtype=bool)
         nxf = math.ceil(img_w / float(width_mid))
         nyf = math.ceil(img_h / float(height_mid))
 
@@ -706,7 +706,8 @@ class Eynollah:
                 list_y_d.append(index_y_d)
                 list_y_u.append(index_y_u)
 
-                img_patch[batch_indexer,:,:,:] = img[index_y_d:index_y_u, index_x_d:index_x_u, :]
+                img_patch[batch_indexer] = img[index_y_d:index_y_u,
+                                               index_x_d:index_x_u]
                 batch_indexer += 1
 
                 if (batch_indexer == n_batch_inference or
@@ -717,24 +718,18 @@ class Eynollah:
                     seg = np.argmax(label_p_pred, axis=3)
 
                     if thresholding_for_some_classes:
-                        seg_not_base = label_p_pred[:,:,:,4]
-                        seg_not_base = (seg_not_base > 0.03).astype(int)
-
-                        seg_line = label_p_pred[:,:,:,3]
-                        seg_line = (seg_line > 0.1).astype(int)
-
-                        seg_background = label_p_pred[:,:,:,0]
-                        seg_background = (seg_background > 0.25).astype(int)
-
-                        seg[seg_not_base==1]=4
-                        seg[seg_background==1]=0
-                        seg[(seg_line==1) & (seg==0)]=3
+                        seg_mask_label(
+                            seg, label_p_pred[:,:,:,4] > 0.03,
+                            label=4) # 
+                        seg_mask_label(
+                            seg, label_p_pred[:,:,:,0] > 0.25,
+                            label=0) # bg
+                        seg_mask_label(
+                            seg, label_p_pred[:,:,:,3] > 0.10 & seg == 0,
+                            label=3) # line
 
                     if thresholding_for_artificial_class:
-                        seg_art = label_p_pred[:, :, :, artificial_class]
-                        seg_art = (seg_art >= threshold_art_class).astype(int)
-
-                        ##seg[seg_art==1]=artificial_class
+                        seg_art = label_p_pred[:, :, :, artificial_class] >= threshold_art_class
 
                     indexer_inside_batch = 0
                     for i_batch, j_batch in zip(list_i_s, list_j_s):
@@ -790,9 +785,9 @@ class Eynollah:
                         else:
                             inbox = np.index_exp[margin:-margin or None,
                                                  margin:-margin or None]
-                        prediction_true[where][inbox] = seg_in[inbox + (np.newaxis,)]
+                        prediction[where][inbox] = seg_in[inbox]
                         if thresholding_for_artificial_class:
-                            prediction_true[where][inbox + (1,)] = seg_in_art[inbox]
+                            mask_artificial_class[where][inbox] = seg_in_art[inbox]
 
                         indexer_inside_batch += 1
 
@@ -807,60 +802,52 @@ class Eynollah:
                     batch_indexer = 0
                     img_patch[:] = 0
 
-        prediction_true = prediction_true.astype(np.uint8)
-
         if thresholding_for_artificial_class:
-            kernel_min = np.ones((3, 3), np.uint8)
-            prediction_true[:,:,0][prediction_true[:,:,0]==artificial_class] = 0
-
-            skeleton_art = skeletonize(prediction_true[:,:,1]).astype(np.uint8)
-            skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
-
-            prediction_true[:,:,0][skeleton_art==1]=artificial_class
-        #del model
+            seg_mask_label(prediction, mask_artificial_class,
+                           label=artificial_class,
+                           only=True,
+                           skeletonize=True,
+                           dilate=3)
         gc.collect()
-        return prediction_true
+        return prediction
 
     def do_prediction_new_concept(
             self, patches, img, model,
-            n_batch_inference=1, marginal_of_patch_percent=0.1,
+            n_batch_inference=1,
+            marginal_of_patch_percent=0.1,
             thresholding_for_artificial_class=False,
             threshold_art_class=0.1,
             artificial_class=4,
     ):
 
-        self.logger.debug("enter do_prediction_new_concept")
+        self.logger.debug("enter do_prediction_new_concept (patches=%d)", patches)
         img_height_model = model.layers[-1].output_shape[1]
         img_width_model = model.layers[-1].output_shape[2]
+
+        img = img / 255.0
+        img = img.astype(np.float16)
 
         if not patches:
             img_h_page = img.shape[0]
             img_w_page = img.shape[1]
-            img = img / 255.0
             img = resize_image(img, img_height_model, img_width_model)
 
             label_p_pred = model.predict(img[np.newaxis], verbose=0)[0]
             seg = np.argmax(label_p_pred, axis=2)
 
-            seg_color = np.repeat(seg[:, :, np.newaxis], 3, axis=2)
-            prediction_true = resize_image(seg_color, img_h_page, img_w_page).astype(np.uint8)
+            prediction = resize_image(seg, img_h_page, img_w_page).astype(np.uint8)
 
             if thresholding_for_artificial_class:
-                kernel_min = np.ones((3, 3), np.uint8)
-                seg_art = label_p_pred[:, :, artificial_class]
-                seg_art = (seg_art >= threshold_art_class).astype(int)
-                #seg[seg_art==1]=4
-                seg_art = resize_image(seg_art, img_h_page, img_w_page).astype(np.uint8)
+                mask = resize_image(label_p_pred[:, :, artificial_class],
+                                    img_h_page, img_w_page) >= threshold_art_class
+                seg_mask_label(prediction, mask,
+                               label=artificial_class,
+                               only=True,
+                               skeletonize=True,
+                               dilate=3)
 
-                prediction_true[:,:,0][prediction_true[:,:,0]==artificial_class] = 0
-
-                skeleton_art = skeletonize(seg_art).astype(np.uint8)
-                skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
-
-                prediction_true[:,:,0][skeleton_art==1] = artificial_class
-
-            seg_text = resize_image(label_p_pred[:, :, 1] , img_h_page, img_w_page)
-            return prediction_true, seg_text
+            conf_text = resize_image(label_p_pred[:, :, 1], img_h_page, img_w_page)
+            return prediction, conf_text
 
         if img.shape[0] < img_height_model:
             img = resize_image(img, img_height_model, img.shape[1])
@@ -871,17 +858,14 @@ class Eynollah:
         margin = int(marginal_of_patch_percent * img_height_model)
         width_mid = img_width_model - 2 * margin
         height_mid = img_height_model - 2 * margin
-        img = img / 255.0
-        img = img.astype(np.float16)
         img_h = img.shape[0]
         img_w = img.shape[1]
-        prediction_true = np.zeros((img_h, img_w, 3))
-        confidence_matrix = np.zeros((img_h, img_w))
-        mask_true = np.zeros((img_h, img_w))
-        nxf = img_w / float(width_mid)
-        nyf = img_h / float(height_mid)
-        nxf = int(nxf) + 1 if nxf > int(nxf) else int(nxf)
-        nyf = int(nyf) + 1 if nyf > int(nyf) else int(nyf)
+        prediction = np.zeros((img_h, img_w), dtype=np.uint8)
+        confidence = np.zeros((img_h, img_w))
+        if thresholding_for_artificial_class:
+            mask_artificial_class = np.zeros((img_h, img_w), dtype=bool)
+        nxf = math.ceil(img_w / float(width_mid))
+        nyf = math.ceil(img_h / float(height_mid))
 
         list_i_s = []
         list_j_s = []
@@ -922,14 +906,15 @@ class Eynollah:
                     self.logger.debug("predicting patches on %s", str(img_patch.shape))
                     label_p_pred = model.predict(img_patch,verbose=0)
                     seg = np.argmax(label_p_pred, axis=3)
+                    conf = label_p_pred[:, :, :, 1]
 
                     if thresholding_for_artificial_class:
-                        seg_art = label_p_pred[:, :, :, artificial_class]
-                        seg_art = (seg_art >= threshold_art_class).astype(int)
+                        seg_art = label_p_pred[:, :, :, artificial_class] >= threshold_art_class
 
                     indexer_inside_batch = 0
                     for i_batch, j_batch in zip(list_i_s, list_j_s):
                         seg_in = seg[indexer_inside_batch]
+                        conf_in = conf[indexer_inside_batch]
 
                         if thresholding_for_artificial_class:
                             seg_in_art = seg_art[indexer_inside_batch]
@@ -981,14 +966,12 @@ class Eynollah:
                         else:
                             inbox = np.index_exp[margin:-margin or None,
                                                  margin:-margin or None]
-                        prediction_true[where][inbox] = seg_in[inbox + (np.newaxis,)]
-                        confidence_matrix[where][inbox] = label_p_pred[(0,) + inbox + (1,)]
-                        # rs: why is prediction_true 3ch when only 1st gets used?
-                        #     artificial boundary class map should be extra array
+                        prediction[where][inbox] = seg_in[inbox]
+                        confidence[where][inbox] = conf_in[inbox]
                         # rs: why does confidence_matrix only get text-label scores?
                         #     should be scores at final argmax
                         if thresholding_for_artificial_class:
-                            prediction_true[where][inbox + (1,)] = seg_in_art[inbox]
+                            mask_artificial_class[where][inbox] = seg_in_art[inbox]
 
                         indexer_inside_batch += 1
 
@@ -1002,29 +985,25 @@ class Eynollah:
                     batch_indexer = 0
                     img_patch[:] = 0
 
-        prediction_true = prediction_true.astype(np.uint8)
-
         if thresholding_for_artificial_class:
-            kernel_min = np.ones((3, 3), np.uint8)
-            prediction_true[:,:,0][prediction_true[:,:,0]==artificial_class] = 0
-
-            skeleton_art = skeletonize(prediction_true[:,:,1]).astype(np.uint8)
-            skeleton_art = cv2.dilate(skeleton_art, kernel_min, iterations=1)
-
-            prediction_true[:,:,0][skeleton_art==1]=artificial_class
+            seg_mask_label(prediction, mask_artificial_class,
+                           label=artificial_class,
+                           only=True,
+                           skeletonize=True,
+                           dilate=3)
         gc.collect()
-        return prediction_true, confidence_matrix
+        return prediction, confidence
+
+
+        gc.collect()
 
     def extract_page(self):
         self.logger.debug("enter extract_page")
         cont_page = []
         if not self.ignore_page_extraction:
             img = np.copy(self.image)#cv2.GaussianBlur(self.image, (5, 5), 0)
-            img_page_prediction = self.do_prediction(False, img, self.model_zoo.get("page"))
-            imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
-            _, thresh = cv2.threshold(imgray, 0, 255, 0)
-            ##thresh = cv2.dilate(thresh, KERNEL, iterations=3)
-            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            prediction = self.do_prediction(False, img, self.model_zoo.get("page"))
+            contours, _ = cv2.findContours(prediction, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
             if len(contours)>0:
                 cnt_size = np.array([cv2.contourArea(contours[j])
@@ -1068,12 +1047,9 @@ class Eynollah:
             else:
                 img = self.imread()
             img = cv2.GaussianBlur(img, (5, 5), 0)
-            img_page_prediction = self.do_prediction(False, img, self.model_zoo.get("page"))
-
-            imgray = cv2.cvtColor(img_page_prediction, cv2.COLOR_BGR2GRAY)
-            _, thresh = cv2.threshold(imgray, 0, 255, 0)
-            thresh = cv2.dilate(thresh, KERNEL, iterations=3)
-            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            prediction = self.do_prediction(False, img, self.model_zoo.get("page"))
+            prediction = cv2.dilate(prediction, KERNEL, iterations=3)
+            contours, _ = cv2.findContours(prediction, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             if len(contours)>0:
                 cnt_size = np.array([cv2.contourArea(contours[j])
                                      for j in range(len(contours))])
@@ -1122,7 +1098,7 @@ class Eynollah:
                                                 thresholding_for_heading=thresholding_for_heading)
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
-        return prediction_regions, prediction_regions
+        return prediction_regions
 
     def extract_text_regions(self, img, patches, cols):
         self.logger.debug("enter extract_text_regions")
@@ -1133,7 +1109,7 @@ class Eynollah:
         prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=0.1)
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
-        return prediction_regions, None
+        return prediction_regions
 
     def get_textlines_of_a_textregion_sorted(self, textlines_textregion, cx_textline, cy_textline, w_h_textline):
         N = len(cy_textline)
@@ -1280,26 +1256,15 @@ class Eynollah:
                                                  threshold_art_class=self.threshold_art_class_textline)
 
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
-        textline_mask_tot_ea_art = (prediction_textline[:,:]==2)*1
 
-        old_art = np.copy(textline_mask_tot_ea_art)
+        #prediction_textline_longshot = self.do_prediction(False, img, self.model_zoo.get("textline"))
+        #prediction_textline_longshot = resize_image(prediction_textline_longshot, img_h, img_w)
 
-        textline_mask_tot_ea_lines = (prediction_textline[:,:]==1)*1
-        textline_mask_tot_ea_lines = textline_mask_tot_ea_lines.astype('uint8')
-
-        prediction_textline[:,:][textline_mask_tot_ea_lines[:,:]==1]=1
-
-        #cv2.imwrite('prediction_textline2.png', prediction_textline[:,:,0])
-
-        prediction_textline_longshot = self.do_prediction(False, img, self.model_zoo.get("textline"))
-        prediction_textline_longshot_true_size = resize_image(prediction_textline_longshot, img_h, img_w)
-
-
-        #cv2.imwrite('prediction_textline.png', prediction_textline[:,:,0])
-        #sys.exit()
         self.logger.debug('exit textline_contours')
-        return ((prediction_textline[:, :, 0]==1).astype(np.uint8),
-                (prediction_textline_longshot_true_size[:, :, 0]==1).astype(np.uint8))
+        return ((prediction_textline==1).astype(np.uint8),
+                #(prediction_textline_longshot==1).astype(np.uint8),
+                None
+        )
 
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_light_v")
@@ -1334,7 +1299,6 @@ class Eynollah:
             ###prediction_bin = self.do_prediction(True, img_resized, self.model_zoo.get_model("binarization"), n_batch_inference=5)
 
             ####print("inside bin ", time.time()-t_bin)
-            ###prediction_bin=prediction_bin[:,:,0]
             ###prediction_bin = (prediction_bin[:,:]==0)*1
             ###prediction_bin = prediction_bin*255
 
@@ -1374,7 +1338,7 @@ class Eynollah:
                     thresholding_for_artificial_class=True,
                     threshold_art_class=self.threshold_art_class_layout)
             else:
-                prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1], 3))
+                prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1]))
                 confidence_matrix = np.zeros((self.image_org.shape[0], self.image_org.shape[1]))
                 prediction_regions_page, confidence_matrix_page = self.do_prediction_new_concept(
                     False, self.image_page_org_size, self.model_zoo.get("region_1_2"), n_batch_inference=1,
@@ -1398,13 +1362,12 @@ class Eynollah:
         ###n_batch_inference=3,
         ###thresholding_for_some_classes=True)
         #print("inside 3 ", time.time()-t_in)
-        #plt.imshow(prediction_regions_org[:,:,0])
+        #plt.imshow(prediction_regions_org[:,:])
         #plt.show()
 
         prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
         confidence_matrix = resize_image(confidence_matrix, img_height_h, img_width_h )
         img_bin = resize_image(img_bin, img_height_h, img_width_h )
-        prediction_regions_org=prediction_regions_org[:,:,0]
 
         mask_seps_only = (prediction_regions_org[:,:] == 3)*1
         mask_texts_only = (prediction_regions_org[:,:] ==1)*1
@@ -1795,7 +1758,7 @@ class Eynollah:
         patches = False
         prediction_table, _ = self.do_prediction_new_concept(patches, img, self.model_zoo.get("table"))
         prediction_table = prediction_table.astype(np.int16)
-        return prediction_table[:,:,0]
+        return prediction_table
 
     def run_graphics_and_columns_light(
             self, text_regions_p_1, textline_mask_tot_ea,
@@ -1972,12 +1935,12 @@ class Eynollah:
             textline_mask_tot_d = rotate_image(textline_mask_tot, slope_deskew)
             text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
             table_prediction_n = rotate_image(table_prediction, slope_deskew)
-            regions_without_separators_d = (text_regions_p_d[:, :] == 1) * 1
+            regions_without_separators_d = (text_regions_p_d == 1) * 1
             if self.tables:
-                regions_without_separators_d[table_prediction_n[:,:] == 1] = 1
-        regions_without_separators = (text_regions_p[:, :] == 1) * 1
-        # ( (text_regions_p[:,:]==1) | (text_regions_p[:,:]==2) )*1
-        #self.return_regions_without_separators_new(text_regions_p[:,:,0],img_only_regions)
+                regions_without_separators_d[table_prediction_n == 1] = 1
+        regions_without_separators = (text_regions_p == 1) * 1
+        # ( (text_regions_p==1) | (text_regions_p==2) )*1
+        #self.return_regions_without_separators_new(text_regions_p,img_only_regions)
         #print(time.time()-t_0_box,'time box in 1')
         if self.tables:
             regions_without_separators[table_prediction ==1 ] = 1
@@ -1999,10 +1962,10 @@ class Eynollah:
         if not erosion_hurts:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                 regions_without_separators = regions_without_separators.astype(np.uint8)
-                regions_without_separators = cv2.erode(regions_without_separators[:, :], KERNEL, iterations=6)
+                regions_without_separators = cv2.erode(regions_without_separators, KERNEL, iterations=6)
             else:
                 regions_without_separators_d = regions_without_separators_d.astype(np.uint8)
-                regions_without_separators_d = cv2.erode(regions_without_separators_d[:, :], KERNEL, iterations=6)
+                regions_without_separators_d = cv2.erode(regions_without_separators_d, KERNEL, iterations=6)
         #print(time.time()-t_0_box,'time box in 3')
         t1 = time.time()
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
@@ -2025,15 +1988,12 @@ class Eynollah:
 
         if self.tables:
             text_regions_p[table_prediction == 1] = 10
-            img_revised_tab = text_regions_p[:,:]
-        else:
-            img_revised_tab = text_regions_p[:,:]
-        #img_revised_tab = text_regions_p[:, :]
+        img_revised_tab = text_regions_p[:, :]
         polygons_of_images = return_contours_of_interested_region(text_regions_p, 2)
 
         label_marginalia = 4
         min_area_mar = 0.00001
-        marginal_mask = (text_regions_p[:,:]==label_marginalia)*1
+        marginal_mask = (text_regions_p==label_marginalia)*1
         marginal_mask = marginal_mask.astype('uint8')
         marginal_mask = cv2.dilate(marginal_mask, KERNEL, iterations=2)
 
@@ -2093,7 +2053,7 @@ class Eynollah:
 
         image_page = image_page.astype(np.uint8)
         #print("full inside 1", time.time()- t_full0)
-        regions_fully, regions_fully_only_drop = self.extract_text_regions_new(
+        regions_fully = self.extract_text_regions_new(
             img_bin_light,
             False, cols=num_col_classifier)
         #print("full inside 2", time.time()- t_full0)
@@ -2103,36 +2063,33 @@ class Eynollah:
 
         # the separators in full layout will not be written on layout
         if not self.reading_order_machine_based:
-            text_regions_p[:,:][regions_fully[:,:,0]==5]=6
-        ###regions_fully[:, :, 0][regions_fully_only_drop[:, :, 0] == 3] = 4
+            text_regions_p[regions_fully==5]=6
 
-        #text_regions_p[:,:][regions_fully[:,:,0]==6]=6
-        ##regions_fully_only_drop = put_drop_out_from_only_drop_model(regions_fully_only_drop, text_regions_p)
-        ##regions_fully[:, :, 0][regions_fully_only_drop[:, :] == 4] = 4
+        #text_regions_p[:,:][regions_fully[:,:]==6]=6
         drop_capital_label_in_full_layout_model = 3
 
-        drops = (regions_fully[:,:,0]==drop_capital_label_in_full_layout_model)*1
+        drops = (regions_fully==drop_capital_label_in_full_layout_model)*1
         drops= drops.astype(np.uint8)
 
-        regions_fully[:,:,0][regions_fully[:,:,0]==drop_capital_label_in_full_layout_model] = 1
+        regions_fully[regions_fully==drop_capital_label_in_full_layout_model] = 1
 
-        drops = cv2.erode(drops[:,:], KERNEL, iterations=1)
-        regions_fully[:,:,0][drops[:,:]==1] = drop_capital_label_in_full_layout_model
+        drops = cv2.erode(drops, KERNEL, iterations=1)
+        regions_fully[drops==1] = drop_capital_label_in_full_layout_model
 
         regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(
             regions_fully, drop_capital_label_in_full_layout_model, text_regions_p)
-        ##regions_fully_np, _ = self.extract_text_regions(image_page, False, cols=num_col_classifier)
+        ##regions_fully_np = self.extract_text_regions(image_page, False, cols=num_col_classifier)
         ##if num_col_classifier > 2:
-            ##regions_fully_np[:, :, 0][regions_fully_np[:, :, 0] == 4] = 0
+            ##regions_fully_np[regions_fully_np == 4] = 0
         ##else:
             ##regions_fully_np = filter_small_drop_capitals_from_no_patch_layout(regions_fully_np, text_regions_p)
 
         ###regions_fully = boosting_headers_by_longshot_region_segmentation(regions_fully,
         ###    regions_fully_np, img_only_regions)
-        # plt.imshow(regions_fully[:,:,0])
+        # plt.imshow(regions_fully)
         # plt.show()
-        text_regions_p[:, :][regions_fully[:, :, 0] == drop_capital_label_in_full_layout_model] = 4
-        ####text_regions_p[:, :][regions_fully_np[:, :, 0] == 4] = 4
+        text_regions_p[regions_fully == drop_capital_label_in_full_layout_model] = 4
+        ####text_regions_p[regions_fully_np == 4] = 4
         #plt.imshow(text_regions_p)
         #plt.show()
         ####if not self.tables:
@@ -2141,14 +2098,14 @@ class Eynollah:
             text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
             regions_fully_n = rotate_image(regions_fully, slope_deskew)
             if not self.tables:
-                regions_without_separators_d = (text_regions_p_d[:, :] == 1) * 1
+                regions_without_separators_d = (text_regions_p_d == 1) * 1
         else:
             text_regions_p_d = None
             textline_mask_tot_d = None
             regions_without_separators_d = None
         if not self.tables:
-            regions_without_separators = (text_regions_p[:, :] == 1) * 1
-        img_revised_tab = np.copy(text_regions_p[:, :])
+            regions_without_separators = (text_regions_p == 1) * 1
+        img_revised_tab = np.copy(text_regions_p)
         polygons_of_images = return_contours_of_interested_region(img_revised_tab, 5)
 
         self.logger.debug('exit run_boxes_full_layout')
@@ -2853,7 +2810,7 @@ class Eynollah:
             textline_mask_tot_ea_org[img_revised_tab==drop_label_in_full_layout] = 0
 
 
-        text_only = (img_revised_tab[:, :] == 1) * 1
+        text_only = (img_revised_tab == 1) * 1
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
             text_only_d = ((text_regions_p_d[:, :] == 1)) * 1
 
