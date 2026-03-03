@@ -92,7 +92,7 @@ def linegt_cli(
             tree = ET.parse(dir_xml)
             root = tree.getroot()
 
-            NS = {"alto": "http://www.loc.gov/standards/alto/ns-v4#"}
+            NS = {'alto': root.tag.split('}')[0].strip('{')}#{"alto": "http://www.loc.gov/standards/alto/ns-v4#"}
 
             results = []
             

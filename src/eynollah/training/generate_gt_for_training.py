@@ -73,8 +73,14 @@ def main():
     is_flag=True,
     help="if this parameter set to true, generated labels and in the case of provided org images cropping will be imposed and cropped labels and images will be written in output directories.",
 )
+@click.option(
+    "--page_alto",
+    "-alto",
+    is_flag=True,
+    help="If this parameter is set to True, textline label generation is performed using PAGE/ALTO files. Otherwise, the default method for PAGE XML files is used.",
+)
 
-def pagexml2label(dir_xml,dir_out,type_output,config, printspace, dir_images, dir_out_images):
+def pagexml2label(dir_xml,dir_out,type_output,config, printspace, dir_images, dir_out_images, page_alto):
     if config:
         with open(config) as f:
             config_params = json.load(f)
@@ -82,7 +88,7 @@ def pagexml2label(dir_xml,dir_out,type_output,config, printspace, dir_images, di
         print("passed")
         config_params = None
     gt_list = get_content_of_dir(dir_xml)
-    get_images_of_ground_truth(gt_list,dir_xml,dir_out,type_output, config, config_params, printspace, dir_images, dir_out_images)
+    get_images_of_ground_truth(gt_list,dir_xml,dir_out,type_output, config, config_params, printspace, dir_images, dir_out_images, page_alto)
     
 @main.command()
 @click.option(
