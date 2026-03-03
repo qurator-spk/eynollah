@@ -136,7 +136,10 @@ def run_ensembling(dir_models, out, framework):
         model.set_weights(new_weights)
         model.save(out)
         os.system('cp '+os.path.join(os.path.join(dir_models,model_name) , "config_eynollah.json ")+out)
-        os.system('cp '+os.path.join(os.path.join(dir_models,model_name) , "characters_org.txt ")+out)
+        try:
+            os.system('cp '+os.path.join(os.path.join(dir_models,model_name) , "characters_org.txt ")+out)
+        except:
+            pass
 
 @click.command()
 @click.option(
