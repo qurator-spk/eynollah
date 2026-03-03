@@ -4,3 +4,8 @@ numpy <1.24.0
 tqdm
 imutils
 scipy
+torch
+evaluate
+accelerate
+jiwer
+transformers <= 4.30.2

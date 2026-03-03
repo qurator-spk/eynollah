@@ -10,6 +10,7 @@ from .inference import main as inference_cli
 from .train import ex
 from .extract_line_gt import linegt_cli
 from .weights_ensembling import main as ensemble_cli
+from .generate_or_update_cnn_rnn_ocr_character_list import main as update_ocr_characters_cli
 
 @click.command(context_settings=dict(
         ignore_unknown_options=True,
@@ -28,3 +29,4 @@ main.add_command(inference_cli, 'inference')
 main.add_command(train_cli, 'train')
 main.add_command(linegt_cli, 'export_textline_images_and_text')
 main.add_command(ensemble_cli, 'ensembling')
+main.add_command(update_ocr_characters_cli, 'generate_or_update_cnn_rnn_ocr_character_list')
