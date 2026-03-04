@@ -1241,30 +1241,21 @@ class Eynollah:
         self.logger.debug("exit get_slopes_and_deskew_new_curved")
         return tuple(zip(*results))
 
-    def textline_contours(self, img, use_patches, scaler_h, scaler_w, num_col_classifier=None):
+    def textline_contours(self, img, use_patches, num_col_classifier=None):
         self.logger.debug('enter textline_contours')
-
-        #img = img.astype(np.uint8)
-        img_org = np.copy(img)
-        img_h = img_org.shape[0]
-        img_w = img_org.shape[1]
-        img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
 
         prediction_textline = self.do_prediction(use_patches, img, self.model_zoo.get("textline"),
                                                  marginal_of_patch_percent=0.15,
                                                  n_batch_inference=3,
                                                  threshold_art_class=self.threshold_art_class_textline)
 
-        prediction_textline = resize_image(prediction_textline, img_h, img_w)
-
         #prediction_textline_longshot = self.do_prediction(False, img, self.model_zoo.get("textline"))
-        #prediction_textline_longshot = resize_image(prediction_textline_longshot, img_h, img_w)
 
         self.logger.debug('exit textline_contours')
-        return ((prediction_textline==1).astype(np.uint8),
-                #(prediction_textline_longshot==1).astype(np.uint8),
-                None
-        )
+        # suppress artificial boundary label
+        result = (prediction_textline == 1).astype(np.uint8)
+        #, (prediction_textline_longshot==1).astype(np.uint8)
+        return result
 
     def get_regions_light_v(self,img,is_image_enhanced, num_col_classifier):
         self.logger.debug("enter get_regions_light_v")
@@ -1879,14 +1870,9 @@ class Eynollah:
         return img_res, is_image_enhanced, num_col_classifier, num_column_is_classified
 
     def run_textline(self, image_page, num_col_classifier=None):
-        scaler_h_textline = 1#1.3  # 1.2#1.2
-        scaler_w_textline = 1#1.3  # 0.9#1
-        #print(image_page.shape)
-        textline_mask_tot_ea, _ = self.textline_contours(image_page, True,
-                                                         scaler_h_textline,
-                                                         scaler_w_textline,
-                                                         num_col_classifier)
-        textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
+        textline_mask_tot_ea = self.textline_contours(image_page, True,
+                                                      num_col_classifier)
+        #textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
 
         if self.plotter:
             self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page)
