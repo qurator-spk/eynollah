@@ -33,7 +33,7 @@ class EynollahModelZoo:
         basedir: str,
         model_overrides: Optional[List[Tuple[str, str, str]]] = None,
     ) -> None:
-        self.model_basedir = Path(basedir)
+        self.model_basedir = Path(basedir).resolve()
         self.logger = logging.getLogger('eynollah.model_zoo')
         if not self.model_basedir.exists():
             self.logger.warning(f"Model basedir does not exist: {basedir}. Set eynollah --model-basedir to the correct directory.")
@@ -57,7 +57,7 @@ class EynollahModelZoo:
         for model_category, model_variant, model_filename in model_overrides:
             spec = self.specs.get(model_category, model_variant)
             self.logger.warning("Overriding filename for model spec %s to %s", spec, model_filename)
-            self.specs.get(model_category, model_variant).filename = model_filename
+            self.specs.get(model_category, model_variant).filename = str(Path(model_filename).resolve())
         self._overrides += model_overrides
 
     def model_path(
