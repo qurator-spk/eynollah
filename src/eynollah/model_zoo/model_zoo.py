@@ -1,17 +1,25 @@
+import os
 import json
 import logging
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Type, Union
 
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 from ocrd_utils import tf_disable_interactive_logs
 tf_disable_interactive_logs()
 
-from keras.layers import StringLookup
-from keras.models import Model as KerasModel
-from keras.models import load_model
+from tensorflow.keras.layers import StringLookup
+from tensorflow.keras.models import Model as KerasModel
+from tensorflow.keras.models import load_model
 from tabulate import tabulate
-from ..patch_encoder import PatchEncoder, Patches
+
+from ..patch_encoder import (
+    PatchEncoder,
+    Patches,
+    wrap_layout_model_patched,
+    wrap_layout_model_resized,
+)
 from .specs import EynollahModelSpecSet
 from .default_specs import DEFAULT_MODEL_SPECS
 from .types import AnyModel, T
@@ -30,7 +38,7 @@ class EynollahModelZoo:
         basedir: str,
         model_overrides: Optional[List[Tuple[str, str, str]]] = None,
     ) -> None:
-        self.model_basedir = Path(basedir)
+        self.model_basedir = Path(basedir).resolve()
         self.logger = logging.getLogger('eynollah.model_zoo')
         if not self.model_basedir.exists():
             self.logger.warning(f"Model basedir does not exist: {basedir}. Set eynollah --model-basedir to the correct directory.")
@@ -54,7 +62,7 @@ class EynollahModelZoo:
         for model_category, model_variant, model_filename in model_overrides:
             spec = self.specs.get(model_category, model_variant)
             self.logger.warning("Overriding filename for model spec %s to %s", spec, model_filename)
-            self.specs.get(model_category, model_variant).filename = model_filename
+            self.specs.get(model_category, model_variant).filename = str(Path(model_filename).resolve())
         self._overrides += model_overrides
 
     def model_path(
@@ -82,6 +90,17 @@ class EynollahModelZoo:
         """
         Load all models by calling load_model and return a dictionary mapping model_category to loaded model
         """
+        import tensorflow as tf
+        cuda = False
+        try:
+            for device in tf.config.list_physical_devices('GPU'):
+                tf.config.experimental.set_memory_growth(device, True)
+                cuda = True
+                self.logger.info("using GPU %s", device.name)
+        except RuntimeError:
+            self.logger.exception("cannot configure GPU devices")
+        if not cuda:
+            self.logger.warning("no GPU device available")
         ret = {}
         for load_args in all_load_args:
             if isinstance(load_args, str):
@@ -122,7 +141,12 @@ class EynollahModelZoo:
                 model = load_model(
                     model_path, compile=False, custom_objects={"PatchEncoder": PatchEncoder, "Patches": Patches}
                 )
+            model._name = model_category
         self._loaded[model_category] = model
+        if model_category in ['region_1_2', 'table', 'region_fl_np']:
+            self._loaded[model_category + '_resized'] = wrap_layout_model_resized(model)
+        if model_category in ['region_1_2', 'textline']:
+            self._loaded[model_category + '_patched'] = wrap_layout_model_patched(model)
         return model  # type: ignore
 
     def get(self, model_category: str, model_type: Optional[Type[T]] = None) -> T:
