@@ -90,6 +90,17 @@ class EynollahModelZoo:
         """
         Load all models by calling load_model and return a dictionary mapping model_category to loaded model
         """
+        import tensorflow as tf
+        cuda = False
+        try:
+            for device in tf.config.list_physical_devices('GPU'):
+                tf.config.experimental.set_memory_growth(device, True)
+                cuda = True
+                self.logger.info("using GPU %s", device.name)
+        except RuntimeError:
+            self.logger.exception("cannot configure GPU devices")
+        if not cuda:
+            self.logger.warning("no GPU device available")
         ret = {}
         for load_args in all_load_args:
             if isinstance(load_args, str):

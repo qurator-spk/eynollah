@@ -35,22 +35,15 @@ import numpy as np
 import shapely.affinity
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-from ocrd_utils import tf_disable_interactive_logs
 import statistics
 
-tf_disable_interactive_logs()
-
-import tensorflow as tf
-try:
-    import torch
-except ImportError:
-    torch = None
 try:
     import matplotlib.pyplot as plt
 except ImportError:
     plt = None
 
 from .model_zoo import EynollahModelZoo
+from .predictor import Predictor
 from .utils.contour import (
     filter_contours_area_of_image,
     filter_contours_area_of_image_tables,
@@ -129,7 +122,7 @@ class Eynollah:
         logger : Optional[logging.Logger] = None,
     ):
         self.logger = logger or logging.getLogger('eynollah')
-        self.model_zoo = model_zoo
+        self.model_zoo = Predictor(self.logger, model_zoo)
         self.plotter = None
 
         self.reading_order_machine_based = reading_order_machine_based
@@ -169,12 +162,6 @@ class Eynollah:
 
         t_start = time.time()
 
-        try:
-            for device in tf.config.list_physical_devices('GPU'):
-                tf.config.experimental.set_memory_growth(device, True)
-        except:
-            self.logger.warning("no GPU device available")
-
         self.logger.info("Loading models...")
         self.setup_models()
         self.logger.info(f"Model initialization complete ({time.time() - t_start:.1f}s)")
@@ -199,26 +186,21 @@ class Eynollah:
         if self.reading_order_machine_based:
             loadable.append("reading_order")
         if self.tables:
-            loadable.append(("table"))
+            loadable.append("table")
 
         self.model_zoo.load_models(*loadable)
+        for model in loadable:
+            # cache and retrieve output shapes
+            self.model_zoo.get(model).output_shape
 
     def __del__(self):
-        if hasattr(self, 'executor') and getattr(self, 'executor'):
-            assert self.executor
-            self.executor.shutdown()
-            self.executor = None
-        self.model_zoo.shutdown()
-
-    @property
-    def device(self):
-        # TODO why here and why only for tr?
-        assert torch
-        if torch.cuda.is_available():
-            self.logger.info("Using GPU acceleration")
-            return torch.device("cuda:0")
-        self.logger.info("Using CPU processing")
-        return torch.device("cpu")
+        if executor := getattr(self, 'executor', None):
+            executor.shutdown()
+        del self.executor
+        if model_zoo := getattr(self, 'model_zoo', None):
+            if shutdown := getattr(model_zoo, 'shutdown', None):
+                shutdown()
+        del self.model_zoo
 
     def cache_images(self, image_filename=None, image_pil=None, dpi=None):
         ret = {}
@@ -535,8 +517,7 @@ class Eynollah:
     ):
 
         self.logger.debug("enter do_prediction (patches=%d)", patches)
-        img_height_model = model.layers[-1].output_shape[1]
-        img_width_model = model.layers[-1].output_shape[2]
+        _, img_height_model, img_width_model, _ = model.output_shape
         img_h_page = img.shape[0]
         img_w_page = img.shape[1]
 
@@ -736,8 +717,7 @@ class Eynollah:
     ):
 
         self.logger.debug("enter do_prediction_new_concept (patches=%d)", patches)
-        img_height_model = model.layers[-1].output_shape[1]
-        img_width_model = model.layers[-1].output_shape[2]
+        _, img_height_model, img_width_model, _ = model.output_shape
 
         img = img / 255.0
         img = img.astype(np.float16)
