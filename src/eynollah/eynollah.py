@@ -104,11 +104,6 @@ DPI_THRESHOLD = 298
 MAX_SLOPE = 999
 KERNEL = np.ones((5, 5), np.uint8)
 
-projection_dim = 64
-patch_size = 1
-num_patches =21*21#14*14#28*28#14*14#28*28
-
-
 
 class Eynollah:
     def __init__(
@@ -925,7 +920,7 @@ class Eynollah:
         self.logger.debug("enter do_prediction_new_concept (%s)", model.name)
         img = img / 255.0
 
-        prediction = model.predict(img[np.newaxis]).numpy()[0]
+        prediction = model.predict(img[np.newaxis])[0]
         confidence = prediction[:, :, 1]
         segmentation = np.argmax(prediction, axis=2).astype(np.uint8)
 

@@ -57,6 +57,10 @@ class wrap_layout_model_resized(models.Model):
         self.height = model.layers[-1].output_shape[1]
         self.width = model.layers[-1].output_shape[2]
 
+    @tf.function(reduce_retracing=True,
+                 #jit_compile=True, (ScaleAndTranslate is not supported by XLA)
+                 input_signature=[tf.TensorSpec([1, None, None, 3],
+                                                dtype=tf.float32)])
     def call(self, img, training=False):
         height = tf.shape(img)[1]
         width = tf.shape(img)[2]
@@ -68,12 +72,8 @@ class wrap_layout_model_resized(models.Model):
                                (height, width))
         return pred
 
-    @tf.function(reduce_retracing=True,
-                 #jit_compile=True, (ScaleAndTranslate is not supported by XLA)
-                 input_signature=[tf.TensorSpec([1, None, None, 3],
-                                                dtype=tf.float32)])
-    def predict(self, x):
-        return self(x)
+    def predict(self, x, verbose=0):
+        return self(x).numpy()
 
 class wrap_layout_model_patched(models.Model):
     """
@@ -98,6 +98,10 @@ class wrap_layout_model_patched(models.Model):
             self.height, self.width)
         self.window = tf.expand_dims(window, axis=0)
 
+    @tf.function(reduce_retracing=True,
+                 #jit_compile=True, (ScaleAndTranslate and ExtractImagePatches not supported by XLA)
+                 input_signature=[tf.TensorSpec([1, None, None, 3],
+                                                dtype=tf.float32)])
     def call(self, img, training=False):
         height = tf.shape(img)[1]
         width = tf.shape(img)[2]
@@ -152,9 +156,5 @@ class wrap_layout_model_patched(models.Model):
         pred = tf.expand_dims(pred, axis=0)
         return pred
 
-    @tf.function(reduce_retracing=True,
-                 #jit_compile=True, (ScaleAndTranslate and ExtractImagePatches not supported by XLA)
-                 input_signature=[tf.TensorSpec([1, None, None, 3],
-                                                dtype=tf.float32)])
-    def predict(self, x):
-        return self(x)
+    def predict(self, x, verbose=0):
+        return self(x).numpy()
