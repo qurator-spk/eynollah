@@ -14,7 +14,12 @@ from tensorflow.keras.models import Model as KerasModel
 from tensorflow.keras.models import load_model
 from tabulate import tabulate
 
-from ..patch_encoder import PatchEncoder, Patches
+from ..patch_encoder import (
+    PatchEncoder,
+    Patches,
+    wrap_layout_model_patched,
+    wrap_layout_model_resized,
+)
 from .specs import EynollahModelSpecSet
 from .default_specs import DEFAULT_MODEL_SPECS
 from .types import AnyModel, T
@@ -125,7 +130,12 @@ class EynollahModelZoo:
                 model = load_model(
                     model_path, compile=False, custom_objects={"PatchEncoder": PatchEncoder, "Patches": Patches}
                 )
+            model._name = model_category
         self._loaded[model_category] = model
+        if model_category in ['region_1_2', 'table', 'region_fl_np']:
+            self._loaded[model_category + '_resized'] = wrap_layout_model_resized(model)
+        if model_category in ['region_1_2', 'textline']:
+            self._loaded[model_category + '_patched'] = wrap_layout_model_patched(model)
         return model  # type: ignore
 
     def get(self, model_category: str, model_type: Optional[Type[T]] = None) -> T:

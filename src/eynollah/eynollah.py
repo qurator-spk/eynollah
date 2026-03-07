@@ -914,8 +914,34 @@ class Eynollah:
         gc.collect()
         return prediction, confidence
 
+    def do_prediction_new_concept_autosize(
+            self, img, model,
+            thresholding_for_heading=False,
+            thresholding_for_artificial_class=False,
+            threshold_art_class=0.1,
+            artificial_class=4,
+    ):
 
+        self.logger.debug("enter do_prediction_new_concept (%s)", model.name)
+        img = img / 255.0
+
+        prediction = model.predict(img[np.newaxis]).numpy()[0]
+        confidence = prediction[:, :, 1]
+        segmentation = np.argmax(prediction, axis=2).astype(np.uint8)
+
+        if thresholding_for_artificial_class:
+            seg_mask_label(segmentation,
+                           prediction[:, :, artificial_class] >= threshold_art_class,
+                           label=artificial_class,
+                           only=True,
+                           skeletonize=True,
+                           dilate=3)
+        if thresholding_for_heading:
+            seg_mask_label(segmentation,
+                           prediction[:, :, 2] >= 0.2,
+                           label=2)
         gc.collect()
+        return segmentation, confidence
 
     def extract_page(self):
         self.logger.debug("enter extract_page")
@@ -990,7 +1016,9 @@ class Eynollah:
         self.logger.debug("enter extract_text_regions")
         img_height_h = img.shape[0]
         img_width_h = img.shape[1]
-        model_region = self.model_zoo.get("region_fl") if patches else self.model_zoo.get("region_fl_np")
+        #model_name = "region_fl" if patches else "region_fl_np"
+        model_name = "region_fl_patched" if patches else "region_fl_np_resized"
+        model_region = self.model_zoo.get(model_name)
 
         thresholding_for_heading = True
         img = otsu_copy_binary(img).astype(np.uint8)
@@ -1010,10 +1038,9 @@ class Eynollah:
             else:
                 img = resize_image(img, int(img_height_h * 2500 / float(img_width_h)), 2500).astype(np.uint8)
 
-        prediction_regions = self.do_prediction(patches, img, model_region,
-                                                marginal_of_patch_percent=0.1,
-                                                n_batch_inference=3,
-                                                thresholding_for_heading=thresholding_for_heading)
+        prediction_regions, _ = self.do_prediction_new_concept_autosize(
+            img, model_region,
+            thresholding_for_heading=thresholding_for_heading)
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
         return prediction_regions
@@ -1162,10 +1189,11 @@ class Eynollah:
     def textline_contours(self, img, use_patches, num_col_classifier=None):
         self.logger.debug('enter textline_contours')
 
-        prediction_textline = self.do_prediction(use_patches, img, self.model_zoo.get("textline"),
-                                                 marginal_of_patch_percent=0.15,
-                                                 n_batch_inference=3,
-                                                 threshold_art_class=self.threshold_art_class_textline)
+        prediction_textline, _ = self.do_prediction_new_concept_autosize(
+            img, self.model_zoo.get("textline_patched" if use_patches else "textline_resized"),
+            artificial_class=2,
+            thresholding_for_artificial_class=True,
+            threshold_art_class=self.threshold_art_class_textline)
 
         #prediction_textline_longshot = self.do_prediction(False, img, self.model_zoo.get("textline"))
 
@@ -1242,17 +1270,19 @@ class Eynollah:
             if self.image_org.shape[0]/self.image_org.shape[1] > 2.5:
                 self.logger.debug("resized to %dx%d for %d cols",
                                   img_resized.shape[1], img_resized.shape[0], num_col_classifier)
-                prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
-                    True, img_resized, self.model_zoo.get("region_1_2"), n_batch_inference=1,
-                    thresholding_for_artificial_class=True,
-                    threshold_art_class=self.threshold_art_class_layout)
+                prediction_regions_org, confidence_matrix = \
+                    self.do_prediction_new_concept_autosize(
+                        img_resized, self.model_zoo.get("region_1_2_patched"),
+                        thresholding_for_artificial_class=True,
+                        threshold_art_class=self.threshold_art_class_layout)
             else:
                 prediction_regions_org = np.zeros((self.image_org.shape[0], self.image_org.shape[1]))
                 confidence_matrix = np.zeros((self.image_org.shape[0], self.image_org.shape[1]))
-                prediction_regions_page, confidence_matrix_page = self.do_prediction_new_concept(
-                    False, self.image_page_org_size, self.model_zoo.get("region_1_2"), n_batch_inference=1,
-                    thresholding_for_artificial_class=True,
-                    threshold_art_class=self.threshold_art_class_layout)
+                prediction_regions_page, confidence_matrix_page = \
+                    self.do_prediction_new_concept_autosize(
+                        self.image_page_org_size, self.model_zoo.get("region_1_2_resized"),
+                        thresholding_for_artificial_class=True,
+                        threshold_art_class=self.threshold_art_class_layout)
                 ys = slice(*self.page_coord[0:2])
                 xs = slice(*self.page_coord[2:4])
                 prediction_regions_org[ys, xs] = prediction_regions_page
@@ -1263,10 +1293,11 @@ class Eynollah:
             img_resized = resize_image(img_bin, int(new_h * img_bin.shape[0] /img_bin.shape[1]), new_h)
             self.logger.debug("resized to %dx%d (new_h=%d) for %d cols",
                               img_resized.shape[1], img_resized.shape[0], new_h, num_col_classifier)
-            prediction_regions_org, confidence_matrix = self.do_prediction_new_concept(
-                True, img_resized, self.model_zoo.get("region_1_2"), n_batch_inference=2,
-                thresholding_for_artificial_class=True,
-                threshold_art_class=self.threshold_art_class_layout)
+            prediction_regions_org, confidence_matrix = \
+                self.do_prediction_new_concept_autosize(
+                    img_resized, self.model_zoo.get("region_1_2_patched"),
+                    thresholding_for_artificial_class=True,
+                    threshold_art_class=self.threshold_art_class_layout)
         ###prediction_regions_org = self.do_prediction(True, img_bin, self.model_zoo.get_model("region"),
         ###n_batch_inference=3,
         ###thresholding_for_some_classes=True)
@@ -1664,8 +1695,7 @@ class Eynollah:
         img_org = np.copy(img)
         img_height_h = img_org.shape[0]
         img_width_h = img_org.shape[1]
-        patches = False
-        prediction_table, _ = self.do_prediction_new_concept(patches, img, self.model_zoo.get("table"))
+        prediction_table, _ = self.do_prediction_new_concept_autosize(img, self.model_zoo.get("table_resized"))
         prediction_table = prediction_table.astype(np.int16)
         return prediction_table
 
