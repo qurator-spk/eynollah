@@ -39,7 +39,7 @@ class Predictor(mp.context.SpawnProcess):
         self.loglevel = logger.level
         self.model_zoo = model_zoo
         ctxt = mp.get_context('spawn')
-        self.jobid = mp.Value('i', 0)
+        self.jobid = ctxt.Value('i', 0)
         self.taskq = ctxt.Queue(maxsize=QSIZE)
         self.resultq = ctxt.Queue(maxsize=QSIZE)
         self.logq = ctxt.Queue(maxsize=QSIZE * 100)
