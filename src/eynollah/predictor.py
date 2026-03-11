@@ -95,11 +95,13 @@ class Predictor(mp.context.SpawnProcess):
             self.logger.exception("setup failed")
             self.stopped.set()
         closing = {}
-        while not self.stopped.is_set():
+        def close_all():
             for jobid in list(self.closable):
                 self.closable.remove(jobid)
                 closing.pop(jobid).close()
                 #self.logger.debug("closed shm for '%d'", jobid)
+        while not self.stopped.is_set():
+            close_all()
             try:
                 jobid, model, shared_data = self.taskq.get(timeout=1.1)
             except mp.queues.Empty:
@@ -124,6 +126,7 @@ class Predictor(mp.context.SpawnProcess):
                 result = e
             self.resultq.put((jobid, result))
             #self.logger.debug("sent result for '%d'", jobid)
+        close_all()
         #self.logger.debug("predictor terminated")
 
     def load_models(self, *loadable: List[str]):
