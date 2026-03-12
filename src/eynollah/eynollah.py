@@ -1736,7 +1736,7 @@ class Eynollah:
             num_col, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
             num_col = num_col + 1
             if not num_column_is_classified:
-                num_col_classifier = num_col + 1
+                num_col_classifier = num_col
             num_col_classifier = min(self.num_col_upper or num_col_classifier,
                                      max(self.num_col_lower or num_col_classifier,
                                          num_col_classifier))
