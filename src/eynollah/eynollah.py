@@ -1513,11 +1513,13 @@ class Eynollah:
         img_h = img_org.shape[0]
         img_w = img_org.shape[1]
         img = resize_image(img_org, int(img_org.shape[0] * scaler_h), int(img_org.shape[1] * scaler_w))
-
+        
         prediction_textline = self.do_prediction(use_patches, img, self.model_zoo.get("textline"),
                                                  marginal_of_patch_percent=0.15,
                                                  n_batch_inference=3,
+                                                 thresholding_for_artificial_class_in_light_version=True,
                                                  threshold_art_class_textline=self.threshold_art_class_textline)
+        
 
         prediction_textline = resize_image(prediction_textline, img_h, img_w)
         textline_mask_tot_ea_art = (prediction_textline[:,:]==2)*1

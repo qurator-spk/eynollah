@@ -12,6 +12,7 @@ from keras.models import Model, load_model
 from keras import backend as K
 import click
 from tensorflow.python.keras import backend as tensorflow_backend
+from tensorflow.keras.layers import StringLookup
 import xml.etree.ElementTree as ET
 
 from .gt_gen_utils import (
@@ -169,6 +170,25 @@ class sbb_predict:
             self.model = tf.keras.models.Model(
                             self.model.get_layer(name = "image").input, 
                             self.model.get_layer(name = "dense2").output)
+            
+            assert isinstance(self.model, Model)
+            
+        elif self.task == "transformer-ocr":
+            import torch
+            from transformers import VisionEncoderDecoderModel
+            from transformers import TrOCRProcessor
+            
+            self.model = VisionEncoderDecoderModel.from_pretrained(self.model_dir)
+            self.processor = TrOCRProcessor.from_pretrained(self.model_dir)
+            
+            if self.cpu:
+                self.device = torch.device('cpu')
+            else:
+                self.device = torch.device('cuda:0')
+                
+            self.model.to(self.device)
+            
+            assert isinstance(self.model, torch.nn.Module)
         else:
             config = tf.compat.v1.ConfigProto()
             config.gpu_options.allow_growth = True
@@ -176,15 +196,15 @@ class sbb_predict:
             session = tf.compat.v1.Session(config=config)  # tf.InteractiveSession()
             tensorflow_backend.set_session(session)
 
-        
-        ##if self.weights_dir!=None:
-            ##self.model.load_weights(self.weights_dir)
+            self.model = load_model(self.model_dir , compile=False,custom_objects = {"PatchEncoder": PatchEncoder, "Patches": Patches})
+                
+            if self.task != 'classification' and self.task != 'reading_order':
+                self.img_height=self.model.layers[len(self.model.layers)-1].output_shape[1]
+                self.img_width=self.model.layers[len(self.model.layers)-1].output_shape[2]
+                self.n_classes=self.model.layers[len(self.model.layers)-1].output_shape[3]
             
-        assert isinstance(self.model, Model)
-        if self.task != 'classification' and self.task != 'reading_order':
-            self.img_height=self.model.layers[len(self.model.layers)-1].output_shape[1]
-            self.img_width=self.model.layers[len(self.model.layers)-1].output_shape[2]
-            self.n_classes=self.model.layers[len(self.model.layers)-1].output_shape[3]
+        
+            assert isinstance(self.model, Model)
         
     def visualize_model_output(self, prediction, img, task) -> Tuple[NDArray, NDArray]:
         if task == "binarization":
@@ -235,10 +255,9 @@ class sbb_predict:
         return added_image, layout_only
 
     def predict(self, image_dir):
-        assert isinstance(self.model, Model)
         if self.task == 'classification':
             classes_names = self.config_params_model['classification_classes_name']
-            img_1ch = img=cv2.imread(image_dir, 0)
+            img_1ch =cv2.imread(image_dir, 0)
 
             img_1ch = img_1ch / 255.0
             img_1ch = cv2.resize(img_1ch, (self.config_params_model['input_height'], self.config_params_model['input_width']), interpolation=cv2.INTER_NEAREST)
@@ -273,6 +292,15 @@ class sbb_predict:
             pred_texts = decode_batch_predictions(preds, num_to_char)
             pred_texts = pred_texts[0].replace("[UNK]", "")
             return pred_texts
+        
+        elif self.task == "transformer-ocr":
+            from PIL import Image
+            image = Image.open(image_dir).convert("RGB")
+            pixel_values = self.processor(image, return_tensors="pt").pixel_values
+            generated_ids = self.model.generate(pixel_values.to(self.device))
+            return self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+            
+            
             
             
         elif self.task == 'reading_order':
@@ -607,6 +635,8 @@ class sbb_predict:
                     cv2.imwrite(self.save,res)
             elif self.task == "cnn-rnn-ocr":
                 print(f"Detected text: {res}")
+            elif self.task == "transformer-ocr":
+                print(f"Detected text: {res}")
             else:
                 img_seg_overlayed, only_layout  = self.visualize_model_output(res, self.img_org, self.task)
                 if self.save:
@@ -710,10 +740,12 @@ class sbb_predict:
 )
 def main(image, dir_in, model, patches, save, save_layout, ground_truth, xml_file, cpu, out, min_area):
     assert image or dir_in, "Either a single image -i or a dir_in -di is required"
-    with open(os.path.join(model,'config.json')) as f:
+
+    with open(os.path.join(model,'config_eynollah.json')) as f:
         config_params_model = json.load(f)
+
     task = config_params_model['task']
-    if task != 'classification' and task != 'reading_order' and task != "cnn-rnn-ocr":
+    if task != 'classification' and task != 'reading_order' and task != "cnn-rnn-ocr" and task != "transformer-ocr":
         if image and not save:
             print("Error: You used one of segmentation or binarization task with image input but not set -s, you need a filename to save visualized output with -s")
             sys.exit(1)
