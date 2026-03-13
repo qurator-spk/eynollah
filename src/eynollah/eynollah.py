@@ -190,8 +190,9 @@ class Eynollah:
 
         self.model_zoo.load_models(*loadable)
         for model in loadable:
-            # cache and retrieve output shapes
-            self.model_zoo.get(model).output_shape
+            # retrieve and cache output shapes
+            self.logger.debug("model %s has output shape %s", model,
+                              self.model_zoo.get(model).output_shape)
 
     def __del__(self):
         if executor := getattr(self, 'executor', None):
