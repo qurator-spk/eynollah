@@ -36,6 +36,7 @@ class Predictor(mp.context.SpawnProcess):
 
     def __init__(self, logger, model_zoo):
         self.logger = logger
+        self.loglevel = logger.level
         self.model_zoo = model_zoo
         ctxt = mp.get_context('spawn')
         self.taskq = ctxt.Queue(maxsize=QSIZE)
@@ -147,6 +148,7 @@ class Predictor(mp.context.SpawnProcess):
 
     def setup(self):
         logging.root.handlers = [logging.handlers.QueueHandler(self.logq)]
+        self.logger.setLevel(self.loglevel)
         self.model_zoo.load_models(*self.loadable)
 
     def shutdown(self):

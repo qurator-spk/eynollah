@@ -44,7 +44,6 @@ class EynollahXmlWriter:
         return Path(Path(self.image_filename).name).stem
 
     def calculate_points(self, contour, offset=None):
-        self.logger.debug('enter calculate_points')
         poly = contour2polygon(contour)
         if offset is not None:
             poly = affinity.translate(poly, *offset)
@@ -53,7 +52,6 @@ class EynollahXmlWriter:
         return points_from_polygon(poly.exterior.coords[:-1])
 
     def serialize_lines_in_region(self, text_region, all_found_textline_polygons, region_idx, page_coord, all_box_coord, slopes, counter, ocr_all_textlines_textregion):
-        self.logger.debug('enter serialize_lines_in_region')
         for j, polygon_textline in enumerate(all_found_textline_polygons[region_idx]):
             coords = CoordsType()
             textline = TextLineType(id=counter.next_line_id, Coords=coords)

@@ -17,6 +17,7 @@ document layout analysis (segmentation) with output in PAGE-XML
 # pyright: reportOptionalSubscript=false
 
 import logging
+import logging.handlers
 import sys
 
 from difflib import SequenceMatcher as sq
@@ -99,10 +100,21 @@ KERNEL = np.ones((5, 5), np.uint8)
 
 
 _instance = None
-def _set_instance(instance):
+def _set_instance(instance, logq):
     global _instance
     _instance = instance
+    # replace all inherited handlers with queue handler
+    logging.root.handlers.clear()
+    instance.logger.handlers.clear()
+    handler = logging.handlers.QueueHandler(logq)
+    handler.setFormatter(logging.Formatter(fmt="[%(jobId)s] %(message)s"))
+    logging.root.addHandler(handler)
 def _run_single(*args, **kwargs):
+    # prefix log messages with img_filename
+    def log_filter(record: logging.LogRecord):
+        record.jobId = args[0]
+        return record
+    logging.root.handlers[0].filters = [log_filter]
     return _instance.run_single(*args, **kwargs)
 
 class Eynollah:
@@ -2265,11 +2277,14 @@ class Eynollah:
             ls_imgs = [os.path.join(dir_in, image_filename)
                        for image_filename in filter(is_image_filename,
                                                     os.listdir(dir_in))]
+            logq = mp.get_context('fork').Queue()
             with ProcessPoolExecutor(max_workers=num_jobs or None,
                                      mp_context=mp.get_context('fork'),
                                      initializer=_set_instance,
-                                     initargs=(self,)
+                                     initargs=(self, logq)
             ) as exe:
+                logging.handlers.QueueListener(logq, *self.logger.handlers,
+                                               respect_handler_level=False).start()
                 jobs = {exe.submit(_run_single, img_filename,
                                    dir_out=dir_out,
                                    overwrite=overwrite): img_filename
