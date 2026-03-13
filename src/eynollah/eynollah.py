@@ -2196,57 +2196,23 @@ class Eynollah:
         cy_marg = np.array(cy_marg)
 
         def split(lis):
-            array = np.array(lis)
-            return (list(array[cx_marg < mid_point_of_page_width]),
-                    list(array[cx_marg >= mid_point_of_page_width]))
+            left, right = [], []
+            for itm, prop in zip(lis, cx_marg < mid_point_of_page_width):
+                (left if prop else right).append(itm)
+            return left, right
 
-        (poly_marg_left,
-         poly_marg_right) = \
-             split(polygons_of_marginals)
-
-        (all_found_textline_polygons_marginals_left,
-         all_found_textline_polygons_marginals_right) = \
-            split(all_found_textline_polygons_marginals)
-
-        (all_box_coord_marginals_left,
-         all_box_coord_marginals_right) = \
-             split(all_box_coord_marginals)
-
-        (slopes_marg_left,
-         slopes_marg_right) = \
-             split(slopes_marginals)
-
-        (cy_marg_left,
-         cy_marg_right) = \
-             split(cy_marg)
-
+        cy_marg_left, cy_marg_right = split(cy_marg)
         order_left = np.argsort(cy_marg_left)
         order_right = np.argsort(cy_marg_right)
-        def sort_left(lis):
-            return list(np.array(lis)[order_left])
-        def sort_right(lis):
-            return list(np.array(lis)[order_right])
 
-        ordered_left_marginals = sort_left(poly_marg_left)
-        ordered_right_marginals = sort_right(poly_marg_right)
+        def splitsort(lis):
+            left, right = split(lis)
+            return [left[i] for i in order_left], [right[i] for i in order_right]
 
-        ordered_left_marginals_textline = sort_left(all_found_textline_polygons_marginals_left)
-        ordered_right_marginals_textline = sort_right(all_found_textline_polygons_marginals_right)
-
-        ordered_left_marginals_bbox = sort_left(all_box_coord_marginals_left)
-        ordered_right_marginals_bbox = sort_right(all_box_coord_marginals_right)
-
-        ordered_left_slopes_marginals = sort_left(slopes_marg_left)
-        ordered_right_slopes_marginals = sort_right(slopes_marg_right)
-
-        return (ordered_left_marginals,
-                ordered_right_marginals,
-                ordered_left_marginals_textline,
-                ordered_right_marginals_textline,
-                ordered_left_marginals_bbox,
-                ordered_right_marginals_bbox,
-                ordered_left_slopes_marginals,
-                ordered_right_slopes_marginals)
+        return (*splitsort(polygons_of_marginals),
+                *splitsort(all_found_textline_polygons_marginals),
+                *splitsort(all_box_coord_marginals),
+                *splitsort(slopes_marginals))
 
     def run(self,
             overwrite: bool = False,
