@@ -187,7 +187,6 @@ def layout_cli(
     assert enable_plotting or not save_all, "Plotting with -sa also requires -ep"
     assert enable_plotting or not save_page, "Plotting with -sp also requires -ep"
     assert enable_plotting or not save_images, "Plotting with -si also requires -ep"
-    assert enable_plotting or not allow_enhancement, "Plotting with -ae also requires -ep"
     assert not enable_plotting or save_layout or save_deskewed or save_all or save_page or save_images or allow_enhancement, \
         "Plotting with -ep also requires -sl, -sd, -sa, -sp, -si or -ae"
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."

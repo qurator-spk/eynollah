@@ -28,7 +28,19 @@
         "full_layout": {
           "type": "boolean",
           "default": true,
-          "description": "Try to detect all element subtypes, including drop-caps and headings"
+          "description": "Try to detect all region subtypes, including drop-capital and heading"
+        },
+        "light_version": {
+          "type": "boolean",
+          "default": true,
+          "enum": [true],
+          "description": "ignored (only for backwards-compatibility)"
+        },
+        "textline_light": {
+          "type": "boolean",
+          "default": true,
+          "enum": [true],
+          "description": "ignored (only for backwards-compatibility)"
         },
         "tables": {
           "type": "boolean",
@@ -38,12 +50,12 @@
         "curved_line": {
           "type": "boolean",
           "default": false,
-          "description": "try to return contour of textlines instead of just rectangle bounding box. Needs more processing time"
+          "description": "retrieve textline polygons independent of each other (needs more processing time)"
         },
         "ignore_page_extraction": {
           "type": "boolean",
           "default": false,
-          "description": "if this parameter set to true, this tool would ignore page extraction"
+          "description": "if true, do not attempt page frame detection (cropping)"
         },
         "allow_scaling": {
           "type": "boolean",
@@ -58,7 +70,7 @@
         "right_to_left": {
           "type": "boolean",
           "default": false,
-          "description": "if this parameter set to true, this tool will extract right-to-left reading order."
+          "description": "if true, return reading order in right-to-left reading direction."
         },
         "headers_off": {
           "type": "boolean",
@@ -124,12 +136,21 @@
       },
       "resources": [
         {
+          "url": "https://zenodo.org/records/17580627/files/models_all_v0_7_0.zip?download=1",
+          "name": "models_layout_v0_7_0",
+          "type": "archive",
+          "size": 6119874002,
+          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization, image enhancement and OCR",
+          "version_range": ">= v0.7.0"
+        },
+        {
           "url": "https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2020_01_16.zip",
           "name": "default",
           "type": "archive",
           "path_in_archive": "saved_model_2020_01_16",
           "size": 563147331,
-          "description": "default models provided by github.com/qurator-spk (SavedModel format)"
+          "description": "default models provided by github.com/qurator-spk (SavedModel format)",
+          "version_range": "< v0.7.0"
         },
         {
           "url": "https://github.com/qurator-spk/sbb_binarization/releases/download/v0.0.11/saved_model_2021_03_09.zip",
@@ -137,7 +158,8 @@
           "type": "archive",
           "path_in_archive": ".",
           "size": 133230419,
-          "description": "updated default models provided by github.com/qurator-spk (SavedModel format)"
+          "description": "updated default models provided by github.com/qurator-spk (SavedModel format)",
+          "version_range": "< v0.7.0"
         }
       ]
     }

@@ -9,7 +9,7 @@ from .generate_gt_for_training import main as generate_gt_cli
 from .inference import main as inference_cli
 from .train import ex
 from .extract_line_gt import linegt_cli
-from .weights_ensembling import main as ensemble_cli
+from .weights_ensembling import ensemble_cli
 
 @click.command(context_settings=dict(
         ignore_unknown_options=True,
