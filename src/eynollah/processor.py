@@ -76,7 +76,8 @@ class EynollahProcessor(Processor):
             image_filename = "dummy" # will be replaced by ocrd.Processor.process_page_file
             result.images.append(OcrdPageResultImage(page_image, '.IMG', page)) # mark as new original
         # FIXME: mask out already existing regions (incremental segmentation)
-        self.eynollah.run_single(image_filename, None, img_pil=page_image, pcgts=pcgts,
+        self.eynollah.run_single(image_filename,
+                                 img_pil=page_image, pcgts=pcgts,
                                  # ocrd.Processor will handle OCRD_EXISTING_OUTPUT more flexibly
                                  overwrite=True)
         return result

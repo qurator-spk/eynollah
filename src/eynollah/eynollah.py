@@ -26,6 +26,8 @@ import time
 from typing import Optional
 from functools import partial
 from pathlib import Path
+import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import gc
 
 import cv2
@@ -95,6 +97,13 @@ DPI_THRESHOLD = 298
 MAX_SLOPE = 999
 KERNEL = np.ones((5, 5), np.uint8)
 
+
+_instance = None
+def _set_instance(instance):
+    global _instance
+    _instance = instance
+def _run_single(*args, **kwargs):
+    return _instance.run_single(*args, **kwargs)
 
 class Eynollah:
     def __init__(
@@ -2261,35 +2270,41 @@ class Eynollah:
             ls_imgs = [os.path.join(dir_in, image_filename)
                        for image_filename in filter(is_image_filename,
                                                     os.listdir(dir_in))]
+            with ProcessPoolExecutor(mp_context=mp.get_context('fork'),
+                                     initializer=_set_instance,
+                                     initargs=(self,)
+            ) as exe:
+                jobs = {exe.submit(_run_single, img_filename,
+                                   dir_out=dir_out,
+                                   overwrite=overwrite): img_filename
+                        for img_filename in ls_imgs}
+                for job in as_completed(jobs):
+                    img_filename = jobs[job]
+                    try:
+                        job.result()
+                    except:
+                        self.logger.exception("Job %s failed", img_filename)
+            self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
         elif image_filename:
-            ls_imgs = [image_filename]
-        else:
-            raise ValueError("run requires either a single image filename or a directory")
-
-        for img_filename in ls_imgs:
-            self.logger.info(img_filename)
-            t0 = time.time()
-
             try:
-                self.run_single(img_filename, dir_out, overwrite=overwrite)
-                self.logger.info("Job done in %.1fs", time.time() - t0)
+                self.run_single(image_filename, dir_out=dir_out, overwrite=overwrite)
             except:
                 self.logger.exception("Job failed")
-
-        if dir_in:
-            self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
+        else:
+            raise ValueError("run requires either a single image filename or a directory")
 
         if self.enable_plotting:
             del self.plotter
 
     def run_single(self,
                    img_filename: str,
-                   dir_out: Optional[str],
+                   dir_out: Optional[str] = None,
                    overwrite: bool = False,
                    img_pil=None,
                    pcgts=None,
     ) -> None:
         t0 = time.time()
+        self.logger.info(img_filename)
 
         image = self.cache_images(image_filename=img_filename, image_pil=img_pil)
         writer = EynollahXmlWriter(
@@ -2377,6 +2392,7 @@ class Eynollah:
             )
             self.logger.info("Basic processing complete")
             writer.write_pagexml(pcgts)
+            self.logger.info("Job done in %.1fs", time.time() - t0)
             return
 
         #print("text region early -1 in %.1fs", time.time() - t0)
@@ -2441,6 +2457,7 @@ class Eynollah:
                 found_polygons_tables=[],
             )
             writer.write_pagexml(pcgts)
+            self.logger.info("Job done in %.1fs", time.time() - t0)
             return
 
         #print("text region early in %.1fs", time.time() - t0)
@@ -2724,8 +2741,8 @@ class Eynollah:
                     found_polygons_tables=contours_tables
                 )
             writer.write_pagexml(pcgts)
+            self.logger.info("Job done in %.1fs", time.time() - t0)
             return
-
 
         #print("text region early 3 in %.1fs", time.time() - t0)
         contours_only_text_parent = dilate_textregion_contours(contours_only_text_parent)
@@ -2931,4 +2948,5 @@ class Eynollah:
             )
 
         writer.write_pagexml(pcgts)
+        self.logger.info("Job done in %.1fs", time.time() - t0)
         return
