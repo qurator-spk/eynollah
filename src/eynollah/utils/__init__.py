@@ -920,11 +920,11 @@ def split_textregion_main_vs_header(
                        (regions_model_full==2)).sum()
         pixels_main = all_pixels - pixels_header
 
-        if (( pixels_header / float(pixels_main) >= 0.6 and
-              length_con[ii] / float(height_con[ii]) >= 1.3 and
-              length_con[ii] / float(height_con[ii]) <= 3 ) or
-            ( pixels_header / float(pixels_main) >= 0.3 and
-              length_con[ii] / float(height_con[ii]) >=3 )):
+        if (( pixels_header >= 0.6 * pixels_main and
+              length_con[ii] >= 1.3 * height_con[ii] and
+              length_con[ii] <= 3 * height_con[ii] ) or
+            ( pixels_header >= 0.3 * pixels_main and
+              length_con[ii] >= 3 * height_con[ii] )):
 
             regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ] = 2
             contours_only_text_parent_head.append(contours_only_text_parent[ii])
