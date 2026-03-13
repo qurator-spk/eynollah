@@ -121,11 +121,12 @@ class Eynollah:
         headers_off : bool = False,
         ignore_page_extraction : bool = False,
         reading_order_machine_based : bool = False,
-        num_col_upper : Optional[int] = None,
-        num_col_lower : Optional[int] = None,
-        threshold_art_class_layout: Optional[float] = None,
-        threshold_art_class_textline: Optional[float] = None,
+        num_col_upper : int = 0,
+        num_col_lower : int = 0,
+        threshold_art_class_layout: float = 0.1,
+        threshold_art_class_textline: float = 0.1,
         skip_layout_and_reading_order : bool = False,
+        num_jobs : int = 0,
         logger : Optional[logging.Logger] = None,
     ):
         self.logger = logger or logging.getLogger('eynollah')
@@ -145,24 +146,10 @@ class Eynollah:
         self.headers_off = headers_off
         self.ignore_page_extraction = ignore_page_extraction
         self.skip_layout_and_reading_order = skip_layout_and_reading_order
-        if num_col_upper:
-            self.num_col_upper = int(num_col_upper)
-        else:
-            self.num_col_upper = num_col_upper
-        if num_col_lower:
-            self.num_col_lower = int(num_col_lower)
-        else:
-            self.num_col_lower = num_col_lower
-
-        if threshold_art_class_layout:
-            self.threshold_art_class_layout = float(threshold_art_class_layout)
-        else:
-            self.threshold_art_class_layout = 0.1
-
-        if threshold_art_class_textline:
-            self.threshold_art_class_textline = float(threshold_art_class_textline)
-        else:
-            self.threshold_art_class_textline = 0.1
+        self.num_col_upper = int(num_col_upper)
+        self.num_col_lower = int(num_col_lower)
+        self.threshold_art_class_layout = float(threshold_art_class_layout)
+        self.threshold_art_class_textline = float(threshold_art_class_textline)
 
         t_start = time.time()
 
@@ -337,6 +324,7 @@ class Eynollah:
         if img_new.shape[1] > img.shape[1]:
             img_new = self.do_prediction(True, img_new, self.model_zoo.get("enhancement"),
                                          marginal_of_patch_percent=0,
+                                         n_batch_inference=3,
                                          is_enhancement=True)
             self.logger.info("Enhancement applied")
 
@@ -2239,6 +2227,7 @@ class Eynollah:
             dir_of_deskewed: Optional[str] = None,
             dir_of_all: Optional[str] = None,
             dir_save_page: Optional[str] = None,
+            num_jobs: int = 0,
     ):
         """
         Get image and scales, then extract the page of scanned image
@@ -2276,7 +2265,8 @@ class Eynollah:
             ls_imgs = [os.path.join(dir_in, image_filename)
                        for image_filename in filter(is_image_filename,
                                                     os.listdir(dir_in))]
-            with ProcessPoolExecutor(mp_context=mp.get_context('fork'),
+            with ProcessPoolExecutor(max_workers=num_jobs or None,
+                                     mp_context=mp.get_context('fork'),
                                      initializer=_set_instance,
                                      initargs=(self,)
             ) as exe:
