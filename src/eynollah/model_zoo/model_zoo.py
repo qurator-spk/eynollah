@@ -143,8 +143,9 @@ class EynollahModelZoo:
                 )
             model._name = model_category
         self._loaded[model_category] = model
-        if model_category in ['region_1_2', 'table', 'region_fl_np']:
-            self._loaded[model_category + '_resized'] = wrap_layout_model_resized(model)
+        # autosized for full page images is too slow (better resize on CPU in numpy):
+        # if model_category in ['region_1_2', 'table', 'region_fl_np']:
+        #     self._loaded[model_category + '_resized'] = wrap_layout_model_resized(model)
         if model_category in ['region_1_2', 'textline']:
             self._loaded[model_category + '_patched'] = wrap_layout_model_patched(model)
         return model  # type: ignore
