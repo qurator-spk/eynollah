@@ -26,10 +26,8 @@ import time
 from typing import Optional
 from functools import partial
 from pathlib import Path
-from multiprocessing import cpu_count
 import gc
 
-from concurrent.futures import ProcessPoolExecutor
 import cv2
 import numpy as np
 import shapely.affinity
@@ -147,9 +145,6 @@ class Eynollah:
         else:
             self.num_col_lower = num_col_lower
 
-        # for parallelization of CPU-intensive tasks:
-        self.executor = ProcessPoolExecutor(max_workers=cpu_count())
-
         if threshold_art_class_layout:
             self.threshold_art_class_layout = float(threshold_art_class_layout)
         else:
@@ -195,9 +190,6 @@ class Eynollah:
                               self.model_zoo.get(model).output_shape)
 
     def __del__(self):
-        if executor := getattr(self, 'executor', None):
-            executor.shutdown()
-        del self.executor
         if model_zoo := getattr(self, 'model_zoo', None):
             if shutdown := getattr(model_zoo, 'shutdown', None):
                 shutdown()
@@ -1039,22 +1031,19 @@ class Eynollah:
         if not len(contours_par):
             return [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_curved")
-        with share_ndarray(textline_mask_tot) as textline_mask_tot_shared:
-            with share_ndarray(mask_texts_only) as mask_texts_only_shared:
-                assert self.executor
-                results = self.executor.map(partial(do_work_of_slopes_new_curved,
-                                                    textline_mask_tot_ea=textline_mask_tot_shared,
-                                                    mask_texts_only=mask_texts_only_shared,
-                                                    num_col=num_col,
-                                                    scale_par=scale_par,
-                                                    slope_deskew=slope_deskew,
-                                                    MAX_SLOPE=MAX_SLOPE,
-                                                    KERNEL=KERNEL,
-                                                    logger=self.logger,
-                                                    plotter=self.plotter,
-                                                    name=name),
-                                            boxes, contours_par)
-                results = list(results) # exhaust prior to release
+        results = map(partial(do_work_of_slopes_new_curved,
+                              textline_mask_tot_ea=textline_mask_tot,
+                              mask_texts_only=mask_texts_only,
+                              num_col=num_col,
+                              scale_par=scale_par,
+                              slope_deskew=slope_deskew,
+                              MAX_SLOPE=MAX_SLOPE,
+                              KERNEL=KERNEL,
+                              logger=self.logger,
+                              plotter=self.plotter,
+                              name=name),
+                      boxes, contours_par)
+        results = list(results) # exhaust prior to release
         #textline_polygons, box_coord, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new_curved")
         return tuple(zip(*results))
@@ -1628,7 +1617,7 @@ class Eynollah:
     def run_deskew(self, textline_mask_tot_ea):
         #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
         slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), 2, 30, True,
-                                          map=self.executor.map, logger=self.logger, plotter=self.plotter)
+                                          logger=self.logger, plotter=self.plotter)
         self.logger.info("slope_deskew: %.2f°", slope_deskew)
         return slope_deskew
 
