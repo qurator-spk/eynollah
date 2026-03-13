@@ -170,7 +170,7 @@ def get_textregion_contours_in_org_image(cnts, img, slope_first):
 
     return cnts_org
 
-def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
+def get_textregion_confidences_old(cnts, img, slope_first):
     zoom = 3
     img = cv2.resize(img, (img.shape[1] // zoom,
                            img.shape[0] // zoom),
@@ -208,16 +208,17 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
         cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
     return cont_int[0], index_r_con, confidence_contour
 
-def get_textregion_contours_in_org_image_light(cnts, img, confidence_matrix):
+def get_textregion_confidences(cnts, confidence_matrix):
     if not len(cnts):
         return []
 
+    height, width = confidence_matrix.shape
     confidence_matrix = cv2.resize(confidence_matrix,
-                                   (img.shape[1] // 6, img.shape[0] // 6),
+                                   (width // 6, height // 6),
                                    interpolation=cv2.INTER_NEAREST)
     confs = []
     for cnt in cnts:
-        cnt_mask = np.zeros(confidence_matrix.shape)
+        cnt_mask = np.zeros_like(confidence_matrix)
         cnt_mask = cv2.fillPoly(cnt_mask, pts=[cnt // 6], color=1.0)
         confs.append(np.sum(confidence_matrix * cnt_mask) / np.sum(cnt_mask))
     return confs

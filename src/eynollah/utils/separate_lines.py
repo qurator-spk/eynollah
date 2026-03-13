@@ -1507,9 +1507,9 @@ def do_image_rotation(angle, img=None, sigma_des=1.0, logger=None):
     return var
 
 def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
-                       main_page=False, logger=None, plotter=None, map=None):
+                       main_page=False, logger=None, plotter=None, name=None, map=None):
     if main_page and plotter:
-        plotter.save_plot_of_textline_density(img_patch_org)
+        plotter.save_plot_of_textline_density(img_patch_org, name)
     
     img_int=np.zeros((img_patch_org.shape[0],img_patch_org.shape[1]))
     img_int[:,:]=img_patch_org[:,:]#img_patch_org[:,:,0]
@@ -1527,16 +1527,16 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
 
     if main_page and img_patch_org.shape[1] > img_patch_org.shape[0]:
         angles = np.array([-45, 0, 45, 90,])
-        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, name=name, plotter=plotter)
 
         angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
-        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, name=name, plotter=plotter)
     elif main_page:
         #angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
         angles = np.concatenate((np.linspace(-12, -7, n_tot_angles // 4),
                                  np.linspace(-6, 6, n_tot_angles // 2),
                                  np.linspace(7, 12, n_tot_angles // 4)))
-        angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, name=name, plotter=plotter)
 
         early_slope_edge=11
         if abs(angle) > early_slope_edge:
@@ -1544,12 +1544,12 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
                 angles2 = np.linspace(-90, -12, n_tot_angles)
             else:
                 angles2 = np.linspace(90, 12, n_tot_angles)
-            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, plotter=plotter)
+            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, name=name, plotter=plotter)
             if var2 > var:
                 angle = angle2
     else:
         angles = np.linspace(-25, 25, int(0.5 * n_tot_angles) + 10)
-        angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, name=name, plotter=plotter)
 
         early_slope_edge=22
         if abs(angle) > early_slope_edge:
@@ -1557,15 +1557,15 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
                 angles2 = np.linspace(-90, -25, int(0.5 * n_tot_angles) + 10)
             else:
                 angles2 = np.linspace(90, 25, int(0.5 * n_tot_angles) + 10)
-            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, plotter=plotter)
+            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, name=name, plotter=plotter)
             if var2 > var:
                 angle = angle2
     # precision stage:
     angles = np.linspace(angle - 2.5, angle + 2.5, n_tot_angles // 2)
-    angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+    angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, name=name, plotter=plotter)
     return angle
 
-def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map):
+def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, name=None, map=map):
     if logger is None:
         logger = getLogger(__package__)
     if map is None:
@@ -1576,7 +1576,7 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map
             results = list(map(partial(do_image_rotation, img=img_shared, sigma_des=sigma_des, logger=None),
                                angles))
     if plotter:
-        plotter.save_plot_of_rotation_angle(angles, results)
+        plotter.save_plot_of_rotation_angle(angles, results, name)
     try:
         var_res = np.array(results)
         assert var_res.any()
@@ -1595,7 +1595,7 @@ def do_work_of_slopes_new_curved(
         box_text, contour_par,
         textline_mask_tot_ea=None, mask_texts_only=None,
         num_col=1, scale_par=1.0, slope_deskew=0.0,
-        logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
+        logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None, name=None
 ):
     if KERNEL is None:
         KERNEL = np.ones((5, 5), np.uint8)
@@ -1626,7 +1626,7 @@ def do_work_of_slopes_new_curved(
             else:
                 sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
                 img_int_p[img_int_p > 0] = 1
-                slope_for_all = return_deskew_slop(img_int_p, sigma_des, logger=logger, plotter=plotter)
+                slope_for_all = return_deskew_slop(img_int_p, sigma_des, logger=logger, name=name, plotter=plotter)
                 if abs(slope_for_all) < 0.5:
                     slope_for_all = slope_deskew
         except:

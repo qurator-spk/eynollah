@@ -866,7 +866,7 @@ def check_any_text_region_in_model_one_is_main_or_header(
             conf_contours_main,
             conf_contours_head)
 
-def check_any_text_region_in_model_one_is_main_or_header_light(
+def split_textregion_main_vs_header(
         regions_model_1, regions_model_full,
         contours_only_text_parent,
         all_box_coord, all_found_textline_polygons,

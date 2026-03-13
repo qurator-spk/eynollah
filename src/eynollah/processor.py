@@ -8,10 +8,6 @@ from eynollah.model_zoo.model_zoo import EynollahModelZoo
 from .eynollah import Eynollah, EynollahXmlWriter
 
 class EynollahProcessor(Processor):
-    # already employs background CPU multiprocessing per page
-    # already employs GPU (without singleton process atm)
-    max_workers = 1
-
     @cached_property
     def executable(self) -> str:
         return 'ocrd-eynollah-segment'
@@ -80,14 +76,7 @@ class EynollahProcessor(Processor):
             image_filename = "dummy" # will be replaced by ocrd.Processor.process_page_file
             result.images.append(OcrdPageResultImage(page_image, '.IMG', page)) # mark as new original
         # FIXME: mask out already existing regions (incremental segmentation)
-        self.eynollah.cache_images(
-            image_pil=page_image,
-            dpi=self.parameter['dpi'],
-        )
-        self.eynollah.writer = EynollahXmlWriter(
-            dir_out=None,
-            image_filename=image_filename,
-            curved_line=self.eynollah.curved_line,
-            pcgts=pcgts)
-        self.eynollah.run_single()
+        self.eynollah.run_single(image_filename, None, img_pil=page_image, pcgts=pcgts,
+                                 # ocrd.Processor will handle OCRD_EXISTING_OUTPUT more flexibly
+                                 overwrite=True)
         return result

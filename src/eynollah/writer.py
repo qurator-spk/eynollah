@@ -26,7 +26,7 @@ from .utils.contour import contour2polygon, make_valid
 
 class EynollahXmlWriter:
 
-    def __init__(self, *, dir_out, image_filename, curved_line, pcgts=None):
+    def __init__(self, *, dir_out, image_filename, image_width, image_height, curved_line, pcgts=None):
         self.logger = logging.getLogger('eynollah.writer')
         self.counter = EynollahIdCounter()
         self.dir_out = dir_out
@@ -34,10 +34,10 @@ class EynollahXmlWriter:
         self.output_filename = os.path.join(self.dir_out or "", self.image_filename_stem) + ".xml"
         self.curved_line = curved_line
         self.pcgts = pcgts
-        self.scale_x: Optional[float] = None # XXX set outside __init__
-        self.scale_y: Optional[float] = None # XXX set outside __init__
-        self.height_org: Optional[int] = None # XXX set outside __init__
-        self.width_org: Optional[int] = None # XXX set outside __init__
+        self.image_height = image_height
+        self.image_width = image_width
+        self.scale_x = 1.0
+        self.scale_y = 1.0
 
     @property
     def image_filename_stem(self):
@@ -49,7 +49,7 @@ class EynollahXmlWriter:
         if offset is not None:
             poly = affinity.translate(poly, *offset)
         poly = affinity.scale(poly, xfact=1 / self.scale_x, yfact=1 / self.scale_y, origin=(0, 0))
-        poly = make_valid(clip_by_rect(poly, 0, 0, self.width_org, self.height_org))
+        poly = make_valid(clip_by_rect(poly, 0, 0, self.image_width, self.image_height))
         return points_from_polygon(poly.exterior.coords[:-1])
 
     def serialize_lines_in_region(self, text_region, all_found_textline_polygons, region_idx, page_coord, all_box_coord, slopes, counter, ocr_all_textlines_textregion):
@@ -161,7 +161,8 @@ class EynollahXmlWriter:
         self.logger.debug('enter build_pagexml')
 
         # create the file structure
-        pcgts = self.pcgts if self.pcgts else create_page_xml(self.image_filename, self.height_org, self.width_org)
+        pcgts = self.pcgts if self.pcgts else create_page_xml(
+            self.image_filename, self.image_height, self.image_width)
         page = pcgts.get_Page()
         if len(cont_page):
             page.set_Border(BorderType(Coords=CoordsType(points=self.calculate_points(cont_page[0]))))
