@@ -179,7 +179,7 @@ class Eynollah:
             "binarization",
             #"enhancement",
             "page",
-            "region"
+            #"region"
         ]
         loadable.append(("textline"))
         loadable.append("region_1_2")
