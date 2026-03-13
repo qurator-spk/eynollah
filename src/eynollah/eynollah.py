@@ -485,7 +485,7 @@ class Eynollah:
         list_y_d = []
 
         batch_indexer = 0
-        img_patch = np.zeros((n_batch_inference, img_height_model, img_width_model, 3))
+        img_patch = np.zeros((n_batch_inference, img_height_model, img_width_model, 3), dtype=np.float16)
         for i in range(nxf):
             for j in range(nyf):
                 index_x_d = i * width_mid
@@ -681,7 +681,7 @@ class Eynollah:
         list_y_d = []
 
         batch_indexer = 0
-        img_patch = np.zeros((n_batch_inference, img_height_model, img_width_model, 3))
+        img_patch = np.zeros((n_batch_inference, img_height_model, img_width_model, 3), dtype=np.float16)
         for i in range(nxf):
             for j in range(nyf):
                 index_x_d = i * width_mid
@@ -810,6 +810,7 @@ class Eynollah:
 
         self.logger.debug("enter do_prediction_new_concept (%s)", model.name)
         img = img / 255.0
+        img = img.astype(np.float16)
 
         prediction = model.predict(img[np.newaxis])[0]
         confidence = prediction[:, :, 1]
