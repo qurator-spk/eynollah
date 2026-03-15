@@ -3,6 +3,7 @@ import json
 import logging
 from copy import deepcopy
 from pathlib import Path
+from fnmatch import fnmatchcase
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 from tabulate import tabulate
@@ -74,6 +75,7 @@ class EynollahModelZoo:
     def load_models(
         self,
         *all_load_args: Union[str, Tuple[str], Tuple[str, str], Tuple[str, str, str]],
+        device: str = '',
     ) -> Dict:
         """
         Load all models by calling load_model and return a dictionary mapping model_category to loaded model
@@ -93,7 +95,7 @@ class EynollahModelZoo:
                 load_args[0] = model_category[:-8]
                 load_kwargs["patched"] = True
             ret[model_category] = Predictor(self.logger, self)
-            ret[model_category].load_model(*load_args, **load_kwargs)
+            ret[model_category].load_model(*load_args, **load_kwargs, device=device)
         self._loaded.update(ret)
         return self._loaded
 
@@ -104,6 +106,7 @@ class EynollahModelZoo:
         model_path_override: Optional[str] = None,
             patched: bool = False,
             resized: bool = False,
+            device: str = '',
     ) -> AnyModel:
         """
         Load any model
@@ -123,10 +126,24 @@ class EynollahModelZoo:
         )
         cuda = False
         try:
-            device = tf.config.list_physical_devices('GPU')[0]
-            tf.config.experimental.set_memory_growth(device, True)
-            cuda = True
-            self.logger.info("using GPU %s", device.name)
+            gpus = tf.config.list_physical_devices('GPU')
+            if device:
+                if ',' in device:
+                    for spec in device.split(','):
+                        cat, dev = spec.split(':')
+                        if fnmatchcase(model_category, cat):
+                            device = dev
+                            break
+                if device == 'CPU':
+                    gpus = []
+                else:
+                    assert device.startswith('GPU')
+                    gpus = [gpus[int(device[3:])]]
+            tf.config.set_visible_devices(gpus, 'GPU')
+            for device in gpus:
+                tf.config.experimental.set_memory_growth(device, True)
+                cuda = True
+                self.logger.info("using GPU %s for model %s", device.name, model_category)
         except RuntimeError:
             self.logger.exception("cannot configure GPU devices")
         if not cuda:

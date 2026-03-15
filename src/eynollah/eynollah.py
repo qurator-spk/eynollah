@@ -121,6 +121,7 @@ class Eynollah:
         self,
         *,
         model_zoo: EynollahModelZoo,
+        device: str = '',
         enable_plotting : bool = False,
         allow_enhancement : bool = False,
         curved_line : bool = False,
@@ -165,10 +166,10 @@ class Eynollah:
         t_start = time.time()
 
         self.logger.info("Loading models...")
-        self.setup_models()
+        self.setup_models(device=device)
         self.logger.info(f"Model initialization complete ({time.time() - t_start:.1f}s)")
 
-    def setup_models(self):
+    def setup_models(self, device=''):
 
         # load models, depending on modes
         # (note: loading too many models can cause OOM on GPU/CUDA,
@@ -194,7 +195,7 @@ class Eynollah:
         if self.tables:
             loadable.append("table")
 
-        self.model_zoo.load_models(*loadable)
+        self.model_zoo.load_models(*loadable, device=device)
         for model in loadable:
             # retrieve and cache output shapes
             if model.endswith(('_resized', '_patched')):
