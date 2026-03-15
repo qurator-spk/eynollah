@@ -5,21 +5,9 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Type, Union
 
-os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
-from ocrd_utils import tf_disable_interactive_logs
-tf_disable_interactive_logs()
-
-from tensorflow.keras.layers import StringLookup
-from tensorflow.keras.models import Model as KerasModel
-from tensorflow.keras.models import load_model
 from tabulate import tabulate
 
-from ..patch_encoder import (
-    PatchEncoder,
-    Patches,
-    wrap_layout_model_patched,
-    wrap_layout_model_resized,
-)
+from ..predictor import Predictor
 from .specs import EynollahModelSpecSet
 from .default_specs import DEFAULT_MODEL_SPECS
 from .types import AnyModel, T
@@ -46,7 +34,7 @@ class EynollahModelZoo:
         self._overrides = []
         if model_overrides:
             self.override_models(*model_overrides)
-        self._loaded: Dict[str, AnyModel] = {}
+        self._loaded: Dict[str, Predictor] = {}
 
     @property
     def model_overrides(self):
@@ -90,34 +78,60 @@ class EynollahModelZoo:
         """
         Load all models by calling load_model and return a dictionary mapping model_category to loaded model
         """
-        import tensorflow as tf
-        cuda = False
-        try:
-            for device in tf.config.list_physical_devices('GPU'):
-                tf.config.experimental.set_memory_growth(device, True)
-                cuda = True
-                self.logger.info("using GPU %s", device.name)
-        except RuntimeError:
-            self.logger.exception("cannot configure GPU devices")
-        if not cuda:
-            self.logger.warning("no GPU device available")
-        ret = {}
+        ret = {} # cannot use self._loaded here, yet – first spawn all predictors
         for load_args in all_load_args:
             if isinstance(load_args, str):
-                ret[load_args] = self.load_model(load_args)
+                model_category = load_args
+                load_args = [model_category]
             else:
-                ret[load_args[0]] = self.load_model(*load_args)
-        return ret
+                model_category = load_args[0]
+            load_kwargs = {}
+            if model_category.endswith('_resized'):
+                load_args[0] = model_category[:-8]
+                load_kwargs["resized"] = True
+            elif model_category.endswith('_patched'):
+                load_args[0] = model_category[:-8]
+                load_kwargs["patched"] = True
+            ret[model_category] = Predictor(self.logger, self)
+            ret[model_category].load_model(*load_args, **load_kwargs)
+        self._loaded.update(ret)
+        return self._loaded
 
     def load_model(
         self,
         model_category: str,
         model_variant: str = '',
         model_path_override: Optional[str] = None,
+            patched: bool = False,
+            resized: bool = False,
     ) -> AnyModel:
         """
         Load any model
         """
+        os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
+        from ocrd_utils import tf_disable_interactive_logs
+        tf_disable_interactive_logs()
+
+        import tensorflow as tf
+        from tensorflow.keras.models import load_model
+
+        from ..patch_encoder import (
+            PatchEncoder,
+            Patches,
+            wrap_layout_model_patched,
+            wrap_layout_model_resized,
+        )
+        cuda = False
+        try:
+            device = tf.config.list_physical_devices('GPU')[0]
+            tf.config.experimental.set_memory_growth(device, True)
+            cuda = True
+            self.logger.info("using GPU %s", device.name)
+        except RuntimeError:
+            self.logger.exception("cannot configure GPU devices")
+        if not cuda:
+            self.logger.warning("no GPU device available")
+
         if model_path_override:
             self.override_models((model_category, model_variant, model_path_override))
         model_path = self.model_path(model_category, model_variant)
@@ -142,26 +156,26 @@ class EynollahModelZoo:
                     model_path, compile=False, custom_objects={"PatchEncoder": PatchEncoder, "Patches": Patches}
                 )
             model._name = model_category
-        self._loaded[model_category] = model
-        # autosized for full page images is too slow (better resize on CPU in numpy):
-        # if model_category in ['region_1_2', 'table', 'region_fl_np']:
-        #     self._loaded[model_category + '_resized'] = wrap_layout_model_resized(model)
-        if model_category in ['region_1_2', 'textline']:
-            self._loaded[model_category + '_patched'] = wrap_layout_model_patched(model)
-        return model  # type: ignore
+            if resized:
+                model = wrap_layout_model_resized(model)
+                model._name = model_category + '_resized'
+            elif patched:
+                model = wrap_layout_model_patched(model)
+                model._name = model_category + '_patched'
+        return model
 
-    def get(self, model_category: str, model_type: Optional[Type[T]] = None) -> T:
+    def get(self, model_category: str) -> Predictor:
         if model_category not in self._loaded:
-            raise ValueError(f'Model "{model_category} not previously loaded with "load_model(..)"')
-        ret = self._loaded[model_category]
-        if model_type:
-            assert isinstance(ret, model_type)
-        return ret  # type: ignore # FIXME: convince typing that we're returning generic type
+            raise ValueError(f'Model "{model_category}" not previously loaded with "load_model(..)"')
+        return self._loaded[model_category]
 
     def _load_ocr_model(self, variant: str) -> AnyModel:
         """
         Load OCR model
         """
+        from tensorflow.keras.models import Model as KerasModel
+        from tensorflow.keras.models import load_model
+
         ocr_model_dir = self.model_path('ocr', variant)
         if variant == 'tr':
             from transformers import VisionEncoderDecoderModel
@@ -183,10 +197,12 @@ class EynollahModelZoo:
         with open(self.model_path('num_to_char'), "r") as config_file:
             return json.load(config_file)
 
-    def _load_num_to_char(self) -> StringLookup:
+    def _load_num_to_char(self) -> 'StringLookup':
         """
         Load decoder for OCR
         """
+        from tensorflow.keras.layers import StringLookup
+
         characters = self._load_characters()
         # Mapping characters to integers.
         char_to_num = StringLookup(vocabulary=characters, mask_token=None)
@@ -225,4 +241,5 @@ class EynollahModelZoo:
         """
         if hasattr(self, '_loaded') and getattr(self, '_loaded'):
             for needle in list(self._loaded.keys()):
+                self._loaded[needle].shutdown()
                 del self._loaded[needle]

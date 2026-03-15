@@ -44,7 +44,6 @@ except ImportError:
     plt = None
 
 from .model_zoo import EynollahModelZoo
-from .predictor import Predictor
 from .utils.contour import (
     filter_contours_area_of_image,
     filter_contours_area_of_image_tables,
@@ -142,7 +141,7 @@ class Eynollah:
         logger : Optional[logging.Logger] = None,
     ):
         self.logger = logger or logging.getLogger('eynollah')
-        self.model_zoo = Predictor(self.logger, model_zoo)
+        self.model_zoo = model_zoo
         self.plotter = None
 
         self.reading_order_machine_based = reading_order_machine_based
@@ -174,26 +173,34 @@ class Eynollah:
         # load models, depending on modes
         # (note: loading too many models can cause OOM on GPU/CUDA,
         #  thus, we try set up the minimal configuration for the current mode)
+        # autosized variants: _resized or _patched (which one may depend on num_cols)
+        # (but _resized for full page images is too slow - better resize on CPU in numpy)
         loadable = [
             "col_classifier",
-            "binarization",
-            #"enhancement",
+            #"enhancement", # todo: enhancement_patched
             "page",
             #"region"
         ]
-        loadable.append(("textline"))
+        if self.input_binary:
+            loadable.append("binarization") # todo: binarization_patched
+        loadable.append("textline_patched") # textline
         loadable.append("region_1_2")
+        loadable.append("region_1_2_patched")
         if self.full_layout:
             loadable.append("region_fl_np")
-            #loadable.append("region_fl")
+            #loadable.append("region_fl_patched")
         if self.reading_order_machine_based:
-            loadable.append("reading_order")
+            loadable.append("reading_order") # todo: reading_order_patched
         if self.tables:
             loadable.append("table")
 
         self.model_zoo.load_models(*loadable)
         for model in loadable:
             # retrieve and cache output shapes
+            if model.endswith(('_resized', '_patched')):
+                # autosized models do not have a predefined output_shape
+                # (and don't need one)
+                continue
             self.logger.debug("model %s has output shape %s", model,
                               self.model_zoo.get(model).output_shape)
 
