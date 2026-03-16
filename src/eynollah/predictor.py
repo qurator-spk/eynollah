@@ -170,7 +170,9 @@ class Predictor(mp.context.SpawnProcess):
 
     def load_model(self, *load_args, **load_kwargs):
         assert len(load_args)
-        self.name = '_'.join(list(load_args[:1]) + list(load_kwargs))
+        self.name = '_'.join(list(load_args[:1]) +
+                             list(key for key in load_kwargs
+                                  if key != 'device'))
         self.load_args = load_args
         self.load_kwargs = load_kwargs
         self.start() # call run() in subprocess
