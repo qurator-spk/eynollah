@@ -1343,7 +1343,7 @@ def data_gen_ocr(
     # TODO: Why while True + yield, why not return a list?
     while True:
         for i in ls_files_images:
-            print(i, 'i')
+            #print(i, 'i')
             f_name = Path(i).stem#.split('.')[0]
 
             txt_inp  = open(os.path.join(dir_train, "labels/"+f_name+'.txt'),'r').read().split('\n')[0]
