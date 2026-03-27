@@ -7,7 +7,7 @@ import cv2
 from shapely import geometry
 from pathlib import Path
 from PIL import ImageFont
-
+from eynollah.utils.font import get_font
 
 KERNEL = np.ones((5, 5), np.uint8)
 
@@ -15,7 +15,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     
     
-def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_image, co_marginal, co_table, co_map, img):
+def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_image, co_marginal, co_table, co_map, co_music, img):
     alpha = 0.5
     
     blank_image = np.ones( (img.shape[:]), dtype=np.uint8) * 255
@@ -29,6 +29,7 @@ def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_
     col_marginal =  (106, 90, 205)
     col_table =  (0, 90, 205)
     col_map =  (90, 90, 205)
+    col_music =  (90, 90, 0)
     
     if len(co_image)>0:
         cv2.drawContours(blank_image, co_image, -1, col_image, thickness=cv2.FILLED)  # Fill the contour
@@ -56,6 +57,9 @@ def visualize_image_from_contours_layout(co_par, co_header, co_drop, co_sep, co_
         
     if len(co_map)>0:
         cv2.drawContours(blank_image, co_map, -1, col_map, thickness=cv2.FILLED)  # Fill the contour
+        
+    if len(co_music)>0:
+        cv2.drawContours(blank_image, co_music, -1, col_music, thickness=cv2.FILLED)  # Fill the contour
     
     img_final =cv2.cvtColor(blank_image, cv2.COLOR_BGR2RGB)
     
@@ -350,11 +354,11 @@ def get_textline_contours_and_ocr_text(xml_file):
                 ocr_textlines.append(ocr_text_in[0])
     return co_use_case, y_len, x_len, ocr_textlines
 
-def fit_text_single_line(draw, text, font_path, max_width, max_height):
+def fit_text_single_line(draw, text, max_width, max_height):
     initial_font_size = 50
     font_size = initial_font_size
     while font_size > 10:  # Minimum font size
-        font = ImageFont.truetype(font_path, font_size)
+        font = get_font(font_size=font_size)# ImageFont.truetype(font_path, font_size)
         text_bbox = draw.textbbox((0, 0), text, font=font)  # Get text bounding box
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
@@ -364,7 +368,7 @@ def fit_text_single_line(draw, text, font_path, max_width, max_height):
 
         font_size -= 2  # Reduce font size and retry
 
-    return ImageFont.truetype(font_path, 10)  # Smallest font fallback
+    return get_font(font_size=10)#ImageFont.truetype(font_path, 10)  # Smallest font fallback
 
 def get_layout_contours_for_visualization(xml_file):
     tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding='utf-8'))
@@ -387,6 +391,7 @@ def get_layout_contours_for_visualization(xml_file):
     co_img=[]
     co_table=[]
     co_map=[]
+    co_music=[]
     co_noise=[]
     
     types_text = []
@@ -628,6 +633,31 @@ def get_layout_contours_for_visualization(xml_file):
                     elif vv.tag!=link+'Point' and sumi>=1:
                         break
                 co_map.append(np.array(c_t_in))
+                
+        if tag.endswith('}MusicRegion') or tag.endswith('}musicregion'):
+            #print('sth')
+            for nn in root1.iter(tag):
+                c_t_in=[]
+                sumi=0
+                for vv in nn.iter():
+                    # check the format of coords
+                    if vv.tag==link+'Coords':
+                        coords=bool(vv.attrib)
+                        if coords:
+                            p_h=vv.attrib['points'].split(' ')
+                            c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                            break
+                        else:
+                            pass
+    
+    
+                    if vv.tag==link+'Point':
+                        c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
+                        sumi+=1
+                    #print(vv.tag,'in')
+                    elif vv.tag!=link+'Point' and sumi>=1:
+                        break
+                co_music.append(np.array(c_t_in))
     
 
         if tag.endswith('}NoiseRegion') or tag.endswith('}noiseregion'):
@@ -654,9 +684,9 @@ def get_layout_contours_for_visualization(xml_file):
                     elif vv.tag!=link+'Point' and sumi>=1:
                         break
                 co_noise.append(np.array(c_t_in))
-    return co_text, co_graphic, co_sep, co_img, co_table, co_map, co_noise, y_len, x_len
+    return co_text, co_graphic, co_sep, co_img, co_table, co_map, co_music, co_noise, y_len, x_len
     
-def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_file, config_params, printspace, dir_images, dir_out_images):
+def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_file, config_params, printspace, dir_images, dir_out_images, page_alto=False):
     """
     Reading the page xml files and write the ground truth images into given output directory.
     """
@@ -666,190 +696,224 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
         ls_org_imgs = os.listdir(dir_images)
         ls_org_imgs_stem = [os.path.splitext(item)[0] for item in ls_org_imgs]
     for index in tqdm(range(len(gt_list))):
-        #try:
         print(gt_list[index])
-        tree1 = ET.parse(dir_in+'/'+gt_list[index], parser = ET.XMLParser(encoding='utf-8'))
-        root1=tree1.getroot()
-        alltags=[elem.tag for elem in root1.iter()]
-        link=alltags[0].split('}')[0]+'}'
-                            
         
-        x_len, y_len = 0, 0
-        for jj in root1.iter(link+'Page'):
-            y_len=int(jj.attrib['imageHeight'])
-            x_len=int(jj.attrib['imageWidth'])
-            
-        if 'columns_width' in list(config_params.keys()):
-            columns_width_dict = config_params['columns_width']
-            metadata_element = root1.find(link+'Metadata')
-            num_col = None
-            for child in metadata_element:
-                tag2 = child.tag
-                if tag2.endswith('}Comments') or tag2.endswith('}comments'):
-                    text_comments = child.text
-                    num_col = int(text_comments.split('num_col')[1])
-                
-            if num_col:
-                x_new = columns_width_dict[str(num_col)]
-                y_new = int ( x_new * (y_len / float(x_len)) )
-            
-        if printspace or "printspace_as_class_in_layout" in list(config_params.keys()):
-            region_tags = np.unique([x for x in alltags if x.endswith('PrintSpace') or x.endswith('Border')])
-            co_use_case = []
+        try:
+            if page_alto:
+                tree = ET.parse(dir_in+'/'+gt_list[index])
+                root = tree.getroot()
 
-            for tag in region_tags:
-                tag_endings = ['}PrintSpace','}Border']
+                NS = {'alto': root.tag.split('}')[0].strip('{')}#{"alto": "http://www.loc.gov/standards/alto/ns-v4#"}
+                x_len, y_len = 0, 0
+                
+                page = root.find('.//alto:Page', NS)
+                
+                x_len = int( page.get("WIDTH") )
+                y_len = int( page.get("HEIGHT") )
+                
+            else:
+                tree1 = ET.parse(dir_in+'/'+gt_list[index], parser = ET.XMLParser(encoding='utf-8'))
+                root1=tree1.getroot()
+                alltags=[elem.tag for elem in root1.iter()]
+                link=alltags[0].split('}')[0]+'}'
+                                    
+                
+                x_len, y_len = 0, 0
+                for jj in root1.iter(link+'Page'):
+                    y_len=int(jj.attrib['imageHeight'])
+                    x_len=int(jj.attrib['imageWidth'])
                     
-                if tag.endswith(tag_endings[0]) or tag.endswith(tag_endings[1]):
-                    for nn in root1.iter(tag):
-                        c_t_in = []
-                        sumi = 0
-                        for vv in nn.iter():
-                            # check the format of coords
-                            if vv.tag == link + 'Coords':
-                                coords = bool(vv.attrib)
-                                if coords:
-                                    p_h = vv.attrib['points'].split(' ')
-                                    c_t_in.append(
-                                        np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h]))
-                                    break
-                                else:
-                                    pass
-
-                            if vv.tag == link + 'Point':
-                                c_t_in.append([int(float(vv.attrib['x'])), int(float(vv.attrib['y']))])
-                                sumi += 1
-                            elif vv.tag != link + 'Point' and sumi >= 1:
-                                break
-                        co_use_case.append(np.array(c_t_in))
+                if 'columns_width' in list(config_params.keys()):
+                    columns_width_dict = config_params['columns_width']
+                    metadata_element = root1.find(link+'Metadata')
+                    num_col = None
+                    for child in metadata_element:
+                        tag2 = child.tag
+                        if tag2.endswith('}Comments') or tag2.endswith('}comments'):
+                            text_comments = child.text
+                            num_col = int(text_comments.split('num_col')[1])
                         
-            img = np.zeros((y_len, x_len, 3))
-            
-            img_poly = cv2.fillPoly(img, pts=co_use_case, color=(1, 1, 1))
-            
-            img_poly = img_poly.astype(np.uint8)
-            
-            imgray = cv2.cvtColor(img_poly, cv2.COLOR_BGR2GRAY)
-            _, thresh = cv2.threshold(imgray, 0, 255, 0)
-
-            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            
-            cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
-            
-            try:
-                cnt = contours[np.argmax(cnt_size)]
-                x, y, w, h = cv2.boundingRect(cnt)
-            except:
-                x, y , w, h = 0, 0, x_len, y_len
-            
-            bb_xywh = [x, y, w, h]
-            
-            
-        if config_file and (config_params['use_case']=='textline' or config_params['use_case']=='word' or config_params['use_case']=='glyph' or config_params['use_case']=='printspace'):
-            keys = list(config_params.keys())
-            if "artificial_class_label" in keys:
-                artificial_class_rgb_color = (255,255,0)
-                artificial_class_label = config_params['artificial_class_label']
-                
-            textline_rgb_color = (255, 0, 0)
-                
-            if config_params['use_case']=='textline':
-                region_tags = np.unique([x for x in alltags if x.endswith('TextLine')])
-            elif config_params['use_case']=='word':
-                region_tags = np.unique([x for x in alltags if x.endswith('Word')])
-            elif config_params['use_case']=='glyph':
-                region_tags = np.unique([x for x in alltags if x.endswith('Glyph')])
-            elif config_params['use_case']=='printspace':
-                region_tags = np.unique([x for x in alltags if x.endswith('PrintSpace')])
-                
-            co_use_case = []
-
-            for tag in region_tags:
-                if config_params['use_case']=='textline':
-                    tag_endings = ['}TextLine','}textline']
-                elif config_params['use_case']=='word':
-                    tag_endings = ['}Word','}word']
-                elif config_params['use_case']=='glyph':
-                    tag_endings = ['}Glyph','}glyph']
-                elif config_params['use_case']=='printspace':
-                    tag_endings = ['}PrintSpace','}printspace']
+                    if num_col:
+                        x_new = columns_width_dict[str(num_col)]
+                        y_new = int ( x_new * (y_len / float(x_len)) )
                     
-                if tag.endswith(tag_endings[0]) or tag.endswith(tag_endings[1]):
-                    for nn in root1.iter(tag):
-                        c_t_in = []
-                        sumi = 0
-                        for vv in nn.iter():
-                            # check the format of coords
-                            if vv.tag == link + 'Coords':
-                                coords = bool(vv.attrib)
-                                if coords:
-                                    p_h = vv.attrib['points'].split(' ')
-                                    c_t_in.append(
-                                        np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h]))
-                                    break
-                                else:
-                                    pass
+                if printspace or "printspace_as_class_in_layout" in list(config_params.keys()):
+                    region_tags = np.unique([x for x in alltags if x.endswith('PrintSpace') or x.endswith('Border')])
+                    co_use_case = []
 
-                            if vv.tag == link + 'Point':
-                                c_t_in.append([int(float(vv.attrib['x'])), int(float(vv.attrib['y']))])
-                                sumi += 1
-                            elif vv.tag != link + 'Point' and sumi >= 1:
-                                break
-                        co_use_case.append(np.array(c_t_in))
-                        
-                        
-            if "artificial_class_label" in keys:
-                img_boundary = np.zeros((y_len, x_len))
-                erosion_rate = 0#1
-                dilation_rate = 2
-                dilation_early = 0
-                erosion_early = 2
-                co_use_case, img_boundary = update_region_contours(co_use_case, img_boundary, erosion_rate, dilation_rate, y_len, x_len, dilation_early=dilation_early, erosion_early=erosion_early)
-            
+                    for tag in region_tags:
+                        tag_endings = ['}PrintSpace','}Border']
+                            
+                        if tag.endswith(tag_endings[0]) or tag.endswith(tag_endings[1]):
+                            for nn in root1.iter(tag):
+                                c_t_in = []
+                                sumi = 0
+                                for vv in nn.iter():
+                                    # check the format of coords
+                                    if vv.tag == link + 'Coords':
+                                        coords = bool(vv.attrib)
+                                        if coords:
+                                            p_h = vv.attrib['points'].split(' ')
+                                            c_t_in.append(
+                                                np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h]))
+                                            break
+                                        else:
+                                            pass
+
+                                    if vv.tag == link + 'Point':
+                                        c_t_in.append([int(float(vv.attrib['x'])), int(float(vv.attrib['y']))])
+                                        sumi += 1
+                                    elif vv.tag != link + 'Point' and sumi >= 1:
+                                        break
+                                co_use_case.append(np.array(c_t_in))
+                                
+                    img = np.zeros((y_len, x_len, 3))
+                    
+                    img_poly = cv2.fillPoly(img, pts=co_use_case, color=(1, 1, 1))
+                    
+                    img_poly = img_poly.astype(np.uint8)
+                    
+                    imgray = cv2.cvtColor(img_poly, cv2.COLOR_BGR2GRAY)
+                    _, thresh = cv2.threshold(imgray, 0, 255, 0)
+
+                    contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    
+                    cnt_size = np.array([cv2.contourArea(contours[j]) for j in range(len(contours))])
+                    
+                    try:
+                        cnt = contours[np.argmax(cnt_size)]
+                        x, y, w, h = cv2.boundingRect(cnt)
+                    except:
+                        x, y , w, h = 0, 0, x_len, y_len
+                    
+                    bb_xywh = [x, y, w, h]
                 
-            img = np.zeros((y_len, x_len, 3))
-            if output_type == '2d':
-                img_poly = cv2.fillPoly(img, pts=co_use_case, color=(1, 1, 1))
+                
+            if config_file and (config_params['use_case']=='textline' or config_params['use_case']=='word' or config_params['use_case']=='glyph' or config_params['use_case']=='printspace'):
+                keys = list(config_params.keys())
                 if "artificial_class_label" in keys:
-                    img_mask = np.copy(img_poly)
-                    ##img_poly[:,:][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=1)] = artificial_class_label
-                    img_poly[:,:][img_boundary[:,:]==1] = artificial_class_label
-            elif output_type == '3d':
-                img_poly = cv2.fillPoly(img, pts=co_use_case, color=textline_rgb_color)
-                if "artificial_class_label" in keys:
-                    img_mask = np.copy(img_poly)
-                    img_poly[:,:,0][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=255)] = artificial_class_rgb_color[0]
-                    img_poly[:,:,1][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=255)] = artificial_class_rgb_color[1]
-                    img_poly[:,:,2][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=255)] = artificial_class_rgb_color[2]
+                    artificial_class_rgb_color = (255,255,0)
+                    artificial_class_label = config_params['artificial_class_label']
                     
+                textline_rgb_color = (255, 0, 0)
                     
-            if printspace and config_params['use_case']!='printspace':
-                img_poly = img_poly[bb_xywh[1]:bb_xywh[1]+bb_xywh[3], bb_xywh[0]:bb_xywh[0]+bb_xywh[2], :]
-                
-                
-            if 'columns_width' in list(config_params.keys()) and num_col and config_params['use_case']!='printspace':
-                img_poly = resize_image(img_poly, y_new, x_new)
+                if page_alto:
+                    co_use_case = []
+                    for line in root.findall(".//alto:TextLine", NS):
+                        string_el = line.find("alto:String", NS)
+                        textline_text = string_el.attrib["CONTENT"] if string_el is not None else None
 
-            try:
-                xml_file_stem = os.path.splitext(gt_list[index])[0]
-                cv2.imwrite(os.path.join(output_dir, xml_file_stem + '.png'), img_poly)
-            except:
-                xml_file_stem = os.path.splitext(gt_list[index])[0]
-                cv2.imwrite(os.path.join(output_dir, xml_file_stem + '.png'), img_poly)
+                        polygon_el = line.find("alto:Shape/alto:Polygon", NS)
+                        if polygon_el is None:
+                            continue
+
+                        points = polygon_el.attrib["POINTS"].split()
+                        coords = [
+                            (int(points[i]), int(points[i + 1]))
+                            for i in range(0, len(points), 2)
+                        ]
+                        
+                        co_use_case.append( np.array(coords, dtype=np.int32) )
+                else:
+                    if config_params['use_case']=='textline':
+                        region_tags = np.unique([x for x in alltags if x.endswith('TextLine')])
+                    elif config_params['use_case']=='word':
+                        region_tags = np.unique([x for x in alltags if x.endswith('Word')])
+                    elif config_params['use_case']=='glyph':
+                        region_tags = np.unique([x for x in alltags if x.endswith('Glyph')])
+                    elif config_params['use_case']=='printspace':
+                        region_tags = np.unique([x for x in alltags if x.endswith('PrintSpace')])
+                        
+                    co_use_case = []
+
+                    for tag in region_tags:
+                        if config_params['use_case']=='textline':
+                            tag_endings = ['}TextLine','}textline']
+                        elif config_params['use_case']=='word':
+                            tag_endings = ['}Word','}word']
+                        elif config_params['use_case']=='glyph':
+                            tag_endings = ['}Glyph','}glyph']
+                        elif config_params['use_case']=='printspace':
+                            tag_endings = ['}PrintSpace','}printspace']
+                            
+                        if tag.endswith(tag_endings[0]) or tag.endswith(tag_endings[1]):
+                            for nn in root1.iter(tag):
+                                c_t_in = []
+                                sumi = 0
+                                for vv in nn.iter():
+                                    # check the format of coords
+                                    if vv.tag == link + 'Coords':
+                                        coords = bool(vv.attrib)
+                                        if coords:
+                                            p_h = vv.attrib['points'].split(' ')
+                                            c_t_in.append(
+                                                np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h]))
+                                            break
+                                        else:
+                                            pass
+
+                                    if vv.tag == link + 'Point':
+                                        c_t_in.append([int(float(vv.attrib['x'])), int(float(vv.attrib['y']))])
+                                        sumi += 1
+                                    elif vv.tag != link + 'Point' and sumi >= 1:
+                                        break
+                                co_use_case.append(np.array(c_t_in))
+                            
+                            
+                if "artificial_class_label" in keys:
+                    img_boundary = np.zeros((y_len, x_len))
+                    erosion_rate = 0#1
+                    dilation_rate = 2
+                    dilation_early = 0
+                    erosion_early = 2
+                    co_use_case, img_boundary = update_region_contours(co_use_case, img_boundary, erosion_rate, dilation_rate, y_len, x_len, dilation_early=dilation_early, erosion_early=erosion_early)
                 
-            if dir_images:
-                org_image_name = ls_org_imgs[ls_org_imgs_stem.index(xml_file_stem)]
-                img_org = cv2.imread(os.path.join(dir_images, org_image_name))
-                
+                    
+                img = np.zeros((y_len, x_len, 3))
+                if output_type == '2d':
+                    img_poly = cv2.fillPoly(img, pts=co_use_case, color=(1, 1, 1))
+                    if "artificial_class_label" in keys:
+                        img_mask = np.copy(img_poly)
+                        ##img_poly[:,:][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=1)] = artificial_class_label
+                        img_poly[:,:][img_boundary[:,:]==1] = artificial_class_label
+                elif output_type == '3d':
+                    img_poly = cv2.fillPoly(img, pts=co_use_case, color=textline_rgb_color)
+                    if "artificial_class_label" in keys:
+                        img_mask = np.copy(img_poly)
+                        img_poly[:,:,0][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=255)] = artificial_class_rgb_color[0]
+                        img_poly[:,:,1][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=255)] = artificial_class_rgb_color[1]
+                        img_poly[:,:,2][(img_boundary[:,:]==1) & (img_mask[:,:,0]!=255)] = artificial_class_rgb_color[2]
+                        
+                        
                 if printspace and config_params['use_case']!='printspace':
-                    img_org = img_org[bb_xywh[1]:bb_xywh[1]+bb_xywh[3], bb_xywh[0]:bb_xywh[0]+bb_xywh[2], :]
+                    img_poly = img_poly[bb_xywh[1]:bb_xywh[1]+bb_xywh[3], bb_xywh[0]:bb_xywh[0]+bb_xywh[2], :]
+                    
                     
                 if 'columns_width' in list(config_params.keys()) and num_col and config_params['use_case']!='printspace':
-                    img_org = resize_image(img_org, y_new, x_new)
-                    
-                cv2.imwrite(os.path.join(dir_out_images, org_image_name), img_org)
+                    img_poly = resize_image(img_poly, y_new, x_new)
 
-            
+                try:
+                    xml_file_stem = os.path.splitext(gt_list[index])[0]
+                    cv2.imwrite(os.path.join(output_dir, xml_file_stem + '.png'), img_poly)
+                except:
+                    xml_file_stem = os.path.splitext(gt_list[index])[0]
+                    cv2.imwrite(os.path.join(output_dir, xml_file_stem + '.png'), img_poly)
+                    
+                if dir_images:
+                    org_image_name = ls_org_imgs[ls_org_imgs_stem.index(xml_file_stem)]
+                    img_org = cv2.imread(os.path.join(dir_images, org_image_name))
+                    
+                    if printspace and config_params['use_case']!='printspace':
+                        img_org = img_org[bb_xywh[1]:bb_xywh[1]+bb_xywh[3], bb_xywh[0]:bb_xywh[0]+bb_xywh[2], :]
+                        
+                    if 'columns_width' in list(config_params.keys()) and num_col and config_params['use_case']!='printspace':
+                        img_org = resize_image(img_org, y_new, x_new)
+                        
+                    cv2.imwrite(os.path.join(dir_out_images, org_image_name), img_org)
+
+        except:
+            pass
+        
         if config_file and config_params['use_case']=='layout':
             keys = list(config_params.keys())
             
@@ -873,7 +937,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 types_graphic_label = list(types_graphic_dict.values())
 
                 
-            labels_rgb_color = [ (0,0,0), (255,0,0), (255,125,0), (255,0,125), (125,255,125), (125,125,0), (0,125,255), (0,125,0), (125,125,125), (255,0,255), (125,0,125), (0,255,0),(0,0,255), (0,255,255), (255,125,125),  (0,125,125), (0,255,125), (255,125,255), (125,255,0), (125,255,255)]
+            labels_rgb_color = [ (0,0,0), (255,0,0), (255,125,0), (255,0,125), (125,255,125), (125,125,0), (0,125,255), (0,125,0), (125,125,125), (255,0,255), (125,0,125), (0,255,0),(0,0,255), (0,255,255), (255,125,125),  (0,125,125), (0,255,125), (255,125,255), (125,255,0), (125,255,255), (125,125,255)]
             
             
             region_tags=np.unique([x for x in alltags if x.endswith('Region')])   
@@ -885,6 +949,7 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
             co_img=[]
             co_table=[]
             co_map=[]
+            co_music=[]
             co_noise=[]
             
             for tag in region_tags:
@@ -969,19 +1034,21 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                         if "rest_as_decoration" in types_graphic:
                                             types_graphic_without_decoration = [element for element in types_graphic if element!='rest_as_decoration' and element!='decoration']
                                             if len(types_graphic_without_decoration) == 0:
-                                                if "type" in nn.attrib:
-                                                    c_t_in_graphic['decoration'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                                #if "type" in nn.attrib:
+                                                c_t_in_graphic['decoration'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                                             elif len(types_graphic_without_decoration) >= 1:
                                                 if "type" in nn.attrib:
                                                     if nn.attrib['type'] in types_graphic_without_decoration:
                                                         c_t_in_graphic[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                                                     else:
                                                         c_t_in_graphic['decoration'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
-                                                        
+                                                else:
+                                                    c_t_in_graphic['decoration'].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
                                         else:
                                             if "type" in nn.attrib:
                                                 if nn.attrib['type'] in all_defined_graphic_types:
-                                                    c_t_in_graphic[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )        
+                                                    c_t_in_graphic[nn.attrib['type']].append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) ) 
+                                            
                                         
                                         break
                                     else:
@@ -992,9 +1059,9 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                     if "rest_as_decoration" in types_graphic:
                                         types_graphic_without_decoration = [element for element in types_graphic if element!='rest_as_decoration' and element!='decoration']
                                         if len(types_graphic_without_decoration) == 0:
-                                            if "type" in nn.attrib:
-                                                c_t_in_graphic['decoration'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
-                                                sumi+=1
+                                            #if "type" in nn.attrib:
+                                            c_t_in_graphic['decoration'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                            sumi+=1
                                         elif len(types_graphic_without_decoration) >= 1:
                                             if "type" in nn.attrib:
                                                 if nn.attrib['type'] in types_graphic_without_decoration:
@@ -1003,6 +1070,9 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                                 else:
                                                     c_t_in_graphic['decoration'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
                                                     sumi+=1
+                                            else:
+                                                c_t_in_graphic['decoration'].append( [ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ] )
+                                                sumi+=1
                                                     
                                     else:
                                         if "type" in nn.attrib:
@@ -1121,6 +1191,32 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                                 elif vv.tag!=link+'Point' and sumi>=1:
                                     break
                             co_map.append(np.array(c_t_in))
+                            
+                if 'musicregion' in keys:
+                    if tag.endswith('}MusicRegion') or tag.endswith('}musicregion'):
+                        #print('sth')
+                        for nn in root1.iter(tag):
+                            c_t_in=[]
+                            sumi=0
+                            for vv in nn.iter():
+                                # check the format of coords
+                                if vv.tag==link+'Coords':
+                                    coords=bool(vv.attrib)
+                                    if coords:
+                                        p_h=vv.attrib['points'].split(' ')
+                                        c_t_in.append( np.array( [ [ int(x.split(',')[0]) , int(x.split(',')[1]) ]  for x in p_h] ) )
+                                        break
+                                    else:
+                                        pass
+                
+                
+                                if vv.tag==link+'Point':
+                                    c_t_in.append([ int(float(vv.attrib['x'])) , int(float(vv.attrib['y'])) ])
+                                    sumi+=1
+                                #print(vv.tag,'in')
+                                elif vv.tag!=link+'Point' and sumi>=1:
+                                    break
+                            co_music.append(np.array(c_t_in))
             
                 if 'noiseregion' in keys:
                     if tag.endswith('}NoiseRegion') or tag.endswith('}noiseregion'):
@@ -1198,6 +1294,10 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     erosion_rate = 0#2
                     dilation_rate = 3#4
                     co_map, img_boundary = update_region_contours(co_map, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
+                if "musicregion" in elements_with_artificial_class:
+                    erosion_rate = 0#2
+                    dilation_rate = 3#4
+                    co_music, img_boundary = update_region_contours(co_music, img_boundary, erosion_rate, dilation_rate, y_len, x_len )
                     
                     
                 
@@ -1225,6 +1325,8 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                     img_poly=cv2.fillPoly(img, pts =co_table, color=labels_rgb_color[ config_params['tableregion']])
                 if 'mapregion' in keys:  
                     img_poly=cv2.fillPoly(img, pts =co_map, color=labels_rgb_color[ config_params['mapregion']])
+                if 'musicregion' in keys:  
+                    img_poly=cv2.fillPoly(img, pts =co_music, color=labels_rgb_color[ config_params['musicregion']])
                 if 'noiseregion' in keys:  
                     img_poly=cv2.fillPoly(img, pts =co_noise, color=labels_rgb_color[ config_params['noiseregion']])
                     
@@ -1288,6 +1390,9 @@ def get_images_of_ground_truth(gt_list, dir_in, output_dir, output_type, config_
                 if 'mapregion' in keys:
                     color_label = config_params['mapregion']
                     img_poly=cv2.fillPoly(img, pts =co_map, color=(color_label,color_label,color_label))
+                if 'musicregion' in keys:
+                    color_label = config_params['musicregion']
+                    img_poly=cv2.fillPoly(img, pts =co_music, color=(color_label,color_label,color_label))
                 if 'noiseregion' in keys:
                     color_label = config_params['noiseregion']
                     img_poly=cv2.fillPoly(img, pts =co_noise, color=(color_label,color_label,color_label))
