@@ -1570,7 +1570,7 @@ def data_gen_ocr(
                         if to_yield: yield to_yield
                         
             else:
-                img_out, batchcount, ret_x, ret_y, to_yield = increment_batchcount(img_out, batchcount, ret_x, ret_y)
+                img_out, batchcount, ret_x, ret_y, to_yield = increment_batchcount(img, batchcount, ret_x, ret_y)
                 if to_yield: yield to_yield
 
 
