@@ -179,9 +179,9 @@ class Eynollah:
         ]
         if self.input_binary:
             loadable.append("binarization") # todo: binarization_patched
-        loadable.append("textline_patched") # textline
+        loadable.append("textline") # textline_patched
         loadable.append("region_1_2")
-        loadable.append("region_1_2_patched")
+        #loadable.append("region_1_2_patched")
         if self.full_layout:
             loadable.append("region_fl_np")
             #loadable.append("region_fl_patched")
@@ -914,10 +914,10 @@ class Eynollah:
                 img = resize_image(img, int(img_height_h * 2500 / float(img_width_h)), 2500).astype(np.uint8)
 
         if patches:
-            prediction_regions, _ = self.do_prediction_new_concept_autosize(
-                img, self.model_zoo.get("region_fl_patched"),
-            # prediction_regions, _ = self.do_prediction_new_concept(
-            #     True, img, self.model_zoo.get("region_fl"),
+            # prediction_regions, _ = self.do_prediction_new_concept_autosize(
+            #     img, self.model_zoo.get("region_fl_patched"),
+            prediction_regions, _ = self.do_prediction_new_concept(
+                True, img, self.model_zoo.get("region_fl"),
                 n_batch_inference=2,
                 thresholding_for_heading=True)
         else:
@@ -1075,10 +1075,10 @@ class Eynollah:
                       thresholding_for_artificial_class=True,
                       threshold_art_class=self.threshold_art_class_textline)
         if use_patches:
-            prediction_textline, _ = self.do_prediction_new_concept_autosize(
-                img, self.model_zoo.get("textline_patched"), **kwargs)
-            # prediction_textline, _ = self.do_prediction_new_concept(
-            #     True, img, self.model_zoo.get("textline"), **kwargs)
+            # prediction_textline, _ = self.do_prediction_new_concept_autosize(
+            #     img, self.model_zoo.get("textline_patched"), **kwargs)
+            prediction_textline, _ = self.do_prediction_new_concept(
+                True, img, self.model_zoo.get("textline"), **kwargs)
         else:
             prediction_textline, _ = self.do_prediction_new_concept(
                 False, img, self.model_zoo.get("textline"), **kwargs)
@@ -1136,12 +1136,13 @@ class Eynollah:
             if img_height_h / img_width_h > 2.5:
                 self.logger.debug("resized to %dx%d for %d cols",
                                   img_resized.shape[1], img_resized.shape[0], num_col_classifier)
-                prediction_regions_org, confidence_matrix = \
-                    self.do_prediction_new_concept_autosize(
-                        img_resized, self.model_zoo.get("region_1_2_patched"),
-                    # self.do_prediction_new_concept(
-                    #     True, img_resized, self.model_zoo.get("region_1_2"),
+                prediction_regions_org, confidence_matrix = (
+                    # self.do_prediction_new_concept_autosize(
+                    #     img_resized, self.model_zoo.get("region_1_2_patched"),
+                    self.do_prediction_new_concept(
+                        True, img_resized, self.model_zoo.get("region_1_2"),
                         **kwargs)
+                )
             else:
                 prediction_regions_org, confidence_matrix = \
                     self.do_prediction_new_concept(
@@ -1154,12 +1155,13 @@ class Eynollah:
             self.logger.debug("resized to %dx%d (new_w=%d) for %d cols",
                               img_resized.shape[1], img_resized.shape[0],
                               new_w, num_col_classifier)
-            prediction_regions_org, confidence_matrix = \
-                self.do_prediction_new_concept_autosize(
-                    img_resized, self.model_zoo.get("region_1_2_patched"),
-                # self.do_prediction_new_concept(
-                #     True, img_resized, self.model_zoo.get("region_1_2"),
+            prediction_regions_org, confidence_matrix = (
+                # self.do_prediction_new_concept_autosize(
+                #     img_resized, self.model_zoo.get("region_1_2_patched"),
+                self.do_prediction_new_concept(
+                    True, img_resized, self.model_zoo.get("region_1_2"),
                     **kwargs)
+                )
 
         prediction_regions_org = resize_image(prediction_regions_org, img_height_h, img_width_h )
         confidence_matrix = resize_image(confidence_matrix, img_height_h, img_width_h )
