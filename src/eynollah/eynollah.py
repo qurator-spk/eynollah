@@ -364,7 +364,7 @@ class Eynollah:
 
         width_early = img.shape[1]
         t1 = time.time()
-        image['img_page'], image['coord_page'] = self.early_page_for_num_of_column_classification(image)
+        _, page_coord = self.early_page_for_num_of_column_classification(image)
 
         label_p_pred = np.ones(6)
         conf_col = 1.0
@@ -378,8 +378,8 @@ class Eynollah:
                 img_in = img
             else:
                 img_1ch = self.imread(image, grayscale=True)
-                img_1ch = img_1ch[image['coord_page'][0]: image['coord_page'][1],
-                                  image['coord_page'][2]: image['coord_page'][3]]
+                img_1ch = img_1ch[page_coord[0]: page_coord[1],
+                                  page_coord[2]: page_coord[3]]
                 img_in = np.repeat(img_1ch[:, :, np.newaxis], 3, axis=2)
             img_in = img_in / 255.0
             img_in = cv2.resize(img_in, (448, 448), interpolation=cv2.INTER_NEAREST).astype(np.float16)
@@ -1143,17 +1143,10 @@ class Eynollah:
                     #     True, img_resized, self.model_zoo.get("region_1_2"),
                         **kwargs)
             else:
-                prediction_regions_org = np.zeros((img_height_org, img_width_org), dtype=np.uint8)
-                confidence_matrix = np.zeros((img_height_org, img_width_org))
-                prediction_regions_page, confidence_matrix_page = \
+                prediction_regions_org, confidence_matrix = \
                     self.do_prediction_new_concept(
-                        False, image['img_page'], self.model_zoo.get("region_1_2"),
+                        False, img_resized, self.model_zoo.get("region_1_2"),
                         **kwargs)
-                ys = slice(*image['coord_page'][0:2])
-                xs = slice(*image['coord_page'][2:4])
-                prediction_regions_org[ys, xs] = prediction_regions_page
-                confidence_matrix[ys, xs] = confidence_matrix_page
-
         else:
             new_w = (900+ (num_col_classifier-3)*100)
             new_h = new_w * img.shape[0] // img.shape[1]
