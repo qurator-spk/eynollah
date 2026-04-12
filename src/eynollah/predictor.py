@@ -111,7 +111,7 @@ class Predictor(mp.context.SpawnProcess):
                     "binarization": 4,
                     "enhancement": 4,
                     "reading_order": 4,
-                    # medium size (672x672)...
+                    # medium size (672x672x3)...
                     "textline": 2,
                     # large models...
                     "table": 1,
@@ -119,6 +119,7 @@ class Predictor(mp.context.SpawnProcess):
                     "region_fl_np": 1,
                     "region_fl": 1,
                 }.get(self.name, 1)
+                REBATCH_SIZE = 1 # save VRAM; FIXME: re-enable w/ runtime parameter
                 if not len(shared_data):
                     #self.logger.debug("getting '%d' output shape of model '%s'", jobid, self.name)
                     result = self.model.output_shape
