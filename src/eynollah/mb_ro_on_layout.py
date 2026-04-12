@@ -14,10 +14,12 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 import cv2
-from keras.models import Model
 import numpy as np
 import statistics
+
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
+from tensorflow.keras.models import Model
 
 from .model_zoo import EynollahModelZoo
 from .utils.resize import resize_image

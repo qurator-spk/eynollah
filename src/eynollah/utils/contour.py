@@ -14,21 +14,16 @@ from shapely.ops import unary_union, nearest_points
 from .rotate import rotate_image, rotation_image_new
 
 def contours_in_same_horizon(cy_main_hor):
-    X1 = np.zeros((len(cy_main_hor), len(cy_main_hor)))
-    X2 = np.zeros((len(cy_main_hor), len(cy_main_hor)))
-
-    X1[0::1, :] = cy_main_hor[:]
-    X2 = X1.T
-
-    X_dif = np.abs(X2 - X1)
-    args_help = np.array(range(len(cy_main_hor)))
-    all_args = []
-    for i in range(len(cy_main_hor)):
-        list_h = list(args_help[X_dif[i, :] <= 20])
-        list_h.append(i)
-        if len(list_h) > 1:
-            all_args.append(list(set(list_h)))
-    return np.unique(np.array(all_args, dtype=object))
+    """
+    Takes an array of y coords, identifies all pairs among them
+    which are close to each other, and returns all such pairs
+    by index into the array.
+    """
+    sort = np.argsort(cy_main_hor)
+    same = np.diff(cy_main_hor[sort]) <= 20
+    # groups = np.split(sort, np.arange(len(cy_main_hor) - 1)[~same] + 1)
+    same = np.flatnonzero(same)
+    return np.stack((sort[:-1][same], sort[1:][same])).T
 
 def find_contours_mean_y_diff(contours_main):
     M_main = [cv2.moments(contours_main[j]) for j in range(len(contours_main))]
@@ -175,7 +170,7 @@ def get_textregion_contours_in_org_image(cnts, img, slope_first):
 
     return cnts_org
 
-def get_textregion_contours_in_org_image_light_old(cnts, img, slope_first):
+def get_textregion_confidences_old(cnts, img, slope_first):
     zoom = 3
     img = cv2.resize(img, (img.shape[1] // zoom,
                            img.shape[0] // zoom),
@@ -213,16 +208,17 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
         cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
     return cont_int[0], index_r_con, confidence_contour
 
-def get_textregion_contours_in_org_image_light(cnts, img, confidence_matrix):
+def get_textregion_confidences(cnts, confidence_matrix):
     if not len(cnts):
         return []
 
+    height, width = confidence_matrix.shape
     confidence_matrix = cv2.resize(confidence_matrix,
-                                   (img.shape[1] // 6, img.shape[0] // 6),
+                                   (width // 6, height // 6),
                                    interpolation=cv2.INTER_NEAREST)
     confs = []
     for cnt in cnts:
-        cnt_mask = np.zeros(confidence_matrix.shape)
+        cnt_mask = np.zeros_like(confidence_matrix)
         cnt_mask = cv2.fillPoly(cnt_mask, pts=[cnt // 6], color=1.0)
         confs.append(np.sum(confidence_matrix * cnt_mask) / np.sum(cnt_mask))
     return confs
@@ -253,13 +249,17 @@ def return_contours_of_image(image):
     return contours, hierarchy
 
 def dilate_textline_contours(all_found_textline_polygons):
-    return [[polygon2contour(contour2polygon(contour, dilate=6))
-             for contour in region]
+    from . import ensure_array
+    return [ensure_array(
+        [polygon2contour(contour2polygon(contour, dilate=6))
+         for contour in region])
             for region in all_found_textline_polygons]
 
-def dilate_textregion_contours(all_found_textline_polygons):
-    return [polygon2contour(contour2polygon(contour, dilate=6))
-            for contour in all_found_textline_polygons]
+def dilate_textregion_contours(all_found_textregion_polygons):
+    from . import ensure_array
+    return ensure_array(
+        [polygon2contour(contour2polygon(contour, dilate=6))
+         for contour in all_found_textregion_polygons])
 
 def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number]]]], dilate=0):
     polygon = Polygon([point[0] for point in contour])
