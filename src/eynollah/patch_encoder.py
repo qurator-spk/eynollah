@@ -72,9 +72,6 @@ class wrap_layout_model_resized(models.Model):
                                (height, width))
         return pred
 
-    def predict(self, x, verbose=0):
-        return self(x).numpy()
-
 class wrap_layout_model_patched(models.Model):
     """
     replacement for layout model using sliding window for patches
@@ -157,6 +154,3 @@ class wrap_layout_model_patched(models.Model):
             (height, width, self.classes))
         pred = tf.expand_dims(pred, axis=0)
         return pred
-
-    def predict(self, x, verbose=0):
-        return self(x).numpy()

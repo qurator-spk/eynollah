@@ -191,6 +191,9 @@ class EynollahModelZoo:
             elif patched:
                 model = wrap_layout_model_patched(model)
                 model._name = model_category + '_patched'
+            else:
+                model.jit_compile = True
+            model.make_predict_function()
         return model
 
     def get(self, model_category: str) -> Predictor:
