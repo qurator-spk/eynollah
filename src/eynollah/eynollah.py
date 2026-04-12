@@ -918,7 +918,7 @@ class Eynollah:
             #     img, self.model_zoo.get("region_fl_patched"),
             prediction_regions, _ = self.do_prediction_new_concept(
                 True, img, self.model_zoo.get("region_fl"),
-                n_batch_inference=2,
+                n_batch_inference=1,
                 thresholding_for_heading=True)
         else:
             prediction_regions = self.do_prediction(
@@ -1129,7 +1129,7 @@ class Eynollah:
             return None, erosion_hurts, None, None, textline_mask_tot_ea, None
 
         #print("inside 2 ", time.time()-t_in)
-        kwargs = dict(n_batch_inference=2,
+        kwargs = dict(n_batch_inference=1,
                       thresholding_for_artificial_class=True,
                       threshold_art_class=self.threshold_art_class_layout)
         if num_col_classifier == 1 or num_col_classifier == 2:
