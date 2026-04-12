@@ -163,7 +163,14 @@ import click
     "-j",
     default=0,
     type=click.IntRange(min=0),
-    help="number of parallel images to process (also helps better utilise GPU if available); 0 means based on autodetected number of processor cores",
+    help="number of parallel images to process (for --dir_in mode; also helps better utilise GPU if available); 0 means based on autodetected number of processor cores",
+)
+@click.option(
+    "--halt-fail",
+    "-H",
+    default=0,
+    type=click.FloatRange(min=0),
+    help="abort when number of failed images exceeds this value (if >=1) or ratio of failed over total images exceeds this value (if <1); 0 means ignore failures",
 )
 @click.option(
     "--device",
@@ -199,6 +206,7 @@ def layout_cli(
     skip_layout_and_reading_order,
     ignore_page_extraction,
     num_jobs,
+    halt_fail,
     device,
 ):
     """
@@ -243,5 +251,6 @@ def layout_cli(
                  dir_of_all=save_all,
                  dir_save_page=save_page,
                  num_jobs=num_jobs,
+                 halt_fail=halt_fail,
     )
 

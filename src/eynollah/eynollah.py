@@ -2250,6 +2250,7 @@ class Eynollah:
             dir_of_all: Optional[str] = None,
             dir_save_page: Optional[str] = None,
             num_jobs: int = 0,
+            halt_fail: float = 0,
     ):
         """
         Get image and scales, then extract the page of scanned image
@@ -2294,6 +2295,7 @@ class Eynollah:
             ) as exe:
                 jobs = {}
                 mngr = mp.get_context('fork').Manager()
+                n_success = n_fail = 0
                 for img_filename in ls_imgs:
                     logq = mngr.Queue()
                     jobs[exe.submit(_run_single, img_filename,
@@ -2307,16 +2309,20 @@ class Eynollah:
                     try:
                         loglistener.start()
                         job.result()
-                        jobs[job] = True
+                        n_success += 1
                     except:
                         self.logger.exception("Job %s failed", img_filename)
-                        jobs[job] = False
+                        n_fail += 1
+                        if (halt_fail and
+                            n_fail >= halt_fail * (len(jobs) if halt_fail < 1 else 1)):
+                            self.logger.fatal("terminating after %d failures", n_fail)
+                            for job in jobs:
+                                job.cancel()
+                            break
                     finally:
                         loglistener.stop()
-                results = list(jobs.values())
-                success = list(filter(None, results))
             # for img_filename, result in zip(ls_imgs, results) ...
-            self.logger.info("%d of %d jobs successful", len(success), len(results))
+            self.logger.info("%d of %d jobs successful", n_success, len(jobs))
             self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)
         elif image_filename:
             try:
