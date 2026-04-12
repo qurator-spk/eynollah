@@ -148,7 +148,9 @@ class Predictor(mp.context.SpawnProcess):
                             jobs.append(jobid)
                             data.append(stack.enter_context(ndarray_shared(shared_data)))
                         data = np.concatenate(data)
-                        result = self.model.predict(data, verbose=0)
+                        #result = self.model.predict(data, verbose=0)
+                        # faster, less VRAM
+                        result = self.model.predict_on_batch(data)
                     results = np.split(result, len(jobs))
                     #self.logger.debug("sharing result array for '%d'", jobid)
                     with ExitStack() as stack:
