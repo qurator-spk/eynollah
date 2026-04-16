@@ -79,7 +79,7 @@ from .utils import (
     find_num_col,
     otsu_copy_binary,
     seg_mask_label,
-    putt_bb_of_drop_capitals_of_model_in_patches_in_layout,
+    fill_bb_of_drop_capitals,
     split_textregion_main_vs_head,
     small_textlines_to_parent_adherence2,
     order_of_regions,
@@ -1802,11 +1802,10 @@ class Eynollah:
 
         drops = regions_fully == label_drop_fl_model
         regions_fully[drops] = label_text
-        # rs: why erode to text here, when putt_bb... will mask out text (only allowing img/drop/bg)?
+        # rs: why erode to text here, when fill_bb... will mask out text (only allowing img/drop/bg)?
         drops = cv2.erode(drops.astype(np.uint8), KERNEL, iterations=1) == 1
         regions_fully[drops] = label_drop_fl_model
-        regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(
-            regions_fully, label_drop_fl_model, text_regions_p)
+        regions_fully = fill_bb_of_drop_capitals(regions_fully, text_regions_p)
         text_regions_p[regions_fully == label_drop_fl_model] = label_drop_fl
 
         regions_without_separators = (text_regions_p == label_text) * 1

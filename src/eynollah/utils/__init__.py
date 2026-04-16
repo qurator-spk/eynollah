@@ -754,43 +754,39 @@ def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
 
     return layout_no_patch
 
-def putt_bb_of_drop_capitals_of_model_in_patches_in_layout(layout_in_patch, drop_capital_label, text_regions_p):
-    drop_only = (layout_in_patch == drop_capital_label) * 1
+def fill_bb_of_drop_capitals(
+        full_prediction, early_prediction,
+        label_bg=0,
+        label_text=1,
+        label_imgs=5,
+        label_drop_fl_model=3,
+        label_imgs_fl_model=4):
+    area_tot = full_prediction.size
+    drop_only = (full_prediction == label_drop_fl_model) * 1
     contours_drop, hir_on_drop = return_contours_of_image(drop_only)
     contours_drop_parent = return_parent_contours(contours_drop, hir_on_drop)
 
-    areas_cnt_text = np.array([cv2.contourArea(contours_drop_parent[j])
-                               for j in range(len(contours_drop_parent))])
-    areas_cnt_text = areas_cnt_text / float(drop_only.shape[0] * drop_only.shape[1])
-    contours_drop_parent = [contours_drop_parent[jz]
-                            for jz in range(len(contours_drop_parent))
-                            if areas_cnt_text[jz] > 0.00001]
-    areas_cnt_text = [areas_cnt_text[jz]
-                      for jz in range(len(areas_cnt_text))
-                      if areas_cnt_text[jz] > 0.00001]
-
     contours_drop_parent_final = []
-    for jj in range(len(contours_drop_parent)):
-        x, y, w, h = cv2.boundingRect(contours_drop_parent[jj])
+    for contour in contours_drop_parent:
+        area_drop = cv2.contourArea(contour)
+        if area_drop <= 0.00001 * area_tot:
+            continue
+        x, y, w, h = cv2.boundingRect(contour)
         box = slice(y, y + h), slice(x, x + w)
-        mask_of_drop_cpaital_in_early_layout = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1]))
-        mask_of_drop_cpaital_in_early_layout[box] = text_regions_p[box]
+        area_box = w * h
+        area_text_in_early_layout = np.sum((early_prediction[box] == label_text) |
+                                           (early_prediction[box] == label_imgs))
 
-        all_drop_capital_pixels_which_is_text_in_early_lo = np.sum(mask_of_drop_cpaital_in_early_layout[box]==1)
-        mask_of_drop_cpaital_in_early_layout[box] = 1
-        all_drop_capital_pixels = np.sum(mask_of_drop_cpaital_in_early_layout==1)
-
-        percent_text_to_all_in_drop = all_drop_capital_pixels_which_is_text_in_early_lo / float(all_drop_capital_pixels)
-        if (areas_cnt_text[jj] * float(drop_only.shape[0] * drop_only.shape[1]) / float(w * h) > 0.6 and
-            percent_text_to_all_in_drop >= 0.3):
-            layout_in_patch[box] = drop_capital_label
+        if (area_drop > 0.6 * area_box and
+            area_text_in_early_layout >= 0.3 * area_box):
+            full_prediction[box] = label_drop_fl_model
         else:
-            mask = ((layout_in_patch[box] == drop_capital_label) |
-                    (layout_in_patch[box] == 0) |
-                    (layout_in_patch[box] == 4))
-            layout_in_patch[box][mask] = drop_capital_label
+            mask = ((full_prediction[box] == label_drop_fl_model) |
+                    (full_prediction[box] == label_imgs_fl_model) |
+                    (full_prediction[box] == label_bg))
+            full_prediction[box][mask] = label_drop_fl_model
 
-    return layout_in_patch
+    return full_prediction
 
 def check_any_text_region_in_model_one_is_main_or_header(
         regions_model_1, regions_model_full,
