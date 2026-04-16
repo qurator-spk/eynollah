@@ -1719,7 +1719,8 @@ class Eynollah:
         t1 = time.time()
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
             boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(
-                splitter_y_new, regions_without_separators, text_regions_p, matrix_of_seps_ch,
+                splitter_y_new, regions_without_separators,
+                text_regions_p == label_seps, matrix_of_seps_ch,
                 num_col_classifier, erosion_hurts, self.tables, self.right2left)
             boxes_d = None
             self.logger.debug("len(boxes): %s", len(boxes))
@@ -1727,7 +1728,8 @@ class Eynollah:
 
         else:
             boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(
-                splitter_y_new_d, regions_without_separators_d, text_regions_p_d, matrix_of_seps_ch_d,
+                splitter_y_new_d, regions_without_separators_d,
+                text_regions_p_d == label_seps, matrix_of_seps_ch_d,
                 num_col_classifier, erosion_hurts, self.tables, self.right2left)
             boxes = None
             self.logger.debug("len(boxes): %s", len(boxes_d))
@@ -2896,12 +2898,14 @@ class Eynollah:
 
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     boxes, _ = return_boxes_of_images_by_order_of_reading_new(
-                        splitter_y_new, regions_without_separators, text_regions_p, matrix_of_seps_ch,
+                        splitter_y_new, regions_without_separators,
+                        text_regions_p == label_seps, matrix_of_seps_ch,
                         num_col_classifier, erosion_hurts, self.tables, self.right2left,
                         logger=self.logger)
                 else:
                     boxes_d, _ = return_boxes_of_images_by_order_of_reading_new(
-                        splitter_y_new_d, regions_without_separators_d, text_regions_p_d, matrix_of_seps_ch_d,
+                        splitter_y_new_d, regions_without_separators_d,
+                        text_regions_p_d == label_seps, matrix_of_seps_ch_d,
                         num_col_classifier, erosion_hurts, self.tables, self.right2left,
                         logger=self.logger)
         else:

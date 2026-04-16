@@ -1542,8 +1542,8 @@ def find_number_of_columns_in_document(
 
 def return_boxes_of_images_by_order_of_reading_new(
         splitter_y_new,
-        regions_without_separators,
-        regions_with_separators,
+        text_mask,
+        sep_mask,
         matrix_of_seps_ch,
         num_col_classifier, erosion_hurts, tables,
         right2left_readingorder,
@@ -1555,9 +1555,9 @@ def return_boxes_of_images_by_order_of_reading_new(
 
     Arguments:
        * splitter_y_new: the y coordinates separating the parts
-       * regions_without_separators: (text) region mask with separators suppressed;
+       * text_mask: binary text region mask
              (needed to find per-part columns and to combine separators if possible)
-       * regions_with_separators: (full) region map with separators included;
+       * sep_mask: binary separator region mask
              (needed to elongate separators if possible)
        * matrix_of_seps: type and coordinates of horizontal and vertical separators,
              as well as headings
@@ -1574,22 +1574,22 @@ def return_boxes_of_images_by_order_of_reading_new(
     """
 
     if right2left_readingorder:
-        regions_without_separators = cv2.flip(regions_without_separators,1)
-        regions_with_separators = cv2.flip(regions_with_separators,1)
+        text_mask = cv2.flip(text_mask,1)
+        sep_mask = cv2.flip(sep_mask,1)
     if logger is None:
         logger = getLogger(__package__)
     logger.debug('enter return_boxes_of_images_by_order_of_reading_new')
 
     # def dbg_imshow(box, title):
     #     xmin, xmax, ymin, ymax = box
-    #     plt.imshow(regions_with_separators) #, extent=[0, width_tot, bot, top])
+    #     plt.imshow(1 * text_mask + 3 * sep_mask) #, extent=[0, width_tot, bot, top])
     #     plt.gca().add_patch(patches.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
     #                                           fill=False, linewidth=1, edgecolor='r'))
     #     plt.title(title + " at %d:%d, %d:%d" % (ymin, ymax, xmin, xmax))
     #     plt.show()
     # def dbg_plt(box=None, title=None, rectangles=None, rectangles_showidx=False):
     #     minx, maxx, miny, maxy = box or (0, None, 0, None)
-    #     img = regions_without_separators[miny:maxy, minx:maxx]
+    #     img = text_mask[miny:maxy, minx:maxx]
     #     plt.imshow(img)
     #     step = max(img.shape) // 10
     #     xrange = np.arange(0, img.shape[1], step)
@@ -1616,15 +1616,15 @@ def return_boxes_of_images_by_order_of_reading_new(
     boxes=[]
     peaks_neg_tot_tables = []
     splitter_y_new = np.array(splitter_y_new, dtype=int)
-    height_tot, width_tot = regions_without_separators.shape
+    height_tot, width_tot = text_mask.shape
     big_part = 22 * height_tot // 100 # percent height
-    _, ccomps, cstats, _ = cv2.connectedComponentsWithStats(regions_without_separators.astype(np.uint8))
+    _, ccomps, cstats, _ = cv2.connectedComponentsWithStats(text_mask.astype(np.uint8))
     args_ver = matrix_of_seps_ch[:, 9] == 1
-    mask_ver = np.zeros_like(regions_without_separators, dtype=bool)
+    mask_ver = np.zeros_like(sep_mask, dtype=bool)
     for i in np.flatnonzero(args_ver):
         mask_ver[matrix_of_seps_ch[i, 6]: matrix_of_seps_ch[i, 7],
                  matrix_of_seps_ch[i, 2]: matrix_of_seps_ch[i, 3]] = True
-    vertical_seps = 1 * ((regions_with_separators == 6) & mask_ver)
+    vertical_seps = 1 * (sep_mask & mask_ver)
     for top, bot in pairwise(splitter_y_new):
         # print("%d:%d" % (top, bot), 'i')
         # dbg_plt([0, None, top, bot], "image cut for y split %d:%d" % (top, bot))
@@ -1637,7 +1637,7 @@ def return_boxes_of_images_by_order_of_reading_new(
         #    np.max(matrix_new[:,8][matrix_new[:,9]==1]) >=
         #    0.1 * (np.abs(bot-top))):
         num_col, peaks_neg_fin = find_num_col(
-            regions_without_separators[top:bot],
+            text_mask[top:bot],
             # we do not expect to get all columns in small parts (headings etc.):
             num_col_classifier if bot - top >= big_part else 1,
             tables, vertical_separators=vertical_seps[top: bot],
@@ -1656,7 +1656,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                 #print("peaks_neg_fin_org", peaks_neg_fin_org)
                 if len(peaks_neg_fin) == 0:
                     num_col, peaks_neg_fin = find_num_col(
-                        regions_without_separators[top:bot],
+                        text_mask[top:bot],
                         num_col_classifier, tables,
                         vertical_separators=vertical_seps[top: bot],
                         # try to be less strict (lower threshold than above)
@@ -1672,12 +1672,12 @@ def return_boxes_of_images_by_order_of_reading_new(
                     # dbg_plt([left, right, top, bot],
                     #         "image cut for y split %d:%d / x gap %d:%d" % (
                     #             top, bot, left, right))
-                    # plt.plot(regions_without_separators[top:bot, left:right].sum(axis=0))
+                    # plt.plot(text_mask[top:bot, left:right].sum(axis=0))
                     # plt.title("vertical projection (sum over y)")
                     # plt.show()
                     # try to get more peaks with different multipliers
                     num_col_expected = round((right - left) / width_tot * num_col_classifier)
-                    args = regions_without_separators[top:bot, left:right], num_col_expected, tables
+                    args = text_mask[top:bot, left:right], num_col_expected, tables
                     kwargs = dict(vertical_separators=vertical_seps[top: bot, left:right])
                     _, peaks_neg_fin1 = find_num_col(*args, **kwargs, multiplier=7.)
                     _, peaks_neg_fin2 = find_num_col(*args, **kwargs, multiplier=5.)
@@ -1708,7 +1708,7 @@ def return_boxes_of_images_by_order_of_reading_new(
         except:
             logger.exception("cannot find peaks consistent with columns")
         #num_col, peaks_neg_fin = find_num_col(
-        #    regions_without_separators[top:bot,:],
+        #    text_mask[top:bot,:],
         #    multiplier=7.0)
         peaks_neg_tot = np.array([0] + peaks_neg_fin + [width_tot])
         #print(peaks_neg_tot,'peaks_neg_tot')
@@ -1721,7 +1721,7 @@ def return_boxes_of_images_by_order_of_reading_new(
         args_nonver = matrix_new[:, 9] != 1
         for i in np.flatnonzero(args_nonver):
             xmin, xmax, ymin, ymax, typ = matrix_new[i, [2, 3, 6, 7, 9]]
-            cut = regions_with_separators[ymin: ymax]
+            cut = sep_mask[ymin: ymax]
             # dbg_imshow([xmin, xmax, ymin, ymax], "separator %d (%s)" % (i, "heading" if typ else "horizontal"))
             starting = xmin - peaks_neg_tot
             min_start = np.flatnonzero(starting >= 0)[-1] # last left-of
@@ -1819,7 +1819,7 @@ def return_boxes_of_images_by_order_of_reading_new(
             x_min_hor_some = width_tot - x_max_hor_some
 
         x_starting, x_ending, y_min, y_mid, y_max = return_multicol_separators_x_start_end(
-            regions_without_separators, peaks_neg_tot, top, bot,
+            text_mask, peaks_neg_tot, top, bot,
             x_min_hor_some, x_max_hor_some, cy_hor_some, y_min_hor_some, y_max_hor_some)
         # dbg_plt([0, None, top, bot], "non-empty multi-column separators in current split", 
         #         list(zip(peaks_neg_tot[x_starting], peaks_neg_tot[x_ending],
@@ -1851,7 +1851,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                 #               "box area", (y_bot - y_top) * width,
                 #               "label area", (min(y_bot, l_bot) - max(y_top, l_top)) * width,
                 #               "box height", (y_bot - y_top),
-                #               "label height", sum(regions_without_separators[
+                #               "label height", sum(text_mask[
                 #                   y_top: y_bot, peaks_neg_tot[start + 1]]))
                 return max((last for last, l_top, l_bot, l_count in labelcolmap.get(start, [])
                             # yield the right-most column that does not cut through
@@ -1868,7 +1868,7 @@ def return_boxes_of_images_by_order_of_reading_new(
                                  (peaks_neg_tot[last] - peaks_neg_tot[start])) > 0.1 * l_count
                             # But do allow cutting tiny passages with less 10% of height
                             # (i.e. label is already almost separated by columns)
-                            and sum(regions_without_separators[
+                            and sum(text_mask[
                                 y_top: y_bot, peaks_neg_tot[start + 1]]) > 0.1 * (y_bot - y_top)),
                            # Otherwise advance only 1 column.
                            default=start + 1)
