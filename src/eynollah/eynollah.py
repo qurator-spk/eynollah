@@ -1586,7 +1586,8 @@ class Eynollah:
 
         mask_images = (text_regions_p_1 == 2).astype(np.uint8)
         mask_images = cv2.erode(mask_images, KERNEL, iterations=10)
-        mask_seps = (text_regions_p_1 == 3).astype(np.uint8)
+        textline_mask_tot_ea[mask_images == 1] = 0
+
         img_only_regions_with_sep = ((text_regions_p_1 != 3) &
                                      (text_regions_p_1 != 0)).astype(np.uint8)
 
@@ -1611,7 +1612,7 @@ class Eynollah:
         except Exception as why:
             self.logger.exception(why)
             num_col = None
-        return (num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_seps,
+        return (num_col, num_col_classifier, img_only_regions, page_coord, image_page,
                 text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea)
 
     def run_graphics_and_columns_without_layout(self, textline_mask_tot_ea, image):
@@ -1656,18 +1657,12 @@ class Eynollah:
         return slope_deskew
 
     def run_marginals(
-            self, textline_mask_tot_ea, mask_images, mask_seps,
-            num_col_classifier, slope_deskew, text_regions_p_1, table_prediction):
+            self, num_col_classifier, slope_deskew, text_regions_p_1, table_prediction):
 
-        textline_mask_tot = textline_mask_tot_ea[:, :]
-        textline_mask_tot[mask_images[:, :] == 1] = 0
-
-        text_regions_p_1[mask_seps[:, :] == 1] = 3
-        text_regions_p = text_regions_p_1[:, :]
-        text_regions_p = np.array(text_regions_p)
+        text_regions_p = np.array(text_regions_p_1)
         if num_col_classifier in (1, 2):
             try:
-                regions_without_separators = (text_regions_p[:, :] == 1) * 1
+                regions_without_separators = (text_regions_p == 1) * 1
                 if self.tables:
                     regions_without_separators[table_prediction==1] = 1
                 regions_without_separators = regions_without_separators.astype(np.uint8)
@@ -1677,7 +1672,7 @@ class Eynollah:
             except Exception as e:
                 self.logger.error("exception %s", e)
 
-        return textline_mask_tot, text_regions_p
+        return text_regions_p
 
     def run_boxes_no_full_layout(
             self, image_page, textline_mask_tot, text_regions_p,
@@ -2468,7 +2463,7 @@ class Eynollah:
             self.plotter.save_deskewed_image(slope_deskew, image['img'], image['name'])
         #print("text region early -2,5 in %.1fs", time.time() - t0)
         #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
-        num_col, num_col_classifier, img_only_regions, page_coord, image_page, mask_images, mask_seps, \
+        num_col, num_col_classifier, img_only_regions, page_coord, image_page, \
             text_regions_p_1, cont_page, table_prediction, textline_mask_tot_ea = \
                 self.run_graphics_and_columns(text_regions_p_1, textline_mask_tot_ea,
                                               num_col_classifier, num_column_is_classified,
@@ -2521,14 +2516,12 @@ class Eynollah:
 
             image_page = resize_image(image_page,img_h_new, img_w_new )
             textline_mask_tot_ea = resize_image(textline_mask_tot_ea,img_h_new, img_w_new )
-            mask_images = resize_image(mask_images,img_h_new, img_w_new )
-            mask_seps = resize_image(mask_seps, img_h_new, img_w_new)
             text_regions_p_1 = resize_image(text_regions_p_1,img_h_new, img_w_new )
             table_prediction = resize_image(table_prediction,img_h_new, img_w_new )
 
-        textline_mask_tot, text_regions_p = \
-            self.run_marginals(textline_mask_tot_ea, mask_images, mask_seps,
-                               num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
+        text_regions_p = \
+            self.run_marginals(num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
+
         if self.plotter:
             self.plotter.save_plot_of_layout_main_all(text_regions_p, image_page, image['name'])
             self.plotter.save_plot_of_layout_main(text_regions_p, image_page, image['name'])
@@ -2554,7 +2547,6 @@ class Eynollah:
             image_page = resize_image(image_page,org_h_l_m, org_w_l_m )
             textline_mask_tot_ea = resize_image(textline_mask_tot_ea,org_h_l_m, org_w_l_m )
             text_regions_p = resize_image(text_regions_p,org_h_l_m, org_w_l_m )
-            textline_mask_tot = resize_image(textline_mask_tot,org_h_l_m, org_w_l_m )
             text_regions_p_1 = resize_image(text_regions_p_1,org_h_l_m, org_w_l_m )
             table_prediction = resize_image(table_prediction,org_h_l_m, org_w_l_m )
 
@@ -2563,16 +2555,16 @@ class Eynollah:
         t1 = time.time()
         if not self.full_layout:
             polygons_of_images, img_revised_tab, text_regions_p_d, \
-                textline_mask_tot_d, regions_without_separators_d, \
+                textline_mask_tot_ea_d, regions_without_separators_d, \
                 boxes, boxes_d, polygons_of_marginals, contours_tables = \
-                self.run_boxes_no_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew,
+                self.run_boxes_no_full_layout(image_page, textline_mask_tot_ea, text_regions_p, slope_deskew,
                                               num_col_classifier, table_prediction, erosion_hurts)
             ###polygons_of_marginals = dilate_textregion_contours(polygons_of_marginals)
         else:
             polygons_of_images, img_revised_tab, text_regions_p_d, \
-                textline_mask_tot_d, regions_without_separators_d, \
+                textline_mask_tot_ea_d, regions_without_separators_d, \
                 regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = \
-                self.run_boxes_full_layout(image_page, textline_mask_tot, text_regions_p, slope_deskew,
+                self.run_boxes_full_layout(image_page, textline_mask_tot_ea, text_regions_p, slope_deskew,
                                            num_col_classifier, img_only_regions, table_prediction, erosion_hurts)
             ###polygons_of_marginals = dilate_textregion_contours(polygons_of_marginals)
             drop_label_in_full_layout = 4
@@ -2936,11 +2928,11 @@ class Eynollah:
         else:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                 order_text_new = self.do_order_of_regions(
-                    contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot)
+                    contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot_ea)
             else:
                 order_text_new = self.do_order_of_regions(
                     contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered,
-                    boxes_d, textline_mask_tot_d)
+                    boxes_d, textline_mask_tot_ea_d)
         self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
 
         self.logger.info("Step 5/5: Output Generation")
