@@ -1539,7 +1539,11 @@ class Eynollah:
         return image_revised_last
 
     def get_tables_from_model(self, img):
-        prediction_table, _ = self.do_prediction_new_concept(False, img, self.model_zoo.get("table"))
+        prediction_table, _ = self.do_prediction_new_concept(False, img,
+                                                             self.model_zoo.get("table"),
+                                                             thresholding_for_artificial_class=True,
+                                                             threshold_art_class=0.05,
+                                                             artificial_class=2)
         prediction_table = prediction_table.astype(np.uint8)
         return prediction_table
 
