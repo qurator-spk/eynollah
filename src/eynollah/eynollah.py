@@ -80,7 +80,7 @@ from .utils import (
     otsu_copy_binary,
     seg_mask_label,
     putt_bb_of_drop_capitals_of_model_in_patches_in_layout,
-    split_textregion_main_vs_header,
+    split_textregion_main_vs_head,
     small_textlines_to_parent_adherence2,
     order_of_regions,
     find_number_of_columns_in_document,
@@ -2860,7 +2860,7 @@ class Eynollah:
             text_regions_p, contours_only_text_parent, contours_only_text_parent_h, all_box_coord, all_box_coord_h, \
                 all_found_textline_polygons, all_found_textline_polygons_h, slopes, slopes_h, \
                 contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered, \
-                    conf_contours_textregions, conf_contours_textregions_h = split_textregion_main_vs_header(
+                    conf_contours_textregions, conf_contours_textregions_h = split_textregion_main_vs_head(
                         text_regions_p, regions_fully, contours_only_text_parent,
                         all_box_coord, all_found_textline_polygons,
                         slopes, contours_only_text_parent_d_ordered, conf_contours_textregions)

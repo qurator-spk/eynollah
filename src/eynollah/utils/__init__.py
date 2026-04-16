@@ -866,13 +866,18 @@ def check_any_text_region_in_model_one_is_main_or_header(
             conf_contours_main,
             conf_contours_head)
 
-def split_textregion_main_vs_header(
+def split_textregion_main_vs_head(
         regions_model_1, regions_model_full,
         contours_only_text_parent,
         all_box_coord, all_found_textline_polygons,
         slopes,
         contours_only_text_parent_d_ordered,
-        conf_contours):
+        conf_contours,
+        label_text=1,
+        label_head_full=2,
+        label_head_final=2,
+        label_main_final=1,
+):
 
     ### to make it faster
     h_o = regions_model_1.shape[0]
@@ -912,21 +917,19 @@ def split_textregion_main_vs_header(
     contours_only_text_parent_head_d=[]
 
     for ii, con in enumerate(contours_only_text_parent_z):
-        img = np.zeros(regions_model_1.shape[:2])
-        img = cv2.fillPoly(img, pts=[con], color=255)
+        parent = np.zeros_like(regions_model_1)
+        parent = cv2.fillPoly(parent, pts=[con], color=1)
 
-        all_pixels = (img == 255).sum()
-        pixels_header=((img == 255) &
-                       (regions_model_full==2)).sum()
-        pixels_main = all_pixels - pixels_header
+        pixels_head = ((parent > 0) & (regions_model_full == label_head_full)).sum()
+        pixels_main = parent.sum() - pixels_head
 
-        if (( pixels_header >= 0.6 * pixels_main and
+        if (( pixels_head >= 0.6 * pixels_main and
               length_con[ii] >= 1.3 * height_con[ii] and
               length_con[ii] <= 3 * height_con[ii] ) or
-            ( pixels_header >= 0.3 * pixels_main and
+            ( pixels_head >= 0.3 * pixels_main and
               length_con[ii] >= 3 * height_con[ii] )):
 
-            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ] = 2
+            regions_model_1[(regions_model_1 == label_text) & (parent > 0)] = label_head_final
             contours_only_text_parent_head.append(contours_only_text_parent[ii])
             conf_contours_head.append(None) # why not conf_contours[ii], too?
             if len(contours_only_text_parent_d_ordered):
@@ -936,7 +939,7 @@ def split_textregion_main_vs_header(
             all_found_textline_polygons_head.append(all_found_textline_polygons[ii])
 
         else:
-            regions_model_1[:,:][(regions_model_1[:,:]==1) & (img == 255) ] = 1
+            regions_model_1[(regions_model_1 == label_text) & (parent > 0)] = label_main_final
             contours_only_text_parent_main.append(contours_only_text_parent[ii])
             conf_contours_main.append(conf_contours[ii])
             if len(contours_only_text_parent_d_ordered):
@@ -944,12 +947,11 @@ def split_textregion_main_vs_header(
             all_box_coord_main.append(all_box_coord[ii])
             slopes_main.append(slopes[ii])
             all_found_textline_polygons_main.append(all_found_textline_polygons[ii])
-        #print(all_pixels,pixels_main,pixels_header)
 
     ### to make it faster
     regions_model_1 = cv2.resize(regions_model_1, (w_o, h_o), interpolation=cv2.INTER_NEAREST)
-    # regions_model_full = cv2.resize(img, (regions_model_full.shape[1] // zoom,
-    #                                       regions_model_full.shape[0] // zoom),
+    # regions_model_full = cv2.resize(parent, (regions_model_full.shape[1] // zoom,
+    #                                          regions_model_full.shape[0] // zoom),
     #                                 interpolation=cv2.INTER_NEAREST)
     ###
 
