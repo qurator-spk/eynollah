@@ -628,6 +628,7 @@ class Eynollah:
             thresholding_for_artificial_class=False,
             threshold_art_class=0.1,
             artificial_class=4,
+            separator_class=0,
     ):
 
         self.logger.debug("enter do_prediction_new_concept (patches=%d)", patches)
@@ -653,7 +654,8 @@ class Eynollah:
                                label=artificial_class,
                                only=True,
                                skeletonize=True,
-                               dilate=3)
+                               dilate=3,
+                               keep=separator_class)
 
             conf_text = resize_image(label_p_pred[:, :, 1], img_h_page, img_w_page)
             return prediction, conf_text
@@ -799,7 +801,8 @@ class Eynollah:
                            label=artificial_class,
                            only=True,
                            skeletonize=True,
-                           dilate=3)
+                           dilate=3,
+                           keep=separator_class)
         gc.collect()
         return prediction, confidence
 
@@ -1071,7 +1074,7 @@ class Eynollah:
         self.logger.debug('enter textline_contours')
 
         kwargs = dict(artificial_class=2,
-                      n_batch_inference=3,
+                      n_batch_inference=1 if self.tables else 3, # avoid OOM
                       thresholding_for_artificial_class=True,
                       threshold_art_class=self.threshold_art_class_textline)
         if use_patches:
@@ -1131,7 +1134,8 @@ class Eynollah:
         #print("inside 2 ", time.time()-t_in)
         kwargs = dict(n_batch_inference=1,
                       thresholding_for_artificial_class=True,
-                      threshold_art_class=self.threshold_art_class_layout)
+                      threshold_art_class=self.threshold_art_class_layout,
+                      separator_class=3)
         if num_col_classifier == 1 or num_col_classifier == 2:
             if img_height_h / img_width_h > 2.5:
                 self.logger.debug("resized to %dx%d for %d cols",

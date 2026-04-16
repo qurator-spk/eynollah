@@ -1953,7 +1953,8 @@ def seg_mask_label(segmap:np.ndarray,
                    only:bool=False,
                    label:int=2,
                    skeletonize:bool=False,
-                   dilate:int=0
+                   dilate:int=0,
+                   keep:int=0,
 ) -> None:
     """
     overwrite an existing segmentation map from a binary mask with a given label
@@ -1966,11 +1967,14 @@ def seg_mask_label(segmap:np.ndarray,
         only: whether to suppress the `label` outside `mask`
         skeletonize: whether to transform the mask to its skeleton
         dilate: whether to also apply dilatation after this (convolution with square kernel of given size)
+        keep: if nonzero, a clas label to be kept untouched
 
     Use this to enforce specific confidence thresholds or rules after segmentation.
     """
     if not mask.any():
         return
+    if keep:
+        keepmask = segmap == keep
     if only:
         segmap[segmap == label] = 0
     if skeletonize:
@@ -1982,3 +1986,5 @@ def seg_mask_label(segmap:np.ndarray,
             kernel = np.ones((dilate, dilate), np.uint8)
             mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1) > 0
     segmap[mask] = label
+    if keep:
+        segmap[keepmask] = keep
