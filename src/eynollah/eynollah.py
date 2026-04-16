@@ -1676,33 +1676,36 @@ class Eynollah:
 
     def run_boxes_no_full_layout(
             self, image_page, textline_mask_tot, text_regions_p,
-            slope_deskew, num_col_classifier, table_prediction, erosion_hurts):
-
+            slope_deskew, num_col_classifier, table_prediction, erosion_hurts,
+            label_text=1,
+            label_imgs=2,
+            label_seps=3,
+            label_marg=4,
+            label_tabs=10,
+    ):
         self.logger.debug('enter run_boxes_no_full_layout')
         t_0_box = time.time()
+        regions_without_separators = (text_regions_p == label_text) * 1
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
             textline_mask_tot_d = rotate_image(textline_mask_tot, slope_deskew)
             text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
-            table_prediction_n = rotate_image(table_prediction, slope_deskew)
-            regions_without_separators_d = (text_regions_p_d == 1) * 1
+            regions_without_separators_d = (text_regions_p_d == label_text) * 1
             if self.tables:
-                regions_without_separators_d[table_prediction_n == 1] = 1
-        regions_without_separators = (text_regions_p == 1) * 1
-        # ( (text_regions_p==1) | (text_regions_p==2) )*1
-        #self.return_regions_without_separators_new(text_regions_p,img_only_regions)
-        #print(time.time()-t_0_box,'time box in 1')
-        if self.tables:
-            regions_without_separators[table_prediction ==1 ] = 1
-        if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-            text_regions_p_d = None
+                table_prediction_d = rotate_image(table_prediction, slope_deskew)
+                text_regions_p_d[table_prediction_d == 1] = label_tabs
+                regions_without_separators_d[table_prediction_d == 1] = 1
+        else:
             textline_mask_tot_d = None
+            text_regions_p_d = None
             regions_without_separators_d = None
-        label_seps = 3
+        if self.tables:
+            text_regions_p[table_prediction == 1] = label_tabs
+            regions_without_separators[table_prediction == 1] = 1
+
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
             _, _, matrix_of_seps_ch, splitter_y_new, _ = find_number_of_columns_in_document(
                 text_regions_p, num_col_classifier, self.tables, label_seps)
-
-        if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+        else:
             _, _, matrix_of_seps_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
                 text_regions_p_d, num_col_classifier, self.tables, label_seps)
         #print(time.time()-t_0_box,'time box in 2')
@@ -1737,70 +1740,40 @@ class Eynollah:
         #print(time.time()-t_0_box,'time box in 4')
         self.logger.info("detecting boxes took %.1fs", time.time() - t1)
 
-        if self.tables:
-            text_regions_p[table_prediction == 1] = 10
-        img_revised_tab = text_regions_p[:, :]
-        polygons_of_images = return_contours_of_interested_region(text_regions_p, 2)
-
-        label_marginalia = 4
         min_area_mar = 0.00001
-        marginal_mask = (text_regions_p==label_marginalia)*1
-        marginal_mask = marginal_mask.astype('uint8')
-        marginal_mask = cv2.dilate(marginal_mask, KERNEL, iterations=2)
+        polygons_of_tables = return_contours_of_interested_region(text_regions_p, label_tabs, min_area_mar)
 
+        polygons_of_images = return_contours_of_interested_region(text_regions_p, label_imgs)
+
+        marginal_mask = (text_regions_p == label_marg).astype(np.uint8)
+        marginal_mask = cv2.dilate(marginal_mask, KERNEL, iterations=2)
         polygons_of_marginals = return_contours_of_interested_region(marginal_mask, 1, min_area_mar)
 
-        label_tables = 10
-        contours_tables = return_contours_of_interested_region(text_regions_p, label_tables, min_area_mar)
         #print(time.time()-t_0_box,'time box in 5')
         self.logger.debug('exit run_boxes_no_full_layout')
-        return (polygons_of_images, img_revised_tab, text_regions_p_d, textline_mask_tot_d,
+        return (polygons_of_images, text_regions_p_d, textline_mask_tot_d,
                 regions_without_separators_d, boxes, boxes_d,
-                polygons_of_marginals, contours_tables)
+                polygons_of_marginals, polygons_of_tables)
 
     def run_boxes_full_layout(
             self, image_page, textline_mask_tot, text_regions_p,
             slope_deskew, num_col_classifier, img_only_regions,
-            table_prediction, erosion_hurts):
-
+            table_prediction, erosion_hurts,
+            label_text=1,
+            label_imgs=2,
+            label_imgs_fl=5,
+            label_imgs_fl_model=4,
+            label_seps=3,
+            label_seps_fl=6,
+            label_seps_fl_model=5,
+            label_marg=4,
+            label_marg_fl=8,
+            label_drop_fl=4,
+            label_drop_fl_model=3,
+            label_tabs=10,
+    ):
         self.logger.debug('enter run_boxes_full_layout')
         t_full0 = time.time()
-        if self.tables:
-            text_regions_p[:,:][table_prediction[:,:]==1] = 10
-            img_revised_tab = text_regions_p[:,:]
-            if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                textline_mask_tot_d = rotate_image(textline_mask_tot, slope_deskew)
-                text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
-                table_prediction_n = rotate_image(table_prediction, slope_deskew)
-                regions_without_separators_d = (text_regions_p_d[:,:] == 1)*1
-                regions_without_separators_d[table_prediction_n[:,:] == 1] = 1
-            else:
-                text_regions_p_d = None
-                textline_mask_tot_d = None
-                regions_without_separators_d = None
-            # regions_without_separators = ( text_regions_p[:,:]==1 | text_regions_p[:,:]==2 )*1
-            #self.return_regions_without_separators_new(text_regions_p[:,:,0],img_only_regions)
-            regions_without_separators = (text_regions_p[:,:] == 1)*1
-            regions_without_separators[table_prediction == 1] = 1
-
-
-
-        label_marginalia = 4
-        min_area_mar = 0.00001
-
-        marginal_mask = (text_regions_p[:,:]==label_marginalia)*1
-        marginal_mask = marginal_mask.astype('uint8')
-        marginal_mask = cv2.dilate(marginal_mask, KERNEL, iterations=2)
-
-        polygons_of_marginals = return_contours_of_interested_region(marginal_mask, 1, min_area_mar)
-
-        label_tables = 10
-        contours_tables = return_contours_of_interested_region(text_regions_p, label_tables, min_area_mar)
-
-        # set first model with second model
-        text_regions_p[:, :][text_regions_p[:, :] == 2] = 5
-        text_regions_p[:, :][text_regions_p[:, :] == 3] = 6
-        text_regions_p[:, :][text_regions_p[:, :] == 4] = 8
 
         image_page = image_page.astype(np.uint8)
         #print("full inside 1", time.time()- t_full0)
@@ -1808,60 +1781,67 @@ class Eynollah:
             image_page,
             False, cols=num_col_classifier)
         #print("full inside 2", time.time()- t_full0)
-        # 6 is the separators lable in old full layout model
-        # 4 is the drop capital class in old full layout model
-        # in the new full layout drop capital is 3 and separators are 5
+
+        # segment labels used by models/arrays:
+        # class | early | old full (and decoded here) | new full (just predicted) | comment
+        # ---
+        # para | 1 |  1 | 1 |
+        # head | - |  2 | 2 | used in split_textregion_main_vs_head()
+        # drop | - |  4 | 3 | assigned from full model below
+        # img  | 2 |  5 | 4 | mapped below
+        # sep  | 3 |  6 | 5 | mapped + assigned from full model below
+        # marg | 4 |  8 | - | rule-based in run_marginals() from early text
+        # tab  | - | 10 | - | dedicated model, optional
+        text_regions_p[text_regions_p == label_imgs] = label_imgs_fl
+        text_regions_p[text_regions_p == label_seps] = label_seps_fl
+        text_regions_p[text_regions_p == label_marg] = label_marg_fl
 
         # the separators in full layout will not be written on layout
         if not self.reading_order_machine_based:
-            text_regions_p[regions_fully==5]=6
+            text_regions_p[regions_fully == label_seps_fl_model] = label_seps_fl
 
-        #text_regions_p[:,:][regions_fully[:,:]==6]=6
-        drop_capital_label_in_full_layout_model = 3
-
-        drops = regions_fully == drop_capital_label_in_full_layout_model
-        regions_fully[drops] = 1
-
+        drops = regions_fully == label_drop_fl_model
+        regions_fully[drops] = label_text
+        # rs: why erode to text here, when putt_bb... will mask out text (only allowing img/drop/bg)?
         drops = cv2.erode(drops.astype(np.uint8), KERNEL, iterations=1) == 1
-        regions_fully[drops] = drop_capital_label_in_full_layout_model
-
+        regions_fully[drops] = label_drop_fl_model
         regions_fully = putt_bb_of_drop_capitals_of_model_in_patches_in_layout(
-            regions_fully, drop_capital_label_in_full_layout_model, text_regions_p)
-        ##regions_fully_np = self.extract_text_regions(image_page, False, cols=num_col_classifier)
-        ##if num_col_classifier > 2:
-            ##regions_fully_np[regions_fully_np == 4] = 0
-        ##else:
-            ##regions_fully_np = filter_small_drop_capitals_from_no_patch_layout(regions_fully_np, text_regions_p)
+            regions_fully, label_drop_fl_model, text_regions_p)
+        text_regions_p[regions_fully == label_drop_fl_model] = label_drop_fl
 
-        ###regions_fully = boosting_headers_by_longshot_region_segmentation(regions_fully,
-        ###    regions_fully_np, img_only_regions)
-        # plt.imshow(regions_fully)
-        # plt.show()
-        text_regions_p[regions_fully == drop_capital_label_in_full_layout_model] = 4
-        ####text_regions_p[regions_fully_np == 4] = 4
-        #plt.imshow(text_regions_p)
-        #plt.show()
-        ####if not self.tables:
+        regions_without_separators = (text_regions_p == label_text) * 1
+        # regions_without_separators = ( text_regions_p == 1 | text_regions_p == 2 ) * 1
+        #self.return_regions_without_separators_new(text_regions_p, img_only_regions)
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
             textline_mask_tot_d = rotate_image(textline_mask_tot, slope_deskew)
             text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
-            regions_fully_n = rotate_image(regions_fully, slope_deskew)
-            if not self.tables:
-                regions_without_separators_d = (text_regions_p_d == 1) * 1
+            regions_without_separators_d = (text_regions_p_d == label_text) * 1
+            if self.tables:
+                table_prediction_d = rotate_image(table_prediction, slope_deskew)
+                text_regions_p_d[table_prediction_d == 1] = label_tabs
+                regions_without_separators_d[table_prediction_d == 1] = 1
         else:
-            text_regions_p_d = None
             textline_mask_tot_d = None
+            text_regions_p_d = None
             regions_without_separators_d = None
-        if not self.tables:
-            regions_without_separators = (text_regions_p == 1) * 1
-        img_revised_tab = np.copy(text_regions_p)
-        polygons_of_images = return_contours_of_interested_region(img_revised_tab, 5)
+        if self.tables:
+            text_regions_p[table_prediction == 1] = label_tabs
+            regions_without_separators[table_prediction == 1] = 1
+
+        min_area_mar = 0.00001
+        marginal_mask = (text_regions_p == label_marg_fl).astype(np.uint8)
+        marginal_mask = cv2.dilate(marginal_mask, KERNEL, iterations=2)
+        polygons_of_marginals = return_contours_of_interested_region(marginal_mask, 1, min_area_mar)
+
+        polygons_of_tables = return_contours_of_interested_region(text_regions_p, label_tabs, min_area_mar)
+
+        polygons_of_images = return_contours_of_interested_region(text_regions_p, label_imgs_fl)
 
         self.logger.debug('exit run_boxes_full_layout')
         #print("full inside 3", time.time()- t_full0)
-        return (polygons_of_images, img_revised_tab, text_regions_p_d, textline_mask_tot_d,
+        return (polygons_of_images, text_regions_p_d, textline_mask_tot_d,
                 regions_without_separators_d, regions_fully, regions_without_separators,
-                polygons_of_marginals, contours_tables)
+                polygons_of_marginals, polygons_of_tables)
 
     def do_order_of_regions_with_model(self, contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
 
@@ -2556,26 +2536,26 @@ class Eynollah:
         ## birdan sora chock chakir
         t1 = time.time()
         if not self.full_layout:
-            polygons_of_images, img_revised_tab, text_regions_p_d, \
+            polygons_of_images, text_regions_p_d, \
                 textline_mask_tot_ea_d, regions_without_separators_d, \
                 boxes, boxes_d, polygons_of_marginals, contours_tables = \
                 self.run_boxes_no_full_layout(image_page, textline_mask_tot_ea, text_regions_p, slope_deskew,
                                               num_col_classifier, table_prediction, erosion_hurts)
             ###polygons_of_marginals = dilate_textregion_contours(polygons_of_marginals)
         else:
-            polygons_of_images, img_revised_tab, text_regions_p_d, \
+            polygons_of_images, text_regions_p_d, \
                 textline_mask_tot_ea_d, regions_without_separators_d, \
                 regions_fully, regions_without_separators, polygons_of_marginals, contours_tables = \
                 self.run_boxes_full_layout(image_page, textline_mask_tot_ea, text_regions_p, slope_deskew,
                                            num_col_classifier, img_only_regions, table_prediction, erosion_hurts)
             ###polygons_of_marginals = dilate_textregion_contours(polygons_of_marginals)
-            drop_label_in_full_layout = 4
-            textline_mask_tot_ea_org[img_revised_tab==drop_label_in_full_layout] = 0
+            # suppress drop capitals for deskewing (but keep for reading order)
+            label_drop = 4
+            textline_mask_tot_ea_org[text_regions_p == label_drop] = 0
 
-
-        text_only = (img_revised_tab == 1) * 1
+        text_only = (text_regions_p == 1) * 1
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            text_only_d = ((text_regions_p_d[:, :] == 1)) * 1
+            text_only_d = (text_regions_p_d == 1) * 1
 
         #print("text region early 2 in %.1fs", time.time() - t0)
         ###min_con_area = 0.000005
@@ -2863,8 +2843,8 @@ class Eynollah:
                 self.plotter.save_plot_of_layout(text_regions_p, image_page, image['name'])
                 self.plotter.save_plot_of_layout_all(text_regions_p, image_page, image['name'])
 
-            label_img = 4
-            polygons_of_drop_capitals = return_contours_of_interested_region(text_regions_p, label_img,
+            label_drop = 4
+            polygons_of_drop_capitals = return_contours_of_interested_region(text_regions_p, label_drop,
                                                                              min_area=0.00003)
             ##all_found_textline_polygons = adhere_drop_capital_region_into_corresponding_textline(
                 ##text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h,
