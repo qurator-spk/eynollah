@@ -761,10 +761,18 @@ def fill_bb_of_drop_capitals(
         label_imgs=5,
         label_drop_fl_model=3,
         label_imgs_fl_model=4):
+    """
+    Given segmentation maps from full layout model (including drop-capital)
+    and early layout model (after post-processing), re-assign regions which
+    are (large enough and) majority classified as drop-capital to that label.
+    """
     area_tot = full_prediction.size
     drop_only = (full_prediction == label_drop_fl_model) * 1
     contours_drop, hir_on_drop = return_contours_of_image(drop_only)
     contours_drop_parent = return_parent_contours(contours_drop, hir_on_drop)
+    text_mask = ((early_prediction == label_text) |
+                 (early_prediction == label_imgs))
+    _, text_segs, text_bbox, _ = cv2.connectedComponentsWithStats(early_prediction * text_mask)
 
     contours_drop_parent_final = []
     for contour in contours_drop_parent:
@@ -774,19 +782,31 @@ def fill_bb_of_drop_capitals(
         x, y, w, h = cv2.boundingRect(contour)
         box = slice(y, y + h), slice(x, x + w)
         area_box = w * h
-        area_text_in_early_layout = np.sum((early_prediction[box] == label_text) |
-                                           (early_prediction[box] == label_imgs))
+        area_text_in_early_layout = np.sum(text_mask[box] == label_text)
 
         if (area_drop > 0.6 * area_box and
             area_text_in_early_layout >= 0.3 * area_box):
-            full_prediction[box] = label_drop_fl_model
+            mask = np.ones((h, w), dtype=bool)
         else:
             mask = ((full_prediction[box] == label_drop_fl_model) |
                     (full_prediction[box] == label_imgs_fl_model) |
                     (full_prediction[box] == label_bg))
-            full_prediction[box][mask] = label_drop_fl_model
+        full_prediction[box][mask] = label_drop_fl_model
 
-    return full_prediction
+        # also try to enlarge to corresponding labels in early_prediction
+        for label in range(1, len(text_bbox)):
+            x0, y0, w0, h0, area0 = text_bbox[label]
+            x1 = max(0, x0 - x)
+            y1 = max(0, y0 - y)
+            w1 = min(w0, w - x1) if x0 >= x else min(w, w0 - x + x0)
+            h1 = min(h0, h - y1) if y0 >= y else min(h, h0 - y + y0)
+            if w1 < 0 or h1 < 0:
+                continue
+            area1 = np.count_nonzero(mask[y1: y1 + h1, x1: x1 + w1])
+            if area1 and area1 >= 0.8 * area0:
+                full_prediction[text_segs == label] = label_drop_fl_model
+
+    return full_prediction == label_drop_fl_model
 
 def check_any_text_region_in_model_one_is_main_or_header(
         regions_model_1, regions_model_full,

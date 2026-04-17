@@ -60,8 +60,8 @@ def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area=1.
         ##print(np.prod(thresh.shape[:2]))
         # Check that polygon has area greater than minimal area
         # print(hierarchy[0][jv][3],hierarchy )
-        if (area >= min_area * np.prod(image.shape[:2]) and
-            area <= max_area * np.prod(image.shape[:2]) and
+        if (area >= min_area * image.size and
+            area <= max_area * image.size and
             # hierarchy[0][jv][3]==-1
             True):
             # print(contour[0][0][1])
@@ -109,14 +109,13 @@ def return_parent_contours(contours, hierarchy):
 def return_contours_of_interested_region(region_pre_p, label, min_area=0.0002):
     # pixels of images are identified by 5
     if region_pre_p.ndim == 3:
-        cnts_images = (region_pre_p[:, :, 0] == label) * 1
+        mask = (region_pre_p[:, :, 0] == label).astype(np.uint8)
     else:
-        cnts_images = (region_pre_p[:, :] == label) * 1
-    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
+        mask = (region_pre_p[:, :] == label).astype(np.uint8)
 
-    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_imgs, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
-    contours_imgs = filter_contours_area_of_image_tables(thresh, contours_imgs, hierarchy,
+    contours_imgs = filter_contours_area_of_image_tables(mask, contours_imgs, hierarchy,
                                                          max_area=1, min_area=min_area)
     return contours_imgs
 

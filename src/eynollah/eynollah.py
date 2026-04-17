@@ -1805,8 +1805,8 @@ class Eynollah:
         # rs: why erode to text here, when fill_bb... will mask out text (only allowing img/drop/bg)?
         drops = cv2.erode(drops.astype(np.uint8), KERNEL, iterations=1) == 1
         regions_fully[drops] = label_drop_fl_model
-        regions_fully = fill_bb_of_drop_capitals(regions_fully, text_regions_p)
-        text_regions_p[regions_fully == label_drop_fl_model] = label_drop_fl
+        drops = fill_bb_of_drop_capitals(regions_fully, text_regions_p)
+        text_regions_p[drops] = label_drop_fl
 
         regions_without_separators = (text_regions_p == label_text) * 1
         # regions_without_separators = ( text_regions_p == 1 | text_regions_p == 2 ) * 1
