@@ -1106,7 +1106,7 @@ def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col)
         textlines_con_changed.append(textlines_big_org_form)
     return textlines_con_changed
 
-def order_of_regions(textline_mask, contours_main, contours_head, y_ref, x_ref):
+def order_of_regions(textline_mask, contours_main, contours_head, contours_drop, y_ref, x_ref):
     """
     Order text region contours within a single column bbox in a top-down-left-right way.
 
@@ -1118,13 +1118,17 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref, x_ref):
       * textline_mask: the mask of the textline segmentation, cropped for that box
       * contours_main: the paragraph text region contours expected to be here
       * contours_head: the heading text region contours expected to be here
+      * contours_drop: the drop-capital region contours expected to be here
       * y_ref: the vertical offset of that box within the page
       * x_ref: the horizontal offset of that box within the page
 
     Returns: a tuple of
-      * the array of contour indexes overall within this box (i.e. into main+head)
-      * the array of types (1 for paragraph, 2 for heading)
-      * the array of contour indexes for the respective type (i.e. into contours_main or contours_head)
+      * the array of contour indexes overall within this box
+            (i.e. into main+head+drop)
+      * the array of types
+            (1 for paragraph, 2 for heading, 3 for drop-capital)
+      * the array of contour indexes for the respective type
+            (i.e. into contours_main or contours_head or contours_drop)
     """
     ##plt.imshow(textline_mask)
     ##plt.show()
@@ -1156,19 +1160,31 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref, x_ref):
 
     cx_main, cy_main = find_center_of_contours(contours_main)
     cx_head, cy_head = find_center_of_contours(contours_head)
+    cx_drop, cy_drop = find_center_of_contours(contours_drop)
     # assert not len(cy_main) or np.min(peaks_neg_new) <= np.min(cy_main) and np.max(cy_main) <= np.max(peaks_neg_new)
     # assert not len(cy_head) or np.min(peaks_neg_new) <= np.min(cy_head) and np.max(cy_head) <= np.max(peaks_neg_new)
+    # assert not len(cy_drop) or np.min(peaks_neg_new) <= np.min(cy_drop) and np.max(cy_drop) <= np.max(peaks_neg_new)
 
-    matrix_of_orders = np.zeros((len(contours_main) + len(contours_head), 5), dtype=int)
-    matrix_of_orders[:, 0] = np.arange(len(contours_main) + len(contours_head))
-    matrix_of_orders[: len(contours_main), 1] = 1
-    matrix_of_orders[len(contours_main) :, 1] = 2
-    matrix_of_orders[: len(contours_main), 2] = cx_main
-    matrix_of_orders[len(contours_main) :, 2] = cx_head
-    matrix_of_orders[: len(contours_main), 3] = cy_main
-    matrix_of_orders[len(contours_main) :, 3] = cy_head
-    matrix_of_orders[: len(contours_main), 4] = np.arange(len(contours_main))
-    matrix_of_orders[len(contours_main) :, 4] = np.arange(len(contours_head))
+    total = len(contours_main) + len(contours_head) + len(contours_drop)
+    slice_main = slice(0, len(contours_main))
+    slice_head = slice(len(contours_main),
+                       len(contours_main) + len(contours_head))
+    slice_drop = slice(len(contours_main) + len(contours_head),
+                       total)
+    matrix_of_orders = np.zeros((total, 5), dtype=int)
+    matrix_of_orders[:, 0] = np.arange(total)
+    matrix_of_orders[slice_main, 1] = 1
+    matrix_of_orders[slice_head, 1] = 2
+    matrix_of_orders[slice_drop, 1] = 3
+    matrix_of_orders[slice_main, 2] = cx_main
+    matrix_of_orders[slice_head, 2] = cx_head
+    matrix_of_orders[slice_drop, 2] = cx_drop
+    matrix_of_orders[slice_main, 3] = cy_main
+    matrix_of_orders[slice_head, 3] = cy_head
+    matrix_of_orders[slice_drop, 3] = cy_drop
+    matrix_of_orders[slice_main, 4] = np.arange(len(contours_main))
+    matrix_of_orders[slice_head, 4] = np.arange(len(contours_head))
+    matrix_of_orders[slice_drop, 4] = np.arange(len(contours_drop))
 
     # print(peaks_neg_new,'peaks_neg_new')
     # print(matrix_of_orders,'matrix_of_orders')
@@ -1189,12 +1205,12 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref, x_ref):
         #     plt.gca().set_xticks(xrange, xrange + x_ref)
         #     plt.gca().set_yticks(yrange, yrange + y_ref)
         #     for idx, type_, cx, cy in zip(typed_indexes_in, types_in, cxs_in, cys_in):
-        #         cnt = (contours_main if type_ == 1 else contours_head)[idx]
-        #         col = 'red' if type_ == 1 else 'blue'
+        #         cnt = {1: contours_main, 2: contours_head, 3: contours_drop}[type_][idx]
+        #         col = {1: 'red', 2: 'blue', 3: 'green'}[type_]
         #         plt.scatter(cx - x_ref, cy - y_ref, 20, c=col, marker='o')
         #         plt.text(cx - x_ref, cy - y_ref, str(idx), c=col)
         #         plt.gca().add_patch(patches.Polygon(cnt[:, 0] - [[x_ref, y_ref]], closed=False, fill=False, color=col))
-        #     plt.title("box contours centered in %d:%d (red=main / blue=heading)" % (top, bot))
+        #     plt.title("box contours centered in %d:%d (red=main / blue=heading / green=drop-capital)" % (top, bot))
         #     plt.show()
 
         sorted_inside = np.argsort(cxs_in)
@@ -1204,8 +1220,11 @@ def order_of_regions(textline_mask, contours_main, contours_head, y_ref, x_ref):
 
     ##matrix_of_orders[:len_main,4]=final_indexers_sorted[:]
 
-    assert len(set(final_indexers_sorted)) == len(contours_main) + len(contours_head)
-    assert set(final_index_type) == set(range(len(contours_main))).union(range(len(contours_head)))
+    assert len(set(final_indexers_sorted)) == total
+    assert set(final_index_type) == (
+        set(range(len(contours_main)))
+        .union(range(len(contours_head)))
+        .union(range(len(contours_drop))))
 
     return np.array(final_indexers_sorted), np.array(final_types), np.array(final_index_type)
 

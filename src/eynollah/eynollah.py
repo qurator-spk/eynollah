@@ -1219,112 +1219,104 @@ class Eynollah:
                 confidence_matrix)
 
     def do_order_of_regions(
-            self, contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot):
+            self,
+            contours_only_text_parent,
+            contours_only_text_parent_h,
+            polygons_of_drop_capitals,
+            boxes,
+            textline_mask_tot
+    ):
 
         self.logger.debug("enter do_order_of_regions")
         contours_only_text_parent = ensure_array(contours_only_text_parent)
         contours_only_text_parent_h = ensure_array(contours_only_text_parent_h)
+        polygons_of_drop_capitals = ensure_array(polygons_of_drop_capitals)
         boxes = np.array(boxes, dtype=int) # to be on the safe side
         c_boxes = np.stack((0.5 * boxes[:, 2:4].sum(axis=1),
                             0.5 * boxes[:, 0:2].sum(axis=1)))
-        cx_main, cy_main, mx_main, Mx_main, my_main, My_main, mxy_main = find_new_features_of_contours(
-            contours_only_text_parent)
-        cx_head, cy_head, mx_head, Mx_head, my_head, My_head, mxy_head = find_new_features_of_contours(
-            contours_only_text_parent_h)
-        cx_main = np.array(cx_main, dtype=int)
-        cy_main = np.array(cy_main, dtype=int)
-        cx_head = np.array(cx_head, dtype=int)
-        cy_head = np.array(cy_head, dtype=int)
 
-        def match_boxes(only_centers: bool):
-            arg_text_con_main = np.zeros(len(contours_only_text_parent), dtype=int)
-            for ii in range(len(contours_only_text_parent)):
+        def match_boxes(contours, only_centers: bool, kind: str):
+            cx, cy, mx, Mx, my, My, mxy = find_new_features_of_contours(contours)
+            cx = np.array(cx, dtype=int)
+            cy = np.array(cy, dtype=int)
+            arg_text_con = np.zeros(len(contours), dtype=int)
+            for ii in range(len(contours)):
                 box_found = False
                 for jj, box in enumerate(boxes):
-                    if ((cx_main[ii] >= box[0] and
-                         cx_main[ii] < box[1] and
-                         cy_main[ii] >= box[2] and
-                         cy_main[ii] < box[3]) if only_centers else
-                        (mx_main[ii] >= box[0] and
-                         Mx_main[ii] < box[1] and
-                         my_main[ii] >= box[2] and
-                         My_main[ii] < box[3])):
-                        arg_text_con_main[ii] = jj
+                    if ((cx[ii] >= box[0] and
+                         cx[ii] < box[1] and
+                         cy[ii] >= box[2] and
+                         cy[ii] < box[3]) if only_centers else
+                        (mx[ii] >= box[0] and
+                         Mx[ii] < box[1] and
+                         my[ii] >= box[2] and
+                         My[ii] < box[3])):
+                        arg_text_con[ii] = jj
                         box_found = True
-                        # print("main/matched ", ii, "\t", (mx_main[ii], Mx_main[ii], my_main[ii], My_main[ii]), "\tin", jj, box, only_centers)
+                        # print(kind, "/matched ", ii, "\t", (mx[ii], Mx[ii], my[ii], My[ii]), "\tin", jj, box, only_centers)
                         break
                 if not box_found:
-                    dists_tr_from_box = np.linalg.norm(c_boxes - np.array([[cy_main[ii]], [cx_main[ii]]]), axis=0)
-                    pcontained_in_box = ((boxes[:, 2] <= cy_main[ii]) & (cy_main[ii] < boxes[:, 3]) &
-                                         (boxes[:, 0] <= cx_main[ii]) & (cx_main[ii] < boxes[:, 1]))
-                    assert pcontained_in_box.any(), (ii, cx_main[ii], cy_main[ii])
+                    dists_tr_from_box = np.linalg.norm(c_boxes - np.array([[cy[ii]], [cx[ii]]]), axis=0)
+                    pcontained_in_box = ((boxes[:, 2] <= cy[ii]) & (cy[ii] < boxes[:, 3]) &
+                                         (boxes[:, 0] <= cx[ii]) & (cx[ii] < boxes[:, 1]))
+                    assert pcontained_in_box.any(), (ii, cx[ii], cy[ii])
                     ind_min = np.argmin(np.ma.masked_array(dists_tr_from_box, ~pcontained_in_box))
-                    arg_text_con_main[ii] = ind_min
-                    # print("main/fallback ", ii, "\t", (mx_main[ii], Mx_main[ii], my_main[ii], My_main[ii]), "\tin", ind_min, boxes[ind_min], only_centers)
+                    arg_text_con[ii] = ind_min
+                    # print(kind, "/fallback ", ii, "\t", (mx[ii], Mx[ii], my[ii], My[ii]), "\tin", ind_min, boxes[ind_min], only_centers)
+            return arg_text_con
+
+        def order_from_boxes(only_centers: bool):
+            arg_text_con_main = match_boxes(contours_only_text_parent, only_centers, "main")
+            arg_text_con_head = match_boxes(contours_only_text_parent_h, only_centers, "head")
+            arg_text_con_drop = match_boxes(polygons_of_drop_capitals, only_centers, "drop")
             args_contours_main = np.arange(len(contours_only_text_parent))
-            order_by_con_main = np.zeros_like(arg_text_con_main)
-
-            arg_text_con_head = np.zeros(len(contours_only_text_parent_h), dtype=int)
-            for ii in range(len(contours_only_text_parent_h)):
-                box_found = False
-                for jj, box in enumerate(boxes):
-                    if ((cx_head[ii] >= box[0] and
-                         cx_head[ii] < box[1] and
-                         cy_head[ii] >= box[2] and
-                         cy_head[ii] < box[3]) if only_centers else
-                        (mx_head[ii] >= box[0] and
-                         Mx_head[ii] < box[1] and
-                         my_head[ii] >= box[2] and
-                         My_head[ii] < box[3])):
-                        arg_text_con_head[ii] = jj
-                        box_found = True
-                        # print("head/matched ", ii, "\t", (mx_head[ii], Mx_head[ii], my_head[ii], My_head[ii]), "\tin", jj, box, only_centers)
-                        break
-                if not box_found:
-                    dists_tr_from_box = np.linalg.norm(c_boxes - np.array([[cy_head[ii]], [cx_head[ii]]]), axis=0)
-                    pcontained_in_box = ((boxes[:, 2] <= cy_head[ii]) & (cy_head[ii] < boxes[:, 3]) &
-                                         (boxes[:, 0] <= cx_head[ii]) & (cx_head[ii] < boxes[:, 1]))
-                    assert pcontained_in_box.any(), (ii, cx_head[ii], cy_head[ii])
-                    ind_min = np.argmin(np.ma.masked_array(dists_tr_from_box, ~pcontained_in_box))
-                    arg_text_con_head[ii] = ind_min
-                    # print("head/fallback ", ii, "\t", (mx_head[ii], Mx_head[ii], my_head[ii], My_head[ii]), "\tin", ind_min, boxes[ind_min], only_centers)
             args_contours_head = np.arange(len(contours_only_text_parent_h))
+            args_contours_drop = np.arange(len(polygons_of_drop_capitals))
+            order_by_con_main = np.zeros_like(arg_text_con_main)
             order_by_con_head = np.zeros_like(arg_text_con_head)
-
+            order_by_con_drop = np.zeros_like(arg_text_con_drop)
             idx = 0
             for iij, box in enumerate(boxes):
                 ys = slice(*box[2:4])
                 xs = slice(*box[0:2])
                 args_contours_box_main = args_contours_main[arg_text_con_main == iij]
                 args_contours_box_head = args_contours_head[arg_text_con_head == iij]
-                con_inter_box = contours_only_text_parent[args_contours_box_main]
-                con_inter_box_h = contours_only_text_parent_h[args_contours_box_head]
+                args_contours_box_drop = args_contours_drop[arg_text_con_drop == iij]
 
                 _, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
-                    textline_mask_tot[ys, xs], con_inter_box, con_inter_box_h, box[2], box[0])
+                    textline_mask_tot[ys, xs],
+                    contours_only_text_parent[args_contours_box_main],
+                    contours_only_text_parent_h[args_contours_box_head],
+                    polygons_of_drop_capitals[args_contours_box_drop],
+                    box[2], box[0])
 
                 for tidx, kind in zip(index_by_kind_sorted, kind_of_texts_sorted):
                     if kind == 1:
                         # print(iij, "main", args_contours_box_main[tidx], "becomes", idx)
                         order_by_con_main[args_contours_box_main[tidx]] = idx
-                    else:
+                    elif kind == 2:
                         # print(iij, "head", args_contours_box_head[tidx], "becomes", idx)
                         order_by_con_head[args_contours_box_head[tidx]] = idx
+                    else:
+                        # print(iij, "drop", args_contours_box_drop[tidx], "becomes", idx)
+                        order_by_con_drop[args_contours_box_drop[tidx]] = idx
                     idx += 1
 
             # xml writer will create region ids in order of
             # - contours_only_text_parent (main text), followed by
-            # - contours_only_text_parent (headings),
+            # - contours_only_text_parent_h (headings), and then
+            # - polygons_of_drop_capitals,
             # and then create regionrefs into these ordered by order_text_new
             order_text_new = np.argsort(np.concatenate((order_by_con_main,
-                                                        order_by_con_head)))
+                                                        order_by_con_head,
+                                                        order_by_con_drop)))
             return order_text_new
 
         try:
-            results = match_boxes(False)
+            results = order_from_boxes(False)
         except Exception as why:
             self.logger.exception(why)
-            results = match_boxes(True)
+            results = order_from_boxes(True)
 
         self.logger.debug("exit do_order_of_regions")
         return results
@@ -1809,6 +1801,7 @@ class Eynollah:
         text_regions_p[drops] = label_drop_fl
 
         regions_without_separators = (text_regions_p == label_text) * 1
+        regions_without_separators[drops] = 1 # also cover in reading-order
         # regions_without_separators = ( text_regions_p == 1 | text_regions_p == 2 ) * 1
         #self.return_regions_without_separators_new(text_regions_p, img_only_regions)
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
@@ -2399,7 +2392,7 @@ class Eynollah:
                 order_of_texts=order_text_new,
                 all_found_textline_polygons=all_found_textline_polygons,
                 all_box_coord=page_coord,
-                found_polygons_text_region_img=[],
+                found_polygons_images=[],
                 found_polygons_marginals_left=[],
                 found_polygons_marginals_right=[],
                 all_found_textline_polygons_marginals_left=[],
@@ -2466,7 +2459,7 @@ class Eynollah:
                 order_of_texts=[],
                 all_found_textline_polygons=[],
                 all_box_coord=[],
-                found_polygons_text_region_img=[],
+                found_polygons_images=[],
                 found_polygons_marginals_left=[],
                 found_polygons_marginals_right=[],
                 all_found_textline_polygons_marginals_left=[],
@@ -2724,7 +2717,7 @@ class Eynollah:
                     all_found_textline_polygons_h=[],
                     all_box_coord=[],
                     all_box_coord_h=[],
-                    found_polygons_text_region_img=polygons_of_images,
+                    found_polygons_images=polygons_of_images,
                     found_polygons_tables=contours_tables,
                     found_polygons_drop_capitals=[],
                     found_polygons_marginals_left=polygons_of_marginals,
@@ -2747,7 +2740,7 @@ class Eynollah:
                     order_of_texts=[],
                     all_found_textline_polygons=[],
                     all_box_coord=[],
-                    found_polygons_text_region_img=polygons_of_images,
+                    found_polygons_images=polygons_of_images,
                     found_polygons_marginals_left=polygons_of_marginals,
                     found_polygons_marginals_right=polygons_of_marginals,
                     all_found_textline_polygons_marginals_left=empty_marginals,
@@ -2907,14 +2900,21 @@ class Eynollah:
 
         if self.reading_order_machine_based:
             order_text_new = self.do_order_of_regions_with_model(
-                contours_only_text_parent, contours_only_text_parent_h, text_regions_p)
+                contours_only_text_parent,
+                contours_only_text_parent_h,
+                text_regions_p)
         else:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                 order_text_new = self.do_order_of_regions(
-                    contours_only_text_parent, contours_only_text_parent_h, boxes, textline_mask_tot_ea)
+                    contours_only_text_parent,
+                    contours_only_text_parent_h,
+                    polygons_of_drop_capitals,
+                    boxes, textline_mask_tot_ea)
             else:
                 order_text_new = self.do_order_of_regions(
-                    contours_only_text_parent_d_ordered, contours_only_text_parent_h_d_ordered,
+                    contours_only_text_parent_d_ordered,
+                    contours_only_text_parent_h_d_ordered,
+                    polygons_of_drop_capitals,
                     boxes_d, textline_mask_tot_ea_d)
         self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
 
@@ -2930,7 +2930,7 @@ class Eynollah:
                 all_found_textline_polygons_h=all_found_textline_polygons_h,
                 all_box_coord=all_box_coord,
                 all_box_coord_h=all_box_coord_h,
-                found_polygons_text_region_img=polygons_of_images,
+                found_polygons_images=polygons_of_images,
                 found_polygons_tables=contours_tables,
                 found_polygons_drop_capitals=polygons_of_drop_capitals,
                 found_polygons_marginals_left=polygons_of_marginals_left,
@@ -2955,7 +2955,7 @@ class Eynollah:
                 order_of_texts=order_text_new,
                 all_found_textline_polygons=all_found_textline_polygons,
                 all_box_coord=all_box_coord,
-                found_polygons_text_region_img=polygons_of_images,
+                found_polygons_images=polygons_of_images,
                 found_polygons_marginals_left=polygons_of_marginals_left,
                 found_polygons_marginals_right=polygons_of_marginals_right,
                 all_found_textline_polygons_marginals_left=all_found_textline_polygons_marginals_left,

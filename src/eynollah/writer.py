@@ -81,7 +81,7 @@ class EynollahXmlWriter:
         order_of_texts,
         all_found_textline_polygons,
         all_box_coord,
-        found_polygons_text_region_img,
+        found_polygons_images,
         found_polygons_marginals_left,
         found_polygons_marginals_right,
         all_found_textline_polygons_marginals_left,
@@ -104,7 +104,7 @@ class EynollahXmlWriter:
             all_found_textline_polygons_h=[],
             all_box_coord=all_box_coord,
             all_box_coord_h=[],
-            found_polygons_text_region_img=found_polygons_text_region_img,
+            found_polygons_images=found_polygons_images,
             found_polygons_tables=found_polygons_tables,
             found_polygons_drop_capitals=[],
             found_polygons_marginals_left=found_polygons_marginals_left,
@@ -132,7 +132,7 @@ class EynollahXmlWriter:
         all_found_textline_polygons_h,
         all_box_coord,
         all_box_coord_h,
-        found_polygons_text_region_img,
+        found_polygons_images,
         found_polygons_tables,
         found_polygons_drop_capitals,
         found_polygons_marginals_left,
@@ -211,6 +211,21 @@ class EynollahXmlWriter:
             self.serialize_lines_in_region(textregion, all_found_textline_polygons_h, mm, page_coord,
                                            all_box_coord_h, slopes_h, counter, ocr_textlines)
 
+        for mm, region_contour in enumerate(found_polygons_drop_capitals):
+            dropcapital = TextRegionType(
+                id=counter.next_region_id, type_='drop-capital',
+                Coords=CoordsType(points=self.calculate_points(region_contour, offset))
+            )
+            page.add_TextRegion(dropcapital)
+            all_box_coord_drop = [[0, 0, 0, 0]]
+            slopes_drop = [0]
+            if ocr_all_textlines_drop:
+                ocr_textlines = ocr_all_textlines_drop[mm]
+            else:
+                ocr_textlines = None
+            self.serialize_lines_in_region(dropcapital, [[found_polygons_drop_capitals[mm]]], 0, page_coord,
+                                           all_box_coord_drop, slopes_drop, counter, ocr_textlines)
+
         for mm, region_contour in enumerate(found_polygons_marginals_left):
             marginal = TextRegionType(
                 id=counter.next_region_id, type_='marginalia',
@@ -236,22 +251,7 @@ class EynollahXmlWriter:
             self.serialize_lines_in_region(marginal, all_found_textline_polygons_marginals_right, mm, page_coord,
                                              all_box_coord_marginals_right, slopes_marginals_right, counter, ocr_textlines)
 
-        for mm, region_contour in enumerate(found_polygons_drop_capitals):
-            dropcapital = TextRegionType(
-                id=counter.next_region_id, type_='drop-capital',
-                Coords=CoordsType(points=self.calculate_points(region_contour, offset))
-            )
-            page.add_TextRegion(dropcapital)
-            all_box_coord_drop = [[0, 0, 0, 0]]
-            slopes_drop = [0]
-            if ocr_all_textlines_drop:
-                ocr_textlines = ocr_all_textlines_drop[mm]
-            else:
-                ocr_textlines = None
-            self.serialize_lines_in_region(dropcapital, [[found_polygons_drop_capitals[mm]]], 0, page_coord,
-                                           all_box_coord_drop, slopes_drop, counter, ocr_textlines)
-
-        for region_contour in found_polygons_text_region_img:
+        for region_contour in found_polygons_images:
             page.add_ImageRegion(
                 ImageRegionType(id=counter.next_region_id,
                                 Coords=CoordsType(points=self.calculate_points(region_contour, offset))))
