@@ -82,6 +82,7 @@ class EynollahXmlWriter:
         all_found_textline_polygons,
         all_box_coord,
         found_polygons_images,
+        found_polygons_tables,
         found_polygons_marginals_left,
         found_polygons_marginals_right,
         all_found_textline_polygons_marginals_left,
@@ -93,7 +94,15 @@ class EynollahXmlWriter:
         slopes_marginals_right,
         cont_page,
         polygons_seplines,
-        found_polygons_tables,
+        ocr_all_textlines=None,
+        ocr_all_textlines_marginals_left=None,
+        ocr_all_textlines_marginals_right=None,
+        ocr_all_textlines_drop=None,
+        conf_textregions=None,
+        conf_marginals_left=None,
+        conf_marginals_right=None,
+        conf_images=None,
+        conf_tables=None,
     ):
         return self.build_pagexml_full_layout(
             found_polygons_text_region=found_polygons_text_region,
@@ -119,6 +128,14 @@ class EynollahXmlWriter:
             slopes_marginals_right=slopes_marginals_right,
             cont_page=cont_page,
             polygons_seplines=polygons_seplines,
+            ocr_all_textlines=ocr_all_textlines,
+            ocr_all_textlines_marginals_left=ocr_all_textlines_marginals_left,
+            ocr_all_textlines_marginals_right=ocr_all_textlines_marginals_right,
+            conf_textregions=conf_textregions,
+            conf_marginals_left=conf_marginals_left,
+            conf_marginals_right=conf_marginals_right,
+            conf_images=conf_images,
+            conf_tables=conf_tables,
         )
 
     def build_pagexml_full_layout(
@@ -152,8 +169,13 @@ class EynollahXmlWriter:
         ocr_all_textlines_marginals_left=None,
         ocr_all_textlines_marginals_right=None,
         ocr_all_textlines_drop=None,
-        conf_contours_textregions=None,
-        conf_contours_textregions_h=None,
+        conf_textregions=None,
+        conf_textregions_h=None,
+        conf_marginals_left=None,
+        conf_marginals_right=None,
+        conf_images=None,
+        conf_tables=None,
+        conf_drops=None,
         skip_layout_reading_order=False,
     ):
         self.logger.debug('enter build_pagexml')
@@ -184,8 +206,8 @@ class EynollahXmlWriter:
                 Coords=CoordsType(points=self.calculate_points(region_contour, offset))
             )
             assert textregion.Coords
-            if conf_contours_textregions:
-                textregion.Coords.set_conf(conf_contours_textregions[mm])
+            if conf_textregions:
+                textregion.Coords.set_conf(conf_textregions[mm])
             page.add_TextRegion(textregion)
             if ocr_all_textlines:
                 ocr_textlines = ocr_all_textlines[mm]
@@ -201,8 +223,8 @@ class EynollahXmlWriter:
                 Coords=CoordsType(points=self.calculate_points(region_contour, offset))
             )
             assert textregion.Coords
-            if conf_contours_textregions_h:
-                textregion.Coords.set_conf(conf_contours_textregions_h[mm])
+            if conf_textregions_h:
+                textregion.Coords.set_conf(conf_textregions_h[mm])
             page.add_TextRegion(textregion)
             if ocr_all_textlines_h:
                 ocr_textlines = ocr_all_textlines_h[mm]
@@ -216,6 +238,8 @@ class EynollahXmlWriter:
                 id=counter.next_region_id, type_='drop-capital',
                 Coords=CoordsType(points=self.calculate_points(region_contour, offset))
             )
+            if conf_drops:
+                dropcapital.Coords.set_conf(conf_drops[mm])
             page.add_TextRegion(dropcapital)
             all_box_coord_drop = [[0, 0, 0, 0]]
             slopes_drop = [0]
@@ -231,6 +255,8 @@ class EynollahXmlWriter:
                 id=counter.next_region_id, type_='marginalia',
                 Coords=CoordsType(points=self.calculate_points(region_contour, offset))
             )
+            if conf_marginals_left:
+                marginal.Coords.set_conf(conf_marginals_left[mm])
             page.add_TextRegion(marginal)
             if ocr_all_textlines_marginals_left:
                 ocr_textlines = ocr_all_textlines_marginals_left[mm]
@@ -243,6 +269,8 @@ class EynollahXmlWriter:
                 id=counter.next_region_id, type_='marginalia',
                 Coords=CoordsType(points=self.calculate_points(region_contour, offset))
             )
+            if conf_marginals_right:
+                marginal.Coords.set_conf(conf_marginals_right[mm])
             page.add_TextRegion(marginal)
             if ocr_all_textlines_marginals_right:
                 ocr_textlines = ocr_all_textlines_marginals_right[mm]
@@ -251,20 +279,26 @@ class EynollahXmlWriter:
             self.serialize_lines_in_region(marginal, all_found_textline_polygons_marginals_right, mm, page_coord,
                                              all_box_coord_marginals_right, slopes_marginals_right, counter, ocr_textlines)
 
-        for region_contour in found_polygons_images:
-            page.add_ImageRegion(
-                ImageRegionType(id=counter.next_region_id,
-                                Coords=CoordsType(points=self.calculate_points(region_contour, offset))))
+        for mm, region_contour in enumerate(found_polygons_images):
+            image = ImageRegionType(
+                id=counter.next_region_id,
+                Coords=CoordsType(points=self.calculate_points(region_contour, offset)))
+            if conf_images:
+                image.Coords.set_conf(conf_images[mm])
+            page.add_ImageRegion(image)
 
         for region_contour in polygons_seplines:
             page.add_SeparatorRegion(
                 SeparatorRegionType(id=counter.next_region_id,
                                     Coords=CoordsType(points=self.calculate_points(region_contour, None))))
 
-        for region_contour in found_polygons_tables:
-            page.add_TableRegion(
-                TableRegionType(id=counter.next_region_id,
-                                Coords=CoordsType(points=self.calculate_points(region_contour, offset))))
+        for mm, region_contour in enumerate(found_polygons_tables):
+            table = TableRegionType(
+                id=counter.next_region_id,
+                Coords=CoordsType(points=self.calculate_points(region_contour, offset)))
+            if conf_tables:
+                table.Coords.set_conf(conf_tables[mm])
+            page.add_TableRegion(table)
 
         return pcgts
 

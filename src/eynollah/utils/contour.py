@@ -207,7 +207,7 @@ def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first
         cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
     return cont_int[0], index_r_con, confidence_contour
 
-def get_textregion_confidences(cnts, confidence_matrix):
+def get_region_confidences(cnts, confidence_matrix):
     if not len(cnts):
         return []
 
