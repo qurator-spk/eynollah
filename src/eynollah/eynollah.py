@@ -424,6 +424,7 @@ class Eynollah:
             marginal_of_patch_percent=0.1,
             thresholding_for_some_classes=False,
             thresholding_for_heading=False,
+            heading_class=2,
             thresholding_for_artificial_class=False,
             threshold_art_class=0.1,
             artificial_class=2,
@@ -455,8 +456,8 @@ class Eynollah:
 
             if thresholding_for_heading:
                 seg_mask_label(
-                    seg, label_p_pred[:, :, 2] >= 0.2,
-                    label=2)
+                    seg, label_p_pred[:, :, heading_class] >= 0.2,
+                    label=heading_class)
 
             return resize_image(seg, img_h_page, img_w_page).astype(np.uint8)
 
@@ -625,6 +626,8 @@ class Eynollah:
             self, patches, img, model,
             n_batch_inference=1,
             marginal_of_patch_percent=0.1,
+            thresholding_for_heading=False,
+            heading_class=2,
             thresholding_for_artificial_class=False,
             threshold_art_class=0.1,
             artificial_class=4,
@@ -656,6 +659,11 @@ class Eynollah:
                                skeletonize=True,
                                dilate=3,
                                keep=separator_class)
+            if thresholding_for_heading:
+                mask = resize_image(label_p_pred[:, :, heading_class],
+                                    img_h_page, img_w_page) >= 0.2
+                seg_mask_label(prediction, mask,
+                               label=heading_class)
 
             conf = label_p_pred[tuple(np.indices(seg.shape)) + (seg,)]
             conf = resize_image(conf, img_h_page, img_w_page)
@@ -899,38 +907,18 @@ class Eynollah:
         img_height_h = img.shape[0]
         img_width_h = img.shape[1]
 
-        thresholding_for_heading = True
-        img = otsu_copy_binary(img).astype(np.uint8)
-        if not patches:
-            thresholding_for_heading = False
-        elif cols:
-            if cols == 1:
-                img = resize_image(img, int(img_height_h * 1000 / float(img_width_h)), 1000).astype(np.uint8)
-            elif cols == 2:
-                img = resize_image(img, int(img_height_h * 1300 / float(img_width_h)), 1300).astype(np.uint8)
-            elif cols == 3:
-                img = resize_image(img, int(img_height_h * 1600 / float(img_width_h)), 1600).astype(np.uint8)
-            elif cols == 4:
-                img = resize_image(img, int(img_height_h * 1900 / float(img_width_h)), 1900).astype(np.uint8)
-            elif cols == 5:
-                img = resize_image(img, int(img_height_h * 2200 / float(img_width_h)), 2200).astype(np.uint8)
-            else:
-                img = resize_image(img, int(img_height_h * 2500 / float(img_width_h)), 2500).astype(np.uint8)
-
         if patches:
-            # prediction_regions, _ = self.do_prediction_new_concept_autosize(
-            #     img, self.model_zoo.get("region_fl_patched"),
-            prediction_regions, _ = self.do_prediction_new_concept(
+            # prediction_regions, confidence_regions = self.do_prediction_new_concept_autosize(
+            #     img, self.model_zoo.get("region_fl_patched"))
+            prediction_regions, confidence_regions = self.do_prediction_new_concept(
                 True, img, self.model_zoo.get("region_fl"),
-                n_batch_inference=1,
-                thresholding_for_heading=True)
+                n_batch_inference=1)
         else:
-            prediction_regions = self.do_prediction(
+            prediction_regions, confidence_regions = self.do_prediction_new_concept(
                 False, img, self.model_zoo.get("region_fl_np"),
-                thresholding_for_heading=False)
-        prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
+                thresholding_for_heading=True)
         self.logger.debug("exit extract_text_regions_new")
-        return prediction_regions
+        return prediction_regions, confidence_regions
 
     def extract_text_regions(self, img, patches, cols):
         self.logger.debug("enter extract_text_regions")
@@ -1769,7 +1757,7 @@ class Eynollah:
 
         image_page = image_page.astype(np.uint8)
         #print("full inside 1", time.time()- t_full0)
-        regions_fully = self.extract_text_regions_new(
+        regions_fully, regionsfl_confidence = self.extract_text_regions_new(
             image_page,
             False, cols=num_col_classifier)
         #print("full inside 2", time.time()- t_full0)
