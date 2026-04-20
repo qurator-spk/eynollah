@@ -705,9 +705,9 @@ def find_num_col_by_vertical_lines(regions_without_separators, multiplier=3.8):
     # plt.show()
     return peaks
 
-def return_regions_without_separators(regions_pre):
+def return_regions_without_separators(regions_pre, label_seps=6):
     kernel = np.ones((5, 5), np.uint8)
-    regions_without_separators = ((regions_pre[:, :] != 6) &
+    regions_without_separators = ((regions_pre[:, :] != label_seps) &
                                   (regions_pre[:, :] != 0))
     # regions_without_separators=( (image_regions_eraly_p[:,:,:]!=6) &
     #                              (image_regions_eraly_p[:,:,:]!=0) &
@@ -1544,7 +1544,8 @@ def find_number_of_columns_in_document(
     splitter_y_new = [0] + list(cy_seps_splitters) + [region_pre_p.shape[0]]
     big_part = 22 * region_pre_p.shape[0] // 100 # percent height
 
-    regions_without_separators=return_regions_without_separators(region_pre_p)
+    regions_without_separators = return_regions_without_separators(
+        region_pre_p, label_seps=label_seps)
 
     num_col_fin=0
     peaks_neg_fin_fin=[]
