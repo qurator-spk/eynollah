@@ -37,7 +37,7 @@ class Predictor(mp.context.SpawnProcess):
         super().__init__(name="EynollahPredictor", daemon=True)
 
     @property
-    def output_shape(self):
+    def input_shape(self):
         return self({})
 
     def predict(self, data: dict, verbose=0):
@@ -122,7 +122,7 @@ class Predictor(mp.context.SpawnProcess):
                 REBATCH_SIZE = 1 # save VRAM; FIXME: re-enable w/ runtime parameter
                 if not len(shared_data):
                     #self.logger.debug("getting '%d' output shape of model '%s'", jobid, self.name)
-                    result = self.model.output_shape
+                    result = self.model.input_shape
                     self.resultq.put((jobid, result))
                     #self.logger.debug("sent result for '%d': %s", jobid, result)
                 else:
@@ -137,7 +137,7 @@ class Predictor(mp.context.SpawnProcess):
                             tasks.append((jobid0, shared_data0))
                         else:
                             # immediately anser
-                            self.resultq.put((jobid0, self.model.output_shape))
+                            self.resultq.put((jobid0, self.model.input_shape))
                     if len(tasks) > 1:
                         self.logger.debug("rebatching %d '%s' tasks of batch size %d",
                                           len(tasks), self.name, batch_size)
