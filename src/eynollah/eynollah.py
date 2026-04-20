@@ -812,6 +812,10 @@ class Eynollah:
         gc.collect()
         return prediction, confidence
 
+    # variant of do_prediction_new_concept with no need
+    # for resizing or tiling into patches - done on model
+    # (Tensorflow/CUDA) side
+    # (after loading wrapped resized or patched model)
     def do_prediction_new_concept_autosize(
             self, img, model,
             n_batch_inference=None,
@@ -820,7 +824,6 @@ class Eynollah:
             threshold_art_class=0.1,
             artificial_class=4,
     ):
-
         self.logger.debug("enter do_prediction_new_concept (%s)", model.name)
         img = img / 255.0
         img = img.astype(np.float16)
@@ -904,16 +907,11 @@ class Eynollah:
         img_height_h = img.shape[0]
         img_width_h = img.shape[1]
 
-        if patches:
-            # prediction_regions, confidence_regions = self.do_prediction_new_concept_autosize(
-            #     img, self.model_zoo.get("region_fl_patched"))
-            prediction_regions, confidence_regions = self.do_prediction_new_concept(
-                True, img, self.model_zoo.get("region_fl"),
-                n_batch_inference=1)
-        else:
-            prediction_regions, confidence_regions = self.do_prediction_new_concept(
-                False, img, self.model_zoo.get("region_fl_np"),
-                thresholding_for_heading=True)
+        prediction_regions, confidence_regions = self.do_prediction_new_concept(
+            patches, img, self.model_zoo.get("region_fl" if patches else "region_fl_np"),
+            n_batch_inference=1,
+            thresholding_for_heading=not patches)
+
         self.logger.debug("exit extract_text_regions_new")
         return prediction_regions, confidence_regions
 
@@ -921,9 +919,10 @@ class Eynollah:
         self.logger.debug("enter extract_text_regions")
         img_height_h = img.shape[0]
         img_width_h = img.shape[1]
-        model_region = self.model_zoo.get("region_fl") if patches else self.model_zoo.get("region_fl_np")
+        model_region = self.model_zoo.get("region_fl" if patches else "region_fl_np")
 
-        prediction_regions = self.do_prediction(patches, img, model_region, marginal_of_patch_percent=0.1)
+        prediction_regions = self.do_prediction(patches, img, model_region,
+                                                marginal_of_patch_percent=0.1)
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         self.logger.debug("exit extract_text_regions")
         return prediction_regions
@@ -1059,18 +1058,19 @@ class Eynollah:
     def textline_contours(self, img, use_patches):
         self.logger.debug('enter textline_contours')
 
-        kwargs = dict(artificial_class=2,
-                      n_batch_inference=1 if self.tables else 3, # avoid OOM
-                      thresholding_for_artificial_class=True,
-                      threshold_art_class=self.threshold_art_class_textline)
-        if use_patches:
-            # prediction_textline, conf_textline = self.do_prediction_new_concept_autosize(
-            #     img, self.model_zoo.get("textline_patched"), **kwargs)
-            prediction_textline, conf_textline = self.do_prediction_new_concept(
-                True, img, self.model_zoo.get("textline"), **kwargs)
+        if (self.tables or
+            self.reading_order_machine_based or
+            self.input_binary):
+             # avoid OOM
+            n_batch = 1
         else:
-            prediction_textline, conf_textline = self.do_prediction_new_concept(
-                False, img, self.model_zoo.get("textline"), **kwargs)
+            n_batch = 3
+        prediction_textline, conf_textline = self.do_prediction_new_concept(
+            use_patches, img, self.model_zoo.get("textline"),
+            artificial_class=2,
+            n_batch_inference=n_batch,
+            thresholding_for_artificial_class=True,
+            threshold_art_class=self.threshold_art_class_textline)
 
         #prediction_textline_longshot = self.do_prediction(False, img, self.model_zoo.get("textline"))
 
@@ -1109,9 +1109,9 @@ class Eynollah:
             img_w_new = 4000
         img_h_new = img_w_new * img.shape[0] // img.shape[1]
         img_resized = resize_image(img, img_h_new, img_w_new)
-
         self.logger.debug("detecting textlines on %s with %d colors",
                           str(img_resized.shape), len(np.unique(img_resized)))
+
         textline_mask_tot_ea, confidence_textline = self.run_textline(img_resized)
         textline_mask_tot_ea = resize_image(textline_mask_tot_ea, img_height_h, img_width_h)
         confidence_textline = resize_image(confidence_textline, img_height_h, img_width_h)
@@ -1123,26 +1123,14 @@ class Eynollah:
             return None, erosion_hurts, None, None, textline_mask_tot_ea, None, None
 
         #print("inside 2 ", time.time()-t_in)
-        kwargs = dict(n_batch_inference=1,
-                      thresholding_for_artificial_class=True,
-                      threshold_art_class=self.threshold_art_class_layout,
-                      separator_class=label_seps)
         if num_col_classifier == 1 or num_col_classifier == 2:
             if img_height_h / img_width_h > 2.5:
-                self.logger.debug("resized to %dx%d for %d cols",
-                                  img_resized.shape[1], img_resized.shape[0], num_col_classifier)
-                prediction_regions, confidence_regions = (
-                    # self.do_prediction_new_concept_autosize(
-                    #     img_resized, self.model_zoo.get("region_1_2_patched"),
-                    self.do_prediction_new_concept(
-                        True, img_resized, self.model_zoo.get("region_1_2"),
-                        **kwargs)
-                )
+                patches = True
             else:
-                prediction_regions, confidence_regions = \
-                    self.do_prediction_new_concept(
-                        False, img_resized, self.model_zoo.get("region_1_2"),
-                        **kwargs)
+                patches = False
+            self.logger.debug("resized to %dx%d for %d cols",
+                              img_resized.shape[1], img_resized.shape[0],
+                              num_col_classifier)
         else:
             new_w = (900+ (num_col_classifier-3)*100)
             new_h = new_w * img.shape[0] // img.shape[1]
@@ -1150,13 +1138,15 @@ class Eynollah:
             self.logger.debug("resized to %dx%d (new_w=%d) for %d cols",
                               img_resized.shape[1], img_resized.shape[0],
                               new_w, num_col_classifier)
-            prediction_regions, confidence_regions = (
-                # self.do_prediction_new_concept_autosize(
-                #     img_resized, self.model_zoo.get("region_1_2_patched"),
-                self.do_prediction_new_concept(
-                    True, img_resized, self.model_zoo.get("region_1_2"),
-                    **kwargs)
-                )
+            patches = True
+
+        prediction_regions, confidence_regions = \
+            self.do_prediction_new_concept(
+                patches, img_resized, self.model_zoo.get("region_1_2"),
+                n_batch_inference=1,
+                thresholding_for_artificial_class=True,
+                threshold_art_class=self.threshold_art_class_layout,
+                separator_class=label_seps)
 
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         confidence_regions = resize_image(confidence_regions, img_height_h, img_width_h)
