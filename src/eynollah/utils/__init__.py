@@ -899,16 +899,19 @@ def split_textregion_main_vs_head(
     h_o = regions_model_1.shape[0]
     w_o = regions_model_1.shape[1]
     zoom = 3
-    regions_model_1 = cv2.resize(regions_model_1, (regions_model_1.shape[1] // zoom,
-                                                   regions_model_1.shape[0] // zoom),
+    regions_model_1 = cv2.resize(regions_model_1,
+                                 (regions_model_1.shape[1] // zoom,
+                                  regions_model_1.shape[0] // zoom),
                                  interpolation=cv2.INTER_NEAREST)
-    regions_model_full = cv2.resize(regions_model_full, (regions_model_full.shape[1] // zoom,
-                                                         regions_model_full.shape[0] // zoom),
+    regions_model_full = cv2.resize(regions_model_full,
+                                    (regions_model_full.shape[1] // zoom,
+                                     regions_model_full.shape[0] // zoom),
                                     interpolation=cv2.INTER_NEAREST)
-    contours_only_text_parent_z = [(cnt / zoom).astype(int) for cnt in contours_only_text_parent]
+    contours_only_text_parent_z = [contour // zoom
+                                   for contour in contours_only_text_parent]
 
     ###
-    cx_main, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, y_corr_x_min_from_argmin = \
+    _, _, x_min_main, x_max_main, y_min_main, y_max_main, _ = \
         find_new_features_of_contours(contours_only_text_parent_z)
 
     length_con=x_max_main-x_min_main
@@ -947,7 +950,7 @@ def split_textregion_main_vs_head(
 
             regions_model_1[(regions_model_1 == label_text) & (parent > 0)] = label_head_final
             contours_only_text_parent_head.append(contours_only_text_parent[ii])
-            conf_contours_head.append(None) # why not conf_contours[ii], too?
+            conf_contours_head.append(conf_contours[ii])
             if len(contours_only_text_parent_d_ordered):
                 contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
             all_box_coord_head.append(all_box_coord[ii])

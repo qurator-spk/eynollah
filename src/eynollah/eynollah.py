@@ -1712,19 +1712,20 @@ class Eynollah:
         #print(time.time()-t_0_box,'time box in 3')
         t1 = time.time()
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-            boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(
+            boxes, _ = return_boxes_of_images_by_order_of_reading_new(
                 splitter_y_new, regions_without_separators,
                 text_regions_p == label_seps_fl, matrix_of_seps_ch,
-                num_col_classifier, erosion_hurts, self.tables, self.right2left)
+                num_col_classifier, erosion_hurts, self.tables, self.right2left,
+                logger=self.logger)
             boxes_d = None
             self.logger.debug("len(boxes): %s", len(boxes))
             #print(time.time()-t_0_box,'time box in 3.1')
-
         else:
-            boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(
+            boxes_d, _ = return_boxes_of_images_by_order_of_reading_new(
                 splitter_y_new_d, regions_without_separators_d,
                 text_regions_p_d == label_seps_fl, matrix_of_seps_ch_d,
-                num_col_classifier, erosion_hurts, self.tables, self.right2left)
+                num_col_classifier, erosion_hurts, self.tables, self.right2left,
+                logger=self.logger)
             boxes = None
             self.logger.debug("len(boxes): %s", len(boxes_d))
 
@@ -2843,20 +2844,14 @@ class Eynollah:
 
             if not self.reading_order_machine_based:
                 label_seps = 6
-                if not self.headers_off:
-                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                        num_col, _, matrix_of_seps_ch, splitter_y_new, _ = find_number_of_columns_in_document(
-                            text_regions_p, num_col_classifier, self.tables,  label_seps, contours_only_text_parent_h)
-                    else:
-                        _, _, matrix_of_seps_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
-                            text_regions_p_d, num_col_classifier, self.tables, label_seps, contours_only_text_parent_h_d_ordered)
-                elif self.headers_off:
-                    if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                        num_col, _, matrix_of_seps_ch, splitter_y_new, _ = find_number_of_columns_in_document(
-                            text_regions_p, num_col_classifier, self.tables,  label_seps)
-                    else:
-                        _, _, matrix_of_seps_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
-                            text_regions_p_d, num_col_classifier, self.tables, label_seps)
+                if np.abs(slope_deskew) < SLOPE_THRESHOLD:
+                    _, _, matrix_of_seps_ch, splitter_y_new, _ = find_number_of_columns_in_document(
+                        text_regions_p, num_col_classifier, self.tables, label_seps,
+                        contours_h=None if self.headers_off else contours_only_text_parent_h)
+                else:
+                    _, _, matrix_of_seps_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
+                        text_regions_p_d, num_col_classifier, self.tables, label_seps,
+                        contours_h=None if self.headers_off else contours_only_text_parent_h_d_ordered)
 
                 if not erosion_hurts:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
