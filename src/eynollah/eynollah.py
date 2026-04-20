@@ -36,7 +36,6 @@ import numpy as np
 import shapely.affinity
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-import statistics
 
 try:
     import matplotlib.pyplot as plt
@@ -1849,8 +1848,28 @@ class Eynollah:
                 regions_without_separators,
                 polygons_of_marginals, polygons_of_tables)
 
-    def do_order_of_regions_with_model(self, contours_only_text_parent, contours_only_text_parent_h, text_regions_p):
-
+    def do_order_of_regions_with_model(
+            self,
+            contours_only_text_parent,
+            contours_only_text_parent_h,
+            # not trained on drops directly, but it does work:
+            polygons_of_drop_capitals,
+            text_regions_p,
+            # input labels as in run_boxes_full_layout
+            # output labels as in RO model's read_xml
+            label_text=1,
+            label_head=2,
+            label_imgs=5,
+            label_imgs_ro=4,
+            label_seps=6,
+            label_seps_ro=5,
+            label_marg=8,
+            label_marg_ro=3,
+            label_drop=4,
+            # no drop-capital in RO model, yet
+            label_drop_ro=4,
+    ):
+        # FIXME: use model.input_shape
         height1 =672#448
         width1 = 448#224
 
@@ -1860,158 +1879,107 @@ class Eynollah:
         height3 =672#448
         width3 = 448#224
 
-        inference_bs = 3
-
         ver_kernel = np.ones((5, 1), dtype=np.uint8)
         hor_kernel = np.ones((1, 5), dtype=np.uint8)
-
-
         min_cont_size_to_be_dilated = 10
-        if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
+        if len(contours_only_text_parent) > min_cont_size_to_be_dilated:
             (cx_conts, cy_conts,
              x_min_conts, x_max_conts,
              y_min_conts, y_max_conts,
              _) = find_new_features_of_contours(contours_only_text_parent)
-            args_cont_located = np.array(range(len(contours_only_text_parent)))
+            cx_conts = ensure_array(cx_conts)
+            cy_conts = ensure_array(cy_conts)
+            contours_only_text_parent = ensure_array(contours_only_text_parent)
+            args_cont = np.arange(len(contours_only_text_parent))
 
-            diff_y_conts = np.abs(y_max_conts[:]-y_min_conts)
             diff_x_conts = np.abs(x_max_conts[:]-x_min_conts)
+            mean_x = np.mean(diff_x_conts)
+            diff_x_ratio = diff_x_conts / mean_x
 
-            mean_x = statistics.mean(diff_x_conts)
-            median_x = statistics.median(diff_x_conts)
+            args_cont_excluded = args_cont[diff_x_ratio >= 1.3]
+            args_cont_included = args_cont[diff_x_ratio < 1.3]
 
-
-            diff_x_ratio= diff_x_conts/mean_x
-
-            args_cont_located_excluded = args_cont_located[diff_x_ratio>=1.3]
-            args_cont_located_included = args_cont_located[diff_x_ratio<1.3]
-
-            contours_only_text_parent_excluded = [contours_only_text_parent[ind]
-                                                  #contours_only_text_parent[diff_x_ratio>=1.3]
-                                                  for ind in range(len(contours_only_text_parent))
-                                                  if diff_x_ratio[ind]>=1.3]
-            contours_only_text_parent_included = [contours_only_text_parent[ind]
-                                                  #contours_only_text_parent[diff_x_ratio<1.3]
-                                                  for ind in range(len(contours_only_text_parent))
-                                                  if diff_x_ratio[ind]<1.3]
-
-            cx_conts_excluded = [cx_conts[ind]
-                                 #cx_conts[diff_x_ratio>=1.3]
-                                 for ind in range(len(cx_conts))
-                                 if diff_x_ratio[ind]>=1.3]
-            cx_conts_included = [cx_conts[ind]
-                                 #cx_conts[diff_x_ratio<1.3]
-                                 for ind in range(len(cx_conts))
-                                 if diff_x_ratio[ind]<1.3]
-            cy_conts_excluded = [cy_conts[ind]
-                                 #cy_conts[diff_x_ratio>=1.3]
-                                 for ind in range(len(cy_conts))
-                                 if diff_x_ratio[ind]>=1.3]
-            cy_conts_included = [cy_conts[ind]
-                                 #cy_conts[diff_x_ratio<1.3]
-                                 for ind in range(len(cy_conts))
-                                 if diff_x_ratio[ind]<1.3]
-
-            #print(diff_x_ratio, 'ratio')
-            text_regions_p = text_regions_p.astype('uint8')
-
-            if len(contours_only_text_parent_excluded)>0:
-                textregion_par = np.zeros((text_regions_p.shape[0], text_regions_p.shape[1])).astype('uint8')
-                textregion_par = cv2.fillPoly(textregion_par, pts=contours_only_text_parent_included, color=(1,1))
+            if len(args_cont_excluded):
+                textregion_par = np.zeros_like(text_regions_p)
+                textregion_par = cv2.fillPoly(textregion_par,
+                                              pts=contours_only_text_parent[args_cont_included],
+                                              color=1)
             else:
-                textregion_par = (text_regions_p[:,:]==1)*1
-                textregion_par = textregion_par.astype('uint8')
+                textregion_par = (text_regions_p == 1).astype(np.uint8)
 
-            text_regions_p_textregions_dilated = cv2.erode(textregion_par , hor_kernel, iterations=2)
-            text_regions_p_textregions_dilated = cv2.dilate(text_regions_p_textregions_dilated , ver_kernel, iterations=4)
-            text_regions_p_textregions_dilated = cv2.erode(text_regions_p_textregions_dilated , hor_kernel, iterations=1)
-            text_regions_p_textregions_dilated = cv2.dilate(text_regions_p_textregions_dilated , ver_kernel, iterations=5)
-            text_regions_p_textregions_dilated[text_regions_p[:,:]>1] = 0
+            textregion_par = cv2.erode(textregion_par, hor_kernel, iterations=2)
+            textregion_par = cv2.dilate(textregion_par, ver_kernel, iterations=4)
+            textregion_par = cv2.erode(textregion_par, hor_kernel, iterations=1)
+            textregion_par = cv2.dilate(textregion_par, ver_kernel, iterations=5)
+            textregion_par[text_regions_p > 1] = 0
 
-
-            contours_only_dilated, hir_on_text_dilated = return_contours_of_image(text_regions_p_textregions_dilated)
+            contours_only_dilated, hir_on_text_dilated = return_contours_of_image(textregion_par)
             contours_only_dilated = return_parent_contours(contours_only_dilated, hir_on_text_dilated)
 
-            indexes_of_located_cont, center_x_coordinates_of_located, center_y_coordinates_of_located = \
+            indexes_of_located_cont, _, cy_of_located = \
                 self.return_indexes_of_contours_located_inside_another_list_of_contours(
-                    contours_only_dilated, contours_only_text_parent_included,
-                    cx_conts_included, cy_conts_included, args_cont_located_included)
+                    contours_only_dilated,
+                    cx_conts[args_cont_included],
+                    cy_conts[args_cont_included],
+                    args_cont_included)
 
+            indexes_of_located_cont.extend(args_cont_excluded[:, np.newaxis])
+            contours_only_dilated.extend(contours_only_text_parent[args_cont_excluded])
 
-            if len(args_cont_located_excluded)>0:
-                for ind in args_cont_located_excluded:
-                    indexes_of_located_cont.append(np.array([ind]))
-                    contours_only_dilated.append(contours_only_text_parent[ind])
-                    center_y_coordinates_of_located.append(0)
+            missing_textregions = np.setdiff1d(args_cont, np.concatenate(indexes_of_located_cont))
 
-            array_list = [np.array([elem]) if isinstance(elem, int) else elem for elem in indexes_of_located_cont]
-            flattened_array = np.concatenate([arr.ravel() for arr in array_list])
-            #print(len( np.unique(flattened_array)), 'indexes_of_located_cont uniques')
+            indexes_of_located_cont.extend(missing_textregions[:, np.newaxis])
+            contours_only_dilated.extend(contours_only_text_parent[missing_textregions])
 
-            missing_textregions = list( set(range(len(contours_only_text_parent))) - set(flattened_array) )
-            #print(missing_textregions, 'missing_textregions')
+            args_cont_h = np.arange(len(contours_only_text_parent_h))
+            indexes_of_located_cont.extend(args_cont_h[:, np.newaxis] +
+                                           len(contours_only_text_parent))
 
-            for ind in missing_textregions:
-                indexes_of_located_cont.append(np.array([ind]))
-                contours_only_dilated.append(contours_only_text_parent[ind])
-                center_y_coordinates_of_located.append(0)
+            args_cont_drop = np.arange(len(polygons_of_drop_capitals))
+            indexes_of_located_cont.extend(args_cont_drop[:, np.newaxis] +
+                                           len(contours_only_text_parent) +
+                                           len(contours_only_text_parent_h))
 
-
-            if contours_only_text_parent_h:
-                for vi in range(len(contours_only_text_parent_h)):
-                    indexes_of_located_cont.append(int(vi+len(contours_only_text_parent)))
-
-            array_list = [np.array([elem]) if isinstance(elem, int) else elem for elem in indexes_of_located_cont]
-            flattened_array = np.concatenate([arr.ravel() for arr in array_list])
-
-        y_len = text_regions_p.shape[0]
-        x_len = text_regions_p.shape[1]
-
-        img_poly = np.zeros((y_len,x_len), dtype='uint8')
-        img_poly[text_regions_p[:,:]==1] = 1
-        img_poly[text_regions_p[:,:]==2] = 2
-        img_poly[text_regions_p[:,:]==3] = 4
-        img_poly[text_regions_p[:,:]==6] = 5
-
-        img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
-        if contours_only_text_parent_h:
-            _, cy_main, x_min_main, x_max_main, y_min_main, y_max_main, _ = find_new_features_of_contours(
-                contours_only_text_parent_h)
-            for j in range(len(cy_main)):
-                img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,
-                                   int(x_min_main[j]):int(x_max_main[j])] = 1
-            co_text_all_org = contours_only_text_parent + contours_only_text_parent_h
-            if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
-                co_text_all = contours_only_dilated + contours_only_text_parent_h
-            else:
-                co_text_all = contours_only_text_parent + contours_only_text_parent_h
+            co_text_all = contours_only_dilated
         else:
-            co_text_all_org = contours_only_text_parent
-            if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
-                co_text_all = contours_only_dilated
-            else:
-                co_text_all = contours_only_text_parent
+            co_text_all = list(contours_only_text_parent)
+
+        img_poly = np.zeros_like(text_regions_p)
+        img_poly[text_regions_p == label_text] = label_text
+        img_poly[text_regions_p == label_head] = label_head
+        img_poly[text_regions_p == 3] = label_imgs # rs: ??
+        img_poly[text_regions_p == label_imgs] = label_imgs_ro
+        img_poly[text_regions_p == label_marg] = label_marg_ro
+        img_poly[text_regions_p == label_seps] = label_seps_ro
+
+        img_header_and_sep = np.zeros_like(text_regions_p)
+        for contour in contours_only_text_parent_h:
+            # rs: why (max:max+12) instad of (min:max)?
+            #     what about actual seps?
+            img_header_and_sep[contour[:, 0, 1].max(): contour[:, 0, 1].max() + 12,
+                               contour[:, 0, 0].min(): contour[:, 0, 0].max()] = 1
+        co_text_all.extend(contours_only_text_parent_h)
+        co_text_all.extend(polygons_of_drop_capitals)
 
         if not len(co_text_all):
             return []
 
-        labels_con = np.zeros((int(y_len /6.), int(x_len/6.), len(co_text_all)), dtype=bool)
-        co_text_all = [(i/6).astype(int) for i in co_text_all]
+        # fill polygons in lower resolution to be faster
+        height, width = text_regions_p.shape
+        labels_con = np.zeros((height // 6, width // 6, len(co_text_all)), dtype=bool)
         for i in range(len(co_text_all)):
-            img = labels_con[:,:,i].astype(np.uint8)
-
-            #img = cv2.resize(img, (int(img.shape[1]/6), int(img.shape[0]/6)), interpolation=cv2.INTER_NEAREST)
-
-            cv2.fillPoly(img, pts=[co_text_all[i]], color=(1,))
-            labels_con[:,:,i] = img
-
-
+            img = np.zeros(labels_con.shape[:2], dtype=np.uint8)
+            cv2.fillPoly(img, pts=[co_text_all[i] // 6], color=1)
+            labels_con[:, :, i] = img
         labels_con = resize_image(labels_con.astype(np.uint8), height1, width1).astype(bool)
         img_header_and_sep = resize_image(img_header_and_sep, height1, width1)
-        img_poly = resize_image(img_poly, height3, width3)
+        img_poly = resize_image(img_poly, height1, width1)
+        labels_con[img_poly == label_seps_ro] = 2
+        labels_con[img_header_and_sep == 1] = 3
+        labels_con = labels_con / 3.
+        img_poly = img_poly / 5.
 
-
-
+        inference_bs = 1 # 3 (causes OOM on 8 GB GPUs)
         input_1 = np.zeros((inference_bs, height1, width1, 3))
         ordered = [list(range(len(co_text_all)))]
         index_update = 0
@@ -2025,23 +1993,16 @@ class Eynollah:
             tot_counter = 0
             batch = []
             for j in ij_list:
-                img1 = labels_con[:,:,i].astype(float)
-                img2 = labels_con[:,:,j].astype(float)
-                img1[img_poly==5] = 2
-                img2[img_poly==5] = 2
-                img1[img_header_and_sep==1] = 3
-                img2[img_header_and_sep==1] = 3
-
-                input_1[len(batch), :, :, 0] = img1 / 3.
-                input_1[len(batch), :, :, 2] = img2 / 3.
-                input_1[len(batch), :, :, 1] = img_poly / 5.
+                input_1[len(batch), :, :, 0] = labels_con[:, :, i]
+                input_1[len(batch), :, :, 1] = img_poly
+                input_1[len(batch), :, :, 2] = labels_con[:, :, j]
 
                 tot_counter += 1
                 batch.append(j)
                 if tot_counter % inference_bs == 0 or tot_counter == len(ij_list):
                     y_pr = self.model_zoo.get("reading_order").predict(input_1 , verbose=0)
-                    for jb, j in enumerate(batch):
-                        if y_pr[jb][0]>=0.5:
+                    for post_pr in y_pr:
+                        if post_pr[0] >= 0.5:
                             post_list.append(j)
                         else:
                             ante_list.append(j)
@@ -2062,20 +2023,20 @@ class Eynollah:
 
         ordered = [i[0] for i in ordered]
 
-        if len(contours_only_text_parent)>min_cont_size_to_be_dilated:
+        if len(contours_only_text_parent) > min_cont_size_to_be_dilated:
             org_contours_indexes = []
-            for ind in range(len(ordered)):
-                region_with_curr_order = ordered[ind]
-                if region_with_curr_order < len(contours_only_dilated):
-                    if np.isscalar(indexes_of_located_cont[region_with_curr_order]):
-                        org_contours_indexes.extend([indexes_of_located_cont[region_with_curr_order]])
+            for i in ordered:
+                if i < len(contours_only_dilated):
+                    if i >= len(cy_of_located):
+                        # excluded or missing dilated version of main region
+                        org_contours_indexes.extend(indexes_of_located_cont[i])
                     else:
-                        arg_sort_located_cont = np.argsort(center_y_coordinates_of_located[region_with_curr_order])
-                        org_contours_indexes.extend(
-                            np.array(indexes_of_located_cont[region_with_curr_order])[arg_sort_located_cont])
+                        # reconstructed dilated version of main region
+                        org_contours_indexes.extend(indexes_of_located_cont[i][
+                            np.argsort(cy_of_located[i])])
                 else:
-                    org_contours_indexes.extend([indexes_of_located_cont[region_with_curr_order]])
-
+                    # header or drop-capital region
+                    org_contours_indexes.extend(indexes_of_located_cont[i])
             return org_contours_indexes
         else:
             return ordered
@@ -2161,29 +2122,19 @@ class Eynollah:
             return contours
 
     def return_indexes_of_contours_located_inside_another_list_of_contours(
-            self, contours, contours_loc, cx_main_loc, cy_main_loc, indexes_loc):
-        indexes_of_located_cont = []
-        center_x_coordinates_of_located = []
-        center_y_coordinates_of_located = []
-        #M_main_tot = [cv2.moments(contours_loc[j])
-                        #for j in range(len(contours_loc))]
-        #cx_main_loc = [(M_main_tot[j]["m10"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
-        #cy_main_loc = [(M_main_tot[j]["m01"] / (M_main_tot[j]["m00"] + 1e-32)) for j in range(len(M_main_tot))]
+            self, contours, centersx_loc, centersy_loc, indexes_loc):
+        indexes = []
+        centersx = []
+        centersy = []
+        for contour in contours:
+            results = np.array([cv2.pointPolygonTest(contour, (px, py), False)
+                                for px, py in zip(centersx_loc, centersy_loc)])
+            indexes_in = (results == 0) | (results == 1)
+            indexes.append(indexes_loc[indexes_in])
+            centersx.append(centersx_loc[indexes_in])
+            centersy.append(centersy_loc[indexes_in])
 
-        for ij in range(len(contours)):
-            results = [cv2.pointPolygonTest(contours[ij], (cx_main_loc[ind], cy_main_loc[ind]), False)
-                        for ind in range(len(cy_main_loc)) ]
-            results = np.array(results)
-            indexes_in = np.where((results == 0) | (results == 1))
-            # [(results == 0) | (results == 1)]#np.where((results == 0) | (results == 1))
-            indexes = indexes_loc[indexes_in]
-
-            indexes_of_located_cont.append(indexes)
-            center_x_coordinates_of_located.append(np.array(cx_main_loc)[indexes_in] )
-            center_y_coordinates_of_located.append(np.array(cy_main_loc)[indexes_in] )
-
-        return indexes_of_located_cont, center_x_coordinates_of_located, center_y_coordinates_of_located
-
+        return indexes, centersx, centersy
 
     def filter_contours_without_textline_inside(
             self, contours_par, contours_textline,
@@ -2945,6 +2896,7 @@ class Eynollah:
                         num_col_classifier, erosion_hurts, self.tables, self.right2left,
                         logger=self.logger)
         else:
+            polygons_of_drop_capitals = []
             contours_only_text_parent_h = []
             contours_only_text_parent_h_d_ordered = []
 
@@ -2966,6 +2918,7 @@ class Eynollah:
             order_text_new = self.do_order_of_regions_with_model(
                 contours_only_text_parent,
                 contours_only_text_parent_h,
+                polygons_of_drop_capitals,
                 text_regions_p)
         else:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
