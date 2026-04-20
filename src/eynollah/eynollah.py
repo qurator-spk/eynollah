@@ -1672,11 +1672,20 @@ class Eynollah:
             slope_deskew, num_col_classifier, table_prediction, erosion_hurts,
             label_text=1,
             label_imgs=2,
+            label_imgs_fl=5,
             label_seps=3,
+            label_seps_fl=6,
             label_marg=4,
+            label_marg_fl=8,
             label_tabs=10,
     ):
         self.logger.debug('enter run_boxes_no_full_layout')
+        # map segment labels as in run_boxes_full_layout
+        # (to ensure we have the same set for do_order_of_regions etc)
+        text_regions_p[text_regions_p == label_imgs] = label_imgs_fl
+        text_regions_p[text_regions_p == label_seps] = label_seps_fl
+        text_regions_p[text_regions_p == label_marg] = label_marg_fl
+
         t_0_box = time.time()
         regions_without_separators = (text_regions_p == label_text) * 1
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
@@ -1697,10 +1706,10 @@ class Eynollah:
 
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
             _, _, matrix_of_seps_ch, splitter_y_new, _ = find_number_of_columns_in_document(
-                text_regions_p, num_col_classifier, self.tables, label_seps)
+                text_regions_p, num_col_classifier, self.tables, label_seps_fl)
         else:
             _, _, matrix_of_seps_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
-                text_regions_p_d, num_col_classifier, self.tables, label_seps)
+                text_regions_p_d, num_col_classifier, self.tables, label_seps_fl)
         #print(time.time()-t_0_box,'time box in 2')
         self.logger.info("num_col_classifier: %s", num_col_classifier)
 
@@ -1716,7 +1725,7 @@ class Eynollah:
         if np.abs(slope_deskew) < SLOPE_THRESHOLD:
             boxes, peaks_neg_tot_tables = return_boxes_of_images_by_order_of_reading_new(
                 splitter_y_new, regions_without_separators,
-                text_regions_p == label_seps, matrix_of_seps_ch,
+                text_regions_p == label_seps_fl, matrix_of_seps_ch,
                 num_col_classifier, erosion_hurts, self.tables, self.right2left)
             boxes_d = None
             self.logger.debug("len(boxes): %s", len(boxes))
@@ -1725,7 +1734,7 @@ class Eynollah:
         else:
             boxes_d, peaks_neg_tot_tables_d = return_boxes_of_images_by_order_of_reading_new(
                 splitter_y_new_d, regions_without_separators_d,
-                text_regions_p_d == label_seps, matrix_of_seps_ch_d,
+                text_regions_p_d == label_seps_fl, matrix_of_seps_ch_d,
                 num_col_classifier, erosion_hurts, self.tables, self.right2left)
             boxes = None
             self.logger.debug("len(boxes): %s", len(boxes_d))
@@ -1736,9 +1745,9 @@ class Eynollah:
         min_area_mar = 0.00001
         polygons_of_tables = return_contours_of_interested_region(text_regions_p, label_tabs, min_area_mar)
 
-        polygons_of_images = return_contours_of_interested_region(text_regions_p, label_imgs)
+        polygons_of_images = return_contours_of_interested_region(text_regions_p, label_imgs_fl)
 
-        marginal_mask = (text_regions_p == label_marg).astype(np.uint8)
+        marginal_mask = (text_regions_p == label_marg_fl).astype(np.uint8)
         marginal_mask = cv2.dilate(marginal_mask, KERNEL, iterations=2)
         polygons_of_marginals = return_contours_of_interested_region(marginal_mask, 1, min_area_mar)
 
