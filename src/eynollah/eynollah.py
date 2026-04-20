@@ -1606,8 +1606,13 @@ class Eynollah:
     def run_graphics_and_columns_without_layout(self, textline_mask_tot_ea, image):
         image_page, page_coord, cont_page = self.extract_page(image)
 
-        textline_mask_tot_ea = textline_mask_tot_ea[page_coord[0]: page_coord[1],
-                                                    page_coord[2]: page_coord[3]]
+        mask_page = np.zeros_like(textline_mask_tot_ea)
+        mask_page = cv2.fillPoly(mask_page, pts=[cont_page[0]], color=1)
+        mask_page = mask_page == 0
+
+        textline_mask_tot_ea[mask_page] = 0
+        box = slice(*page_coord[0:2]), slice(*page_coord[2:4])
+        textline_mask_tot_ea = textline_mask_tot_ea[box]
 
         return page_coord, image_page, textline_mask_tot_ea, cont_page
 
