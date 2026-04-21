@@ -1631,6 +1631,10 @@ class Eynollah:
         return textline_mask_tot_ea, textline_conf
 
     def run_deskew(self, textline_mask_tot_ea):
+        if not np.any(textline_mask_tot_ea):
+            self.logger.info("slope_deskew: empty page")
+            return 0
+
         #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
         slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), 2, 30, True,
                                           logger=self.logger, plotter=self.plotter)
@@ -2354,7 +2358,6 @@ class Eynollah:
         t1 = time.time()
         self.logger.info("Step 2/5: Layout Analysis")
 
-        self.logger.info("Using light version processing")
         (text_regions_p_1,
          erosion_hurts,
          polygons_seplines,
