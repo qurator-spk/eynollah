@@ -33,7 +33,6 @@ import gc
 
 import cv2
 import numpy as np
-import shapely.affinity
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 
@@ -56,6 +55,7 @@ from .utils.contour import (
     return_parent_contours,
     dilate_textregion_contours,
     dilate_textline_contours,
+    match_deskewed_contours,
     polygon2contour,
     contour2polygon,
     join_polygons,
@@ -1034,13 +1034,12 @@ class Eynollah:
                 slopes)
 
     def get_slopes_and_deskew_new_curved(self, contours_par, textline_mask_tot, boxes,
-                                         mask_texts_only, num_col, scale_par, slope_deskew, name):
+                                         num_col, scale_par, slope_deskew, name):
         if not len(contours_par):
             return [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_curved")
         results = map(partial(do_work_of_slopes_new_curved,
                               textline_mask_tot_ea=textline_mask_tot,
-                              mask_texts_only=mask_texts_only,
                               num_col=num_col,
                               scale_par=scale_par,
                               slope_deskew=slope_deskew,
@@ -2025,83 +2024,72 @@ class Eynollah:
         else:
             return ordered
 
-    def filter_contours_inside_a_bigger_one(self, contours, contours_d_ordered, image,
+    def filter_contours_inside_a_bigger_one(self, contours, contours_d, shape,
                                             marginal_cnts=None, type_contour="textregion"):
         if type_contour == "textregion":
             areas = np.array(list(map(cv2.contourArea, contours)))
-            area_tot = image.shape[0]*image.shape[1]
-            areas_ratio = areas / area_tot
+            areas = areas / float(np.prod(shape[:2]))
             cx_main, cy_main = find_center_of_contours(contours)
 
-            contours_index_small = np.flatnonzero(areas_ratio < 1e-3)
-            contours_index_large = np.flatnonzero(areas_ratio >= 1e-3)
+            contours = ensure_array(contours)
+            indices_small = np.flatnonzero(areas < 1e-3)
+            indices_large = np.flatnonzero(areas >= 1e-3)
 
-            #contours_> = [contours[ind] for ind in contours_index_large]
-            indexes_to_be_removed = []
-            for ind_small in contours_index_small:
-                results = [cv2.pointPolygonTest(contours[ind_large], (cx_main[ind_small],
-                                                                      cy_main[ind_small]),
+            indices_drop = []
+            for ind_small in indices_small:
+                results = [cv2.pointPolygonTest(contours[ind_large],
+                                                (cx_main[ind_small],
+                                                 cy_main[ind_small]),
                                                 False)
-                           for ind_large in contours_index_large]
+                           for ind_large in indices_large]
                 results = np.array(results)
-                if np.any(results==1):
-                    indexes_to_be_removed.append(ind_small)
+                if np.any(results == 1):
+                    indices_drop.append(ind_small)
                 elif marginal_cnts:
-                    results_marginal = [cv2.pointPolygonTest(marginal_cnt,
-                                                             (cx_main[ind_small],
-                                                              cy_main[ind_small]),
-                                                             False)
-                                        for marginal_cnt in marginal_cnts]
-                    results_marginal = np.array(results_marginal)
-                    if np.any(results_marginal==1):
-                        indexes_to_be_removed.append(ind_small)
+                    results = [cv2.pointPolygonTest(contour,
+                                                    (cx_main[ind_small],
+                                                     cy_main[ind_small]),
+                                                    False)
+                               for contour in marginal_cnts]
+                    results = np.array(results)
+                    if np.any(results == 1):
+                        indices_drop.append(ind_small)
 
-            contours = np.delete(contours, indexes_to_be_removed, axis=0)
-            if len(contours_d_ordered):
-                contours_d_ordered = np.delete(contours_d_ordered, indexes_to_be_removed, axis=0)
+            contours = np.delete(contours, indices_drop, axis=0)
+            if len(contours_d):
+                contours_d = ensure_array(contours_d)
+                contours_d = np.delete(contours_d, indices_drop, axis=0)
 
-            return contours, contours_d_ordered
+            return contours, contours_d
 
         else:
-            contours_txtline_of_all_textregions = []
-            indexes_of_textline_tot = []
-            index_textline_inside_textregion = []
+            contours_of_contours = []
+            indexes_parent = []
+            indexes_child = []
             for ind_region, textlines in enumerate(contours):
-                contours_txtline_of_all_textregions.extend(textlines)
-                index_textline_inside_textregion.extend(list(range(len(textlines))))
-                indexes_of_textline_tot.extend([ind_region] * len(textlines))
+                contours_of_contours.extend(textlines)
+                indexes_parent.extend([ind_region] * len(textlines))
+                indexes_child.extend(list(range(len(textlines))))
 
-            areas_tot = np.array(list(map(cv2.contourArea, contours_txtline_of_all_textregions)))
-            area_tot_tot = image.shape[0]*image.shape[1]
-            cx_main_tot, cy_main_tot = find_center_of_contours(contours_txtline_of_all_textregions)
+            areas = np.array(list(map(cv2.contourArea, contours_of_contours)))
+            cx, cy = find_center_of_contours(contours_of_contours)
 
             textline_in_textregion_index_to_del = {}
-            for ij in range(len(contours_txtline_of_all_textregions)):
-                area_of_con_interest = areas_tot[ij]
-                args_without = np.delete(np.arange(len(contours_txtline_of_all_textregions)), ij)
-                areas_without = areas_tot[args_without]
-                args_with_bigger_area = args_without[areas_without > 1.5*area_of_con_interest]
+            for i in range(len(contours_of_contours)):
+                args_other = np.setdiff1d(np.arange(len(contours_of_contours)), i)
+                areas_other = areas[args_other]
+                args_other_larger = args_other[areas_other > 1.5 * areas[i]]
 
-                if len(args_with_bigger_area)>0:
-                    results = [cv2.pointPolygonTest(contours_txtline_of_all_textregions[ind],
-                                                    (cx_main_tot[ij],
-                                                     cy_main_tot[ij]),
-                                                    False)
-                               for ind in args_with_bigger_area ]
-                    results = np.array(results)
-                    if np.any(results==1):
-                        #print(indexes_of_textline_tot[ij], index_textline_inside_textregion[ij])
+                for ind in args_other_larger:
+                    if cv2.pointPolygonTest(contours_of_contours[ind],
+                                            (cx[i], cy[i]), False) == 1:
                         textline_in_textregion_index_to_del.setdefault(
-                            indexes_of_textline_tot[ij], list()).append(
-                                index_textline_inside_textregion[ij])
-                        #contours[indexes_of_textline_tot[ij]].pop(index_textline_inside_textregion[ij])
+                            indexes_parent[i], list()).append(
+                                indexes_child[i])
 
-            for textregion_index_to_del in textline_in_textregion_index_to_del:
-                contours[textregion_index_to_del] = list(np.delete(
-                    contours[textregion_index_to_del],
-                    textline_in_textregion_index_to_del[textregion_index_to_del],
-                    # needed so numpy does not flatten the entire result when 0 left
-                    axis=0))
+            for where, which in textline_in_textregion_index_to_del.items():
+                contours[where] = [line for idx, line in enumerate(contours[where])
+                                   if idx not in which]
 
             return contours
 
@@ -2122,7 +2110,7 @@ class Eynollah:
 
     def filter_contours_without_textline_inside(
             self, contours_par, contours_textline,
-            contours_only_text_parent_d_ordered,
+            contours_only_text_parent_d,
             conf_contours_textregions):
 
         assert len(contours_par) == len(contours_textline)
@@ -2135,7 +2123,7 @@ class Eynollah:
 
         return (filterfun(contours_par),
                 filterfun(contours_textline),
-                filterfun(contours_only_text_parent_d_ordered),
+                filterfun(contours_only_text_parent_d),
                 filterfun(conf_contours_textregions),
                 # indices
         )
@@ -2144,8 +2132,8 @@ class Eynollah:
             self, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals,
             slopes_marginals, conf_marginals, mid_point_of_page_width):
         cx_marg, cy_marg = find_center_of_contours(polygons_of_marginals)
-        cx_marg = np.array(cx_marg)
-        cy_marg = np.array(cy_marg)
+        cx_marg = ensure_array(cx_marg)
+        cy_marg = ensure_array(cy_marg)
 
         def split(lis):
             left, right = [], []
@@ -2330,7 +2318,7 @@ class Eynollah:
             all_found_textline_polygons = [ all_found_textline_polygons ]
             all_found_textline_polygons = dilate_textline_contours(all_found_textline_polygons)
             all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(
-                all_found_textline_polygons, None, textline_mask_tot_ea, type_contour="textline")
+                all_found_textline_polygons, None, None, type_contour="textline")
 
             order_text_new = [0]
             slopes =[0]
@@ -2522,239 +2510,48 @@ class Eynollah:
         conf_images = get_region_confidences(polygons_of_images, regions_confidence)
         conf_tables = get_region_confidences(contours_tables, table_confidence)
 
-        text_only = (text_regions_p == label_text) * 1
+        polygons_of_textregions = return_contours_of_interested_region(text_regions_p, label_text,
+                                                                       min_area=MIN_AREA_REGION)
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            text_only_d = (text_regions_p_d == label_text) * 1
-
+            polygons_of_textregions_d = return_contours_of_interested_region(text_regions_p_d, label_text,
+                                                                             min_area=MIN_AREA_REGION)
+            if (len(polygons_of_textregions) and
+                len(polygons_of_textregions_d)):
+                polygons_of_textregions_d = \
+                    match_deskewed_contours(
+                        slope_deskew,
+                        polygons_of_textregions,
+                        polygons_of_textregions_d,
+                        text_regions_p.shape,
+                        text_regions_p_d.shape)
+        else:
+            polygons_of_textregions_d = []
         #print("text region early 2 in %.1fs", time.time() - t0)
-        ###min_con_area = 0.000005
-        contours_only_text, hir_on_text = return_contours_of_image(text_only)
-        contours_only_text_parent = return_parent_contours(contours_only_text, hir_on_text)
-        contours_only_text_parent_d_ordered = []
-        contours_only_text_parent_d = []
-
-        if len(contours_only_text_parent) > 0:
-            areas_tot_text = np.prod(text_only.shape)
-            areas_cnt_text = np.array([cv2.contourArea(c) for c in contours_only_text_parent])
-            areas_cnt_text = areas_cnt_text / float(areas_tot_text)
-            #self.logger.info('areas_cnt_text %s', areas_cnt_text)
-            contours_only_text_parent = ensure_array(contours_only_text_parent)
-            contours_only_text_parent = contours_only_text_parent[areas_cnt_text > MIN_AREA_REGION]
-            areas_cnt_text_parent = areas_cnt_text[areas_cnt_text > MIN_AREA_REGION]
-
-            index_con_parents = np.argsort(areas_cnt_text_parent)
-            contours_only_text_parent = contours_only_text_parent[index_con_parents]
-            areas_cnt_text_parent = areas_cnt_text_parent[index_con_parents]
-
-            centers = np.stack(find_center_of_contours(contours_only_text_parent)) # [2, N]
-
-            center0 = centers[:, -1:] # [2, 1]
-
-            if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-                contours_only_text_d, hir_on_text_d = return_contours_of_image(text_only_d)
-                contours_only_text_parent_d = return_parent_contours(contours_only_text_d, hir_on_text_d)
-
-                areas_tot_text_d = np.prod(text_only_d.shape)
-                areas_cnt_text_d = np.array([cv2.contourArea(c) for c in contours_only_text_parent_d])
-                areas_cnt_text_d = areas_cnt_text_d / float(areas_tot_text_d)
-
-                contours_only_text_parent_d = ensure_array(contours_only_text_parent_d)
-                contours_only_text_parent_d = contours_only_text_parent_d[areas_cnt_text_d > MIN_AREA_REGION]
-                areas_cnt_text_d = areas_cnt_text_d[areas_cnt_text_d > MIN_AREA_REGION]
-
-                if len(contours_only_text_parent_d):
-                    index_con_parents_d = np.argsort(areas_cnt_text_d)
-                    contours_only_text_parent_d = contours_only_text_parent_d[index_con_parents_d]
-                    areas_cnt_text_d = areas_cnt_text_d[index_con_parents_d]
-
-                    centers_d = np.stack(find_center_of_contours(contours_only_text_parent_d)) # [2, N]
-
-                    center0_d = centers_d[:, -1:].copy() # [2, 1]
-
-                    # find the largest among the largest 5 deskewed contours
-                    # that is also closest to the largest original contour
-                    last5_centers_d = centers_d[:, -5:]
-                    dists_d = np.linalg.norm(center0 - last5_centers_d, axis=0)
-                    ind_largest = len(contours_only_text_parent_d) - last5_centers_d.shape[1] + np.argmin(dists_d)
-                    center0_d[:, 0] = centers_d[:, ind_largest]
-
-                    # order new contours the same way as the undeskewed contours
-                    # (by calculating the offset of the largest contours, respectively,
-                    #  of the new and undeskewed image; then for each contour,
-                    #  finding the closest new contour, with proximity calculated
-                    #  as distance of their centers modulo offset vector)
-                    (h, w) = text_only.shape[:2]
-                    center = (w // 2.0, h // 2.0)
-                    M = cv2.getRotationMatrix2D(center, slope_deskew, 1.0)
-                    M_22 = np.array(M)[:2, :2]
-                    center0 = np.dot(M_22, center0) # [2, 1]
-                    offset = center0 - center0_d # [2, 1]
-
-                    centers = np.dot(M_22, centers) - offset # [2,N]
-                    # add dimension for area (so only contours of similar size will be considered close)
-                    centers = np.append(centers, areas_cnt_text_parent[np.newaxis], axis=0)
-                    centers_d = np.append(centers_d, areas_cnt_text_d[np.newaxis], axis=0)
-
-                    dists = np.zeros((len(contours_only_text_parent), len(contours_only_text_parent_d)))
-                    for i in range(len(contours_only_text_parent)):
-                        dists[i] = np.linalg.norm(centers[:, i:i + 1] - centers_d, axis=0)
-                    corresp = np.zeros(dists.shape, dtype=bool)
-                    # keep searching next-closest until at least one correspondence on each side
-                    while not np.all(corresp.sum(axis=1)) or not np.all(corresp.sum(axis=0)):
-                        idx = np.nanargmin(dists)
-                        i, j = np.unravel_index(idx, dists.shape)
-                        dists[i, j] = np.nan
-                        corresp[i, j] = True
-                    # print("original/deskewed adjacency", corresp.nonzero())
-                    contours_only_text_parent_d_ordered = np.zeros_like(contours_only_text_parent)
-                    contours_only_text_parent_d_ordered = contours_only_text_parent_d[np.argmax(corresp, axis=1)]
-                    # img1 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
-                    # for i in range(len(contours_only_text_parent)):
-                    #     cv2.fillPoly(img1, pts=[contours_only_text_parent_d_ordered[i]], color=i + 1)
-                    # plt.subplot(1, 4, 1, title="direct corresp contours")
-                    # plt.imshow(img1)
-                    # img2 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
-                    # join deskewed regions mapping to single original ones
-                    for i in range(len(contours_only_text_parent)):
-                        if np.count_nonzero(corresp[i]) > 1:
-                            indices = np.flatnonzero(corresp[i])
-                            # print("joining", indices)
-                            polygons_d = [contour2polygon(contour)
-                                          for contour in contours_only_text_parent_d[indices]]
-                            contour_d = polygon2contour(join_polygons(polygons_d))
-                            contours_only_text_parent_d_ordered[i] = contour_d
-                    #         cv2.fillPoly(img2, pts=[contour_d], color=i + 1)
-                    # plt.subplot(1, 4, 2, title="joined contours")
-                    # plt.imshow(img2)
-                    # img3 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
-                    # split deskewed regions mapping to multiple original ones
-                    def deskew(polygon):
-                        polygon = shapely.affinity.rotate(polygon, -slope_deskew, origin=center)
-                        #polygon = shapely.affinity.translate(polygon, *offset.squeeze())
-                        return polygon
-                    for j in range(len(contours_only_text_parent_d)):
-                        if np.count_nonzero(corresp[:, j]) > 1:
-                            indices = np.flatnonzero(corresp[:, j])
-                            # print("splitting along", indices)
-                            polygons = [deskew(contour2polygon(contour))
-                                        for contour in contours_only_text_parent[indices]]
-                            polygon_d = contour2polygon(contours_only_text_parent_d[j])
-                            polygons_d = [make_intersection(polygon_d, polygon)
-                                          for polygon in polygons]
-                            # ignore where there is no actual overlap
-                            indices = indices[np.flatnonzero(polygons_d)]
-                            contours_d = [polygon2contour(polygon_d)
-                                          for polygon_d in polygons_d
-                                          if polygon_d]
-                            contours_only_text_parent_d_ordered[indices] = contours_d
-                    #         cv2.fillPoly(img3, pts=contours_d, color=j + 1)
-                    # plt.subplot(1, 4, 3, title="split contours")
-                    # plt.imshow(img3)
-                    # img4 = np.zeros(text_only_d.shape[:2], dtype=np.uint8)
-                    # for i in range(len(contours_only_text_parent)):
-                    #     cv2.fillPoly(img4, pts=[contours_only_text_parent_d_ordered[i]], color=i + 1)
-                    # plt.subplot(1, 4, 4, title="result contours")
-                    # plt.imshow(img4)
-                    # plt.show()
-                # from matplotlib import patches as ptchs
-                # plt.subplot(1, 2, 1, title="undeskewed")
-                # plt.imshow(text_only)
-                # centers = np.stack(find_center_of_contours(contours_only_text_parent)) # [2, N]
-                # for i in range(len(contours_only_text_parent)):
-                #     cnt = contours_only_text_parent[i]
-                #     ctr = centers[:, i]
-                #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='blue'))
-                #     plt.gca().scatter(ctr[0], ctr[1], 20, c='blue', marker='x')
-                #     plt.gca().text(ctr[0], ctr[1], str(i), c='blue')
-                # plt.subplot(1, 2, 2, title="deskewed")
-                # plt.imshow(text_only_d)
-                # centers_d = np.stack(find_center_of_contours(contours_only_text_parent_d_ordered)) # [2, N]
-                # for i in range(len(contours_only_text_parent)):
-                #     cnt = contours_only_text_parent[i]
-                #     cnt = polygon2contour(deskew(contour2polygon(cnt)))
-                #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='blue'))
-                # for i in range(len(contours_only_text_parent_d_ordered)):
-                #     cnt = contours_only_text_parent_d_ordered[i]
-                #     ctr = centers_d[:, i]
-                #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='red'))
-                #     plt.gca().scatter(ctr[0], ctr[1], 20, c='red', marker='x')
-                #     plt.gca().text(ctr[0], ctr[1], str(i), c='red')
-                # plt.show()
-
-        if not len(contours_only_text_parent):
-            # stop early
-            # FIXME: Why not just (convert polygons_of_marginals to contours_only_text_parent and)
-            #        continue processing normally?
-            #        Why not (at least) split marginals left vs right and get textlines?
-            empty_marginals = [[]] * len(polygons_of_marginals)
-            if self.full_layout:
-                pcgts = writer.build_pagexml_full_layout(
-                    found_polygons_text_region=[],
-                    found_polygons_text_region_h=[],
-                    page_coord=page_coord,
-                    order_of_texts=[],
-                    all_found_textline_polygons=[],
-                    all_found_textline_polygons_h=[],
-                    all_box_coord=[],
-                    all_box_coord_h=[],
-                    found_polygons_images=polygons_of_images,
-                    found_polygons_tables=contours_tables,
-                    found_polygons_drop_capitals=[],
-                    found_polygons_marginals_left=polygons_of_marginals,
-                    found_polygons_marginals_right=polygons_of_marginals,
-                    all_found_textline_polygons_marginals_left=empty_marginals,
-                    all_found_textline_polygons_marginals_right=empty_marginals,
-                    all_box_coord_marginals_left=empty_marginals,
-                    all_box_coord_marginals_right=empty_marginals,
-                    slopes=[],
-                    slopes_h=[],
-                    slopes_marginals_left=[],
-                    slopes_marginals_right=[],
-                    cont_page=cont_page,
-                    polygons_seplines=polygons_seplines,
-                )
-            else:
-                pcgts = writer.build_pagexml_no_full_layout(
-                    found_polygons_text_region=[],
-                    page_coord=page_coord,
-                    order_of_texts=[],
-                    all_found_textline_polygons=[],
-                    all_box_coord=[],
-                    found_polygons_images=polygons_of_images,
-                    found_polygons_tables=contours_tables,
-                    found_polygons_marginals_left=polygons_of_marginals,
-                    found_polygons_marginals_right=polygons_of_marginals,
-                    all_found_textline_polygons_marginals_left=empty_marginals,
-                    all_found_textline_polygons_marginals_right=empty_marginals,
-                    all_box_coord_marginals_left=empty_marginals,
-                    all_box_coord_marginals_right=empty_marginals,
-                    slopes=[],
-                    slopes_marginals_left=[],
-                    slopes_marginals_right=[],
-                    cont_page=cont_page,
-                    polygons_seplines=polygons_seplines,
-                )
-            writer.write_pagexml(pcgts)
-            self.logger.info("Job done in %.1fs", time.time() - t0)
-            return
-
+        (polygons_of_textregions,
+         polygons_of_textregions_d) = self.filter_contours_inside_a_bigger_one(
+             polygons_of_textregions,
+             polygons_of_textregions_d,
+             text_regions_p.shape,
+             marginal_cnts=polygons_of_marginals)
         #print("text region early 3 in %.1fs", time.time() - t0)
-        contours_only_text_parent = dilate_textregion_contours(contours_only_text_parent)
-        contours_only_text_parent , contours_only_text_parent_d_ordered = self.filter_contours_inside_a_bigger_one(
-            contours_only_text_parent, contours_only_text_parent_d_ordered, text_only,
-            marginal_cnts=polygons_of_marginals)
-        #print("text region early 3.5 in %.1fs", time.time() - t0)
-        conf_textregions = get_region_confidences(contours_only_text_parent, regions_confidence)
-        #contours_only_text_parent = dilate_textregion_contours(contours_only_text_parent)
+        polygons_of_textregions = dilate_textregion_contours(polygons_of_textregions)
+        conf_textregions = get_region_confidences(polygons_of_textregions, regions_confidence)
+
+        if not len(polygons_of_textregions):
+            polygons_of_textregions = polygons_of_marginals
+            polygons_of_marginals = []
+            conf_textregions = conf_marginals
+            conf_marginals = []
+
         #print("text region early 4 in %.1fs", time.time() - t0)
-        boxes_text = get_text_region_boxes_by_given_contours(contours_only_text_parent)
+        boxes_text = get_text_region_boxes_by_given_contours(polygons_of_textregions)
         boxes_marginals = get_text_region_boxes_by_given_contours(polygons_of_marginals)
         #print("text region early 5 in %.1fs", time.time() - t0)
         ## birdan sora chock chakir
         if not self.curved_line:
             all_found_textline_polygons, \
                 all_box_coord, slopes = self.get_slopes_and_deskew_new_light2(
-                    contours_only_text_parent, textline_mask_tot_ea_org,
+                    polygons_of_textregions, textline_mask_tot_ea_org,
                     boxes_text, slope_deskew)
             all_found_textline_polygons_marginals, \
                 all_box_coord_marginals, slopes_marginals = self.get_slopes_and_deskew_new_light2(
@@ -2764,28 +2561,28 @@ class Eynollah:
             all_found_textline_polygons = dilate_textline_contours(
                 all_found_textline_polygons)
             all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(
-                all_found_textline_polygons, None, textline_mask_tot_ea_org, type_contour="textline")
+                all_found_textline_polygons, None, None, type_contour="textline")
             all_found_textline_polygons_marginals = dilate_textline_contours(
                 all_found_textline_polygons_marginals)
-            contours_only_text_parent, all_found_textline_polygons, \
-                contours_only_text_parent_d_ordered, conf_textregions = \
+            polygons_of_textregions, all_found_textline_polygons, \
+                polygons_of_textregions_d, conf_textregions = \
                 self.filter_contours_without_textline_inside(
-                    contours_only_text_parent, all_found_textline_polygons,
-                    contours_only_text_parent_d_ordered, conf_textregions)
+                    polygons_of_textregions, all_found_textline_polygons,
+                    polygons_of_textregions_d, conf_textregions)
         else:
             scale_param = 1
             textline_mask_tot_ea_erode = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=2)
             all_found_textline_polygons, \
                 all_box_coord, slopes = self.get_slopes_and_deskew_new_curved(
-                    contours_only_text_parent, textline_mask_tot_ea_erode,
-                    boxes_text, text_only,
+                    polygons_of_textregions, textline_mask_tot_ea_erode,
+                    boxes_text,
                     num_col_classifier, scale_param, slope_deskew, image['name'])
             all_found_textline_polygons = small_textlines_to_parent_adherence2(
                 all_found_textline_polygons, textline_mask_tot_ea, num_col_classifier)
             all_found_textline_polygons_marginals, \
                 all_box_coord_marginals, slopes_marginals = self.get_slopes_and_deskew_new_curved(
                     polygons_of_marginals, textline_mask_tot_ea_erode,
-                    boxes_marginals, text_only,
+                    boxes_marginals,
                     num_col_classifier, scale_param, slope_deskew, image['name'])
             all_found_textline_polygons_marginals = small_textlines_to_parent_adherence2(
                 all_found_textline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
@@ -2813,32 +2610,32 @@ class Eynollah:
 
         if self.full_layout:
             (text_regions_p,
-             contours_only_text_parent,
-             contours_only_text_parent_h,
+             polygons_of_textregions,
+             polygons_of_textregions_h,
+             polygons_of_textregions_d,
+             polygons_of_textregions_h_d,
              all_box_coord,
              all_box_coord_h,
              all_found_textline_polygons,
              all_found_textline_polygons_h,
              slopes,
              slopes_h,
-             contours_only_text_parent_d_ordered,
-             contours_only_text_parent_h_d_ordered,
              conf_textregions,
              conf_textregions_h) = split_textregion_main_vs_head(
                  text_regions_p,
                  regions_fully,
-                 contours_only_text_parent,
+                 polygons_of_textregions,
+                 polygons_of_textregions_d,
                  all_box_coord,
                  all_found_textline_polygons,
                  slopes,
-                 contours_only_text_parent_d_ordered,
                  conf_textregions)
 
             if self.plotter:
                 self.plotter.save_plot_of_layout(text_regions_p, image_page, image['name'])
                 self.plotter.save_plot_of_layout_all(text_regions_p, image_page, image['name'])
             ##all_found_textline_polygons = adhere_drop_capital_region_into_corresponding_textline(
-                ##text_regions_p, polygons_of_drop_capitals, contours_only_text_parent, contours_only_text_parent_h,
+                ##text_regions_p, polygons_of_drop_capitals, polygons_of_textregions, polygons_of_textregions_h,
                 ##all_box_coord, all_box_coord_h, all_found_textline_polygons, all_found_textline_polygons_h,
                 ##kernel=KERNEL, curved_line=self.curved_line)
 
@@ -2847,11 +2644,11 @@ class Eynollah:
                 if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                     _, _, matrix_of_seps_ch, splitter_y_new, _ = find_number_of_columns_in_document(
                         text_regions_p, num_col_classifier, self.tables, label_seps,
-                        contours_h=None if self.headers_off else contours_only_text_parent_h)
+                        contours_h=None if self.headers_off else polygons_of_textregions_h)
                 else:
                     _, _, matrix_of_seps_ch_d, splitter_y_new_d, _ = find_number_of_columns_in_document(
                         text_regions_p_d, num_col_classifier, self.tables, label_seps,
-                        contours_h=None if self.headers_off else contours_only_text_parent_h_d_ordered)
+                        contours_h=None if self.headers_off else polygons_of_textregions_h_d)
 
                 if not erosion_hurts:
                     if np.abs(slope_deskew) < SLOPE_THRESHOLD:
@@ -2875,8 +2672,8 @@ class Eynollah:
                         logger=self.logger)
         else:
             polygons_of_drop_capitals = []
-            contours_only_text_parent_h = []
-            contours_only_text_parent_h_d_ordered = []
+            polygons_of_textregions_h = []
+            polygons_of_textregions_h_d = []
 
         if self.plotter:
             self.plotter.write_images_into_directory(polygons_of_images, image_page,
@@ -2894,21 +2691,21 @@ class Eynollah:
 
         if self.reading_order_machine_based:
             order_text_new = self.do_order_of_regions_with_model(
-                contours_only_text_parent,
-                contours_only_text_parent_h,
+                polygons_of_textregions,
+                polygons_of_textregions_h,
                 polygons_of_drop_capitals,
                 text_regions_p)
         else:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
                 order_text_new = self.do_order_of_regions(
-                    contours_only_text_parent,
-                    contours_only_text_parent_h,
+                    polygons_of_textregions,
+                    polygons_of_textregions_h,
                     polygons_of_drop_capitals,
                     boxes, textline_mask_tot_ea)
             else:
                 order_text_new = self.do_order_of_regions(
-                    contours_only_text_parent_d_ordered,
-                    contours_only_text_parent_h_d_ordered,
+                    polygons_of_textregions_d,
+                    polygons_of_textregions_h_d,
                     polygons_of_drop_capitals,
                     boxes_d, textline_mask_tot_ea_d)
         self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
@@ -2917,8 +2714,8 @@ class Eynollah:
 
         if self.full_layout:
             pcgts = writer.build_pagexml_full_layout(
-                found_polygons_text_region=contours_only_text_parent,
-                found_polygons_text_region_h=contours_only_text_parent_h,
+                found_polygons_text_region=polygons_of_textregions,
+                found_polygons_text_region_h=polygons_of_textregions_h,
                 page_coord=page_coord,
                 order_of_texts=order_text_new,
                 all_found_textline_polygons=all_found_textline_polygons,
@@ -2950,7 +2747,7 @@ class Eynollah:
             )
         else:
             pcgts = writer.build_pagexml_no_full_layout(
-                found_polygons_text_region=contours_only_text_parent,
+                found_polygons_text_region=polygons_of_textregions,
                 page_coord=page_coord,
                 order_of_texts=order_text_new,
                 all_found_textline_polygons=all_found_textline_polygons,

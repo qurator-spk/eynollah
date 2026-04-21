@@ -1584,7 +1584,7 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, name=No
 
 def do_work_of_slopes_new_curved(
         box_text, contour_par,
-        textline_mask_tot_ea=None, mask_texts_only=None,
+        textline_mask_tot_ea=None,
         num_col=1, scale_par=1.0, slope_deskew=0.0,
         logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None, name=None
 ):
@@ -1633,7 +1633,7 @@ def do_work_of_slopes_new_curved(
     if abs(slope_for_all) < 45:
         textline_region_in_image = np.zeros(textline_mask_tot_ea.shape)
         x, y, w, h = cv2.boundingRect(contour_par)
-        mask_biggest = np.zeros(mask_texts_only.shape)
+        mask_biggest = np.zeros(textline_mask_tot_ea.shape)
         mask_biggest = cv2.fillPoly(mask_biggest, pts=[contour_par], color=(1, 1, 1))
         mask_region_in_patch_region = mask_biggest[y : y + h, x : x + w]
         textline_biggest_region = mask_biggest * textline_mask_tot_ea
@@ -1653,7 +1653,7 @@ def do_work_of_slopes_new_curved(
 
         textlines_cnt_per_region = []
         for jjjj in range(len(cnt_textlines_in_image)):
-            mask_biggest2 = np.zeros(mask_texts_only.shape)
+            mask_biggest2 = np.zeros(textline_mask_tot_ea.shape)
             mask_biggest2 = cv2.fillPoly(mask_biggest2, pts=[cnt_textlines_in_image[jjjj]], color=(1, 1, 1))
             if num_col + 1 == 1:
                 mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=5)

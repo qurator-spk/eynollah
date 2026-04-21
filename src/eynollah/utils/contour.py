@@ -8,7 +8,7 @@ import numpy as np
 from scipy.sparse.csgraph import minimum_spanning_tree
 from shapely.geometry import Polygon, LineString
 from shapely.geometry.polygon import orient
-from shapely import set_precision
+from shapely import set_precision, affinity
 from shapely.ops import unary_union, nearest_points
 
 from .rotate import rotate_image, rotation_image_new
@@ -106,8 +106,7 @@ def return_parent_contours(contours, hierarchy):
                        if hierarchy[0][i][3] == -1]
     return contours_parent
 
-def return_contours_of_interested_region(region_pre_p, label, min_area=0.0002):
-    # pixels of images are identified by 5
+def return_contours_of_interested_region(region_pre_p, label, min_area=0.0002, dilate=0):
     if region_pre_p.ndim == 3:
         mask = (region_pre_p[:, :, 0] == label).astype(np.uint8)
     else:
@@ -116,7 +115,9 @@ def return_contours_of_interested_region(region_pre_p, label, min_area=0.0002):
     contours_imgs, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
     contours_imgs = filter_contours_area_of_image_tables(mask, contours_imgs, hierarchy,
-                                                         max_area=1, min_area=min_area)
+                                                         max_area=1,
+                                                         min_area=min_area,
+                                                         dilate=dilate)
     return contours_imgs
 
 def do_work_of_contours_in_image(contour, index_r_con, img, slope_first):
@@ -259,6 +260,141 @@ def dilate_textregion_contours(all_found_textregion_polygons):
     return ensure_array(
         [polygon2contour(contour2polygon(contour, dilate=6))
          for contour in all_found_textregion_polygons])
+
+def match_deskewed_contours(slope_deskew, contours_o, contours_d, shape_o, shape_d):
+    from . import ensure_array
+
+    cntareas_o = np.array([cv2.contourArea(contour) for contour in contours_o])
+    cntareas_d = np.array([cv2.contourArea(contour) for contour in contours_d])
+    cntareas_o = cntareas_o / float(np.prod(shape_o[:2]))
+    cntareas_d = cntareas_d / float(np.prod(shape_d[:2]))
+
+    contours_o = ensure_array(contours_o)
+    contours_d = ensure_array(contours_d)
+
+    sort_o = np.argsort(cntareas_o)
+    sort_d = np.argsort(cntareas_d)
+    contours_o = contours_o[sort_o]
+    contours_d = contours_d[sort_d]
+    cntareas_o = cntareas_o[sort_o]
+    cntareas_d = cntareas_d[sort_d]
+
+    centers_o = np.stack(find_center_of_contours(contours_o)) # [2, N]
+    centers_d = np.stack(find_center_of_contours(contours_d)) # [2, N]
+    center0_o = centers_o[:, -1:] # [2, 1]
+    center0_d = centers_d[:, -1:] # [2, 1]
+
+    # find the largest among the largest 5 deskewed contours
+    # that is also closest to the largest original contour
+    last5_centers_d = centers_d[:, -5:]
+    dists_d = np.linalg.norm(center0_o - last5_centers_d, axis=0)
+    ind_largest = len(contours_d) - last5_centers_d.shape[1] + np.argmin(dists_d)
+    center0_d[:, 0] = centers_d[:, ind_largest]
+
+    # order new contours the same way as the undeskewed contours
+    # (by calculating the offset of the largest contours, respectively,
+    #  of the new and undeskewed image; then for each contour,
+    #  finding the closest new contour, with proximity calculated
+    #  as distance of their centers modulo offset vector)
+    h_o, w_o = shape_o[:2]
+    center_o = (w_o // 2, h_o // 2)
+    M = cv2.getRotationMatrix2D(center_o, slope_deskew, 1.0)
+    M_22 = np.array(M)[:2, :2]
+    center0_o = np.dot(M_22, center0_o) # [2, 1]
+    offset = center0_o - center0_d # [2, 1]
+
+    centers_o = np.dot(M_22, centers_o) - offset # [2,N]
+    # add dimension for area (so only contours of similar size will be considered close)
+    centers_o = np.append(centers_o, cntareas_o[np.newaxis], axis=0)
+    centers_d = np.append(centers_d, cntareas_d[np.newaxis], axis=0)
+
+    dists = np.zeros((len(contours_o), len(contours_d)))
+    for i in range(len(contours_o)):
+        dists[i] = np.linalg.norm(centers_o[:, i: i + 1] - centers_d, axis=0)
+    corresp = np.zeros(dists.shape, dtype=bool)
+    # keep searching next-closest until at least one correspondence on each side
+    while not np.all(corresp.sum(axis=1)) or not np.all(corresp.sum(axis=0)):
+        idx = np.nanargmin(dists)
+        i, j = np.unravel_index(idx, dists.shape)
+        dists[i, j] = np.nan
+        corresp[i, j] = True
+    # print("original/deskewed adjacency", corresp.nonzero())
+    contours_d_ordered = contours_d[np.argmax(corresp, axis=1)]
+    # from matplotlib import pyplot as plt
+    # img1 = np.zeros(shape_d[:2], dtype=np.uint8)
+    # for i in range(len(contours_o)):
+    #     cv2.fillPoly(img1, pts=[contours_d_ordered[i]], color=i + 1)
+    # plt.subplot(1, 4, 1, title="direct corresp contours")
+    # plt.imshow(img1)
+    # img2 = np.zeros(shape_d[:2], dtype=np.uint8)
+    # join deskewed regions mapping to single original ones
+    for i in range(len(contours_o)):
+        if np.count_nonzero(corresp[i]) > 1:
+            indices = np.flatnonzero(corresp[i])
+            # print("joining", indices)
+            polygons_d = [contour2polygon(contour)
+                          for contour in contours_d[indices]]
+            contour_d_joined = polygon2contour(join_polygons(polygons_d))
+            contours_d_ordered[i] = contour_d_joined
+    #         cv2.fillPoly(img2, pts=[contour_d_joined], color=i + 1)
+    # plt.subplot(1, 4, 2, title="joined contours")
+    # plt.imshow(img2)
+    # img3 = np.zeros(shape_d[:2], dtype=np.uint8)
+    # split deskewed regions mapping to multiple original ones
+    def deskew(polygon):
+        polygon = affinity.rotate(polygon, -slope_deskew, origin=center_o)
+        #polygon = affinity.translate(polygon, *offset.squeeze())
+        return polygon
+    for j in range(len(contours_d)):
+        if np.count_nonzero(corresp[:, j]) > 1:
+            indices = np.flatnonzero(corresp[:, j])
+            # print("splitting along", indices)
+            polygons_o = [deskew(contour2polygon(contour))
+                          for contour in contours_o[indices]]
+            polygon_d = contour2polygon(contours_d[j])
+            polygons_d = [make_intersection(polygon_d, polygon)
+                          for polygon in polygons_o]
+            # ignore where there is no actual overlap
+            indices = indices[np.flatnonzero(polygons_d)]
+            contours_d_joined = [polygon2contour(polygon_d)
+                                 for polygon_d in polygons_d
+                                 if polygon_d]
+            contours_d_ordered[indices] = contours_d_joined
+    #         cv2.fillPoly(img3, pts=contours_d_joined, color=j + 1)
+    # plt.subplot(1, 4, 3, title="split contours")
+    # plt.imshow(img3)
+    # img4 = np.zeros(shape_d[:2], dtype=np.uint8)
+    # for i in range(len(contours_o)):
+    #     cv2.fillPoly(img4, pts=[contours_d_ordered[i]], color=i + 1)
+    # plt.subplot(1, 4, 4, title="result contours")
+    # plt.imshow(img4)
+    # plt.show()
+    # from matplotlib import patches as ptchs
+    # plt.subplot(1, 2, 1, title="undeskewed")
+    # plt.imshow(mask_o)
+    # centers_o = np.stack(find_center_of_contours(contours_o)) # [2, N]
+    # for i in range(len(contours_o)):
+    #     cnt = contours_o[i]
+    #     ctr = centers_o[:, i]
+    #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='blue'))
+    #     plt.gca().scatter(ctr[0], ctr[1], 20, c='blue', marker='x')
+    #     plt.gca().text(ctr[0], ctr[1], str(i), c='blue')
+    # plt.subplot(1, 2, 2, title="deskewed")
+    # plt.imshow(mask_d)
+    # centers_d = np.stack(find_center_of_contours(contours_d_ordered)) # [2, N]
+    # for i in range(len(contours_o)):
+    #     cnt = contours_o[i]
+    #     cnt = polygon2contour(deskew(contour2polygon(cnt)))
+    #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='blue'))
+    # for i in range(len(contours_d_ordered)):
+    #     cnt = contours_d_ordered[i]
+    #     ctr = centers_d[:, i]
+    #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='red'))
+    #     plt.gca().scatter(ctr[0], ctr[1], 20, c='red', marker='x')
+    #     plt.gca().text(ctr[0], ctr[1], str(i), c='red')
+    # plt.show()
+    invsort_o = np.argsort(sort_o)
+    return contours_d_ordered[invsort_o]
 
 def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number]]]], dilate=0):
     polygon = Polygon([point[0] for point in contour])

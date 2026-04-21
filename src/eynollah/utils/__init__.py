@@ -883,12 +883,14 @@ def check_any_text_region_in_model_one_is_main_or_header(
             conf_contours_head)
 
 def split_textregion_main_vs_head(
-        regions_model_1, regions_model_full,
-        contours_only_text_parent,
-        all_box_coord, all_found_textline_polygons,
+        regions_model_1,
+        regions_model_full,
+        polygons_of_textregions,
+        polygons_of_textregions_d,
+        all_box_coord,
+        all_found_textline_polygons,
         slopes,
-        contours_only_text_parent_d_ordered,
-        conf_contours,
+        conf_textregions,
         label_text=1,
         label_head_full=2,
         label_head_final=2,
@@ -907,35 +909,19 @@ def split_textregion_main_vs_head(
                                     (regions_model_full.shape[1] // zoom,
                                      regions_model_full.shape[0] // zoom),
                                     interpolation=cv2.INTER_NEAREST)
-    contours_only_text_parent_z = [contour // zoom
-                                   for contour in contours_only_text_parent]
+    contours_z = [contour // zoom
+                  for contour in polygons_of_textregions]
 
     ###
     _, _, x_min_main, x_max_main, y_min_main, y_max_main, _ = \
-        find_new_features_of_contours(contours_only_text_parent_z)
+        find_new_features_of_contours(contours_z)
 
     length_con=x_max_main-x_min_main
     height_con=y_max_main-y_min_main
 
-    all_found_textline_polygons_main=[]
-    all_found_textline_polygons_head=[]
-
-    all_box_coord_main=[]
-    all_box_coord_head=[]
-
-    slopes_main=[]
-    slopes_head=[]
-
-    contours_only_text_parent_main=[]
-    contours_only_text_parent_head=[]
-
-    conf_contours_main=[]
-    conf_contours_head=[]
-
-    contours_only_text_parent_main_d=[]
-    contours_only_text_parent_head_d=[]
-
-    for ii, con in enumerate(contours_only_text_parent_z):
+    main = []
+    head = []
+    for ii, con in enumerate(contours_z):
         parent = np.zeros_like(regions_model_1)
         parent = cv2.fillPoly(parent, pts=[con], color=1)
 
@@ -948,24 +934,14 @@ def split_textregion_main_vs_head(
             ( pixels_head >= 0.3 * pixels_main and
               length_con[ii] >= 3 * height_con[ii] )):
 
-            regions_model_1[(regions_model_1 == label_text) & (parent > 0)] = label_head_final
-            contours_only_text_parent_head.append(contours_only_text_parent[ii])
-            conf_contours_head.append(conf_contours[ii])
-            if len(contours_only_text_parent_d_ordered):
-                contours_only_text_parent_head_d.append(contours_only_text_parent_d_ordered[ii])
-            all_box_coord_head.append(all_box_coord[ii])
-            slopes_head.append(slopes[ii])
-            all_found_textline_polygons_head.append(all_found_textline_polygons[ii])
+            head.append(ii)
+            label = label_head_final
 
         else:
-            regions_model_1[(regions_model_1 == label_text) & (parent > 0)] = label_main_final
-            contours_only_text_parent_main.append(contours_only_text_parent[ii])
-            conf_contours_main.append(conf_contours[ii])
-            if len(contours_only_text_parent_d_ordered):
-                contours_only_text_parent_main_d.append(contours_only_text_parent_d_ordered[ii])
-            all_box_coord_main.append(all_box_coord[ii])
-            slopes_main.append(slopes[ii])
-            all_found_textline_polygons_main.append(all_found_textline_polygons[ii])
+            main.append(ii)
+            label = label_main_final
+
+        regions_model_1[(regions_model_1 == label_text) & (parent > 0)] = label
 
     ### to make it faster
     regions_model_1 = cv2.resize(regions_model_1, (w_o, h_o), interpolation=cv2.INTER_NEAREST)
@@ -974,19 +950,25 @@ def split_textregion_main_vs_head(
     #                                 interpolation=cv2.INTER_NEAREST)
     ###
 
+    def select(lis, indexes):
+        if not len(lis):
+            return []
+        return [lis[ind] for ind in indexes]
+
     return (regions_model_1,
-            contours_only_text_parent_main,
-            contours_only_text_parent_head,
-            all_box_coord_main,
-            all_box_coord_head,
-            all_found_textline_polygons_main,
-            all_found_textline_polygons_head,
-            slopes_main,
-            slopes_head,
-            contours_only_text_parent_main_d,
-            contours_only_text_parent_head_d,
-            conf_contours_main,
-            conf_contours_head)
+            select(polygons_of_textregions, main),
+            select(polygons_of_textregions, head),
+            select(polygons_of_textregions_d, main),
+            select(polygons_of_textregions_d, head),
+            select(all_box_coord, main),
+            select(all_box_coord, head),
+            select(all_found_textline_polygons, main),
+            select(all_found_textline_polygons, head),
+            select(slopes, main),
+            select(slopes, head),
+            select(conf_textregions, main),
+            select(conf_textregions, head),
+    )
 
 def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col):
     # print(textlines_con)
