@@ -1290,8 +1290,10 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
                 #img_in=np.zeros(separators_closeup_n[:,:,2].shape)
                 #print(img_p_in_ver.shape[1],some_x_max-some_x_min,'xdiff')
                 sum_xspan = dist_x_hor[some_args].sum()
-                tot_xspan = np.max(x_max_main_hor[some_args]) - np.min(x_min_main_hor[some_args])
-                dev_xspan = np.std(dist_x_hor[some_args]) / np.mean(dist_x_hor[some_args])
+                tot_xspan = (np.max(x_max_main_hor[some_args]) -
+                             np.min(x_min_main_hor[some_args]))
+                dev_xspan = (np.std(dist_x_hor[some_args]) /
+                             np.mean(dist_x_hor[some_args])) if sum_xspan else 1
                 if (tot_xspan > sum_xspan and # no x overlap
                     sum_xspan > 0.85 * tot_xspan): # x close to each other
                     # print("merging horizontal pair", pair, some_args, some_cy,
