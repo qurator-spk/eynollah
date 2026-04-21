@@ -2502,11 +2502,6 @@ class Eynollah:
                 all_found_textline_polygons, None, None, type_contour="textline")
             all_found_textline_polygons_marginals = dilate_textline_contours(
                 all_found_textline_polygons_marginals)
-            polygons_of_textregions, all_found_textline_polygons, \
-                polygons_of_textregions_d, conf_textregions = \
-                self.filter_contours_without_textline_inside(
-                    polygons_of_textregions, all_found_textline_polygons,
-                    polygons_of_textregions_d, conf_textregions)
         else:
             scale_param = 1
             textline_mask_tot_ea_erode = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=2)
@@ -2524,6 +2519,11 @@ class Eynollah:
                     num_col_classifier, scale_param, slope_deskew, image['name'])
             all_found_textline_polygons_marginals = small_textlines_to_parent_adherence2(
                 all_found_textline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
+        (polygons_of_textregions, all_found_textline_polygons,
+         polygons_of_textregions_d, conf_textregions) = \
+            self.filter_contours_without_textline_inside(
+                polygons_of_textregions, all_found_textline_polygons,
+                polygons_of_textregions_d, conf_textregions)
 
         (polygons_of_marginals_left,
          polygons_of_marginals_right,
