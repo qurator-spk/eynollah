@@ -1034,14 +1034,13 @@ class Eynollah:
                 slopes)
 
     def get_slopes_and_deskew_new_curved(self, contours_par, textline_mask_tot, boxes,
-                                         num_col, scale_par, slope_deskew, name):
+                                         num_col, slope_deskew, name):
         if not len(contours_par):
             return [], [], []
         self.logger.debug("enter get_slopes_and_deskew_new_curved")
         results = map(partial(do_work_of_slopes_new_curved,
                               textline_mask_tot_ea=textline_mask_tot,
                               num_col=num_col,
-                              scale_par=scale_par,
                               slope_deskew=slope_deskew,
                               MAX_SLOPE=MAX_SLOPE,
                               KERNEL=KERNEL,
@@ -2503,20 +2502,19 @@ class Eynollah:
             all_found_textline_polygons_marginals = dilate_textline_contours(
                 all_found_textline_polygons_marginals)
         else:
-            scale_param = 1
             textline_mask_tot_ea_erode = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=2)
             all_found_textline_polygons, \
                 all_box_coord, slopes = self.get_slopes_and_deskew_new_curved(
                     polygons_of_textregions, textline_mask_tot_ea_erode,
                     boxes_text,
-                    num_col_classifier, scale_param, slope_deskew, image['name'])
+                    num_col_classifier, slope_deskew, image['name'])
             all_found_textline_polygons = small_textlines_to_parent_adherence2(
                 all_found_textline_polygons, textline_mask_tot_ea, num_col_classifier)
             all_found_textline_polygons_marginals, \
                 all_box_coord_marginals, slopes_marginals = self.get_slopes_and_deskew_new_curved(
                     polygons_of_marginals, textline_mask_tot_ea_erode,
                     boxes_marginals,
-                    num_col_classifier, scale_param, slope_deskew, image['name'])
+                    num_col_classifier, slope_deskew, image['name'])
             all_found_textline_polygons_marginals = small_textlines_to_parent_adherence2(
                 all_found_textline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
         (polygons_of_textregions,

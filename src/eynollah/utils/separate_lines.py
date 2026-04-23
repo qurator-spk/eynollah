@@ -6,6 +6,7 @@ import cv2
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from .rotate import rotate_image
+from scipy.stats import linregress
 from .resize import resize_image
 from .contour import (
     return_parent_contours,
@@ -13,6 +14,7 @@ from .contour import (
     return_contours_of_image,
     filter_contours_area_of_image,
     return_contours_of_interested_textline,
+    find_center_of_contours,
     find_contours_mean_y_diff,
 )
 from . import (
@@ -1585,8 +1587,10 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, name=No
 def do_work_of_slopes_new_curved(
         box_text, contour_par,
         textline_mask_tot_ea=None,
-        num_col=1, scale_par=1.0, slope_deskew=0.0,
-        logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None, name=None
+        num_col=1, slope_deskew=0.0,
+        logger=None, MAX_SLOPE=999,
+        KERNEL=None, plotter=None,
+        name=None,
 ):
     if KERNEL is None:
         KERNEL = np.ones((5, 5), np.uint8)
@@ -1595,38 +1599,67 @@ def do_work_of_slopes_new_curved(
     logger.debug("enter do_work_of_slopes_new_curved")
 
     x, y, w, h = box_text
-    all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w].astype(np.uint8)
-    img_int_p = all_text_region_raw[:, :]
+
+    mask_parent = np.zeros((h, w), dtype=np.uint8)
+    mask_parent = cv2.fillPoly(mask_parent, pts=[contour_par - [x, y]], color=1)
+    all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w] * mask_parent
+    if not np.any(all_text_region_raw):
+        return [], slope_deskew
+    img_int_p = np.copy(all_text_region_raw)
 
     # img_int_p=cv2.erode(img_int_p,KERNEL,iterations = 2)
     # plt.imshow(img_int_p)
     # plt.show()
 
     if not np.prod(img_int_p.shape) or img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
-        slope = 0
-        slope_for_all = slope_deskew
+        slope = slope_deskew
     else:
         try:
             textline_con, hierarchy = return_contours_of_image(img_int_p)
             textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con,
                                                              hierarchy,
                                                              max_area=1, min_area=0.0008)
-            y_diff_mean = find_contours_mean_y_diff(textline_con_fil) if len(textline_con_fil) > 1 else np.NaN
-            if np.isnan(y_diff_mean):
-                slope_for_all = MAX_SLOPE
+            if len(textline_con_fil) > 1:
+                cx, cy = find_center_of_contours(textline_con_fil)
+                y_diff_mean = np.median(np.diff(np.sort(np.array(cy))))
+                x_diff_mean = np.median(np.diff(np.sort(np.array(cx))))
+                if h > w and x_diff_mean / w > 2 * y_diff_mean / h:
+                    # print(len(textline_con_fil), "transposed", x_diff_mean, y_diff_mean)
+                    transposed = True
+                    img_int_p = img_int_p.T
+                    sigma = x_diff_mean
+                else:
+                    transposed = False
+                    sigma = y_diff_mean
+                slope = return_deskew_slop(img_int_p, max(1.0, 0.1 * sigma),
+                                           logger=logger,
+                                           name=name,
+                                           plotter=plotter)
+                if transposed:
+                    slope = -90 - slope if slope < 0 else 90 - slope
+                if abs(slope - slope_deskew) < 0.5:
+                    slope = slope_deskew
             else:
-                sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
-                img_int_p[img_int_p > 0] = 1
-                slope_for_all = return_deskew_slop(img_int_p, sigma_des, logger=logger, name=name, plotter=plotter)
-                if abs(slope_for_all) < 0.5:
-                    slope_for_all = slope_deskew
+                if h > 3 * w:
+                    # print(1, "transposed", h, w)
+                    transposed = True
+                    img_int_p = img_int_p.T
+                else:
+                    transposed = False
+                # do linear regression on mask to get slope
+                img_ys, img_xs = img_int_p.nonzero()
+                regression = linregress(x=img_xs, y=img_ys)
+                slope = 180 / np.pi * np.arctan(regression.slope)
+                # print(regression, regression.stderr)
+                if transposed:
+                    slope = 90 - slope
+                if regression.stderr > 0.005:
+                    slope = slope_deskew
         except:
             logger.exception("cannot determine angle of contours")
-            slope_for_all = MAX_SLOPE
+            slope = slope_deskew
 
-        if slope_for_all == MAX_SLOPE:
-            slope_for_all = slope_deskew
-        slope = slope_for_all
+    # print(slope, slope_deskew)
 
     crop_coor = box2rect(box_text)
 
