@@ -970,33 +970,18 @@ def split_textregion_main_vs_head(
             select(conf_textregions, head),
     )
 
-def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col):
-    # print(textlines_con)
-    # textlines_con=textlines_con.astype(np.uint32)
-    textlines_con_changed = []
-    for m1 in range(len(textlines_con)):
+def small_textlines_to_parent_adherence2(textlines_con, textline_mask, num_col):
+    """
+    for each region, split up textlines into small and large areas;
+    keep only the ones with large area, but expanded (by merging
+    contours) by all intersecting lines with small area
+    """
+    textlines_con_new = []
+    for region in textlines_con:
+        areas_cnt_text = np.array(list(map(cv2.contourArea, region)))
+        areas_cnt_text = areas_cnt_text / float(textline_mask.size)
+        indexes_textlines = np.arange(len(region))
 
-        # textlines_tot=textlines_con[m1]
-        # textlines_tot=textlines_tot.astype()
-        textlines_tot = []
-        textlines_tot_org_form = []
-        # print(textlines_tot)
-
-        for nn in range(len(textlines_con[m1])):
-            textlines_tot.append(np.array(textlines_con[m1][nn], dtype=np.int32))
-            textlines_tot_org_form.append(textlines_con[m1][nn])
-
-        ##img_text_all=np.zeros((textline_iamge.shape[0],textline_iamge.shape[1]))
-        ##img_text_all=cv2.fillPoly(img_text_all, pts =textlines_tot , color=(1,1,1))
-
-        ##plt.imshow(img_text_all)
-        ##plt.show()
-        areas_cnt_text = np.array([cv2.contourArea(textlines_tot[j])
-                                   for j in range(len(textlines_tot))])
-        areas_cnt_text = areas_cnt_text / float(textline_iamge.shape[0] * textline_iamge.shape[1])
-        indexes_textlines = np.arange(len(textlines_tot))
-
-        # print(areas_cnt_text,np.min(areas_cnt_text),np.max(areas_cnt_text))
         if num_col == 0:
             min_area = 0.0004
         elif num_col == 1:
@@ -1004,92 +989,51 @@ def small_textlines_to_parent_adherence2(textlines_con, textline_iamge, num_col)
         else:
             min_area = 0.0001
         indexes_textlines_small = indexes_textlines[areas_cnt_text < min_area]
+        indexes_textlines_large = indexes_textlines[areas_cnt_text >= min_area]
 
-        # print(indexes_textlines)
+        textlines_small = [region[i] for i in indexes_textlines_small]
+        textlines_large = [region[i] for i in indexes_textlines_large]
 
-        textlines_small = []
-        textlines_small_org_form = []
-        for i in indexes_textlines_small:
-            textlines_small.append(textlines_tot[i])
-            textlines_small_org_form.append(textlines_tot_org_form[i])
-
-        textlines_big = []
-        textlines_big_org_form = []
-        for i in list(set(indexes_textlines) - set(indexes_textlines_small)):
-            textlines_big.append(textlines_tot[i])
-            textlines_big_org_form.append(textlines_tot_org_form[i])
-
-        img_textline_s = np.zeros(textline_iamge.shape[:2])
-        img_textline_s = cv2.fillPoly(img_textline_s, pts=textlines_small, color=1)
-
-        img_textline_b = np.zeros(textline_iamge.shape[:2])
-        img_textline_b = cv2.fillPoly(img_textline_b, pts=textlines_big, color=1)
-
-        sum_small_big_all = img_textline_s + img_textline_b
-        sum_small_big_all2 = (sum_small_big_all[:, :] == 2) * 1
-
-        sum_intersection_sb = sum_small_big_all2.sum(axis=1).sum()
-        if sum_intersection_sb > 0:
-            dis_small_from_bigs_tot = []
-            for z1 in range(len(textlines_small)):
-                # print(len(textlines_small),'small')
+        img_small = np.zeros_like(textline_mask)
+        img_small = cv2.fillPoly(img_small, pts=textlines_small, color=1)
+        img_large = np.zeros_like(textline_mask)
+        img_large = cv2.fillPoly(img_large, pts=textlines_large, color=1)
+        img_inter = img_small + img_large == 2
+        if np.any(img_inter):
+            indexes_textlines_inter = []
+            for contour_small in textlines_small:
                 intersections = []
-                for z2 in range(len(textlines_big)):
-                    img_text = np.zeros(textline_iamge.shape[:2])
-                    img_text = cv2.fillPoly(img_text, pts=[textlines_small[z1]], color=1)
+                for contour_large in textlines_large:
+                    img0_small = np.zeros_like(textline_mask)
+                    img0_small = cv2.fillPoly(img0_small, pts=[contour_small], color=1)
+                    img0_large = np.zeros_like(textline_mask)
+                    img0_large = cv2.fillPoly(img0_large, pts=[contour_large], color=1)
+                    img0_inter = img0_small + img0_large == 2
+                    intersections.append(np.count_nonzero(img0_inter))
+                idx_large = np.argmax(intersections)
+                if intersections[idx_large] <= 0:
+                    idx_large = -1
+                indexes_textlines_inter.append(idx_large)
 
-                    img_text2 = np.zeros(textline_iamge.shape[:2])
-                    img_text2 = cv2.fillPoly(img_text2, pts=[textlines_big[z2]], color=1)
+            indexes_textlines_inter = np.array(indexes_textlines_inter)
+            for idx_large in set(indexes_textlines_inter):
+                if idx_large < 0:
+                    continue
+                img0_union = np.zeros_like(textline_mask)
+                img0_union = cv2.fillPoly(img0_union, pts=[textlines_large[idx_large]], color=255)
+                indexes_inter_small = np.flatnonzero(indexes_textlines_inter == idx_large)
+                for idx_small in indexes_inter_small:
+                    img0_union = cv2.fillPoly(img0_union, pts=[textlines_small[idx_small]], color=255)
 
-                    sum_small_big = img_text2 + img_text
-                    sum_small_big_2 = (sum_small_big[:, :] == 2) * 1
+                _, thresh = cv2.threshold(img0_union, 0, 255, 0)
+                contours_union, _ = cv2.findContours(thresh.astype(np.uint8),
+                                                     cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                areas_union = np.array(list(map(cv2.contourArea, contours_union)))
+                contour_union = contours_union[np.argmax(areas_union)] #contours_union[0]
+                textlines_large[idx_large] = contour_union
 
-                    sum_intersection = sum_small_big_2.sum(axis=1).sum()
-                    # print(sum_intersection)
-                    intersections.append(sum_intersection)
-
-                if len(np.array(intersections)[np.array(intersections) > 0]) == 0:
-                    intersections = []
-                try:
-                    dis_small_from_bigs_tot.append(np.argmax(intersections))
-                except:
-                    dis_small_from_bigs_tot.append(-1)
-
-            smalls_list = np.array(dis_small_from_bigs_tot)[np.array(dis_small_from_bigs_tot) >= 0]
-            # index_small_textlines_rest=list( set(indexes_textlines_small)-set(smalls_list) )
-
-            textlines_big_with_change = []
-            textlines_big_with_change_con = []
-            textlines_small_with_change = []
-            for z in list(set(smalls_list)):
-                index_small_textlines = list(np.where(np.array(dis_small_from_bigs_tot) == z)[0])
-                # print(z,index_small_textlines)
-
-                img_text2 = np.zeros(textline_iamge.shape[:2], dtype=np.uint8)
-                img_text2 = cv2.fillPoly(img_text2, pts=[textlines_big[z]], color=255)
-
-                textlines_big_with_change.append(z)
-
-                for k in index_small_textlines:
-                    img_text2 = cv2.fillPoly(img_text2, pts=[textlines_small[k]], color=255)
-                    textlines_small_with_change.append(k)
-
-                _, thresh = cv2.threshold(img_text2, 0, 255, 0)
-                cont, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-                # print(cont[0],type(cont))
-                textlines_big_with_change_con.append(cont)
-                textlines_big_org_form[z] = cont[0]
-
-                # plt.imshow(img_text2)
-                # plt.show()
-
-            # print(textlines_big_with_change,'textlines_big_with_change')
-            # print(textlines_small_with_change,'textlines_small_with_change')
-            # print(textlines_big)
-
-        textlines_con_changed.append(textlines_big_org_form)
-    return textlines_con_changed
+        textlines_con_new.append(textlines_large)
+    return textlines_con_new
 
 def order_of_regions(textline_mask, contours_main, contours_head, contours_drop, y_ref, x_ref):
     """
