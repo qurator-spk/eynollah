@@ -939,7 +939,7 @@ class Eynollah:
         if len(diff_cy)>0:
             mean_y_diff = np.mean(diff_cy)
             mean_x_diff = np.mean(diff_cx)
-            count_hor = np.count_nonzero(np.array(w_h_textline) > 1)
+            count_hor = np.count_nonzero(np.diff(w_h_textline) > 0)
             count_ver = len(w_h_textline) - count_hor
 
         else:
@@ -999,30 +999,28 @@ class Eynollah:
 
     def get_slopes_and_deskew_new_light2(self, contours_par, textline_mask_tot, boxes, slope_deskew):
 
-        polygons_of_textlines = return_contours_of_interested_region(textline_mask_tot,1,0.00001)
-        cx_main_tot, cy_main_tot = find_center_of_contours(polygons_of_textlines)
+        polygons_of_textlines = return_contours_of_interested_region(textline_mask_tot, 1, 0.00001)
+        cx_textlines, cy_textlines = find_center_of_contours(polygons_of_textlines)
         w_h_textlines = [cv2.boundingRect(polygon)[2:] for polygon in polygons_of_textlines]
-
         args_textlines = np.arange(len(polygons_of_textlines))
+
         all_found_textline_polygons = []
         slopes = []
-
-        for index, con_region_ind in enumerate(contours_par):
-            results = [cv2.pointPolygonTest(con_region_ind, (cx_main_tot[ind], cy_main_tot[ind]), False)
-                       for ind in args_textlines ]
+        for index, contour in enumerate(contours_par):
+            results = [cv2.pointPolygonTest(contour,
+                                            (cx_textlines[ind],
+                                             cy_textlines[ind]),
+                                            False)
+                       for ind in args_textlines]
             results = np.array(results)
-            indexes_in = args_textlines[results==1]
-            textlines_ins = [polygons_of_textlines[ind] for ind in indexes_in]
-            cx_textline_in = [cx_main_tot[ind] for ind in indexes_in]
-            cy_textline_in = [cy_main_tot[ind] for ind in indexes_in]
-            w_h_textlines_in = [w_h_textlines[ind][0] / float(w_h_textlines[ind][1])  for ind in indexes_in]
+            indexes_in = args_textlines[results == 1]
+            textlines_in = self.get_textlines_of_a_textregion_sorted(
+                [polygons_of_textlines[ind] for ind in indexes_in],
+                [cx_textlines[ind] for ind in indexes_in],
+                [cy_textlines[ind] for ind in indexes_in],
+                [w_h_textlines[ind] for ind in indexes_in])
 
-            textlines_ins = self.get_textlines_of_a_textregion_sorted(textlines_ins,
-                                                                      cx_textline_in,
-                                                                      cy_textline_in,
-                                                                      w_h_textlines_in)
-
-            all_found_textline_polygons.append(textlines_ins)#[::-1])
+            all_found_textline_polygons.append(textlines_in) #[::-1])
             slopes.append(slope_deskew)
 
         return all_found_textline_polygons, slopes
@@ -1631,7 +1629,9 @@ class Eynollah:
             return 0
 
         #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
-        slope_deskew = return_deskew_slop(cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2), 2, 30, True,
+        textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2)
+        slope_deskew = return_deskew_slop(textline_mask_tot_ea, 2,
+                                          n_tot_angles=30, main_page=True,
                                           logger=self.logger, plotter=self.plotter)
         self.logger.info("slope_deskew: %.2f°", slope_deskew)
         return slope_deskew
@@ -2235,28 +2235,23 @@ class Eynollah:
             all_found_textline_polygons = filter_contours_area_of_image(
                 textline_mask_tot_ea, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
 
-            cx_main_tot, cy_main_tot = find_center_of_contours(all_found_textline_polygons)
+            cx_textlines, cy_textlines = find_center_of_contours(all_found_textline_polygons)
             w_h_textlines = [cv2.boundingRect(polygon)[2:]
                              for polygon in all_found_textline_polygons]
-            w_h_textlines = [w / float(h) for w, h in w_h_textlines]
-
             all_found_textline_polygons = self.get_textlines_of_a_textregion_sorted(
                 #all_found_textline_polygons[::-1]
-                all_found_textline_polygons, cx_main_tot, cy_main_tot, w_h_textlines)
-            all_found_textline_polygons = [ all_found_textline_polygons ]
+                all_found_textline_polygons, cx_textlines, cy_textlines, w_h_textlines)
+            all_found_textline_polygons = [all_found_textline_polygons]
             all_found_textline_polygons = dilate_textline_contours(all_found_textline_polygons)
             all_found_textline_polygons = self.filter_contours_inside_a_bigger_one(
                 all_found_textline_polygons, None, None, type_contour="textline")
-
-            order_text_new = [0]
-            slopes =[0]
-            conf_contours_textregions =[0]
 
             pcgts = writer.build_pagexml_no_full_layout(
                 num_col=num_col_classifier,
                 found_polygons_text_region=cont_page,
                 page_coord=page_coord,
-                order_of_texts=order_text_new,
+                page_slope=0,
+                order_of_texts=[0],
                 all_found_textline_polygons=all_found_textline_polygons,
                 found_polygons_images=[],
                 found_polygons_tables=[],
@@ -2264,11 +2259,12 @@ class Eynollah:
                 found_polygons_marginals_right=[],
                 all_found_textline_polygons_marginals_left=[],
                 all_found_textline_polygons_marginals_right=[],
-                slopes=slopes,
+                slopes=[0],
                 slopes_marginals_left=[],
                 slopes_marginals_right=[],
                 cont_page=cont_page,
                 polygons_seplines=[],
+                conf_textregions=[0],
                 skip_layout_reading_order=True
             )
             self.logger.info("Basic processing complete")
