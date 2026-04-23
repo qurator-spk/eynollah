@@ -2325,6 +2325,7 @@ class Eynollah:
             pcgts = writer.build_pagexml_no_full_layout(
                 found_polygons_text_region=[],
                 page_coord=page_coord,
+                page_slope=slope_deskew,
                 order_of_texts=[],
                 all_found_textline_polygons=[],
                 found_polygons_images=[],
@@ -2614,6 +2615,7 @@ class Eynollah:
                 found_polygons_text_region=polygons_of_textregions,
                 found_polygons_text_region_h=polygons_of_textregions_h,
                 page_coord=page_coord,
+                page_slope=slope_deskew,
                 order_of_texts=order_text_new,
                 all_found_textline_polygons=all_found_textline_polygons,
                 all_found_textline_polygons_h=all_found_textline_polygons_h,
@@ -2642,6 +2644,7 @@ class Eynollah:
             pcgts = writer.build_pagexml_no_full_layout(
                 found_polygons_text_region=polygons_of_textregions,
                 page_coord=page_coord,
+                page_slope=slope_deskew,
                 order_of_texts=order_text_new,
                 all_found_textline_polygons=all_found_textline_polygons,
                 found_polygons_images=polygons_of_images,
