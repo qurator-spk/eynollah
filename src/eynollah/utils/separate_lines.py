@@ -1645,7 +1645,6 @@ def do_work_of_slopes_new_curved(
 
     # print(slope, slope_deskew)
 
-    crop_coor = box2rect(box_text)
     if abs(slope) < 45:
         mask_parent = np.zeros((h, w), dtype=np.uint8)
         mask_parent = cv2.fillPoly(mask_parent, pts=[contour_par - [x, y]], color=1)
@@ -1676,7 +1675,7 @@ def do_work_of_slopes_new_curved(
                                                                     slope, contour_par,
                                                                     box_text)
 
-    return textlines_cnt_per_region[::-1], crop_coor, slope
+    return textlines_cnt_per_region[::-1], slope
 
 def do_work_of_slopes_new_light(
         box_text, contour, contour_par,
@@ -1688,7 +1687,6 @@ def do_work_of_slopes_new_light(
     logger.debug('enter do_work_of_slopes_new_light')
 
     x, y, w, h = box_text
-    crop_coor = box2rect(box_text)
     mask_textline = np.zeros(textline_mask_tot_ea.shape)
     mask_textline = cv2.fillPoly(mask_textline, pts=[contour], color=(1,1,1))
     all_text_region_raw = textline_mask_tot_ea * mask_textline
@@ -1703,4 +1701,4 @@ def do_work_of_slopes_new_light(
     cnt_clean_rot = filter_contours_area_of_image(all_text_region_raw, cnt_clean_rot_raw, hir_on_cnt_clean_rot,
                                                   max_area=1, min_area=0.00001)
 
-    return cnt_clean_rot, crop_coor, slope_deskew
+    return cnt_clean_rot, slope_deskew

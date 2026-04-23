@@ -1006,7 +1006,6 @@ class Eynollah:
         args_textlines = np.arange(len(polygons_of_textlines))
         all_found_textline_polygons = []
         slopes = []
-        all_box_coord =[]
 
         for index, con_region_ind in enumerate(contours_par):
             results = [cv2.pointPolygonTest(con_region_ind, (cx_main_tot[ind], cy_main_tot[ind]), False)
@@ -1026,17 +1025,12 @@ class Eynollah:
             all_found_textline_polygons.append(textlines_ins)#[::-1])
             slopes.append(slope_deskew)
 
-            crop_coor = box2rect(boxes[index])
-            all_box_coord.append(crop_coor)
-
-        return (all_found_textline_polygons,
-                all_box_coord,
-                slopes)
+        return all_found_textline_polygons, slopes
 
     def get_slopes_and_deskew_new_curved(self, contours_par, textline_mask_tot, boxes,
                                          num_col, slope_deskew, name):
         if not len(contours_par):
-            return [], [], []
+            return [], []
         self.logger.debug("enter get_slopes_and_deskew_new_curved")
         results = map(partial(do_work_of_slopes_new_curved,
                               textline_mask_tot_ea=textline_mask_tot,
@@ -1049,7 +1043,7 @@ class Eynollah:
                               name=name),
                       boxes, contours_par)
         results = list(results) # exhaust prior to release
-        #textline_polygons, box_coord, slopes = zip(*results)
+        #textline_polygons, slopes = zip(*results)
         self.logger.debug("exit get_slopes_and_deskew_new_curved")
         return tuple(zip(*results))
 
@@ -2064,7 +2058,7 @@ class Eynollah:
         )
 
     def separate_marginals_to_left_and_right_and_order_from_top_to_down(
-            self, polygons_of_marginals, all_found_textline_polygons_marginals, all_box_coord_marginals,
+            self, polygons_of_marginals, all_found_textline_polygons_marginals,
             slopes_marginals, conf_marginals, mid_point_of_page_width):
         cx_marg, cy_marg = find_center_of_contours(polygons_of_marginals)
         cx_marg = ensure_array(cx_marg)
@@ -2086,7 +2080,6 @@ class Eynollah:
 
         return (*splitsort(polygons_of_marginals),
                 *splitsort(all_found_textline_polygons_marginals),
-                *splitsort(all_box_coord_marginals),
                 *splitsort(slopes_marginals),
                 *splitsort(conf_marginals))
 
@@ -2264,15 +2257,12 @@ class Eynollah:
                 page_coord=page_coord,
                 order_of_texts=order_text_new,
                 all_found_textline_polygons=all_found_textline_polygons,
-                all_box_coord=page_coord,
                 found_polygons_images=[],
                 found_polygons_tables=[],
                 found_polygons_marginals_left=[],
                 found_polygons_marginals_right=[],
                 all_found_textline_polygons_marginals_left=[],
                 all_found_textline_polygons_marginals_right=[],
-                all_box_coord_marginals_left=[],
-                all_box_coord_marginals_right=[],
                 slopes=slopes,
                 slopes_marginals_left=[],
                 slopes_marginals_right=[],
@@ -2337,15 +2327,12 @@ class Eynollah:
                 page_coord=page_coord,
                 order_of_texts=[],
                 all_found_textline_polygons=[],
-                all_box_coord=[],
                 found_polygons_images=[],
                 found_polygons_tables=[],
                 found_polygons_marginals_left=[],
                 found_polygons_marginals_right=[],
                 all_found_textline_polygons_marginals_left=[],
                 all_found_textline_polygons_marginals_right=[],
-                all_box_coord_marginals_left=[],
-                all_box_coord_marginals_right=[],
                 slopes=[],
                 slopes_marginals_left=[],
                 slopes_marginals_right=[],
@@ -2486,12 +2473,12 @@ class Eynollah:
         #print("text region early 5 in %.1fs", time.time() - t0)
         ## birdan sora chock chakir
         if not self.curved_line:
-            all_found_textline_polygons, \
-                all_box_coord, slopes = self.get_slopes_and_deskew_new_light2(
+            all_found_textline_polygons, slopes = \
+                self.get_slopes_and_deskew_new_light2(
                     polygons_of_textregions, textline_mask_tot_ea_org,
                     boxes_text, slope_deskew)
-            all_found_textline_polygons_marginals, \
-                all_box_coord_marginals, slopes_marginals = self.get_slopes_and_deskew_new_light2(
+            all_found_textline_polygons_marginals, slopes_marginals = \
+                self.get_slopes_and_deskew_new_light2(
                     polygons_of_marginals, textline_mask_tot_ea_org,
                     boxes_marginals, slope_deskew)
 
@@ -2503,15 +2490,15 @@ class Eynollah:
                 all_found_textline_polygons_marginals)
         else:
             textline_mask_tot_ea_erode = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=2)
-            all_found_textline_polygons, \
-                all_box_coord, slopes = self.get_slopes_and_deskew_new_curved(
+            all_found_textline_polygons, slopes = \
+                self.get_slopes_and_deskew_new_curved(
                     polygons_of_textregions, textline_mask_tot_ea_erode,
                     boxes_text,
                     num_col_classifier, slope_deskew, image['name'])
             all_found_textline_polygons = small_textlines_to_parent_adherence2(
                 all_found_textline_polygons, textline_mask_tot_ea, num_col_classifier)
-            all_found_textline_polygons_marginals, \
-                all_box_coord_marginals, slopes_marginals = self.get_slopes_and_deskew_new_curved(
+            all_found_textline_polygons_marginals, slopes_marginals = \
+                self.get_slopes_and_deskew_new_curved(
                     polygons_of_marginals, textline_mask_tot_ea_erode,
                     boxes_marginals,
                     num_col_classifier, slope_deskew, image['name'])
@@ -2533,8 +2520,6 @@ class Eynollah:
          polygons_of_marginals_right,
          all_found_textline_polygons_marginals_left,
          all_found_textline_polygons_marginals_right,
-         all_box_coord_marginals_left,
-         all_box_coord_marginals_right,
          slopes_marginals_left,
          slopes_marginals_right,
          conf_marginals_left,
@@ -2542,7 +2527,6 @@ class Eynollah:
              self.separate_marginals_to_left_and_right_and_order_from_top_to_down(
                  polygons_of_marginals,
                  all_found_textline_polygons_marginals,
-                 all_box_coord_marginals,
                  slopes_marginals,
                  conf_marginals,
                  0.5 * text_regions_p.shape[1])
@@ -2556,8 +2540,6 @@ class Eynollah:
              polygons_of_textregions_h,
              polygons_of_textregions_d,
              polygons_of_textregions_h_d,
-             all_box_coord,
-             all_box_coord_h,
              all_found_textline_polygons,
              all_found_textline_polygons_h,
              slopes,
@@ -2568,7 +2550,6 @@ class Eynollah:
                  regions_fully,
                  polygons_of_textregions,
                  polygons_of_textregions_d,
-                 all_box_coord,
                  all_found_textline_polygons,
                  slopes,
                  conf_textregions)
@@ -2576,10 +2557,6 @@ class Eynollah:
             if self.plotter:
                 self.plotter.save_plot_of_layout(text_regions_p, image_page, image['name'])
                 self.plotter.save_plot_of_layout_all(text_regions_p, image_page, image['name'])
-            ##all_found_textline_polygons = adhere_drop_capital_region_into_corresponding_textline(
-                ##text_regions_p, polygons_of_drop_capitals, polygons_of_textregions, polygons_of_textregions_h,
-                ##all_box_coord, all_box_coord_h, all_found_textline_polygons, all_found_textline_polygons_h,
-                ##kernel=KERNEL, curved_line=self.curved_line)
         else:
             polygons_of_drop_capitals = []
             polygons_of_textregions_h = []
@@ -2640,8 +2617,6 @@ class Eynollah:
                 order_of_texts=order_text_new,
                 all_found_textline_polygons=all_found_textline_polygons,
                 all_found_textline_polygons_h=all_found_textline_polygons_h,
-                all_box_coord=all_box_coord,
-                all_box_coord_h=all_box_coord_h,
                 found_polygons_images=polygons_of_images,
                 found_polygons_tables=polygons_of_tables,
                 found_polygons_drop_capitals=polygons_of_drop_capitals,
@@ -2649,8 +2624,6 @@ class Eynollah:
                 found_polygons_marginals_right=polygons_of_marginals_right,
                 all_found_textline_polygons_marginals_left=all_found_textline_polygons_marginals_left,
                 all_found_textline_polygons_marginals_right=all_found_textline_polygons_marginals_right,
-                all_box_coord_marginals_left=all_box_coord_marginals_left,
-                all_box_coord_marginals_right=all_box_coord_marginals_right,
                 slopes=slopes,
                 slopes_h=slopes_h,
                 slopes_marginals_left=slopes_marginals_left,
@@ -2671,15 +2644,12 @@ class Eynollah:
                 page_coord=page_coord,
                 order_of_texts=order_text_new,
                 all_found_textline_polygons=all_found_textline_polygons,
-                all_box_coord=all_box_coord,
                 found_polygons_images=polygons_of_images,
                 found_polygons_tables=polygons_of_tables,
                 found_polygons_marginals_left=polygons_of_marginals_left,
                 found_polygons_marginals_right=polygons_of_marginals_right,
                 all_found_textline_polygons_marginals_left=all_found_textline_polygons_marginals_left,
                 all_found_textline_polygons_marginals_right=all_found_textline_polygons_marginals_right,
-                all_box_coord_marginals_left=all_box_coord_marginals_left,
-                all_box_coord_marginals_right=all_box_coord_marginals_right,
                 slopes=slopes,
                 slopes_marginals_left=slopes_marginals_left,
                 slopes_marginals_right=slopes_marginals_right,
