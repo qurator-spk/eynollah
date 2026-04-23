@@ -2253,6 +2253,7 @@ class Eynollah:
             conf_contours_textregions =[0]
 
             pcgts = writer.build_pagexml_no_full_layout(
+                num_col=num_col_classifier,
                 found_polygons_text_region=cont_page,
                 page_coord=page_coord,
                 order_of_texts=order_text_new,
@@ -2323,6 +2324,7 @@ class Eynollah:
             self.logger.info("No columns detected - generating empty PAGE-XML")
 
             pcgts = writer.build_pagexml_no_full_layout(
+                num_col=0,
                 found_polygons_text_region=[],
                 page_coord=page_coord,
                 page_slope=slope_deskew,
@@ -2612,6 +2614,7 @@ class Eynollah:
 
         if self.full_layout:
             pcgts = writer.build_pagexml_full_layout(
+                num_col=num_col_classifier,
                 found_polygons_text_region=polygons_of_textregions,
                 found_polygons_text_region_h=polygons_of_textregions_h,
                 page_coord=page_coord,
@@ -2642,6 +2645,7 @@ class Eynollah:
             )
         else:
             pcgts = writer.build_pagexml_no_full_layout(
+                num_col=num_col_classifier,
                 found_polygons_text_region=polygons_of_textregions,
                 page_coord=page_coord,
                 page_slope=slope_deskew,

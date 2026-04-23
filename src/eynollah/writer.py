@@ -71,6 +71,7 @@ class EynollahXmlWriter:
     def build_pagexml_no_full_layout(
         self,
         *,
+        num_col,
         found_polygons_text_region,
         page_coord,
         page_slope,
@@ -98,6 +99,7 @@ class EynollahXmlWriter:
         conf_tables=None,
     ):
         return self.build_pagexml_full_layout(
+            num_col=num_col,
             found_polygons_text_region=found_polygons_text_region,
             found_polygons_text_region_h=[],
             page_coord=page_coord,
@@ -131,6 +133,7 @@ class EynollahXmlWriter:
     def build_pagexml_full_layout(
         self,
         *,
+        num_col,
         found_polygons_text_region,
         found_polygons_text_region_h,
         page_coord,
@@ -171,6 +174,8 @@ class EynollahXmlWriter:
         pcgts = self.pcgts if self.pcgts else create_page_xml(
             self.image_filename, self.image_height, self.image_width)
         page = pcgts.get_Page()
+        pcgts.Metadata.Comments = "num_col %d" % num_col
+        page.set_custom('layout {num_col:%d;} ' % num_col)
         page.set_orientation(-page_slope)
         if len(cont_page):
             page.set_Border(BorderType(Coords=CoordsType(points=self.calculate_points(cont_page[0]))))
