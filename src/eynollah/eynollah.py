@@ -2046,21 +2046,21 @@ class Eynollah:
         return indexes, centersx, centersy
 
     def filter_contours_without_textline_inside(
-            self, contours_par, contours_textline,
-            contours_only_text_parent_d,
-            conf_contours_textregions):
+            self, contours_textregions, contours_textregions_d,
+            contours_textlines, slopes, conf_contours_textregions):
 
-        assert len(contours_par) == len(contours_textline)
-        indices = [ind for ind, lines in enumerate(contours_textline)
+        assert len(contours_textregions) == len(contours_textlines)
+        indices = [ind for ind, lines in enumerate(contours_textlines)
                    if len(lines)]
         def filterfun(lis):
             if len(lis) == 0:
                 return []
             return [lis[ind] for ind in indices]
 
-        return (filterfun(contours_par),
-                filterfun(contours_textline),
-                filterfun(contours_only_text_parent_d),
+        return (filterfun(contours_textregions),
+                filterfun(contours_textregions_d),
+                filterfun(contours_textlines),
+                filterfun(slopes),
                 filterfun(conf_contours_textregions),
         )
 
@@ -2519,11 +2519,17 @@ class Eynollah:
                     num_col_classifier, scale_param, slope_deskew, image['name'])
             all_found_textline_polygons_marginals = small_textlines_to_parent_adherence2(
                 all_found_textline_polygons_marginals, textline_mask_tot_ea, num_col_classifier)
-        (polygons_of_textregions, all_found_textline_polygons,
-         polygons_of_textregions_d, conf_textregions) = \
+        (polygons_of_textregions,
+         polygons_of_textregions_d,
+         all_found_textline_polygons,
+         slopes,
+         conf_textregions) = \
             self.filter_contours_without_textline_inside(
-                polygons_of_textregions, all_found_textline_polygons,
-                polygons_of_textregions_d, conf_textregions)
+                polygons_of_textregions,
+                polygons_of_textregions_d,
+                all_found_textline_polygons,
+                slopes,
+                conf_textregions)
 
         (polygons_of_marginals_left,
          polygons_of_marginals_right,
