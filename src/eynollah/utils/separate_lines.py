@@ -1662,44 +1662,29 @@ def do_work_of_slopes_new_curved(
     # print(slope, slope_deskew)
 
     crop_coor = box2rect(box_text)
+    if abs(slope) < 45:
+        mask_parent = np.zeros((h, w), dtype=np.uint8)
+        mask_parent = cv2.fillPoly(mask_parent, pts=[contour_par - [x, y]], color=1)
+        mask_parent_textline = mask_parent * textline_mask_tot_ea[y : y + h, x : x + w]
 
-    if abs(slope_for_all) < 45:
-        textline_region_in_image = np.zeros(textline_mask_tot_ea.shape)
-        x, y, w, h = cv2.boundingRect(contour_par)
-        mask_biggest = np.zeros(textline_mask_tot_ea.shape)
-        mask_biggest = cv2.fillPoly(mask_biggest, pts=[contour_par], color=(1, 1, 1))
-        mask_region_in_patch_region = mask_biggest[y : y + h, x : x + w]
-        textline_biggest_region = mask_biggest * textline_mask_tot_ea
-
-        textline_rotated_separated = separate_lines_new2(textline_biggest_region[y: y+h, x: x+w], 0,
-                                                         num_col, slope_for_all,
+        mask_textlines_separated_d = separate_lines_new2(mask_parent_textline, 0,
+                                                         num_col, slope,
                                                          logger=logger, plotter=plotter)
+        #mask_textlines_separated_d[mask_parent != 1] = 0
 
-
-        textline_rotated_separated[mask_region_in_patch_region[:, :] != 1] = 0
-
-        textline_region_in_image[y : y + h, x : x + w] = textline_rotated_separated
-
-
-        pixel_img = 1
-        cnt_textlines_in_image = return_contours_of_interested_textline(textline_region_in_image, pixel_img)
+        textline_contours = return_contours_of_interested_textline(mask_textlines_separated_d, 1)
 
         textlines_cnt_per_region = []
-        for jjjj in range(len(cnt_textlines_in_image)):
-            mask_biggest2 = np.zeros(textline_mask_tot_ea.shape)
-            mask_biggest2 = cv2.fillPoly(mask_biggest2, pts=[cnt_textlines_in_image[jjjj]], color=(1, 1, 1))
-            if num_col + 1 == 1:
-                mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=5)
-            else:
-                mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=4)
+        for contour in textline_contours:
+            mask_line = np.zeros_like(mask_parent)
+            mask_line = cv2.fillPoly(mask_line, pts=[contour], color=1)
+            mask_line = cv2.dilate(mask_line, KERNEL, iterations=5 if num_col == 0 else 4)
 
-            pixel_img = 1
-            mask_biggest2 = resize_image(mask_biggest2,
-                                         int(mask_biggest2.shape[0] * scale_par),
-                                         int(mask_biggest2.shape[1] * scale_par))
-            cnt_textlines_in_image_ind = return_contours_of_interested_textline(mask_biggest2, pixel_img)
+            textline_contours2 = return_contours_of_interested_textline(mask_line, 1)
+            textline_areas2 = np.array(list(map(cv2.contourArea, textline_contours2)))
             try:
-                textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0])
+                contour2 = textline_contours2[np.argmax(textline_areas2)]
+                textlines_cnt_per_region.append(contour2 + [x, y])
             except Exception as why:
                 logger.error(why)
     else:
