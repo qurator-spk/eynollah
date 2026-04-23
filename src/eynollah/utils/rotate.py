@@ -1,36 +1,6 @@
 import math
 import cv2
 
-def rotatedRectWithMaxArea(w, h, angle):
-    if w <= 0 or h <= 0:
-        return 0, 0
-
-    width_is_longer = w >= h
-    side_long, side_short = (w, h) if width_is_longer else (h, w)
-
-    # since the solutions for angle, -angle and 180-angle are all the same,
-    # if suffices to look at the first quadrant and the absolute values of sin,cos:
-    sin_a, cos_a = abs(math.sin(angle)), abs(math.cos(angle))
-    if side_short <= 2.0 * sin_a * cos_a * side_long or abs(sin_a - cos_a) < 1e-10:
-        # half constrained case: two crop corners touch the longer side,
-        #   the other two corners are on the mid-line parallel to the longer line
-        x = 0.5 * side_short
-        wr, hr = (x / sin_a, x / cos_a) if width_is_longer else (x / cos_a, x / sin_a)
-    else:
-        # fully constrained case: crop touches all 4 sides
-        cos_2a = cos_a * cos_a - sin_a * sin_a
-        wr, hr = (w * cos_a - h * sin_a) / cos_2a, (h * cos_a - w * sin_a) / cos_2a
-
-    return wr, hr
-
-def rotate_max_area_new(image, rotated, angle):
-    wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
-    h, w, _ = rotated.shape
-    y1 = h // 2 - int(hr / 2)
-    y2 = y1 + int(hr)
-    x1 = w // 2 - int(wr / 2)
-    x2 = x1 + int(wr)
-    return rotated[y1:y2, x1:x2]
 
 def rotation_image_new(img, thetha):
     rotated = rotate_image(img, thetha)
@@ -50,35 +20,19 @@ def rotate_image_different( img, slope):
     img_rotation = cv2.warpAffine(img, rotation_matrix, (num_cols, num_rows))
     return img_rotation
 
-def rotate_max_area(image, rotated, rotated_textline, rotated_layout, rotated_table_prediction, angle):
-    wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
-    h, w, _ = rotated.shape
-    y1 = h // 2 - int(hr / 2)
-    y2 = y1 + int(hr)
-    x1 = w // 2 - int(wr / 2)
-    x2 = x1 + int(wr)
-    return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2], rotated_table_prediction[y1:y2, x1:x2]
-
-def rotation_not_90_func(img, textline, text_regions_p_1, table_prediction, thetha):
-    rotated = rotate_image(img, thetha)
-    rotated_textline = rotate_image(textline, thetha)
-    rotated_layout = rotate_image(text_regions_p_1, thetha)
-    rotated_table_prediction = rotate_image(table_prediction, thetha)
-    return rotate_max_area(img, rotated, rotated_textline, rotated_layout, rotated_table_prediction, thetha)
-
-def rotation_not_90_func_full_layout(img, textline, text_regions_p_1, text_regions_p_fully, thetha):
-    rotated = rotate_image(img, thetha)
-    rotated_textline = rotate_image(textline, thetha)
-    rotated_layout = rotate_image(text_regions_p_1, thetha)
-    rotated_layout_full = rotate_image(text_regions_p_fully, thetha)
-    return rotate_max_area_full_layout(img, rotated, rotated_textline, rotated_layout, rotated_layout_full, thetha)
-
-def rotate_max_area_full_layout(image, rotated, rotated_textline, rotated_layout, rotated_layout_full, angle):
-    wr, hr = rotatedRectWithMaxArea(image.shape[1], image.shape[0], math.radians(angle))
-    h, w, _ = rotated.shape
-    y1 = h // 2 - int(hr / 2)
-    y2 = y1 + int(hr)
-    x1 = w // 2 - int(wr / 2)
-    x2 = x1 + int(wr)
-    return rotated[y1:y2, x1:x2], rotated_textline[y1:y2, x1:x2], rotated_layout[y1:y2, x1:x2], rotated_layout_full[y1:y2, x1:x2]
-
+def rotate_image_enlarge(img, angle):
+    h, w = img.shape[:2]
+    cx, cy = 0.5 * w, 0.5 * h
+    matrix = cv2.getRotationMatrix2D((cx, cy), angle, 1.0)
+    radian = angle / 180 * math.pi
+    cos = abs(math.cos(radian))
+    sin = abs(math.sin(radian))
+    new_w, new_h = (w * cos + h * sin,
+                    w * sin + h * cos)
+    # box is larger after resize, so instead of shifting
+    # back from center, shift from new center
+    matrix[0, 2] += 0.5 * new_w - cx
+    matrix[1, 2] += 0.5 * new_h - cy
+    return cv2.warpAffine(img, matrix, (int(new_w + 0.5),
+                                        int(new_h + 0.5)),
+                          flags=cv2.INTER_CUBIC)
