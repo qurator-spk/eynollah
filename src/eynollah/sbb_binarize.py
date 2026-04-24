@@ -9,17 +9,18 @@ Tool to load model and binarize a given image.
 
 import os
 import logging
+from pathlib import Path 
 from typing import Optional
 
 import numpy as np
 import cv2
-from ocrd_utils import tf_disable_interactive_logs
 
-from eynollah.model_zoo import EynollahModelZoo
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
+from ocrd_utils import tf_disable_interactive_logs
 tf_disable_interactive_logs()
 import tensorflow as tf
-from tensorflow.python.keras import backend as tensorflow_backend
-from pathlib import Path 
+
+from .model_zoo import EynollahModelZoo
 from .utils import is_image_filename
 
 def resize_image(img_in, input_height, input_width):
@@ -34,21 +35,13 @@ class SbbBinarizer:
         logger: Optional[logging.Logger] = None,
     ):
         self.logger = logger if logger else logging.getLogger('eynollah.binarization')
+        try:
+            for device in tf.config.list_physical_devices('GPU'):
+                tf.config.experimental.set_memory_growth(device, True)
+        except:
+            self.logger.warning("no GPU device available")
         self.models = (model_zoo.model_path('binarization'), model_zoo.load_model('binarization'))
-        self.session = self.start_new_session()
-
-    def start_new_session(self):
-        config = tf.compat.v1.ConfigProto()
-        config.gpu_options.allow_growth = True
-
-        session = tf.compat.v1.Session(config=config)  # tf.InteractiveSession()
-        tensorflow_backend.set_session(session)
-        return session
-    
-    def end_session(self):
-        tensorflow_backend.clear_session()
-        self.session.close()
-        del self.session
+        self.logger.info('Loaded model %s [%s]', self.models[1], self.models[0])
 
     def predict(self, model, img, use_patches, n_batch_inference=5):
         model_height = model.layers[len(model.layers)-1].output_shape[1]
@@ -311,34 +304,20 @@ class SbbBinarizer:
             prediction_true = prediction_true.astype(np.uint8)
         return prediction_true[:,:,0]
 
-    def run(self, image=None, image_path=None, output=None, use_patches=False, dir_in=None):
-        # print(dir_in,'dir_in')
+    def run(self, image=None, image_path=None, output=None, use_patches=False, dir_in=None, overwrite=False):
         if not dir_in:
-            if (image is not None and image_path is not None) or \
-                (image is None and image_path is None):
+            if (image is None) == (image_path is None):
                 raise ValueError("Must pass either a opencv2 image or an image_path")
             if image_path is not None:
                 image = cv2.imread(image_path)
-            img_last = 0
-            model_file, model = self.models
-            self.logger.info('Predicting %s with model %s', image_path if image_path else '[image]', model_file)
-            res = self.predict(model, image, use_patches)
-
-            img_fin = np.zeros((res.shape[0], res.shape[1], 3))
-            res[:, :][res[:, :] == 0] = 2
-            res = res - 1
-            res = res * 255
-            img_fin[:, :, 0] = res
-            img_fin[:, :, 1] = res
-            img_fin[:, :, 2] = res
-
-            img_fin = img_fin.astype(np.uint8)
-            img_fin = (res[:, :] == 0) * 255
-            img_last = img_last + img_fin
-
-            img_last[:, :][img_last[:, :] > 0] = 255
-            img_last = (img_last[:, :] == 0) * 255
+            img_last = self.run_single(image, use_patches)
             if output:
+                if os.path.exists(output):
+                    if overwrite:
+                        self.logger.warning("will overwrite existing output file '%s'", output)
+                    else:
+                        self.logger.warning("output file already exists '%s'", output)
+                        return img_last
                 self.logger.info('Writing binarized image to %s', output)
                 cv2.imwrite(output, img_last)
             return img_last
@@ -346,29 +325,38 @@ class SbbBinarizer:
             ls_imgs = list(filter(is_image_filename, os.listdir(dir_in)))
             self.logger.info("Found %d image files to binarize in %s", len(ls_imgs), dir_in)
             for i, image_path in enumerate(ls_imgs):
+                image_stem = os.path.splitext(image_path)[0]
+                output_path = os.path.join(output, image_stem + '.png')
+                if os.path.exists(output_path):
+                    if overwrite:
+                        self.logger.warning("will overwrite existing output file '%s'", output_path)
+                    else:
+                        self.logger.warning("will skip input for existing output file '%s'", output_path)
+                        continue
                 self.logger.info('Binarizing [%3d/%d] %s', i + 1, len(ls_imgs), image_path)
-                image_stem = Path(image_path).stem
-                image = cv2.imread(os.path.join(dir_in,image_path) )
-                img_last = 0
-                model_file, model = self.models
-                self.logger.info('Predicting %s with model %s', image_path if image_path else '[image]', model_file)
-                res = self.predict(model, image, use_patches)
+                image = cv2.imread(os.path.join(dir_in, image_path))
+                img_last = self.run_single(image, use_patches)
+                self.logger.info('Writing binarized image to %s', output_path)
+                cv2.imwrite(output_path, img_last)
 
-                img_fin = np.zeros((res.shape[0], res.shape[1], 3))
-                res[:, :][res[:, :] == 0] = 2
-                res = res - 1
-                res = res * 255
-                img_fin[:, :, 0] = res
-                img_fin[:, :, 1] = res
-                img_fin[:, :, 2] = res
+    def run_single(self, image: np.ndarray, use_patches=False):
+        img_last = 0
+        model_file, model = self.models
+        res = self.predict(model, image, use_patches)
 
-                img_fin = img_fin.astype(np.uint8)
-                img_fin = (res[:, :] == 0) * 255
-                img_last = img_last + img_fin
+        img_fin = np.zeros((res.shape[0], res.shape[1], 3))
+        res[:, :][res[:, :] == 0] = 2
+        res = res - 1
+        res = res * 255
+        img_fin[:, :, 0] = res
+        img_fin[:, :, 1] = res
+        img_fin[:, :, 2] = res
 
-                img_last[:, :][img_last[:, :] > 0] = 255
-                img_last = (img_last[:, :] == 0) * 255
-                
-                output_filename = os.path.join(output, image_stem + '.png')
-                self.logger.info('Writing binarized image to %s', output_filename)
-                cv2.imwrite(output_filename, img_last)
+        img_fin = img_fin.astype(np.uint8)
+        img_fin = (res[:, :] == 0) * 255
+        img_last = img_last + img_fin
+
+        kernel = np.ones((5, 5), np.uint8)
+        img_last[:, :][img_last[:, :] > 0] = 255
+        img_last = (img_last[:, :] == 0) * 255
+        return img_last
