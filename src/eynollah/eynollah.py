@@ -2423,7 +2423,7 @@ class Eynollah:
 
         polygons_of_textregions = return_contours_of_interested_region(text_regions_p, label_text,
                                                                        min_area=MIN_AREA_REGION)
-        if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
+        if np.abs(slope_deskew) >= SLOPE_THRESHOLD and not self.reading_order_machine_based:
             polygons_of_textregions_d = return_contours_of_interested_region(text_regions_p_d, label_text,
                                                                              min_area=MIN_AREA_REGION)
             if (len(polygons_of_textregions) and
