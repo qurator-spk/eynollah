@@ -7,164 +7,158 @@ from .resize import resize_image
 from .rotate import rotate_image
 
 def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, kernel=None):
-    mask_marginals=np.zeros((text_with_lines.shape[0],text_with_lines.shape[1]))
-    mask_marginals=mask_marginals.astype(np.uint8)
+    # rs: text_with_lines should be called text_mask_d
+    # rs: text_regions should be called early_layout (contains other classes, too)
+    # rs: text_with_lines is already deskewed, while text_regions is not...
+    mask_marginals = np.zeros_like(text_with_lines)
+    height, width = mask_marginals.shape
 
-    text_with_lines=text_with_lines.astype(np.uint8)
     ##text_with_lines=cv2.erode(text_with_lines,self.kernel,iterations=3)
+    text_with_lines_eroded = cv2.erode(text_with_lines,kernel,iterations=5)
 
-    text_with_lines_eroded=cv2.erode(text_with_lines,kernel,iterations=5)
-
-    if text_with_lines.shape[0]<=1500:
+    if height <= 1500:
         pass
-    elif text_with_lines.shape[0]>1500 and text_with_lines.shape[0]<=1800:
-        text_with_lines=resize_image(text_with_lines,int(text_with_lines.shape[0]*1.5),text_with_lines.shape[1])
-        text_with_lines=cv2.erode(text_with_lines,kernel,iterations=5)
-        text_with_lines=resize_image(text_with_lines,text_with_lines_eroded.shape[0],text_with_lines_eroded.shape[1])
+    elif 1500 < height <= 1800:
+        # rs: why not / 1.5???
+        text_with_lines = resize_image(text_with_lines, int(height * 1.5), width)
+        text_with_lines = cv2.erode(text_with_lines, kernel, iterations=5)
+        # rs: and back to original size
+        text_with_lines = resize_image(text_with_lines, height, width)
     else:
-        text_with_lines=resize_image(text_with_lines,int(text_with_lines.shape[0]*1.8),text_with_lines.shape[1])
-        text_with_lines=cv2.erode(text_with_lines,kernel,iterations=7)
-        text_with_lines=resize_image(text_with_lines,text_with_lines_eroded.shape[0],text_with_lines_eroded.shape[1])
-        
-        
+        # rs: why not / 1.8???
+        text_with_lines = resize_image(text_with_lines, int(height * 1.8), width)
+        text_with_lines = cv2.erode(text_with_lines, kernel, iterations=7)
+        # rs: and back to original size
+        text_with_lines = resize_image(text_with_lines, height, width)
+
     kernel_hor = np.ones((1, 5), dtype=np.uint8)
-    text_with_lines = cv2.erode(text_with_lines,kernel_hor,iterations=6)
-    
-    text_with_lines_y=text_with_lines.sum(axis=0)
-    text_with_lines_y_eroded=text_with_lines_eroded.sum(axis=0)
+    text_with_lines = cv2.erode(text_with_lines, kernel_hor, iterations=6)
+    text_with_lines_y = text_with_lines.sum(axis=0)
+    text_with_lines_y_eroded = text_with_lines_eroded.sum(axis=0)
 
-    thickness_along_y_percent=text_with_lines_y_eroded.max()/(float(text_with_lines.shape[0]))*100
+    max_textline_thickness_percent = 100. * text_with_lines_y_eroded.max() / height
 
-    #print(thickness_along_y_percent,'thickness_along_y_percent')
-
-    if thickness_along_y_percent<30:
-        min_textline_thickness=8
-    elif thickness_along_y_percent>=30 and thickness_along_y_percent<50:
-        min_textline_thickness=20
+    # rs: min_textline_thickness seems to be calibrated for some fixed resolution,
+    #     but text_with_lines varies in size!
+    if max_textline_thickness_percent < 30:
+        min_textline_thickness = 8
+    elif max_textline_thickness_percent < 50:
+        min_textline_thickness = 20
     else:
-        min_textline_thickness=45
+        min_textline_thickness = 45
+    # min_textline_thickness = max_textline_thickness_percent / 100. * height / 20.
 
+    # plt.figure()
+    # ax1 = plt.subplot(2, 1, 1, title="text_with_lines_eroded")
+    # ax1.imshow(text_with_lines_eroded, aspect='auto')
+    # ax2 = plt.subplot(2, 1, 2, title="text_with_lines_y_eroded", sharex=ax1)
+    # ax2.plot(list(range(width)), text_with_lines_y_eroded)
+    # ax2.hlines(int(0.14 * height), 0, width,
+    #            label='max_textline_thickness=14%', colors='r')
+    # ax2.hlines([min_textline_thickness], 0, width,
+    #            label='min_textline_thickness', colors='g')
+    # ax2.scatter([np.argmax(text_with_lines_y_eroded)],
+    #             [text_with_lines_y_eroded.max()], color='r',
+    #             label='max = %d%%' % max_textline_thickness_percent)
+    # plt.legend()
+    # plt.show()
 
-    if thickness_along_y_percent>=14:
+    if max_textline_thickness_percent >= 14:
+        text_with_lines_y_rev = np.max(text_with_lines_y) - text_with_lines_y
 
-        text_with_lines_y_rev=-1*text_with_lines_y[:]
+        region_sum_0 = gaussian_filter1d(text_with_lines_y, 1)
+        first_nonzero = region_sum_0.nonzero()[0][0] # outer left
+        last_nonzero = region_sum_0.nonzero()[0][-1] # outer right
+        mid_point = 0.5 * (last_nonzero + first_nonzero)
+        one_third_right = (last_nonzero - mid_point) / 3.0
+        one_third_left = (mid_point - first_nonzero) / 3.0
 
-        text_with_lines_y_rev=text_with_lines_y_rev-np.min(text_with_lines_y_rev)
+        # rs: constrain the distance at least 2 characters at 12pt, retrieve height and prominence
+        peaks, props = find_peaks(text_with_lines_y_rev, height=0, prominence=0, distance=30)
+        peaks_orig = np.copy(peaks)
+        # rs: also calculate the product of prominence and height (for final selection)
+        scores = np.zeros(peaks.max() + 1)
+        scores[peaks] = props['prominences'] * props['peak_heights']
+        
+        peaks = peaks[(peaks > first_nonzero) & (peaks < last_nonzero)]
+        peaks = peaks[region_sum_0[peaks] < min_textline_thickness]
 
-        sigma_gaus=1
-        region_sum_0= gaussian_filter1d(text_with_lines_y, sigma_gaus)
+        if num_col == 1:
+            peaks_right = peaks[peaks > mid_point]
+            peaks_left = peaks[peaks < mid_point]
+        if num_col == 2:
+            peaks_right = peaks[peaks > mid_point + one_third_right]
+            peaks_left = peaks[peaks < mid_point - one_third_left]
 
-        region_sum_0_rev=gaussian_filter1d(text_with_lines_y_rev, sigma_gaus)
-
-        region_sum_0_updown=region_sum_0[len(region_sum_0)::-1]
-
-        first_nonzero=(next((i for i, x in enumerate(region_sum_0) if x), None))
-        last_nonzero=(next((i for i, x in enumerate(region_sum_0_updown) if x), None))
-
-
-        last_nonzero=len(region_sum_0)-last_nonzero
-
-        mid_point=(last_nonzero+first_nonzero)/2.
-
-
-        one_third_right=(last_nonzero-mid_point)/3.0
-        one_third_left=(mid_point-first_nonzero)/3.0
-
-        peaks, _ = find_peaks(text_with_lines_y_rev, height=0)
-        peaks=np.array(peaks)
-        peaks=peaks[(peaks>first_nonzero) & (peaks < last_nonzero)]
-        peaks=peaks[region_sum_0[peaks]<min_textline_thickness ]
-
-
-        if num_col==1:
-            peaks_right=peaks[peaks>mid_point]
-            peaks_left=peaks[peaks<mid_point]
-        if num_col==2:
-            peaks_right=peaks[peaks>(mid_point+one_third_right)]
-            peaks_left=peaks[peaks<(mid_point-one_third_left)]
-
-
-        try:
-            point_right=np.min(peaks_right)
-        except:
-            point_right=last_nonzero
-
-
-        try:
-            point_left=np.max(peaks_left)
-        except:
-            point_left=first_nonzero
-
-        if point_left == first_nonzero and point_right == last_nonzero:
+        point_right = np.min(peaks_right, initial=last_nonzero)
+        point_left = np.max(peaks_left, initial=first_nonzero)
+        # rs: at least one peak must have been found
+        if point_right == last_nonzero and point_left == first_nonzero:
             return text_regions
+        # rs: should be called mask_main (i.e. inverted semantics here)
+        mask_marginals[:, point_left: point_right] = 1
 
+        # plt.figure()
+        # ax1 = plt.subplot(2, 2, 1)
+        # ax1.title.set_text('text_with_lines (deskewed text+sep mask)')
+        # ax1.imshow(text_with_lines)
+        # ax1.vlines(peaks_left, 0, height, label='peaks_left', colors='b')
+        # ax1.vlines(peaks_right, 0, height, label='peaks_right', colors='b')
+        # ax1.vlines([first_nonzero], 0, height, label='first_nonzero', colors='g')
+        # ax1.vlines([last_nonzero], 0, height, label='last_nonzero', colors='g')
+        # ax1.vlines([point_left], 0, height, label='point_left', colors='r')
+        # ax1.vlines([point_right], 0, height, label='point_right', colors='r')
+        # ax2 = plt.subplot(2, 2, 2, title='mask_marginals (deskewed marginal mask)', sharey=ax1)
+        # ax2.imshow(mask_marginals)
+        # ax3 = plt.subplot(2, 2, 3, title='text_with_lines_y (projection for minima)', sharex=ax1)
+        # ax3.plot(list(range(width)), text_with_lines_y)
+        # ax3.set_aspect('auto')
+        # ax4 = plt.subplot(2, 2, 4, title='text_regions (undeskewed labels)')
+        # ax4.imshow(text_regions)
+        # plt.legend()
+        # plt.show()
 
-        if point_right>=mask_marginals.shape[1]:
-            point_right=mask_marginals.shape[1]-1
+        # rs: rotate back (into undeskewed/original shape as text_regions input):
+        mask_marginals_rotated = rotate_image(mask_marginals, -slope_deskew)
+        mask_marginals_rotated_y = mask_marginals_rotated.sum(axis=0)
+        mask_marginals_rotated_y_nz = np.flatnonzero(mask_marginals_rotated_y)
+        min_point_of_left_marginal = max(0, np.min(mask_marginals_rotated_y_nz) - 16)
+        max_point_of_right_marginal = min(width - 1, np.max(mask_marginals_rotated_y_nz) + 16)
 
-        try:
-            mask_marginals[:,point_left:point_right]=1
-        except:
-            mask_marginals[:,:]=1
+        min_area_text = 0.00001
+        # rs: why not extract from mask_marginals_rotated???
+        # rs: why not largest area instead of first?
+        polygon_mask_marginals_rotated = return_contours_of_interested_region(mask_marginals, 1, min_area_text)[0]
+        polygons_of_marginals = return_contours_of_interested_region(text_regions, 1, min_area_text)
 
-        mask_marginals_rotated=rotate_image(mask_marginals,-slope_deskew)
+        (cx_text_only,
+         cy_text_only,
+         x_min_text_only,
+         x_max_text_only,
+         y_min_text_only,
+         y_max_text_only,
+         y_cor_x_min_main) = find_new_features_of_contours(polygons_of_marginals)
 
-        mask_marginals_rotated_sum=mask_marginals_rotated.sum(axis=0)
-
-        mask_marginals_rotated_sum[mask_marginals_rotated_sum!=0]=1
-        index_x=np.array(range(len(mask_marginals_rotated_sum)))+1
-
-        index_x_interest=index_x[mask_marginals_rotated_sum==1]
-
-        min_point_of_left_marginal=np.min(index_x_interest)-16
-        max_point_of_right_marginal=np.max(index_x_interest)+16
-
-        if min_point_of_left_marginal<0:
-            min_point_of_left_marginal=0
-        if max_point_of_right_marginal>=text_regions.shape[1]:
-            max_point_of_right_marginal=text_regions.shape[1]-1
-
-        text_regions_org = np.copy(text_regions)
-        text_regions[text_regions[:,:]==1]=4
-        
-        pixel_img=4
-        min_area_text=0.00001
-        
-        polygon_mask_marginals_rotated = return_contours_of_interested_region(mask_marginals,1,min_area_text)
-        
-        polygon_mask_marginals_rotated = polygon_mask_marginals_rotated[0]
-
-        polygons_of_marginals=return_contours_of_interested_region(text_regions,pixel_img,min_area_text)
-
-        cx_text_only,cy_text_only ,x_min_text_only,x_max_text_only, y_min_text_only ,y_max_text_only,y_cor_x_min_main=find_new_features_of_contours(polygons_of_marginals)
-
-        text_regions[(text_regions[:,:]==4)]=1
-
-        marginlas_should_be_main_text=[]
-
+        main_text_should_be_marginals = []
         x_min_marginals_left=[]
         x_min_marginals_right=[]
 
-        for i in range(len(cx_text_only)):
-            results = cv2.pointPolygonTest(polygon_mask_marginals_rotated, (cx_text_only[i], cy_text_only[i]), False)
+        for i, polygon in enumerate(polygons_of_marginals):
+            if -1 == cv2.pointPolygonTest(polygon_mask_marginals_rotated,
+                                          (cx_text_only[i],
+                                           cy_text_only[i]),
+                                          False):
+                main_text_should_be_marginals.append(polygon)
 
-            if results == -1:
-                marginlas_should_be_main_text.append(polygons_of_marginals[i])
-
-
-
-        text_regions_org=cv2.fillPoly(text_regions_org, pts =marginlas_should_be_main_text, color=(4,4))
-        text_regions = np.copy(text_regions_org)
-            
-
-
-        ###text_regions[:,0:point_left][text_regions[:,0:point_left]==1]=4
-
-        ###text_regions[:,point_right:][ text_regions[:,point_right:]==1]=4
-        #plt.plot(region_sum_0)
-        #plt.plot(peaks,region_sum_0[peaks],'*')
-        #plt.show()
-
+        text_regions = cv2.fillPoly(text_regions, pts=main_text_should_be_marginals, color=4)
+        # plt.figure()
+        # ax1 = plt.subplot(2, 2, 1, title='mask_marginals (deskewed marginal mask)')
+        # plt.imshow(mask_marginals)
+        # ax2 = plt.subplot(2, 2, 2, title='mask_marginals_rotated (undeskewed marginal mask)')
+        # plt.imshow(mask_marginals_rotated)
+        # ax4 = plt.subplot(2, 2, 4, title='text_regions (undeskewed labels split)')
+        # plt.imshow(text_regions)
+        # plt.show()
 
         #plt.imshow(text_regions)
         #plt.show()
