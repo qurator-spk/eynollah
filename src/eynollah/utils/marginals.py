@@ -90,11 +90,38 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, kernel=N
             peaks_right = peaks[peaks > mid_point + one_third_right]
             peaks_left = peaks[peaks < mid_point - one_third_left]
 
-        point_right = np.min(peaks_right, initial=last_nonzero)
-        point_left = np.max(peaks_left, initial=first_nonzero)
-        # rs: at least one peak must have been found
-        if point_right == last_nonzero and point_left == first_nonzero:
-            return text_regions
+        if len(peaks_left) == 0:
+            if len(peaks_right) == 0:
+                # plt.figure()
+                # ax1 = plt.subplot(2, 1, 1, title='text_with_lines (deskewed text+sep mask)')
+                # ax1.imshow(text_with_lines, aspect='auto')
+                # ax1.vlines([first_nonzero], 0, height, label='first_nonzero', colors='r')
+                # ax1.vlines([last_nonzero], 0, height, label='last_nonzero', colors='r')
+                # ax1.vlines(peaks_left, 0, height, label='peaks_left', colors='orange')
+                # ax1.vlines(peaks_right, 0, height, label='peaks_right', colors='orange')
+                # ax2 = plt.subplot(2, 1, 2, title='text_with_lines_y (smoothed)', sharex=ax1)
+                # ax2.plot(list(range(width)), region_sum_0)
+                # ax2.hlines(min_textline_thickness, 0, width, colors='g',
+                #            label='min_textline_thickness=%d' % min_textline_thickness)
+                # ax2.scatter(peaks_orig, region_sum_0[peaks_orig], label='peaks')
+                # plt.legend()
+                # plt.show()
+                return text_regions
+            point_right = peaks_right[np.argmax(scores[peaks_right])]
+            #point_left = first_nonzero
+            point_left = 0
+        elif len(peaks_right) == 0:
+            point_left = peaks_left[np.argmax(scores[peaks_left])]
+            #point_right = last_nonzero
+            point_right = width - 1
+        elif scores[peaks_left].max() < scores[peaks_right].max():
+            point_right = peaks_right[np.argmax(scores[peaks_right])]
+            #point_left = first_nonzero
+            point_left = 0
+        else:
+            point_left = peaks_left[np.argmax(scores[peaks_left])]
+            #point_right = last_nonzero
+
         # rs: should be called mask_main (i.e. inverted semantics here)
         mask_marginals[:, point_left: point_right] = 1
 
