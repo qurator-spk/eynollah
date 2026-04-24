@@ -56,6 +56,7 @@ from .utils.contour import (
     dilate_textregion_contours,
     dilate_textline_contours,
     match_deskewed_contours,
+    estimate_skew_contours,
     polygon2contour,
     contour2polygon,
     join_polygons,
@@ -1007,7 +1008,11 @@ class Eynollah:
                 [w_h_textlines[ind] for ind in indexes_in])
 
             all_found_textline_polygons.append(textlines_in) #[::-1])
-            slopes.append(slope_deskew)
+
+            try:
+                slopes.append(estimate_skew_contours(textlines_in))
+            except ValueError:
+                slopes.append(slope_deskew)
 
         return all_found_textline_polygons, slopes
 

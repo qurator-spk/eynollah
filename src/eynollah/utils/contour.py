@@ -396,6 +396,34 @@ def match_deskewed_contours(slope_deskew, contours_o, contours_d, shape_o, shape
     invsort_o = np.argsort(sort_o)
     return contours_d_ordered[invsort_o]
 
+def estimate_skew_contours(contours):
+    if not len(contours):
+        raise ValueError("not enough contours")
+    _, size_in, angle_in = zip(*map(cv2.minAreaRect, contours))
+    w_in, h_in = np.array(size_in).T
+    angle_in = np.array(angle_in)
+    transposed = h_in > w_in
+    # print("transposed", transposed, angle_in)
+    w_in[transposed], h_in[transposed] = h_in[transposed], w_in[transposed]
+    angle_in[transposed] -= 90
+    usable = w_in > 3 * h_in
+    # print("usable aspect", w_in / h_in, usable, angle_in[usable])
+    if not np.any(usable):
+        raise ValueError("not enough contours with high aspect ratio")
+    w_avg = np.median(w_in[usable])
+    w_dev = w_in[usable] / w_avg
+    usable[usable] = (0.67 <= w_dev) & (w_dev <= 1.33)
+    # print("usable width", usable, w_in[usable], angle_in[usable])
+    if not np.any(usable):
+        raise ValueError("not enough contours with consistent length")
+    angle_avg = np.median(angle_in[usable])
+    angle_dev = np.abs(angle_in[usable] - angle_avg)
+    usable[usable] = (angle_dev <= 2 * np.median(angle_dev))
+    # print("usable angle", usable, angle_in[usable], np.mean(angle_in[usable]))
+    if not np.any(usable):
+        raise ValueError("not enough contours with consistent angle")
+    return np.mean(angle_in[usable])
+
 def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number]]]], dilate=0):
     polygon = Polygon([point[0] for point in contour])
     if dilate:
