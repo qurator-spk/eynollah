@@ -37,16 +37,7 @@ def get_marginals(text_with_lines, text_regions, num_col, slope_deskew, kernel=N
     text_with_lines_y_eroded = text_with_lines_eroded.sum(axis=0)
 
     max_textline_thickness_percent = 100. * text_with_lines_y_eroded.max() / height
-
-    # rs: min_textline_thickness seems to be calibrated for some fixed resolution,
-    #     but text_with_lines varies in size!
-    if max_textline_thickness_percent < 30:
-        min_textline_thickness = 8
-    elif max_textline_thickness_percent < 50:
-        min_textline_thickness = 20
-    else:
-        min_textline_thickness = 45
-    # min_textline_thickness = max_textline_thickness_percent / 100. * height / 20.
+    min_textline_thickness = max_textline_thickness_percent / 100. * height / 20.
 
     # plt.figure()
     # ax1 = plt.subplot(2, 1, 1, title="text_with_lines_eroded")
