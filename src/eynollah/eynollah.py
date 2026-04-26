@@ -849,7 +849,6 @@ class Eynollah:
         return segmentation, confidence
 
     def extract_page(self, image):
-        self.logger.debug("enter extract_page")
         cropped_page = img = image['img_res']
         h, w = img.shape[:2]
         page_coord = [0, h, 0, w]
@@ -858,14 +857,13 @@ class Eynollah:
                                [[w, h]],
                                [[0, h]]])]
         if not self.ignore_page_extraction:
+            self.logger.debug("enter extract_page")
             #cv2.GaussianBlur(img, (5, 5), 0)
             prediction = self.do_prediction(False, img, self.model_zoo.get("page"))
-            contours, _ = cv2.findContours(prediction, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-            if len(contours)>0:
-                cnt_size = np.array([cv2.contourArea(contours[j])
-                                     for j in range(len(contours))])
-                cnt = contours[np.argmax(cnt_size)]
+            contours, _ = cv2.findContours(prediction, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if len(contours):
+                areas = np.array(list(map(cv2.contourArea, contours)))
+                cnt = contours[np.argmax(areas)]
                 cont_page = [cnt]
                 x, y, w, h = cv2.boundingRect(cnt)
                 #if x <= 30:
