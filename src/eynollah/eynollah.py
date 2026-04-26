@@ -1637,7 +1637,7 @@ class Eynollah:
 
     def get_full_layout(
             self, image_page,
-            textline_mask_tot, text_regions_p,
+            text_regions_p,
             num_col_classifier,
             table_prediction,
             label_text=1,
@@ -2367,7 +2367,6 @@ class Eynollah:
 
         regions_fully, regionsfl_confidence, regions_without_separators = \
             self.get_full_layout(image_page,
-                                 textline_mask_tot_ea,
                                  text_regions_p,
                                  num_col_classifier,
                                  table_prediction)
