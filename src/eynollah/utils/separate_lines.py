@@ -1328,8 +1328,8 @@ def separate_lines_vertical_cont(textline_mask, box_ind):
 
     return None, contours_final
 
-def textline_contours_postprocessing(textline_mask, angle, contour_parent, box_ind):
-    x, y, w, h = box_ind
+def textline_contours_postprocessing(textline_mask, angle, contour_parent):
+    x, y, w, h = cv2.boundingRect(contour_parent)
     label = 255
     textline_mask = textline_mask * label
     kernel = np.ones((5, 5), np.uint8)
@@ -1569,7 +1569,7 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, name=No
     return angle, var
 
 def do_work_of_slopes_new_curved(
-        box_text, contour_par,
+        contour_par,
         textline_mask_tot_ea=None,
         num_col=1, slope_deskew=0.0,
         logger=None, MAX_SLOPE=999,
@@ -1582,7 +1582,7 @@ def do_work_of_slopes_new_curved(
         logger = getLogger(__package__)
     logger.debug("enter do_work_of_slopes_new_curved")
 
-    x, y, w, h = box_text
+    x, y, w, h = cv2.boundingRect(contour_par)
 
     mask_parent = np.zeros((h, w), dtype=np.uint8)
     mask_parent = cv2.fillPoly(mask_parent, pts=[contour_par - [x, y]], color=1)
@@ -1672,8 +1672,7 @@ def do_work_of_slopes_new_curved(
                 logger.error(why)
     else:
         textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw,
-                                                                    slope, contour_par,
-                                                                    box_text)
+                                                                    slope, contour_par)
 
     return textlines_cnt_per_region[::-1], slope
 
