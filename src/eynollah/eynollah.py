@@ -1502,13 +1502,11 @@ class Eynollah:
             label_imgs=2,
             label_seps=3,
     ):
+        """detect page boundary and apply its mask/bbox, post-process column classifier result, optionally detect tables"""
 
-        #print(text_regions_p_1.shape, 'text_regions_p_1 shape run graphics')
-        #print(erosion_hurts, 'erosion_hurts')
         t_in_gr = time.time()
 
         image_page, page_coord, cont_page = self.extract_page(image)
-        #print("inside graphics 1 ", time.time() - t_in_gr)
         if self.tables:
             table_prediction, table_confidence = self.get_tables_from_model(image_page)
         else:
@@ -1533,6 +1531,7 @@ class Eynollah:
         textline_mask_tot_ea = textline_mask_tot_ea[box]
         regions_confidence = regions_confidence[box]
         textline_confidence = textline_confidence[box]
+        self.logger.debug("Cropped page is %dx%d", *text_regions_p_1.shape)
 
         mask_images = (text_regions_p_1 == label_imgs).astype(np.uint8)
         mask_images = cv2.erode(mask_images, KERNEL, iterations=10)
@@ -1712,18 +1711,9 @@ class Eynollah:
             text_regions_p,
             regions_without_separators,
     ):
-        if np.abs(slope_deskew) >= SLOPE_THRESHOLD:
-            textline_mask_tot_d = rotate_image(textline_mask_tot, slope_deskew)
-            text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
-            regions_without_separators_d = rotate_image(regions_without_separators, slope_deskew)
-        else:
-            textline_mask_tot_d = None
-            text_regions_p_d = None
-            regions_without_separators_d = None
-        return (
-            textline_mask_tot_d,
-            text_regions_p_d,
-            regions_without_separators_d,
+        return (rotate_image(textline_mask_tot, slope_deskew),
+                rotate_image(text_regions_p, slope_deskew),
+                rotate_image(regions_without_separators, slope_deskew),
         )
 
     def run_boxes_order(
@@ -2199,8 +2189,7 @@ class Eynollah:
         self.logger.info(f"Processing file: {writer.image_filename}")
         self.logger.info("Step 1/5: Image Enhancement")
 
-        num_col_classifier, num_column_is_classified = \
-            self.run_enhancement(image)
+        num_col_classifier, num_column_is_classified = self.run_enhancement(image)
         writer.scale_x = image['scale_x']
         writer.scale_y = image['scale_y']
 
@@ -2263,7 +2252,6 @@ class Eynollah:
             self.logger.info("Job done in %.1fs", time.time() - t0)
             return
 
-        #print("text region early -1 in %.1fs", time.time() - t0)
         t1 = time.time()
         self.logger.info("Step 2/5: Layout Analysis")
 
@@ -2274,7 +2262,8 @@ class Eynollah:
          textline_mask_tot_ea,
          regions_confidence,
          textline_confidence) = self.get_early_layout(image, num_col_classifier)
-        #print("text region early -2 in %.1fs", time.time() - t0)
+        t2 = time.time()
+        self.logger.info("Eearly layout took %.1fs", t2 - t1)
 
         if num_col_classifier == 1 or num_col_classifier ==2:
             if num_col_classifier == 1:
@@ -2289,8 +2278,9 @@ class Eynollah:
             slope_deskew = self.run_deskew(textline_mask_tot_ea)
         if self.plotter:
             self.plotter.save_deskewed_image(slope_deskew, image['img'], image['name'])
-        #print("text region early -2,5 in %.1fs", time.time() - t0)
-        #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
+        t3 = time.time()
+        self.logger.info("Deskewing took %.1fs", t3 - t2)
+
         (num_col, num_col_classifier,
          page_coord, image_page, cont_page,
          text_regions_p, table_prediction, textline_mask_tot_ea,
@@ -2335,8 +2325,6 @@ class Eynollah:
             self.logger.info("Job done in %.1fs", time.time() - t0)
             return
 
-        #print("text region early in %.1fs", time.time() - t0)
-        t1 = time.time()
         if num_col_classifier in (1,2):
             org_h_l_m = textline_mask_tot_ea.shape[0]
             org_w_l_m = textline_mask_tot_ea.shape[1]
@@ -2364,13 +2352,14 @@ class Eynollah:
                                  num_col_classifier,
                                  table_prediction)
 
-        (text_regions_p_d,
-         textline_mask_tot_ea_d,
-         regions_without_separators_d) = self.get_deskewed_masks(
-             slope_deskew,
-             text_regions_p,
-             textline_mask_tot_ea,
-             regions_without_separators)
+        if self.full_layout:
+            textline_mask_tot_ea_org[text_regions_p == label_drop_fl] = 0
+            polygons_of_drop_capitals = return_contours_of_interested_region(text_regions_p,
+                                                                             label_drop_fl,
+                                                                             min_area=0.00003)
+            conf_drops = get_region_confidences(polygons_of_drop_capitals, regionsfl_confidence)
+        t6 = time.time()
+        self.logger.info("Full layout took %.1fs", t6 - t5)
 
         min_area_mar = 0.00001
         marginal_mask = (text_regions_p == label_marg_fl).astype(np.uint8)
@@ -2384,16 +2373,18 @@ class Eynollah:
         conf_images = get_region_confidences(polygons_of_images, regions_confidence)
         conf_tables = get_region_confidences(polygons_of_tables, table_confidence)
 
-        if self.full_layout:
-            textline_mask_tot_ea_org[text_regions_p == label_drop_fl] = 0
-            polygons_of_drop_capitals = return_contours_of_interested_region(text_regions_p,
-                                                                             label_drop_fl,
-                                                                             min_area=0.00003)
-            conf_drops = get_region_confidences(polygons_of_drop_capitals, regionsfl_confidence)
-
         polygons_of_textregions = return_contours_of_interested_region(text_regions_p, label_text,
                                                                        min_area=MIN_AREA_REGION)
+
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD and not self.reading_order_machine_based:
+            (text_regions_p_d,
+             textline_mask_tot_ea_d,
+             regions_without_separators_d) = self.get_deskewed_masks(
+                 slope_deskew,
+                 text_regions_p,
+                 textline_mask_tot_ea,
+                 regions_without_separators)
+
             polygons_of_textregions_d = return_contours_of_interested_region(text_regions_p_d, label_text,
                                                                              min_area=MIN_AREA_REGION)
             if (len(polygons_of_textregions) and
@@ -2421,6 +2412,8 @@ class Eynollah:
             polygons_of_marginals = []
             conf_textregions = conf_marginals
             conf_marginals = []
+        t7 = time.time()
+        self.logger.info("Region contours took %.1fs", t7 - t6)
 
         if not self.curved_line:
             self.logger.info("Mode: Light line detection")
@@ -2466,6 +2459,8 @@ class Eynollah:
                 all_found_textline_polygons,
                 slopes,
                 conf_textregions)
+        t8 = time.time()
+        self.logger.info("Line contours took %.1fs", t8 - t7)
 
         (polygons_of_marginals_left,
          polygons_of_marginals_right,
