@@ -1660,7 +1660,7 @@ class Eynollah:
         # class | early | old full (and decoded here) | new full (just predicted) | comment
         # ---
         # para | 1 |  1 | 1 |
-        # head | - |  2 | 2 | used in split_textregion_main_vs_head()
+        # head | - |  2 | 2 | used in split_textregion_main_vs_head() afterwards
         # drop | - |  4 | 3 | assigned from full model below
         # img  | 2 |  5 | 4 | mapped below
         # sep  | 3 |  6 | 5 | mapped + assigned from full model below
@@ -2167,6 +2167,16 @@ class Eynollah:
                    img_pil=None,
                    pcgts=None,
     ) -> None:
+        label_text = 1
+        label_imgs = 2
+        label_imgs_fl = 5
+        label_seps = 3
+        label_seps_fl = 6
+        label_marg = 4
+        label_marg_fl = 8
+        label_drop_fl = 4
+        label_tabs = 10
+
         t0 = time.time()
         self.logger.info(img_filename)
 
@@ -2289,15 +2299,17 @@ class Eynollah:
                                               regions_confidence, textline_confidence,
                                               num_col_classifier, num_column_is_classified,
                                               erosion_hurts, image)
-        #self.logger.info("run graphics %.1fs ", time.time() - t1t)
-        #print("text region early -3 in %.1fs", time.time() - t0)
+        t4 = time.time()
+        self.logger.info("Cropping took %.1fs", t4 - t3)
         textline_mask_tot_ea_org = np.copy(textline_mask_tot_ea)
 
-        #plt.imshow(table_prediction)
-        #plt.show()
-        self.logger.info(f"Layout analysis complete ({time.time() - t1:.1f}s)")
+        # if ratio of text regions to page area is smaller that 30%,
+        # then ignore skew angle above 45°
+        if (abs(slope_deskew) > 45 and
+            ((text_regions_p == label_text).sum()) <= 0.3 * image_page.size):
+            slope_deskew = 0
 
-        if not num_col and len(polygons_text_early) == 0:
+        if not num_col and len(polygons_text_early) == 0 or not image_page.size:
             self.logger.info("No columns detected - generating empty PAGE-XML")
 
             pcgts = writer.build_pagexml_no_full_layout(
@@ -2342,25 +2354,6 @@ class Eynollah:
         if self.plotter:
             self.plotter.save_plot_of_layout_main_all(text_regions_p, image_page, image['name'])
             self.plotter.save_plot_of_layout_main(text_regions_p, image_page, image['name'])
-
-        label_text = 1
-        label_imgs = 2
-        label_imgs_fl = 5
-        label_seps = 3
-        label_seps_fl = 6
-        label_marg = 4
-        label_marg_fl = 8
-        label_drop_fl = 4
-        label_tabs = 10
-        if image_page.size:
-            # if ratio of text regions to page area is smaller that 30%,
-            # then deskew angle will not be allowed to exceed 45
-            if (abs(slope_deskew) > 45 and
-                ((text_regions_p == label_text).sum() +
-                 (text_regions_p == label_marg).sum()) <=
-                0.3 * image_page.size):
-                slope_deskew = 0
-
         t5 = time.time()
         self.logger.info("Marginalia extraction took %.1fs", t5 - t4)
         self.logger.info("Step 3/5: Text Line Detection")
