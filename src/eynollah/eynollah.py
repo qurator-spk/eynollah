@@ -1628,22 +1628,14 @@ class Eynollah:
         return slope_deskew
 
     def run_marginals(
-            self, num_col_classifier, slope_deskew, text_regions_p_1, table_prediction):
+            self, num_col_classifier, slope_deskew, text_regions_p, table_prediction):
 
-        text_regions_p = np.array(text_regions_p_1)
-        if num_col_classifier in (1, 2):
-            try:
-                regions_without_separators = (text_regions_p == 1) * 1
-                if self.tables:
-                    regions_without_separators[table_prediction == 1] = 1
-                regions_without_separators = regions_without_separators.astype(np.uint8)
-                text_regions_p = get_marginals(
-                    rotate_image(regions_without_separators, slope_deskew), text_regions_p,
-                    num_col_classifier, slope_deskew, kernel=KERNEL)
-            except Exception as e:
-                self.logger.error("exception %s", e)
+        regions_without_separators = (text_regions_p == 1).astype(np.uint8)
+        if self.tables:
+            regions_without_separators[table_prediction == 1] = 1
 
-        return text_regions_p
+        get_marginals(regions_without_separators, text_regions_p,
+                      num_col_classifier, slope_deskew, kernel=KERNEL)
 
     def get_full_layout(
             self, image_page,
@@ -2267,7 +2259,7 @@ class Eynollah:
         t1 = time.time()
         self.logger.info("Step 2/5: Layout Analysis")
 
-        (text_regions_p_1,
+        (text_regions_p,
          erosion_hurts,
          polygons_seplines,
          polygons_text_early,
@@ -2293,9 +2285,9 @@ class Eynollah:
         #self.logger.info("Textregion detection took %.1fs ", time.time() - t1t)
         (num_col, num_col_classifier,
          page_coord, image_page, cont_page,
-         text_regions_p_1, table_prediction, textline_mask_tot_ea,
+         text_regions_p, table_prediction, textline_mask_tot_ea,
          regions_confidence, table_confidence, textline_confidence) = \
-                self.run_graphics_and_columns(text_regions_p_1, textline_mask_tot_ea,
+                self.run_graphics_and_columns(text_regions_p, textline_mask_tot_ea,
                                               regions_confidence, textline_confidence,
                                               num_col_classifier, num_column_is_classified,
                                               erosion_hurts, image)
@@ -2344,13 +2336,10 @@ class Eynollah:
                 img_w_new = 2400
             img_h_new = img_w_new * textline_mask_tot_ea.shape[0] // textline_mask_tot_ea.shape[1]
 
-            image_page = resize_image(image_page, img_h_new, img_w_new)
-            textline_mask_tot_ea = resize_image(textline_mask_tot_ea, img_h_new, img_w_new)
-            text_regions_p_1 = resize_image(text_regions_p_1, img_h_new, img_w_new)
-            table_prediction = resize_image(table_prediction, img_h_new, img_w_new)
-
-        text_regions_p = \
-            self.run_marginals(num_col_classifier, slope_deskew, text_regions_p_1, table_prediction)
+            text_regions_p_new = resize_image(text_regions_p, img_h_new, img_w_new)
+            table_prediction_new = resize_image(table_prediction, img_h_new, img_w_new)
+            self.run_marginals(num_col_classifier, slope_deskew, text_regions_p_new, table_prediction_new)
+            text_regions_p = resize_image(text_regions_p_new, org_h_l_m, org_w_l_m)
 
         if self.plotter:
             self.plotter.save_plot_of_layout_main_all(text_regions_p, image_page, image['name'])
@@ -2378,20 +2367,10 @@ class Eynollah:
         if not np.any(text_regions_p == label_text):
             text_regions_p[text_regions_p == label_marg] = label_text
 
+        t5 = time.time()
+        self.logger.info("Marginalia extraction took %.1fs", t5 - t4)
         self.logger.info("Step 3/5: Text Line Detection")
 
-        if self.curved_line:
-            self.logger.info("Mode: Curved line detection")
-
-        if num_col_classifier in (1,2):
-            image_page = resize_image(image_page, org_h_l_m, org_w_l_m)
-            textline_mask_tot_ea = resize_image(textline_mask_tot_ea, org_h_l_m, org_w_l_m)
-            text_regions_p = resize_image(text_regions_p, org_h_l_m, org_w_l_m)
-            text_regions_p_1 = resize_image(text_regions_p_1, org_h_l_m, org_w_l_m)
-            table_prediction = resize_image(table_prediction, org_h_l_m, org_w_l_m)
-
-        self.logger.info(f"Detection of marginals took {time.time() - t1:.1f}s")
-        t1 = time.time()
         regions_fully, regionsfl_confidence, regions_without_separators = \
             self.get_full_layout(image_page,
                                  textline_mask_tot_ea,
@@ -2479,6 +2458,8 @@ class Eynollah:
             all_found_textline_polygons_marginals = dilate_textline_contours(
                 all_found_textline_polygons_marginals)
         else:
+            self.logger.info("Mode: Curved line detection")
+
             textline_mask_tot_ea_erode = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=2)
             all_found_textline_polygons, slopes = \
                 self.get_slopes_and_deskew_new_curved(

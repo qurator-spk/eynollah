@@ -6,16 +6,20 @@ from .contour import find_center_of_contours, return_contours_of_interested_regi
 from .resize import resize_image
 from .rotate import rotate_image
 
-def get_marginals(text_mask_d, early_layout, num_col, slope_deskew, kernel=None,
+def get_marginals(text_mask, early_layout, num_col, slope_deskew,
+                  kernel=None,
                   label_text=1,
                   label_marg=4,
 ):
-    # rs: text_mask_d is already deskewed, while early_layout is not...
+    if kernel is None:
+        kernel = np.ones((5, 5), dtype=np.uint8)
+    kernel_hor = np.ones((1, 5), dtype=np.uint8)
+
+    text_mask_d = rotate_image(text_mask, slope_deskew)
     main_mask_d = np.zeros_like(text_mask_d)
     height, width = main_mask_d.shape
 
-    ##text_mask_d=cv2.erode(text_mask_d,self.kernel,iterations=3)
-    text_mask_d_eroded = cv2.erode(text_mask_d,kernel,iterations=5)
+    text_mask_d_eroded = cv2.erode(text_mask_d, kernel, iterations=5)
 
     if height <= 1500:
         pass
@@ -32,7 +36,6 @@ def get_marginals(text_mask_d, early_layout, num_col, slope_deskew, kernel=None,
         # rs: and back to original size
         text_mask_d = resize_image(text_mask_d, height, width)
 
-    kernel_hor = np.ones((1, 5), dtype=np.uint8)
     text_mask_d = cv2.erode(text_mask_d, kernel_hor, iterations=6)
     text_mask_d_y = text_mask_d.sum(axis=0)
     text_mask_d_y_eroded = text_mask_d_eroded.sum(axis=0)
@@ -98,7 +101,7 @@ def get_marginals(text_mask_d, early_layout, num_col, slope_deskew, kernel=None,
                 # ax2.scatter(peaks_orig, region_sum_0[peaks_orig], label='peaks')
                 # plt.legend()
                 # plt.show()
-                return early_layout
+                return
             point_right = peaks_right[np.argmax(scores[peaks_right])]
             #point_left = first_nonzero
             point_left = 0
@@ -116,6 +119,8 @@ def get_marginals(text_mask_d, early_layout, num_col, slope_deskew, kernel=None,
             point_right = 0
 
         main_mask_d[:, point_left: point_right] = 1
+        if not np.any(main_mask_d):
+            return
 
         # plt.figure()
         # ax1 = plt.subplot(2, 2, 1)
@@ -167,6 +172,3 @@ def get_marginals(text_mask_d, early_layout, num_col, slope_deskew, kernel=None,
         # plt.imshow(early_layout)
         # plt.show()
 
-    else:
-        pass
-    return early_layout
