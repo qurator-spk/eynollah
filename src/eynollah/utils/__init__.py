@@ -1056,8 +1056,11 @@ def order_of_regions(textline_mask, contours_main, contours_head, contours_drop,
       * the array of contour indexes for the respective type
             (i.e. into contours_main or contours_head or contours_drop)
     """
-    ##plt.imshow(textline_mask)
-    ##plt.show()
+    total = len(contours_main) + len(contours_head) + len(contours_drop)
+    assert total == 0 or np.any(textline_mask)
+
+    # ax1 = plt.subplot(2, 1, 1, title="order_of_regions textline_mask")
+    # plt.imshow(textline_mask, aspect='auto')
     y = textline_mask.sum(axis=1) # horizontal projection profile
     y_padded = np.zeros(len(y) + 40)
     y_padded[20 : len(y) + 20] = y
@@ -1066,14 +1069,16 @@ def order_of_regions(textline_mask, contours_main, contours_head, contours_drop,
     #z = gaussian_filter1d(y_padded, sigma_gaus)
     #peaks, _ = find_peaks(z, height=0)
     #peaks = peaks - 20
-    ##plt.plot(z)
-    ##plt.show()
+    # ax2 = plt.subplot(2, 1, 2, title="smoothed horizontal projection", sharex=ax1)
+    # plt.plot(y)
     zneg_rev = np.max(y_padded) - y_padded
     zneg = np.zeros(len(zneg_rev) + 40)
     zneg[20 : len(zneg_rev) + 20] = zneg_rev
     zneg = gaussian_filter1d(zneg, sigma_gaus)
 
     peaks_neg, _ = find_peaks(zneg, height=0)
+    # plt.vlines(peaks_neg - 40, 0, None, label="peaks")
+    # plt.show()
     peaks_neg = peaks_neg - 20 - 20
 
     peaks_neg_new = np.array([0] +
@@ -1091,7 +1096,6 @@ def order_of_regions(textline_mask, contours_main, contours_head, contours_drop,
     # assert not len(cy_head) or np.min(peaks_neg_new) <= np.min(cy_head) and np.max(cy_head) <= np.max(peaks_neg_new)
     # assert not len(cy_drop) or np.min(peaks_neg_new) <= np.min(cy_drop) and np.max(cy_drop) <= np.max(peaks_neg_new)
 
-    total = len(contours_main) + len(contours_head) + len(contours_drop)
     slice_main = slice(0, len(contours_main))
     slice_head = slice(len(contours_main),
                        len(contours_main) + len(contours_head))
@@ -1777,6 +1781,13 @@ def return_boxes_of_images_by_order_of_reading_new(
             y_min_hor_some = np.append(y_min_hor_some, [label_top - 2, label_bot])
             y_max_hor_some = np.append(y_max_hor_some, [label_top, label_bot + 2])
             cy_hor_some = np.append(cy_hor_some, [label_top - 1, label_bot + 1])
+
+        # ensure no seps are out of bounds
+        x_min_hor_some = np.maximum(0, np.minimum(width_tot, x_min_hor_some))
+        x_max_hor_some = np.maximum(0, np.minimum(width_tot, x_max_hor_some))
+        y_min_hor_some = np.maximum(0, np.minimum(height_tot, y_min_hor_some))
+        y_max_hor_some = np.maximum(0, np.minimum(height_tot, y_max_hor_some))
+        cy_hor_some = np.maximum(0, np.minimum(height_tot, cy_hor_some))
 
         if right2left_readingorder:
             x_max_hor_some = width_tot - x_min_hor_some

@@ -1175,7 +1175,7 @@ class Eynollah:
             boxes,
             textline_mask_tot
     ):
-
+        assert np.any(textline_mask_tot)
         self.logger.debug("enter do_order_of_regions")
         contours_only_text_parent = ensure_array(contours_only_text_parent)
         contours_only_text_parent_h = ensure_array(contours_only_text_parent_h)
