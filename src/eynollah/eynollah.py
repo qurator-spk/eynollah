@@ -2518,23 +2518,11 @@ class Eynollah:
             polygons_of_textregions_h = []
             polygons_of_textregions_h_d = []
 
-        if not self.reading_order_machine_based:
-            if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                boxes = self.run_boxes_order(text_regions_p, num_col_classifier, erosion_hurts,
-                                             regions_without_separators,
-                                             contours_h=(None if self.headers_off or not self.full_layout
-                                                         else polygons_of_textregions_h))
-            else:
-                boxes_d = self.run_boxes_order(text_regions_p_d, num_col_classifier, erosion_hurts,
-                                               regions_without_separators_d,
-                                               contours_h=(None if self.headers_off or not self.full_layout
-                                                           else polygons_of_textregions_h_d))
-
         if self.plotter:
             self.plotter.write_images_into_directory(polygons_of_images, image_page,
                                                      image['scale_x'], image['scale_y'], image['name'])
-        t_order = time.time()
 
+        t_order = time.time()
         self.logger.info("Step 4/5: Reading Order Detection")
         if self.right2left:
             self.logger.info("Right-to-left mode enabled")
@@ -2543,20 +2531,29 @@ class Eynollah:
 
         if self.reading_order_machine_based:
             self.logger.info("Using machine-based detection")
-            order_text_new = self.do_order_of_regions_with_model(
+            order_text = self.do_order_of_regions_with_model(
                 polygons_of_textregions,
                 polygons_of_textregions_h,
                 polygons_of_drop_capitals,
                 text_regions_p)
         else:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                order_text_new = self.do_order_of_regions(
+                boxes = self.run_boxes_order(text_regions_p, num_col_classifier, erosion_hurts,
+                                             regions_without_separators,
+                                             contours_h=(None if self.headers_off or not self.full_layout
+                                                         else polygons_of_textregions_h))
+                order_text = self.do_order_of_regions(
                     polygons_of_textregions,
                     polygons_of_textregions_h,
                     polygons_of_drop_capitals,
                     boxes, textline_mask_tot_ea)
             else:
-                order_text_new = self.do_order_of_regions(
+                boxes_d = self.run_boxes_order(text_regions_p_d, num_col_classifier, erosion_hurts,
+                                               regions_without_separators_d,
+                                               contours_h=(None if self.headers_off or not self.full_layout
+                                                           else polygons_of_textregions_h_d))
+
+                order_text = self.do_order_of_regions(
                     polygons_of_textregions_d,
                     polygons_of_textregions_h_d,
                     polygons_of_drop_capitals,
@@ -2564,7 +2561,6 @@ class Eynollah:
         self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
 
         self.logger.info("Step 5/5: Output Generation")
-
         if self.full_layout:
             pcgts = writer.build_pagexml_full_layout(
                 num_col=num_col_classifier,
@@ -2572,7 +2568,7 @@ class Eynollah:
                 found_polygons_text_region_h=polygons_of_textregions_h,
                 page_coord=page_coord,
                 page_slope=slope_deskew,
-                order_of_texts=order_text_new,
+                order_of_texts=order_text,
                 all_found_textline_polygons=all_found_textline_polygons,
                 all_found_textline_polygons_h=all_found_textline_polygons_h,
                 found_polygons_images=polygons_of_images,
@@ -2602,7 +2598,7 @@ class Eynollah:
                 found_polygons_text_region=polygons_of_textregions,
                 page_coord=page_coord,
                 page_slope=slope_deskew,
-                order_of_texts=order_text_new,
+                order_of_texts=order_text,
                 all_found_textline_polygons=all_found_textline_polygons,
                 found_polygons_images=polygons_of_images,
                 found_polygons_tables=polygons_of_tables,
