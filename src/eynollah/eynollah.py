@@ -2363,10 +2363,6 @@ class Eynollah:
                 0.3 * image_page.size):
                 slope_deskew = 0
 
-        # if there is no main text, then relabel marginalia as main
-        if not np.any(text_regions_p == label_text):
-            text_regions_p[text_regions_p == label_marg] = label_text
-
         t5 = time.time()
         self.logger.info("Marginalia extraction took %.1fs", t5 - t4)
         self.logger.info("Step 3/5: Text Line Detection")
