@@ -71,7 +71,7 @@ def get_marginals(text_mask_d, early_layout, num_col, slope_deskew, kernel=None,
         # rs: also calculate the product of prominence and height (for final selection)
         scores = np.zeros(peaks.max() + 1)
         scores[peaks] = props['prominences'] * props['peak_heights']
-        
+
         peaks = peaks[(peaks > first_nonzero) & (peaks < last_nonzero)]
         peaks = peaks[region_sum_0[peaks] < min_text_thickness]
 
@@ -113,6 +113,7 @@ def get_marginals(text_mask_d, early_layout, num_col, slope_deskew, kernel=None,
         else:
             point_left = peaks_left[np.argmax(scores[peaks_left])]
             #point_right = last_nonzero
+            point_right = 0
 
         main_mask_d[:, point_left: point_right] = 1
 
@@ -138,9 +139,7 @@ def get_marginals(text_mask_d, early_layout, num_col, slope_deskew, kernel=None,
 
         # rs: rotate back (into undeskewed/original shape as early_layout input):
         main_mask = rotate_image(main_mask_d, -slope_deskew)
-        main_mask_y = main_mask.sum(axis=0)
-        main_mask_y_nz = np.flatnonzero(main_mask_y)
-
+  
         min_area_text = 0.00001
         main_contour = return_contours_of_interested_region(main_mask, 1, min_area_text)[0]
         text_contours = return_contours_of_interested_region(early_layout, label_text, min_area_text)
@@ -154,7 +153,7 @@ def get_marginals(text_mask_d, early_layout, num_col, slope_deskew, kernel=None,
                                           False):
                 marg_contours.append(contour)
 
-        early_layout_orig = np.copy(early_layout)
+        # early_layout_orig = np.copy(early_layout)
         early_layout = cv2.fillPoly(early_layout, pts=marg_contours, color=label_marg)
 
         # plt.figure()
@@ -167,8 +166,6 @@ def get_marginals(text_mask_d, early_layout, num_col, slope_deskew, kernel=None,
         # ax4 = plt.subplot(2, 2, 4, title='early_layout (undeskewed labels split)')
         # plt.imshow(early_layout)
         # plt.show()
-        #plt.imshow(early_layout)
-        #plt.show()
 
     else:
         pass
