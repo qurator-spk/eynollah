@@ -2326,18 +2326,17 @@ class Eynollah:
             return
 
         if num_col_classifier in (1,2):
-            org_h_l_m = textline_mask_tot_ea.shape[0]
-            org_w_l_m = textline_mask_tot_ea.shape[1]
+            img_h_org, img_w_org = text_regions_p.shape
             if num_col_classifier == 1:
                 img_w_new = 2000
             else:
                 img_w_new = 2400
-            img_h_new = img_w_new * textline_mask_tot_ea.shape[0] // textline_mask_tot_ea.shape[1]
+            img_h_new = img_w_new * img_h_org // img_w_org
 
             text_regions_p_new = resize_image(text_regions_p, img_h_new, img_w_new)
             table_prediction_new = resize_image(table_prediction, img_h_new, img_w_new)
             self.run_marginals(num_col_classifier, slope_deskew, text_regions_p_new, table_prediction_new)
-            text_regions_p = resize_image(text_regions_p_new, org_h_l_m, org_w_l_m)
+            text_regions_p = resize_image(text_regions_p_new, img_h_org, img_w_org)
 
         if self.plotter:
             self.plotter.save_plot_of_layout_main_all(text_regions_p, image_page, image['name'])
@@ -2353,7 +2352,8 @@ class Eynollah:
                                  table_prediction)
 
         if self.full_layout:
-            textline_mask_tot_ea_org[text_regions_p == label_drop_fl] = 0
+            textline_mask_tot_ea_org[text_regions_p == label_drop_fl] = 0 # skip for textlines
+            textline_mask_tot_ea[text_regions_p == label_drop_fl] = 1 # needed for reading order
             polygons_of_drop_capitals = return_contours_of_interested_region(text_regions_p,
                                                                              label_drop_fl,
                                                                              min_area=0.00003)
@@ -2435,7 +2435,7 @@ class Eynollah:
         else:
             self.logger.info("Mode: Curved line detection")
 
-            textline_mask_tot_ea_erode = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=2)
+            textline_mask_tot_ea_erode = cv2.erode(textline_mask_tot_ea_org, kernel=KERNEL, iterations=2)
             all_found_textline_polygons, slopes = \
                 self.get_slopes_and_deskew_new_curved(
                     polygons_of_textregions, textline_mask_tot_ea_erode,
