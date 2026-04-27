@@ -1,3 +1,9 @@
+# NOTE: For predictable order of imports of torch/shapely/tensorflow
+#       this must be the first import of the CLI!
+from .eynollah_imports import imported_libs
+from click import command
+from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
+
 from functools import cached_property
 from typing import Optional
 from ocrd_models import OcrdPage
@@ -5,9 +11,9 @@ from ocrd import OcrdPageResultImage, Processor, OcrdPageResult
 
 from eynollah.model_zoo.model_zoo import EynollahModelZoo
 
-from .eynollah import Eynollah, EynollahXmlWriter
+from .eynollah import Eynollah
 
-class EynollahProcessor(Processor):
+class EynollahSegmentProcessor(Processor):
     @cached_property
     def executable(self) -> str:
         return 'ocrd-eynollah-segment'
@@ -81,3 +87,8 @@ class EynollahProcessor(Processor):
                                  # ocrd.Processor will handle OCRD_EXISTING_OUTPUT more flexibly
                                  overwrite=True)
         return result
+
+@command()
+@ocrd_cli_options
+def main(*args, **kwargs):
+    return ocrd_cli_wrap_processor(EynollahSegmentProcessor, *args, **kwargs)
