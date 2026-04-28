@@ -49,7 +49,7 @@ class EynollahRecognizeProcessor(Processor):
         page_image, page_coords, _ = self.workspace.image_from_page(
             page.get_Page(), page_file.pageId,
             feature_selector="")
-        page_ns = etree_namespace_for_element_tag(page.etree.getroot().tag)
+        page_ns = etree_namespace_for_element_tag(page.etree.tag)
 
         img = pil2cv(page_image)
         if self.eynollah_ocr.tr_ocr:
