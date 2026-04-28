@@ -63,8 +63,6 @@ class Eynollah_ocr:
         
         self.min_conf_value_of_textline_text = min_conf_value_of_textline_text if min_conf_value_of_textline_text else 0.3
         self.b_s = 2 if batch_size is None and tr_ocr else 8 if batch_size is None else batch_size
-        print(batch_size)
-        print(self.b_s)
 
         if tr_ocr:
             self.model_zoo.load_model('trocr_processor')
@@ -479,7 +477,7 @@ class Eynollah_ocr:
                 else:
                     imgs_ver_flipped = None
                 
-                if img_bin:
+                if img_bin is not None:
                     imgs_bin = cropped_lines_bin[n_start:]
                     imgs_bin = np.array(imgs_bin)
                     imgs_bin = imgs_bin.reshape(imgs_bin.shape[0], image_height, image_width, 3)
@@ -509,7 +507,7 @@ class Eynollah_ocr:
                     imgs_ver_flipped = None
 
                 
-                if img_bin:
+                if img_bin is not None:
                     imgs_bin = cropped_lines_bin[n_start:n_end]
                     imgs_bin = np.array(imgs_bin).reshape(self.b_s, image_height, image_width, 3)
                     
@@ -556,7 +554,7 @@ class Eynollah_ocr:
                     preds[indices_to_be_replaced,:,:] = \
                         preds_flipped[indices_where_flipped_conf_value_is_higher, :, :]
 
-            if img_bin:
+            if img_bin is not None:
                 preds_bin = self.model_zoo.get('ocr').predict(imgs_bin, verbose=0)
                 
                 if len(indices_ver)>0:
