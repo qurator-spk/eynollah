@@ -64,12 +64,14 @@ class EynollahRecognizeProcessor(Processor):
             page_image_bin, _, _ = self.workspace.image_from_page(
                 page.get_Page(), page_file.pageId,
                 feature_selector="binarized")
+            img_bin = pil2cv(page_image_bin)
+            print(img_bin)
             result = self.eynollah_ocr.run_cnn( 
                 img=img,
                 page_tree=page.etree.getroottree(),
                 page_ns=page_ns,
 
-                img_bin=pil2cv(page_image_bin),
+                img_bin=img_bin,
                 image_width=512,
                 image_height=32,
             )
