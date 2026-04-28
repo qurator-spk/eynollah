@@ -163,5 +163,42 @@
         }
       ]
     }
+  },
+  "ocrd-eynollah-recognize": {
+    "executable": "ocrd-eynollah-recognize",
+    "categories": ["Text recognition and optimization"],
+    "steps": ["recognition/text-recognition"],
+    "input_file_grp_cardinality": 1,
+    "output_file_grp_cardinality": 1,
+    "parameters": {
+      "models": {
+        "type": "string",
+        "format": "uri",
+        "content-type": "text/directory",
+        "cacheable": true,
+        "description": "Directory containing the eynollah_models directory",
+        "required": true
+      },
+      "do_not_mask_with_textline_contour": {
+        "type": "boolean",
+        "description": "if this parameter set to true, cropped textline images will not be masked with textline contour.",
+        "default": false
+      },
+      "tr_ocr": {
+        "type": "boolean",
+        "description": "Whether to use (much more resource-intensive) transformer model",
+        "default": false
+      }
+    },
+    "resources": [
+      {
+        "url": "https://zenodo.org/records/17580627/files/models_ocr_v0_6_0.tar.gz?download=1",
+        "name": "models_ocr_v0_6_0",
+        "type": "archive",
+        "size": 6119874002,
+        "description": "Models for OCR",
+        "version_range": ">= v0.6.0"
+      }
+    ]
   }
 }

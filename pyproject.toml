@@ -42,6 +42,7 @@ classifiers = [
 eynollah = "eynollah.cli:main"
 eynollah-training = "eynollah.training.cli:main"
 ocrd-eynollah-segment = "eynollah.ocrd_cli_segment:main"
+ocrd-eynollah-recognize = "eynollah.ocrd_cli_recognize:main"
 ocrd-sbb-binarize = "eynollah.ocrd_cli_binarization:main"
 
 [project.urls]
