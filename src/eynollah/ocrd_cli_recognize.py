@@ -62,7 +62,7 @@ class EynollahRecognizeProcessor(Processor):
             )
         else:
             page_image_bin, _, _ = self.workspace.image_from_page(
-                page, page_file.pageId,
+                page.get_Page(), page_file.pageId,
                 feature_selector="binarized")
             result = self.eynollah_ocr.run_cnn( 
                 img=img,
