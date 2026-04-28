@@ -197,9 +197,12 @@ class EynollahModelZoo:
         return model
 
     def get(self, model_category: str) -> Predictor:
-        if model_category not in self._loaded:
-            raise ValueError(f'Model "{model_category}" not previously loaded with "load_model(..)"')
-        return self._loaded[model_category]
+        # if model_category not in self._loaded:
+        #     raise ValueError(f'Model "{model_category}" not previously loaded with "load_model(..)"')
+        if model_category in self._loaded:
+            return self._loaded[model_category]
+        else:
+            return self.load_model(model_category)
 
     def _load_ocr_model(self, variant: str) -> AnyModel:
         """

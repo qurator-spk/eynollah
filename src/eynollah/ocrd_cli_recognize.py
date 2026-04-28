@@ -34,8 +34,8 @@ class EynollahRecognizeProcessor(Processor):
             model_zoo=model_zoo,
             tr_ocr=self.parameter['tr_ocr'],
             do_not_mask_with_textline_contour=self.parameter['do_not_mask_with_textline_contour'],
-            batch_size=self.parameter['batch_size'],
-            min_conf_value_of_textline_text=self.parameter['min_conf_value_of_textline_text'])
+            batch_size=self.parameter['batch_size'] if self.parameter['batch_size'] >= 0 else 2 if self.parameter['tr_ocr'] else 8,
+            min_conf_value_of_textline_text=0)
 
     # FIXME: This is just a proof-of-concept, very inefficient and non-conformant
     # TODO: OCR writing should use PAGE API once result dataclass mechanism is settled,

@@ -72,7 +72,7 @@ class Eynollah_ocr:
             self.model_zoo.load_model('ocr', '')
             self.model_zoo.load_model('num_to_char')
             self.model_zoo.load_model('characters')
-            self.end_character = len(self.model_zoo.get('characters', list)) + 2
+            self.end_character = len(self.model_zoo.get('characters')) + 2
 
     @property
     def device(self):
