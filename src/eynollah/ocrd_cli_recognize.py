@@ -79,7 +79,7 @@ class EynollahRecognizeProcessor(Processor):
         self.eynollah_ocr.write_ocr(
             result=result,
             img=img,
-            page_tree=page.etree,
+            page_tree=page.etree.getroottree(),
             page_ns=page_ns,
             out_file_ocr=str(output_filename),
             out_image_with_text=None,
