@@ -166,7 +166,6 @@ class EynollahXmlWriter:
         conf_images=None,
         conf_tables=None,
         conf_drops=None,
-        skip_layout_reading_order=False,
     ):
         self.logger.debug('enter build_pagexml')
 
@@ -180,10 +179,7 @@ class EynollahXmlWriter:
         if len(cont_page):
             page.set_Border(BorderType(Coords=CoordsType(points=self.calculate_points(cont_page[0]))))
 
-        if skip_layout_reading_order:
-            offset = None
-        else:
-            offset = [page_coord[2], page_coord[0]]
+        offset = [page_coord[2], page_coord[0]]
         counter = EynollahIdCounter()
         if len(order_of_texts):
             _counter_marginals = EynollahIdCounter(region_idx=len(order_of_texts))
@@ -283,7 +279,7 @@ class EynollahXmlWriter:
         for region_contour in polygons_seplines:
             page.add_SeparatorRegion(
                 SeparatorRegionType(id=counter.next_region_id,
-                                    Coords=CoordsType(points=self.calculate_points(region_contour, None))))
+                                    Coords=CoordsType(points=self.calculate_points(region_contour, offset))))
 
         for mm, region_contour in enumerate(found_polygons_tables):
             table = TableRegionType(

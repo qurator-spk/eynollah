@@ -6,15 +6,18 @@ from .contour import find_center_of_contours, return_contours_of_interested_regi
 from .resize import resize_image
 from .rotate import rotate_image
 
-def get_marginals(text_mask, early_layout, num_col, slope_deskew,
+def get_marginals(num_col, slope_deskew, early_layout,
                   kernel=None,
                   label_text=1,
                   label_marg=4,
+                  label_tabs=10,
 ):
     if kernel is None:
         kernel = np.ones((5, 5), dtype=np.uint8)
     kernel_hor = np.ones((1, 5), dtype=np.uint8)
 
+    text_mask = ((early_layout == label_text) |
+                 (early_layout == label_tabs)).astype(np.uint8)
     text_mask_d = rotate_image(text_mask, slope_deskew)
     main_mask_d = np.zeros_like(text_mask_d)
     height, width = main_mask_d.shape

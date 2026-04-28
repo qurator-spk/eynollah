@@ -314,10 +314,10 @@ class Eynollah:
         img = self.imread(image, binary=self.input_binary)
 
         width_early = img.shape[1]
-        _, page_coord = self.early_page_for_num_of_column_classification(image)
+        page_img, page_coord = self.early_page_for_num_of_column_classification(img)
 
         if self.input_binary:
-            img_in = img
+            img_in = page_img
         else:
             img_1ch = self.imread(image, grayscale=True, uint8=False)
             img_1ch = img_1ch[page_coord[0]: page_coord[1],
@@ -365,7 +365,7 @@ class Eynollah:
 
         width_early = img.shape[1]
         t1 = time.time()
-        _, page_coord = self.early_page_for_num_of_column_classification(image)
+        page_img, page_coord = self.early_page_for_num_of_column_classification(img)
 
         label_p_pred = np.ones(6)
         conf_col = 1.0
@@ -376,7 +376,7 @@ class Eynollah:
         elif (not self.num_col_upper and not self.num_col_lower or
               self.num_col_upper != self.num_col_lower):
             if self.input_binary:
-                img_in = img
+                img_in = page_img
             else:
                 img_1ch = self.imread(image, grayscale=True)
                 img_1ch = img_1ch[page_coord[0]: page_coord[1],
@@ -856,6 +856,7 @@ class Eynollah:
                                [[w, 0]],
                                [[w, h]],
                                [[0, h]]])]
+        mask_page = np.ones((h, w), dtype=np.uint8)
         if not self.ignore_page_extraction:
             self.logger.debug("enter extract_page")
             #cv2.GaussianBlur(img, (5, 5), 0)
@@ -878,21 +879,22 @@ class Eynollah:
                     #h = h + (self.image.shape[0] - (y + h))
                 box = [x, y, w, h]
                 cropped_page, page_coord = crop_image_inside_box(box, img)
-            self.logger.debug("exit extract_page")
-        return cropped_page, page_coord, cont_page
+                mask_page = np.zeros((h, w), dtype=np.uint8)
+                mask_page = cv2.fillPoly(mask_page, pts=[cnt - [x, y]], color=1)
 
-    def early_page_for_num_of_column_classification(self, image):
-        img = self.imread(image, binary=self.input_binary)
+            self.logger.debug("exit extract_page")
+        return page_coord, cont_page, cropped_page, mask_page
+
+    def early_page_for_num_of_column_classification(self, img):
         if not self.ignore_page_extraction:
             self.logger.debug("enter early_page_for_num_of_column_classification")
-            img = cv2.GaussianBlur(img, (5, 5), 0)
-            prediction = self.do_prediction(False, img, self.model_zoo.get("page"))
+            img2 = cv2.GaussianBlur(img, (5, 5), 0)
+            prediction = self.do_prediction(False, img2, self.model_zoo.get("page"))
             prediction = cv2.dilate(prediction, KERNEL, iterations=3)
-            contours, _ = cv2.findContours(prediction, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            if len(contours)>0:
-                cnt_size = np.array([cv2.contourArea(contours[j])
-                                     for j in range(len(contours))])
-                cnt = contours[np.argmax(cnt_size)]
+            contours, _ = cv2.findContours(prediction, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if len(contours):
+                areas = np.array(list(map(cv2.contourArea, contours)))
+                cnt = contours[np.argmax(areas)]
                 box = cv2.boundingRect(cnt)
             else:
                 box = [0, 0, img.shape[1], img.shape[0]]
@@ -1060,21 +1062,18 @@ class Eynollah:
         return result, conf_textline
 
     def get_early_layout(
-            self, image,
+            self, img,
             num_col_classifier,
             label_text=1,
             label_imgs=2,
             label_seps=3,
+            label_tabs=10,
     ):
         self.logger.debug("enter get_early_layout")
         t_in = time.time()
         erosion_hurts = False
-        img = image['img_res']
-        img_height_h = img.shape[0]
-        img_width_h = img.shape[1]
-        img_org = image['img']
-        img_height_org = img_org.shape[0]
-        img_width_org = img_org.shape[1]
+        # already cropped
+        img_height_h, img_width_h = img.shape[:2]
 
         if num_col_classifier == 1:
             img_w_new = 1000
@@ -1088,7 +1087,7 @@ class Eynollah:
             img_w_new = 3000
         else:
             img_w_new = 4000
-        img_h_new = img_w_new * img.shape[0] // img.shape[1]
+        img_h_new = img_w_new * img_height_h // img_width_h
         img_resized = resize_image(img, img_h_new, img_w_new)
         self.logger.debug("detecting textlines on %s with %d colors",
                           str(img_resized.shape), len(np.unique(img_resized)))
@@ -1096,12 +1095,10 @@ class Eynollah:
         textline_mask_tot_ea, confidence_textline = self.run_textline(img_resized)
         textline_mask_tot_ea = resize_image(textline_mask_tot_ea, img_height_h, img_width_h)
         confidence_textline = resize_image(confidence_textline, img_height_h, img_width_h)
-        if self.plotter:
-            self.plotter.save_plot_of_textlines(textline_mask_tot_ea, img_resized, image['name'])
 
         if self.skip_layout_and_reading_order:
             self.logger.debug("exit get_early_layout")
-            return None, erosion_hurts, None, None, textline_mask_tot_ea, None, None
+            return erosion_hurts, None, None, None, None, textline_mask_tot_ea, None, None
 
         #print("inside 2 ", time.time()-t_in)
         if num_col_classifier == 1 or num_col_classifier == 2:
@@ -1110,15 +1107,13 @@ class Eynollah:
             else:
                 patches = False
             self.logger.debug("resized to %dx%d for %d cols",
-                              img_resized.shape[1], img_resized.shape[0],
-                              num_col_classifier)
+                              img_w_new, img_h_new, num_col_classifier)
         else:
             new_w = (900+ (num_col_classifier-3)*100)
-            new_h = new_w * img.shape[0] // img.shape[1]
+            new_h = new_w * img_height_h // img_width_h
             img_resized = resize_image(img_resized, new_h, new_w)
-            self.logger.debug("resized to %dx%d (new_w=%d) for %d cols",
-                              img_resized.shape[1], img_resized.shape[0],
-                              new_w, num_col_classifier)
+            self.logger.debug("resized to %dx%d for %d cols",
+                              new_w, new_h, num_col_classifier)
             patches = True
 
         prediction_regions, confidence_regions = \
@@ -1132,9 +1127,16 @@ class Eynollah:
         prediction_regions = resize_image(prediction_regions, img_height_h, img_width_h)
         confidence_regions = resize_image(confidence_regions, img_height_h, img_width_h)
 
+        if self.tables:
+            prediction_tables, confidence_tables = self.get_tables_from_model(img)
+        else:
+            prediction_tables = np.zeros(img.shape[:2], dtype=np.uint8)
+            confidence_tables = np.zeros(img.shape[:2], dtype=bool)
+
         mask_texts_only = (prediction_regions == label_text).astype('uint8')
         mask_images_only = (prediction_regions == label_imgs).astype('uint8')
         mask_seps_only = (prediction_regions == label_seps).astype('uint8')
+        mask_tabs_only = prediction_tables
 
         ##if num_col_classifier == 1 or num_col_classifier == 2:
             ###mask_texts_only = cv2.erode(mask_texts_only, KERNEL, iterations=1)
@@ -1148,21 +1150,30 @@ class Eynollah:
         polygons_of_only_texts = return_contours_of_interested_region(mask_texts_only,1,0.00001)
         ##polygons_of_only_texts = dilate_textregion_contours(polygons_of_only_texts)
         polygons_of_only_seps = return_contours_of_interested_region(mask_seps_only,1,0.00001)
+        polygons_of_only_tabs = return_contours_of_interested_region(mask_tabs_only,1,0.00001)
 
         text_regions_p = np.zeros_like(prediction_regions)
         text_regions_p = cv2.fillPoly(text_regions_p, pts=polygons_of_only_seps, color=label_seps)
         text_regions_p[mask_images_only == 1] = label_imgs
         text_regions_p = cv2.fillPoly(text_regions_p, pts=polygons_of_only_texts, color=label_text)
+        text_regions_p = cv2.fillPoly(text_regions_p, pts=polygons_of_only_tabs, color=label_tabs)
 
-        textline_mask_tot_ea[text_regions_p == 0] = 0
+        textline_mask_tot_ea[text_regions_p != label_text] = 0
+        confidence_textline[text_regions_p != label_text] = 0
+        confidence_regions[text_regions_p == label_tabs] = \
+            confidence_tables[text_regions_p == label_tabs]
+
+        regions_without_separators = ((text_regions_p == label_text) |
+                                      (text_regions_p == label_tabs)).astype(np.uint8)
         #plt.imshow(textline_mask_tot_ea)
         #plt.show()
         #print("inside 4 ", time.time()-t_in)
         self.logger.debug("exit get_early_layout")
-        return (text_regions_p,
-                erosion_hurts,
+        return (erosion_hurts,
                 polygons_seplines,
                 polygons_of_only_texts,
+                regions_without_separators,
+                text_regions_p,
                 textline_mask_tot_ea,
                 confidence_regions,
                 confidence_textline)
@@ -1494,65 +1505,22 @@ class Eynollah:
         table_prediction = table_prediction.astype(np.uint8)
         return table_prediction, table_confidence
 
-    def run_graphics_and_columns(
-            self, text_regions_p_1, textline_mask_tot_ea,
-            regions_confidence, textline_confidence,
+    def run_columns(
+            self, text_regions_p_1,
             num_col_classifier, num_column_is_classified,
-            erosion_hurts, image,
+            erosion_hurts,
             label_imgs=2,
             label_seps=3,
     ):
-        """detect page boundary and apply its mask/bbox, post-process column classifier result, optionally detect tables"""
-
+        """post-process column classifier result"""
         t_in_gr = time.time()
+        regions_without_separators = ((text_regions_p_1 != label_seps) &
+                                      (text_regions_p_1 != 0)).astype(np.uint8)
+        if not erosion_hurts:
+            regions_without_separators = cv2.erode(regions_without_separators, KERNEL, iterations=6)
 
-        image_page, page_coord, cont_page = self.extract_page(image)
-        if self.tables:
-            table_prediction, table_confidence = self.get_tables_from_model(image_page)
-        else:
-            table_prediction = np.zeros(image_page.shape[:2], dtype=np.uint8)
-            table_confidence = np.zeros(image_page.shape[:2], dtype=bool)
-
-        if self.plotter:
-            self.plotter.save_page_image(image_page, image['name'])
-
-        if not self.ignore_page_extraction:
-            mask_page = np.zeros_like(text_regions_p_1)
-            mask_page = cv2.fillPoly(mask_page, pts=[cont_page[0]], color=1)
-            mask_page = mask_page == 0
-
-            text_regions_p_1[mask_page] = 0
-            textline_mask_tot_ea[mask_page] = 0
-            regions_confidence[mask_page] = 0
-            textline_confidence[mask_page] = 0
-
-        box = slice(*page_coord[0:2]), slice(*page_coord[2:4])
-        text_regions_p_1 = text_regions_p_1[box]
-        textline_mask_tot_ea = textline_mask_tot_ea[box]
-        regions_confidence = regions_confidence[box]
-        textline_confidence = textline_confidence[box]
-        self.logger.debug("Cropped page is %dx%d", *text_regions_p_1.shape)
-
-        mask_images = (text_regions_p_1 == label_imgs).astype(np.uint8)
-        mask_images = cv2.erode(mask_images, KERNEL, iterations=10)
-        textline_mask_tot_ea[mask_images == 1] = 0
-        textline_confidence[mask_images == 1] = 0
-
-        img_only_regions_with_sep = ((text_regions_p_1 != label_seps) &
-                                     (text_regions_p_1 != 0)).astype(np.uint8)
-
-        #print("inside graphics 2 ", time.time() - t_in_gr)
-        if erosion_hurts:
-            img_only_regions = img_only_regions_with_sep
-        else:
-            img_only_regions = cv2.erode(img_only_regions_with_sep, KERNEL, iterations=6)
-
-        ##print(img_only_regions.shape,'img_only_regions')
-        ##plt.imshow(img_only_regions[:,:])
-        ##plt.show()
-        ##num_col, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
         try:
-            num_col, _ = find_num_col(img_only_regions, num_col_classifier, self.tables, multiplier=6.0)
+            num_col, _ = find_num_col(regions_without_separators, num_col_classifier, self.tables, multiplier=6.0)
             num_col = num_col + 1
             if not num_column_is_classified:
                 num_col_classifier = num_col
@@ -1562,29 +1530,7 @@ class Eynollah:
         except Exception as why:
             self.logger.exception(why)
             num_col = None
-        return (num_col, num_col_classifier,
-                page_coord, image_page, cont_page,
-                text_regions_p_1,
-                table_prediction,
-                textline_mask_tot_ea,
-                regions_confidence,
-                table_confidence,
-                textline_confidence,
-        )
-
-    def run_graphics_and_columns_without_layout(self, textline_mask_tot_ea, image):
-        image_page, page_coord, cont_page = self.extract_page(image)
-
-        mask_page = np.zeros_like(textline_mask_tot_ea)
-        mask_page = cv2.fillPoly(mask_page, pts=[cont_page[0]], color=1)
-        mask_page = mask_page == 0
-
-        textline_mask_tot_ea[mask_page] = 0
-        box = slice(*page_coord[0:2]), slice(*page_coord[2:4])
-        textline_mask_tot_ea = textline_mask_tot_ea[box]
-
-        return page_coord, image_page, textline_mask_tot_ea, cont_page
-
+        return num_col, num_col_classifier
 
     def run_enhancement(self, image):
         t_in = time.time()
@@ -1624,21 +1570,14 @@ class Eynollah:
         self.logger.info("slope_deskew: %.2f°", slope_deskew)
         return slope_deskew
 
-    def run_marginals(
-            self, num_col_classifier, slope_deskew, text_regions_p, table_prediction):
-
-        regions_without_separators = (text_regions_p == 1).astype(np.uint8)
-        if self.tables:
-            regions_without_separators[table_prediction == 1] = 1
-
-        get_marginals(regions_without_separators, text_regions_p,
-                      num_col_classifier, slope_deskew, kernel=KERNEL)
+    def run_marginals(self, num_col_classifier, slope_deskew, text_regions_p):
+        get_marginals(num_col_classifier, slope_deskew, text_regions_p,
+                      kernel=KERNEL)
 
     def get_full_layout(
             self, image_page,
             text_regions_p,
             num_col_classifier,
-            table_prediction,
             label_text=1,
             label_imgs=2,
             label_imgs_fl=5,
@@ -1669,10 +1608,6 @@ class Eynollah:
         text_regions_p[text_regions_p == label_seps] = label_seps_fl
         text_regions_p[text_regions_p == label_marg] = label_marg_fl
 
-        regions_without_separators = (text_regions_p == label_text).astype(np.uint8)
-        # regions_without_separators = ( text_regions_p == 1 | text_regions_p == 2 ) * 1
-
-        image_page = image_page.astype(np.uint8)
         if self.full_layout:
             regions_fully, regionsfl_confidence = self.extract_text_regions_new(
                 image_page,
@@ -1689,20 +1624,13 @@ class Eynollah:
             regions_fully[drops] = label_drop_fl_model
             drops = fill_bb_of_drop_capitals(regions_fully, text_regions_p)
             text_regions_p[drops] = label_drop_fl
-
-            regions_without_separators[drops] = 1 # also cover in reading-order
         else:
             regions_fully = None,
             regionsfl_confidence = None
 
-        if self.tables:
-            text_regions_p[table_prediction == 1] = label_tabs
-            regions_without_separators[table_prediction == 1] = 1
-
         # no need to return text_regions_p (inplace editing)
         self.logger.debug('exit get_full_layout')
-        return (regions_fully, regionsfl_confidence,
-                regions_without_separators)
+        return regions_fully, regionsfl_confidence
 
     def get_deskewed_masks(
             self,
@@ -2200,22 +2128,26 @@ class Eynollah:
                          f"{image['dpi']} DPI, {num_col_classifier} columns")
         self.logger.info(f"Enhancement complete ({time.time() - t0:.1f}s)")
 
+        t1 = time.time()
+        page_coord, cont_page, image_page, mask_page = self.extract_page(image)
+        if not self.ignore_page_extraction:
+            self.logger.debug("Cropped page is %dx%d", image_page.shape[1], image_page.shape[0])
+            self.logger.info("Cropping took %.1fs", time.time() - t1)
+        if self.plotter:
+            self.plotter.save_page_image(image_page, image['name'])
+
         # Basic Processing Mode
         if self.skip_layout_and_reading_order:
             self.logger.info("Step 2/5: Basic Processing Mode")
             self.logger.info("Skipping layout analysis and reading order detection")
 
-            _ ,_, _, _, textline_mask_tot_ea, _, _ = \
-                self.get_early_layout(image, num_col_classifier)
+            _, _, _, _, _, textline_mask_tot_ea, _, _ = \
+                self.get_early_layout(image_page, num_col_classifier)
 
-            page_coord, image_page, textline_mask_tot_ea, cont_page = \
-                self.run_graphics_and_columns_without_layout(textline_mask_tot_ea, image)
-
-            ##all_found_textline_polygons =self.scale_contours_new(textline_mask_tot_ea)
-
-            cnt_clean_rot_raw, hir_on_cnt_clean_rot = return_contours_of_image(textline_mask_tot_ea)
+            textline_mask_tot_ea *= mask_page
+            textline_cnt, textline_hir = return_contours_of_image(textline_mask_tot_ea)
             all_found_textline_polygons = filter_contours_area_of_image(
-                textline_mask_tot_ea, cnt_clean_rot_raw, hir_on_cnt_clean_rot, max_area=1, min_area=0.00001)
+                textline_mask_tot_ea, textline_cnt, textline_hir, max_area=1, min_area=0.00001)
 
             cx_textlines, cy_textlines = find_center_of_contours(all_found_textline_polygons)
             w_h_textlines = [cv2.boundingRect(polygon)[2:]
@@ -2247,7 +2179,6 @@ class Eynollah:
                 cont_page=cont_page,
                 polygons_seplines=[],
                 conf_textregions=[0],
-                skip_layout_reading_order=True
             )
             self.logger.info("Basic processing complete")
             writer.write_pagexml(pcgts)
@@ -2257,15 +2188,21 @@ class Eynollah:
         t1 = time.time()
         self.logger.info("Step 2/5: Layout Analysis")
 
-        (text_regions_p,
-         erosion_hurts,
+        (erosion_hurts,
          polygons_seplines,
          polygons_text_early,
+         regions_without_separators,
+         text_regions_p,
          textline_mask_tot_ea,
          regions_confidence,
-         textline_confidence) = self.get_early_layout(image, num_col_classifier)
+         textline_confidence) = self.get_early_layout(image_page, num_col_classifier)
+        regions_without_separators *= mask_page
+        text_regions_p *= mask_page
+        textline_mask_tot_ea *= mask_page
         t2 = time.time()
-        self.logger.info("Eearly layout took %.1fs", t2 - t1)
+        self.logger.info("Early layout took %.1fs", t2 - t1)
+        if self.plotter:
+            self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page, image['name'])
 
         if num_col_classifier == 1 or num_col_classifier ==2:
             if num_col_classifier == 1:
@@ -2278,28 +2215,22 @@ class Eynollah:
             slope_deskew = self.run_deskew(textline_mask_tot_ea_deskew)
         else:
             slope_deskew = self.run_deskew(textline_mask_tot_ea)
-        if self.plotter:
-            self.plotter.save_deskewed_image(slope_deskew, image['img'], image['name'])
-        t3 = time.time()
-        self.logger.info("Deskewing took %.1fs", t3 - t2)
-
-        (num_col, num_col_classifier,
-         page_coord, image_page, cont_page,
-         text_regions_p, table_prediction, textline_mask_tot_ea,
-         regions_confidence, table_confidence, textline_confidence) = \
-                self.run_graphics_and_columns(text_regions_p, textline_mask_tot_ea,
-                                              regions_confidence, textline_confidence,
-                                              num_col_classifier, num_column_is_classified,
-                                              erosion_hurts, image)
-        t4 = time.time()
-        self.logger.info("Cropping took %.1fs", t4 - t3)
-        textline_mask_tot_ea_org = np.copy(textline_mask_tot_ea)
-
         # if ratio of text regions to page area is smaller that 30%,
         # then ignore skew angle above 45°
         if (abs(slope_deskew) > 45 and
             ((text_regions_p == label_text).sum()) <= 0.3 * image_page.size):
             slope_deskew = 0
+        if self.plotter:
+            self.plotter.save_deskewed_image(slope_deskew, image['img'], image['name'])
+        t3 = time.time()
+        self.logger.info("Deskewing took %.1fs", t3 - t2)
+
+        num_col, num_col_classifier = \
+            self.run_columns(text_regions_p,
+                             num_col_classifier, num_column_is_classified,
+                             erosion_hurts)
+        t4 = time.time()
+        textline_mask_tot_ea_org = np.copy(textline_mask_tot_ea)
 
         if not num_col and len(polygons_text_early) == 0 or not image_page.size:
             self.logger.info("No columns detected - generating empty PAGE-XML")
@@ -2336,32 +2267,34 @@ class Eynollah:
             img_h_new = img_w_new * img_h_org // img_w_org
 
             text_regions_p_new = resize_image(text_regions_p, img_h_new, img_w_new)
-            table_prediction_new = resize_image(table_prediction, img_h_new, img_w_new)
-            self.run_marginals(num_col_classifier, slope_deskew, text_regions_p_new, table_prediction_new)
+            self.run_marginals(num_col_classifier, slope_deskew, text_regions_p_new)
             text_regions_p = resize_image(text_regions_p_new, img_h_org, img_w_org)
+
+            t5 = time.time()
+            self.logger.info("Marginalia extraction took %.1fs", t5 - t4)
+        else:
+            t5 = time.time()
 
         if self.plotter:
             self.plotter.save_plot_of_layout_main_all(text_regions_p, image_page, image['name'])
             self.plotter.save_plot_of_layout_main(text_regions_p, image_page, image['name'])
-        t5 = time.time()
-        self.logger.info("Marginalia extraction took %.1fs", t5 - t4)
-        self.logger.info("Step 3/5: Text Line Detection")
 
-        regions_fully, regionsfl_confidence, regions_without_separators = \
-            self.get_full_layout(image_page,
-                                 text_regions_p,
-                                 num_col_classifier,
-                                 table_prediction)
+        regions_fully, regionsfl_confidence = \
+            self.get_full_layout(image_page, text_regions_p, num_col_classifier)
 
         if self.full_layout:
+            regions_without_separators[text_regions_p == label_drop_fl] = 1 # also cover in reading-order
             textline_mask_tot_ea_org[text_regions_p == label_drop_fl] = 0 # skip for textlines
             textline_mask_tot_ea[text_regions_p == label_drop_fl] = 1 # needed for reading order
             polygons_of_drop_capitals = return_contours_of_interested_region(text_regions_p,
                                                                              label_drop_fl,
                                                                              min_area=0.00003)
             conf_drops = get_region_confidences(polygons_of_drop_capitals, regionsfl_confidence)
-        t6 = time.time()
-        self.logger.info("Full layout took %.1fs", t6 - t5)
+            t6 = time.time()
+            self.logger.info("Full layout took %.1fs", t6 - t5)
+        else:
+            t6 = time.time()
+        self.logger.info("Step 3/5: Contour extraction")
 
         min_area_mar = 0.00001
         marginal_mask = (text_regions_p == label_marg_fl).astype(np.uint8)
@@ -2373,7 +2306,7 @@ class Eynollah:
         polygons_of_images = return_contours_of_interested_region(text_regions_p, label_imgs_fl)
         conf_marginals = get_region_confidences(polygons_of_marginals, regions_confidence)
         conf_images = get_region_confidences(polygons_of_images, regions_confidence)
-        conf_tables = get_region_confidences(polygons_of_tables, table_confidence)
+        conf_tables = get_region_confidences(polygons_of_tables, regions_confidence)
 
         polygons_of_textregions = return_contours_of_interested_region(text_regions_p, label_text,
                                                                        min_area=MIN_AREA_REGION)
@@ -2513,7 +2446,7 @@ class Eynollah:
                                                      image['scale_x'], image['scale_y'], image['name'])
 
         t_order = time.time()
-        self.logger.info("Step 4/5: Reading Order Detection")
+        self.logger.info("Step 4/5: Reading Order")
         if self.right2left:
             self.logger.info("Right-to-left mode enabled")
         if self.headers_off:
