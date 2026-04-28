@@ -337,7 +337,7 @@ class Eynollah_ocr:
                                 better_des_slope = get_orientation_moments(textline_coords)
                                 
                                 img_crop = rotate_image_with_padding(img_crop, better_des_slope)
-                                if img_bin:
+                                if img_bin is not None:
                                     img_crop_bin = rotate_image_with_padding(img_crop_bin, better_des_slope)
                                     
                                 mask_poly = rotate_image_with_padding(mask_poly, better_des_slope)
@@ -351,13 +351,13 @@ class Eynollah_ocr:
                                     
                                 if not self.do_not_mask_with_textline_contour:
                                     img_crop[mask_poly==0] = 255
-                                if img_bin:
+                                if img_bin is not None:
                                     img_crop_bin = img_crop_bin[y_n:y_n+h_n, x_n:x_n+w_n, :]
                                     if not self.do_not_mask_with_textline_contour:
                                         img_crop_bin[mask_poly==0] = 255
                                 
                                 if mask_poly[:,:,0].sum() /float(w_n*h_n) < 0.50 and w_scaled > 90:
-                                    if img_bin:
+                                    if img_bin is not None:
                                         img_crop, img_crop_bin = \
                                             break_curved_line_into_small_pieces_and_then_merge(
                                                 img_crop, mask_poly, img_crop_bin)
@@ -370,14 +370,14 @@ class Eynollah_ocr:
                                 better_des_slope = 0
                                 if not self.do_not_mask_with_textline_contour:
                                     img_crop[mask_poly==0] = 255
-                                if img_bin:
+                                if img_bin is not None:
                                     if not self.do_not_mask_with_textline_contour:
                                         img_crop_bin[mask_poly==0] = 255
                                 if type_textregion=='drop-capital':
                                     pass
                                 else:
                                     if mask_poly[:,:,0].sum() /float(w*h) < 0.50 and w_scaled > 90:
-                                        if img_bin:
+                                        if img_bin is not None:
                                             img_crop, img_crop_bin = \
                                                 break_curved_line_into_small_pieces_and_then_merge(
                                                     img_crop, mask_poly, img_crop_bin)
@@ -396,13 +396,13 @@ class Eynollah_ocr:
                                     cropped_lines_ver_index.append(0)
                                     
                                 cropped_lines_meging_indexing.append(0)
-                                if img_bin:
+                                if img_bin is not None:
                                     img_fin = preprocess_and_resize_image_for_ocrcnn_model(
                                         img_crop_bin, image_height, image_width)
                                     cropped_lines_bin.append(img_fin)
                             else:
                                 splited_images, splited_images_bin = return_textlines_split_if_needed(
-                                    img_crop, img_crop_bin if img_bin else None)
+                                    img_crop, img_crop_bin if img_bin is not None else None)
                                 if splited_images:
                                     img_fin = preprocess_and_resize_image_for_ocrcnn_model(
                                         splited_images[0], image_height, image_width)
@@ -425,7 +425,7 @@ class Eynollah_ocr:
                                     else:
                                         cropped_lines_ver_index.append(0)
                                     
-                                    if img_bin:
+                                    if img_bin is not None:
                                         img_fin = preprocess_and_resize_image_for_ocrcnn_model(
                                             splited_images_bin[0], image_height, image_width)
                                         cropped_lines_bin.append(img_fin)
@@ -444,7 +444,7 @@ class Eynollah_ocr:
                                     else:
                                         cropped_lines_ver_index.append(0)
                                     
-                                    if img_bin:
+                                    if img_bin is not None:
                                         img_fin = preprocess_and_resize_image_for_ocrcnn_model(
                                             img_crop_bin, image_height, image_width)
                                         cropped_lines_bin.append(img_fin)
