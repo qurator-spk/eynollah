@@ -63,6 +63,8 @@ class Eynollah_ocr:
         
         self.min_conf_value_of_textline_text = min_conf_value_of_textline_text if min_conf_value_of_textline_text else 0.3
         self.b_s = 2 if batch_size is None and tr_ocr else 8 if batch_size is None else batch_size
+        print(batch_size)
+        print(self.b_s)
 
         if tr_ocr:
             self.model_zoo.load_model('trocr_processor')

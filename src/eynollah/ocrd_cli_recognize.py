@@ -30,6 +30,7 @@ class EynollahRecognizeProcessor(Processor):
         assert self.parameter
         model_zoo = EynollahModelZoo(basedir=self.parameter['models'])
         assert self.parameter
+        print(self.parameter)
         self.eynollah_ocr = Eynollah_ocr(
             model_zoo=model_zoo,
             tr_ocr=self.parameter['tr_ocr'],
