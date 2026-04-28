@@ -47,7 +47,7 @@ class EynollahRecognizeProcessor(Processor):
         page = page_from_file(page_file)
         assert page
         page_image, page_coords, _ = self.workspace.image_from_page(
-            page, page_file.pageId,
+            page.get_Page(), page_file.pageId,
             feature_selector="")
         page_ns = etree_namespace_for_element_tag(page.etree.getroot().tag)
 
