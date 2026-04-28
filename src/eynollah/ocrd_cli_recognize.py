@@ -1,6 +1,8 @@
 from functools import cached_property
 from pathlib import Path
 from typing import Optional
+from click import command
+from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 from ocrd.workspace import page_from_file
 from ocrd_models import OcrdFileType, OcrdPage
 
@@ -89,3 +91,8 @@ class EynollahRecognizeProcessor(Processor):
             local_filename=output_filename,
             mimetype=page_ns,
         )
+
+@command()
+@ocrd_cli_options
+def main(*args, **kwargs):
+    return ocrd_cli_wrap_processor(EynollahRecognizeProcessor, *args, **kwargs)
