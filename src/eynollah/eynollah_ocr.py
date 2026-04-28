@@ -317,7 +317,7 @@ class Eynollah_ocr:
                             w_scaled = w *  image_height/float(h)
                             
                             img_poly_on_img = np.copy(img)
-                            if img_bin:
+                            if img_bin is not None:
                                 img_poly_on_img_bin = np.copy(img_bin)
                                 img_crop_bin = img_poly_on_img_bin[y:y+h, x:x+w, :]
                             
