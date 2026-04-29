@@ -35,7 +35,7 @@ jobs:
         password: ${{ secrets.DOCKERIO_PASSWORD }}
     - name: Build the Docker image
       # build both tags at the same time
-      run: make docker DOCKER_TAG="docker.io/ocrd/eynollah -t ghcr.io/qurator-spk/eynollah"
+      run: make docker DOCKER_TAG="docker.io/ocrd/eynollah ghcr.io/qurator-spk/eynollah"
     - name: Test the Docker image
       run: docker run --rm ocrd/eynollah ocrd-eynollah-segment -h
     - name: Push to Dockerhub
