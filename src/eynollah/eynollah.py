@@ -1725,16 +1725,18 @@ class Eynollah:
             contours_h=None,
             label_seps_fl=6,
     ):
-        _, _, matrix_of_seps_ch, splitter_y_new, _ = find_number_of_columns_in_document(
-            text_regions_p, num_col_classifier, self.tables, label_seps_fl, contours_h=contours_h)
-
         if not erosion_hurts:
             regions_without_separators = regions_without_separators.astype(np.uint8)
             regions_without_separators = cv2.erode(regions_without_separators, KERNEL, iterations=6)
+        separator_mask = text_regions_p == label_seps_fl
+
+        _, _, matrix_of_seps_ch, splitter_y_new = find_number_of_columns_in_document(
+            regions_without_separators, separator_mask, num_col_classifier, self.tables,
+            contours_h=contours_h)
 
         boxes, _ = return_boxes_of_images_by_order_of_reading_new(
             splitter_y_new, regions_without_separators,
-            text_regions_p == label_seps_fl, matrix_of_seps_ch,
+            separator_mask, matrix_of_seps_ch,
             num_col_classifier, erosion_hurts, self.tables, self.right2left,
             logger=self.logger)
         return boxes

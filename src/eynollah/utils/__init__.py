@@ -705,20 +705,6 @@ def find_num_col_by_vertical_lines(regions_without_separators, multiplier=3.8):
     # plt.show()
     return peaks
 
-def return_regions_without_separators(regions_pre, label_seps=6):
-    kernel = np.ones((5, 5), np.uint8)
-    regions_without_separators = ((regions_pre[:, :] != label_seps) &
-                                  (regions_pre[:, :] != 0))
-    # regions_without_separators=( (image_regions_eraly_p[:,:,:]!=6) &
-    #                              (image_regions_eraly_p[:,:,:]!=0) &
-    #                              (image_regions_eraly_p[:,:,:]!=5) &
-    #                              (image_regions_eraly_p[:,:,:]!=8) &
-    #                              (image_regions_eraly_p[:,:,:]!=7))
-
-    regions_without_separators = cv2.erode(regions_without_separators.astype(np.uint8), kernel, iterations=6)
-
-    return regions_without_separators
-
 def put_drop_out_from_only_drop_model(layout_no_patch, layout1):
     if layout_no_patch.ndim == 3:
         layout_no_patch = layout_no_patch[:, :, 0]
@@ -1292,10 +1278,10 @@ def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
     return peaks_neg_tot
 
 def find_number_of_columns_in_document(
-        region_pre_p: np.ndarray,
+        regions_without_separators: np.ndarray,
+        separator_mask: np.ndarray,
         num_col_classifier: int,
         tables: bool,
-        label_seps: int,
         contours_h: List[np.ndarray] = None,
         logger=None
 ) -> Tuple[int, List[int], np.ndarray, List[int], np.ndarray]:
@@ -1303,10 +1289,10 @@ def find_number_of_columns_in_document(
     Extract vertical and horizontal separators, vertical splits and horizontal column boundaries on page.
 
     Arguments:
-      * region_pre_p: segmentation map of the page
+      * regions_without_separators: mask of (non-separator) region labels
+      * separator_mask: mask of (separator-only) region labels
       * num_col_classifier: predicted (expected) number of columns of the page
       * tables: whether tables may be present
-      * label_seps: segmentation map class label for separators
       * contours_h: polygons of potential headings (serving as additional horizontal separators)
       * logger
 
@@ -1315,25 +1301,20 @@ def find_number_of_columns_in_document(
       * the x coordinates of the column boundaries
       * an array of the separators (bounding boxes and types)
       * the y coordinates of the page splits
-      * a mask of the separators
     """
     if logger is None:
         logger = getLogger(__package__)
 
-    separators_closeup = 1 * (region_pre_p == label_seps)
+    height, width = separator_mask.shape
+    separators_closeup = separator_mask.astype(np.uint8)
     separators_closeup[0:110] = 0
     separators_closeup[-150:] = 0
 
     kernel = np.ones((5,5),np.uint8)
-    separators_closeup = separators_closeup.astype(np.uint8)
     separators_closeup = cv2.morphologyEx(separators_closeup, cv2.MORPH_CLOSE, kernel, iterations=1)
 
-    separators_closeup_n = separators_closeup.astype(np.uint8) # to be returned
-
-    separators_closeup_n_binary = separators_closeup_n.copy()
-
     # find horizontal lines by contour properties
-    contours_sep_e, _ = cv2.findContours(separators_closeup_n_binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours_sep_e, _ = cv2.findContours(separators_closeup, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     cnts_hor_e = []
     for cnt in contours_sep_e:
         max_xe = cnt[:, 0, 0].max()
@@ -1347,8 +1328,8 @@ def find_number_of_columns_in_document(
             cnts_hor_e.append(cnt)
 
     # delete horizontal contours (leaving only the edges)
-    separators_closeup_n_binary = cv2.fillPoly(separators_closeup_n_binary, pts=cnts_hor_e, color=0)
-    edges = cv2.adaptiveThreshold(separators_closeup_n_binary * 255, 255,
+    separators_closeup = cv2.fillPoly(separators_closeup, pts=cnts_hor_e, color=0)
+    edges = cv2.adaptiveThreshold(separators_closeup * 255, 255,
                                   cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 15, -2)
     horizontal = np.copy(edges)
     vertical = np.copy(edges)
@@ -1453,31 +1434,28 @@ def find_number_of_columns_in_document(
             matrix_of_seps_ch, matrix_l_n, axis=0)
 
     # ensure no seps are out of bounds
-    matrix_of_seps_ch[:, 1] = np.maximum(np.minimum(matrix_of_seps_ch[:, 1], region_pre_p.shape[1]), 0)
+    matrix_of_seps_ch[:, 1] = np.maximum(np.minimum(matrix_of_seps_ch[:, 1], width), 0)
     matrix_of_seps_ch[:, 2] = np.maximum(matrix_of_seps_ch[:, 2], 0)
-    matrix_of_seps_ch[:, 3] = np.minimum(matrix_of_seps_ch[:, 3], region_pre_p.shape[1])
-    matrix_of_seps_ch[:, 5] = np.maximum(np.minimum(matrix_of_seps_ch[:, 5], region_pre_p.shape[0]), 0)
+    matrix_of_seps_ch[:, 3] = np.minimum(matrix_of_seps_ch[:, 3], width)
+    matrix_of_seps_ch[:, 5] = np.maximum(np.minimum(matrix_of_seps_ch[:, 5], height), 0)
     matrix_of_seps_ch[:, 6] = np.maximum(matrix_of_seps_ch[:, 6], 0)
-    matrix_of_seps_ch[:, 7] = np.minimum(matrix_of_seps_ch[:, 7], region_pre_p.shape[0])
+    matrix_of_seps_ch[:, 7] = np.minimum(matrix_of_seps_ch[:, 7], height)
 
-    cy_seps_splitters=cy_seps_hor[(x_min_seps_hor<=.16*region_pre_p.shape[1]) &
-                                  (x_max_seps_hor>=.84*region_pre_p.shape[1])]
+    cy_seps_splitters=cy_seps_hor[(x_min_seps_hor <= .16 * width) &
+                                  (x_max_seps_hor >= .84 * width)]
     cy_seps_splitters = np.append(cy_seps_splitters, special_separators)
 
     if contours_h is not None:
-        y_min_splitters_head = y_min_head[(x_min_head<=.16*region_pre_p.shape[1]) &
-                                          (x_max_head>=.84*region_pre_p.shape[1])]
-        y_max_splitters_head = y_max_head[(x_min_head<=.16*region_pre_p.shape[1]) &
-                                          (x_max_head>=.84*region_pre_p.shape[1])]
+        y_min_splitters_head = y_min_head[(x_min_head <= .16 * width) &
+                                          (x_max_head >= .84 * width)]
+        y_max_splitters_head = y_max_head[(x_min_head <= .16 * width) &
+                                          (x_max_head >= .84 * width)]
         cy_seps_splitters = np.append(cy_seps_splitters, y_min_splitters_head)
         cy_seps_splitters = np.append(cy_seps_splitters, y_max_splitters_head)
 
     cy_seps_splitters = np.sort(cy_seps_splitters).astype(int)
-    splitter_y_new = [0] + list(cy_seps_splitters) + [region_pre_p.shape[0]]
-    big_part = 22 * region_pre_p.shape[0] // 100 # percent height
-
-    regions_without_separators = return_regions_without_separators(
-        region_pre_p, label_seps=label_seps)
+    splitter_y_new = [0] + list(cy_seps_splitters) + [height]
+    big_part = 22 * height // 100 # percent height
 
     num_col_fin=0
     peaks_neg_fin_fin=[]
@@ -1506,7 +1484,7 @@ def find_number_of_columns_in_document(
         peaks_neg_fin=peaks_neg_fin[peaks_neg_fin<=(vertical.shape[1]-500)]
         peaks_neg_fin_fin=peaks_neg_fin[:]
 
-    return num_col_fin, peaks_neg_fin_fin, matrix_of_seps_ch, splitter_y_new, separators_closeup_n
+    return num_col_fin, peaks_neg_fin_fin, matrix_of_seps_ch, splitter_y_new
 
 def return_boxes_of_images_by_order_of_reading_new(
         splitter_y_new,
