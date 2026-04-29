@@ -2536,7 +2536,7 @@ class Eynollah:
                     polygons_of_textregions,
                     polygons_of_textregions_h,
                     polygons_of_drop_capitals,
-                    boxes, textline_mask_tot_ea)
+                    boxes, regions_without_separators) #textline_mask_tot_ea)
             else:
                 boxes_d = self.run_boxes_order(text_regions_p_d, num_col_classifier, erosion_hurts,
                                                regions_without_separators_d,
@@ -2547,7 +2547,7 @@ class Eynollah:
                     polygons_of_textregions_d,
                     polygons_of_textregions_h_d,
                     polygons_of_drop_capitals,
-                    boxes_d, textline_mask_tot_ea_d)
+                    boxes_d, regions_without_separators_d) #textline_mask_tot_ea_d)
         self.logger.info(f"Detection of reading order took {time.time() - t_order:.1f}s")
 
         self.logger.info("Step 5/5: Output Generation")
