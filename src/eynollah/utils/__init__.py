@@ -1928,6 +1928,10 @@ def seg_mask_label(segmap:np.ndarray,
     """
     if not mask.any():
         return
+    # plt.subplot(2, 2, 1, title="segmap orig")
+    # plt.imshow(segmap)
+    # plt.subplot(2, 2, 2, title="mask")
+    # plt.imshow(mask)
     if keep:
         keepmask = segmap == keep
     if only:
@@ -1941,5 +1945,10 @@ def seg_mask_label(segmap:np.ndarray,
             kernel = np.ones((dilate, dilate), np.uint8)
             mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1) > 0
     segmap[mask] = label
+    # plt.subplot(2, 2, 3, title="segmap masked")
+    # plt.imshow(segmap)
     if keep:
         segmap[keepmask] = keep
+    # plt.subplot(2, 2, 4, title="segmap final")
+    # plt.imshow(segmap)
+    # plt.show()
