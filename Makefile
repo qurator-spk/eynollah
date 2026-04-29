@@ -2,7 +2,7 @@ PYTHON ?= python3
 PIP ?= pip3
 EXTRAS ?=
 
-DOCKER_BASE_IMAGE ?= docker.io/ocrd/core-cuda-tf2:3.12.2
+DOCKER_BASE_IMAGE ?= docker.io/ocrd/core-cuda-tf2:3.12.3
 DOCKER_TAG ?= ocrd/eynollah
 DOCKER ?= docker
 WGET = wget -O
