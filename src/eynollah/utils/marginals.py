@@ -19,42 +19,40 @@ def get_marginals(text_mask, early_layout, num_col, slope_deskew,
     main_mask_d = np.zeros_like(text_mask_d)
     height, width = main_mask_d.shape
 
-    text_mask_d_eroded = cv2.erode(text_mask_d, kernel, iterations=5)
-
     if height <= 1500:
         pass
     elif 1500 < height <= 1800:
-        # rs: why not / 1.5???
-        text_mask_d = resize_image(text_mask_d, int(height * 1.5), width)
+        text_mask_d = resize_image(text_mask_d, int(height / 1.5), width)
         text_mask_d = cv2.erode(text_mask_d, kernel, iterations=5)
         # rs: and back to original size
         text_mask_d = resize_image(text_mask_d, height, width)
     else:
-        # rs: why not / 1.8???
-        text_mask_d = resize_image(text_mask_d, int(height * 1.8), width)
+        text_mask_d = resize_image(text_mask_d, int(height / 1.8), width)
         text_mask_d = cv2.erode(text_mask_d, kernel, iterations=7)
         # rs: and back to original size
         text_mask_d = resize_image(text_mask_d, height, width)
 
     text_mask_d = cv2.erode(text_mask_d, kernel_hor, iterations=6)
     text_mask_d_y = text_mask_d.sum(axis=0)
-    text_mask_d_y_eroded = text_mask_d_eroded.sum(axis=0)
+    text_mask_d_y_eroded = text_mask_d.sum(axis=0)
 
-    max_text_thickness_percent = 100. * text_mask_d_y_eroded.max() / height
+    max_text_thickness_percent = 100. * text_mask_d_y.max() / height
     min_text_thickness = max_text_thickness_percent / 100. * height / 20.
 
     # plt.figure()
-    # ax1 = plt.subplot(2, 1, 1, title="text_mask_d_eroded")
-    # ax1.imshow(text_mask_d_eroded, aspect='auto')
-    # ax2 = plt.subplot(2, 1, 2, title="text_mask_d_y_eroded", sharex=ax1)
-    # ax2.plot(list(range(width)), text_mask_d_y_eroded)
+    # ax1 = plt.subplot(2, 2, 1, title="text_mask_d")
+    # ax1.imshow(text_mask_d, aspect='auto')
+    # ax2 = plt.subplot(2, 2, 3, title="text_mask_d_y", sharex=ax1)
+    # ax2.plot(list(range(width)), text_mask_d_y)
     # ax2.hlines(int(0.14 * height), 0, width,
     #            label='max_text_thickness=14%', colors='r')
     # ax2.hlines([min_text_thickness], 0, width,
     #            label='min_text_thickness', colors='g')
-    # ax2.scatter([np.argmax(text_mask_d_y_eroded)],
-    #             [text_mask_d_y_eroded.max()], color='r',
+    # ax2.scatter([np.argmax(text_mask_d_y)],
+    #             [text_mask_d_y.max()], color='r',
     #             label='max = %d%%' % max_text_thickness_percent)
+    # ax1 = plt.subplot(2, 2, 4, title="early layout")
+    # ax1.imshow(early_layout, aspect='auto')
     # plt.legend()
     # plt.show()
 
