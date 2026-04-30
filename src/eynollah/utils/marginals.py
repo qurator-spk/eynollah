@@ -113,14 +113,17 @@ def get_marginals(text_mask, early_layout, num_col, slope_deskew,
         point_left = peaks_left[np.argmax(scores[peaks_left])]
         #point_right = last_nonzero
         point_right = width - 1
-    elif scores[peaks_left].max() < scores[peaks_right].max():
-        point_right = peaks_right[np.argmax(scores[peaks_right])]
-        #point_left = first_nonzero
-        point_left = 0
     else:
-        point_left = peaks_left[np.argmax(scores[peaks_left])]
-        #point_right = last_nonzero
-        point_right = 0
+        best_left = np.argmax(scores[peaks_left])
+        best_right = np.argmax(scores[peaks_right])
+        point_left = peaks_left[best_left]
+        point_right = peaks_right[best_right]
+        if scores[best_left] < 0.1 * scores[best_right]:
+            point_left = 0
+            #point_left = first_nonzero
+        if scores[best_right] < 0.1 * scores[best_left]:
+            point_right = 0
+            #point_right = last_nonzero
 
     main_mask_d[:, point_left: point_right] = 1
     if not np.any(main_mask_d):
