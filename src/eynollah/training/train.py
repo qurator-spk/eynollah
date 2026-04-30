@@ -355,6 +355,7 @@ def config_params():
     dir_output = None  # Directory where the augmented training data and the model checkpoints will be saved.
     pretraining = False  # Set to true to (down)load pretrained weights of ResNet50 encoder.
     save_interval = None # frequency for writing model checkpoints (positive integer for number of batches saved under "model_step_{batch:04d}", otherwise epoch saved under "model_{epoch:02d}")
+    reload_weights = False # Set true to build new model from config, load weights from dir_of_start_model, save under dir_output and exit.
     continue_training = False  # Whether to continue training an existing model.
     if continue_training:
         dir_of_start_model = ''  # Directory of model checkpoint to load to continue training. (E.g. if you already trained for 3 epochs, set "dir_of_start_model=dir_output/model_03".)
@@ -378,6 +379,7 @@ def run(_config,
         weight_decay,
         learning_rate,
         continue_training,
+        reload_weights,
         save_interval,
         augmentation,
         # dependent config keys need a default,
@@ -451,43 +453,6 @@ def run(_config,
 
         dir_flow_eval_imgs = os.path.join(dir_eval_flowing, 'images')
         dir_flow_eval_labels = os.path.join(dir_eval_flowing, 'labels')
-
-        if not data_is_provided:
-            # first create a directory in output for both training and evaluations
-            # in order to flow data from these directories.
-            if os.path.isdir(dir_train_flowing):
-                os.system('rm -rf ' + dir_train_flowing)
-            os.makedirs(dir_train_flowing)
-
-            if os.path.isdir(dir_eval_flowing):
-                os.system('rm -rf ' + dir_eval_flowing)
-            os.makedirs(dir_eval_flowing)
-
-            os.mkdir(dir_flow_train_imgs)
-            os.mkdir(dir_flow_train_labels)
-
-            os.mkdir(dir_flow_eval_imgs)
-            os.mkdir(dir_flow_eval_labels)
-
-            # writing patches into a sub-folder in order to be flowed from directory.
-            def gen(dir_img, dir_lab, dir_flow_imgs, dir_flow_labs, augmentation=True):
-                indexer = 0
-                for img, lab in tqdm(preprocess_imgs(_config,
-                                                     dir_img,
-                                                     dir_lab,
-                                                     augmentation=augmentation),
-                                     desc="data_is_provided"):
-                    fname = 'img_%d.png' % indexer
-                    cv2.imwrite(os.path.join(dir_flow_imgs, fname), img)
-                    cv2.imwrite(os.path.join(dir_flow_labs, fname), lab)
-                    indexer += 1
-            gen(*get_dirs_or_files(dir_train),
-                dir_flow_train_imgs,
-                dir_flow_train_labels)
-            gen(*get_dirs_or_files(dir_eval),
-                dir_flow_eval_imgs,
-                dir_flow_eval_labels,
-                augmentation=False)
 
         if weighted_loss:
             weights = np.zeros(n_classes)
@@ -593,6 +558,52 @@ def run(_config,
                       #jit_compile=True,
                       optimizer=Adam(learning_rate=learning_rate),
                       metrics=metrics)
+
+        if reload_weights:
+            model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
+            dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
+            model.save(dir_save, include_optimizer=False)
+            with open(os.path.join(dir_save, "config.json"), "w") as fp:
+                json.dump(_config, fp)  # encode dict into JSON
+            _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)
+            return
+
+        if not data_is_provided:
+            # first create a directory in output for both training and evaluations
+            # in order to flow data from these directories.
+            if os.path.isdir(dir_train_flowing):
+                os.system('rm -rf ' + dir_train_flowing)
+            os.makedirs(dir_train_flowing)
+
+            if os.path.isdir(dir_eval_flowing):
+                os.system('rm -rf ' + dir_eval_flowing)
+            os.makedirs(dir_eval_flowing)
+
+            os.mkdir(dir_flow_train_imgs)
+            os.mkdir(dir_flow_train_labels)
+
+            os.mkdir(dir_flow_eval_imgs)
+            os.mkdir(dir_flow_eval_labels)
+
+            # writing patches into a sub-folder in order to be flowed from directory.
+            def gen(dir_img, dir_lab, dir_flow_imgs, dir_flow_labs, augmentation=True):
+                indexer = 0
+                for img, lab in tqdm(preprocess_imgs(_config,
+                                                     dir_img,
+                                                     dir_lab,
+                                                     augmentation=augmentation),
+                                     desc="data_is_provided"):
+                    fname = 'img_%d.png' % indexer
+                    cv2.imwrite(os.path.join(dir_flow_imgs, fname), img)
+                    cv2.imwrite(os.path.join(dir_flow_labs, fname), lab)
+                    indexer += 1
+            gen(*get_dirs_or_files(dir_train),
+                dir_flow_train_imgs,
+                dir_flow_train_labels)
+            gen(*get_dirs_or_files(dir_eval),
+                dir_flow_eval_imgs,
+                dir_flow_eval_labels,
+                augmentation=False)
 
         def _to_cv2float(img):
             # rgb→bgr and uint8→float, as expected by Eynollah models
@@ -701,7 +712,24 @@ def run(_config,
                                       image_width=input_width,
                                       n_classes=n_classes,
                                       max_seq=max_len)
+        #initial_learning_rate = 1e-4
+        #decay_steps = int (n_epochs * ( len_dataset / n_batch ))
+        #alpha = 0.01
+        #lr_schedule = 1e-4
+        #tf.keras.optimizers.schedules.CosineDecay(initial_learning_rate, decay_steps, alpha)
+        opt = Adam(learning_rate=learning_rate)
+        model.compile(optimizer=opt) # rs: loss seems to be (ctc_batch_cost) in last layer
+
         #print(model.summary())
+
+        if reload_weights:
+            model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
+            dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
+            model.save(dir_save, include_optimizer=False)
+            with open(os.path.join(dir_save, "config.json"), "w") as fp:
+                json.dump(_config, fp)  # encode dict into JSON
+            _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)
+            return
 
         # todo: use Dataset.map() on Dataset.list_files()
         def get_dataset(dir_img, dir_lab):
@@ -725,14 +753,6 @@ def run(_config,
             )
         train_ds = get_dataset(*get_dirs_or_files(dir_train))
         valdn_ds = get_dataset(*get_dirs_or_files(dir_eval))
-
-        #initial_learning_rate = 1e-4
-        #decay_steps = int (n_epochs * ( len_dataset / n_batch ))
-        #alpha = 0.01
-        #lr_schedule = 1e-4
-        #tf.keras.optimizers.schedules.CosineDecay(initial_learning_rate, decay_steps, alpha)
-        opt = Adam(learning_rate=learning_rate)
-        model.compile(optimizer=opt) # rs: loss seems to be (ctc_batch_cost) in last layer
 
         callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
                      EarlyStopping(verbose=1, patience=3, restore_best_weights=False, start_from_epoch=3),
@@ -761,6 +781,15 @@ def run(_config,
         model.compile(loss='categorical_crossentropy',
                       optimizer=Adam(learning_rate=0.001), # rs: why not learning_rate?
                       metrics=['accuracy', F1Score(average='macro', name='f1')])
+
+        if reload_weights:
+            model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
+            dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
+            model.save(dir_save, include_optimizer=False)
+            with open(os.path.join(dir_save, "config.json"), "w") as fp:
+                json.dump(_config, fp)  # encode dict into JSON
+            _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)
+            return
 
         list_classes = list(classification_classes_name.values())
         data_args = dict(label_mode="categorical",
@@ -805,6 +834,21 @@ def run(_config,
                                                       weight_decay,
                                                       pretraining)
 
+        #f1score_tot = [0]
+        model.compile(loss="binary_crossentropy",
+                      #optimizer=SGD(learning_rate=0.01, momentum=0.9),
+                      optimizer=Adam(learning_rate=0.0001), # rs: why not learning_rate?
+                      metrics=['accuracy'])
+
+        if reload_weights:
+            model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
+            dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
+            model.save(dir_save, include_optimizer=False)
+            with open(os.path.join(dir_save, "config.json"), "w") as fp:
+                json.dump(_config, fp)  # encode dict into JSON
+            _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)
+            return
+
         dir_flow_train_imgs = os.path.join(dir_train, 'images')
         dir_flow_train_labels = os.path.join(dir_train, 'labels')
 
@@ -814,12 +858,6 @@ def run(_config,
         else:
             num_rows = len(classes)
         #ls_test = os.listdir(dir_flow_train_labels)
-
-        #f1score_tot = [0]
-        model.compile(loss="binary_crossentropy",
-                      #optimizer=SGD(learning_rate=0.01, momentum=0.9),
-                      optimizer=Adam(learning_rate=0.0001), # rs: why not learning_rate?
-                      metrics=['accuracy'])
 
         callbacks = [TensorBoard(os.path.join(dir_output, 'logs'), write_graph=False),
                      SaveWeightsAfterSteps(0, dir_output, _config)]
