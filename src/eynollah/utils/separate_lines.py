@@ -1490,63 +1490,53 @@ def do_image_rotation(angle, img=None, sigma_des=1.0, logger=None):
         var = 0
     return var
 
-def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
-                       main_page=False, logger=None, plotter=None, name=None):
+def return_deskew_slop(img,
+                       sigma_des,
+                       n_tot_angles=100,
+                       main_page=False,
+                       logger=None,
+                       plotter=None,
+                       name=None):
     if main_page and plotter:
-        plotter.save_plot_of_textline_density(img_patch_org, name)
-    
-    img_int=np.zeros((img_patch_org.shape[0],img_patch_org.shape[1]))
-    img_int[:,:]=img_patch_org[:,:]#img_patch_org[:,:,0]
+        plotter.save_plot_of_textline_density(img, name)
 
-    max_shape=np.max(img_int.shape)
-    img_resized=np.zeros((int( max_shape*(1.1) ) , int( max_shape*(1.1) ) ))
+    height, width = img.shape[:2]
+    max_shape = int(np.max(img.shape) * 1.1)
 
-    onset_x=int((img_resized.shape[1]-img_int.shape[1])/2.)
-    onset_y=int((img_resized.shape[0]-img_int.shape[0])/2.)
+    onset_x = int(0.5 * (max_shape - width))
+    onset_y = int(0.5 * (max_shape - height))
 
-    #img_resized=np.zeros((int( img_int.shape[0]*(1.8) ) , int( img_int.shape[1]*(2.6) ) ))
-    #img_resized[ int( img_int.shape[0]*(.4)):int( img_int.shape[0]*(.4))+img_int.shape[0],
-    #             int( img_int.shape[1]*(.8)):int( img_int.shape[1]*(.8))+img_int.shape[1] ]=img_int[:,:]
-    img_resized[ onset_y:onset_y+img_int.shape[0] , onset_x:onset_x+img_int.shape[1] ]=img_int[:,:]
+    img_resized = np.zeros((max_shape, max_shape))
+    img_resized[onset_y: onset_y + height,
+                onset_x: onset_x + width] = img
 
-    if main_page and img_patch_org.shape[1] > img_patch_org.shape[0]:
+    def best_angle(angles):
+        return get_smallest_skew(img_resized, sigma_des, angles,
+                                 logger=logger,
+                                 name=name,
+                                 plotter=plotter)
+
+    if main_page and width > height:
         angles = np.array([-45, 0, 45, 90,])
-        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, logger=logger, name=name, plotter=plotter)
+        angle, _ = best_angle(angles)
 
         angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
-        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, logger=logger, name=name, plotter=plotter)
+        angle, _ = best_angle(sigma_des)
     elif main_page:
         #angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
         angles = np.concatenate((np.linspace(-12, -7, n_tot_angles // 4),
                                  np.linspace(-6, 6, n_tot_angles // 2),
                                  np.linspace(7, 12, n_tot_angles // 4)))
-        angle, var = get_smallest_skew(img_resized, sigma_des, angles, logger=logger, name=name, plotter=plotter)
+        angle, var = best_angle(angles)
 
-        early_slope_edge=11
-        if abs(angle) > early_slope_edge:
-            if angle < 0:
-                angles2 = np.linspace(-90, -12, n_tot_angles)
-            else:
-                angles2 = np.linspace(90, 12, n_tot_angles)
-            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, logger=logger, name=name, plotter=plotter)
-            if var2 > var:
-                angle = angle2
     else:
         angles = np.linspace(-25, 25, int(0.5 * n_tot_angles) + 10)
-        angle, var = get_smallest_skew(img_resized, sigma_des, angles, logger=logger, name=name, plotter=plotter)
+        angle, var = best_angle(angles)
 
-        early_slope_edge=22
-        if abs(angle) > early_slope_edge:
-            if angle < 0:
-                angles2 = np.linspace(-90, -25, int(0.5 * n_tot_angles) + 10)
-            else:
-                angles2 = np.linspace(90, 25, int(0.5 * n_tot_angles) + 10)
-            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, logger=logger, name=name, plotter=plotter)
-            if var2 > var:
-                angle = angle2
     # precision stage:
     angles = np.linspace(angle - 2.5, angle + 2.5, n_tot_angles // 2)
-    angle, _ = get_smallest_skew(img_resized, sigma_des, angles, logger=logger, name=name, plotter=plotter)
+    angle, _ = best_angle(angles)
+
     return angle
 
 def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, name=None):
