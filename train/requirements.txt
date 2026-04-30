@@ -1,6 +1,7 @@
 sacred
 seaborn
-numpy <1.24.0
+numpy
 tqdm
 imutils
 scipy
+tensorflow-addons # for connected_components

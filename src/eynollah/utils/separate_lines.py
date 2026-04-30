@@ -5,7 +5,16 @@ import numpy as np
 import cv2
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-from .rotate import rotate_image
+from scipy.stats import linregress
+from ocrd_utils import (
+    shift_coordinates,
+    rotate_coordinates,
+    transform_coordinates,
+)
+from .rotate import (
+    rotate_image,
+    rotate_image_enlarge,
+)
 from .resize import resize_image
 from .contour import (
     return_parent_contours,
@@ -13,9 +22,9 @@ from .contour import (
     return_contours_of_image,
     filter_contours_area_of_image,
     return_contours_of_interested_textline,
+    find_center_of_contours,
     find_contours_mean_y_diff,
 )
-from .shm import share_ndarray, wrap_ndarray_shared
 from . import (
     find_num_col_deskew,
     box2rect,
@@ -399,14 +408,14 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
             point_down_rot3=point_down_rot3-y_help
             point_down_rot4=point_down_rot4-y_help
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     elif len(peaks) < 1:
         pass
 
@@ -458,14 +467,14 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
         point_down_rot3=point_down_rot3-y_help
         point_down_rot4=point_down_rot4-y_help
 
-        textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                            [int(x_max_rot2), int(point_up_rot2)],
-                                            [int(x_max_rot3), int(point_down_rot3)],
-                                            [int(x_min_rot4), int(point_down_rot4)]]))
-        textline_boxes.append(np.array([[int(x_min), int(y_min)],
-                                        [int(x_max), int(y_min)],
-                                        [int(x_max), int(y_max)],
-                                        [int(x_min), int(y_max)]]))
+        textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                            [[int(x_max_rot2), int(point_up_rot2)]],
+                                            [[int(x_max_rot3), int(point_down_rot3)]],
+                                            [[int(x_min_rot4), int(point_down_rot4)]]]))
+        textline_boxes.append(np.array([[[int(x_min), int(y_min)]],
+                                        [[int(x_max), int(y_min)]],
+                                        [[int(x_max), int(y_max)]],
+                                        [[int(x_min), int(y_max)]]]))
     elif len(peaks) == 2:
         dis_to_next = np.abs(peaks[1] - peaks[0])
         for jj in range(len(peaks)):
@@ -526,14 +535,14 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
             point_down_rot3=point_down_rot3-y_help
             point_down_rot4=point_down_rot4-y_help
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     else:
         for jj in range(len(peaks)):
             if jj == 0:
@@ -602,14 +611,14 @@ def separate_lines(img_patch, contour_text_interest, thetha, x_help, y_help):
             point_down_rot3=point_down_rot3-y_help
             point_down_rot4=point_down_rot4-y_help
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     return peaks, textline_boxes_rot
 
 def separate_lines_vertical(img_patch, contour_text_interest, thetha):
@@ -781,14 +790,14 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
             if point_up_rot2 < 0:
                 point_up_rot2 = 0
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     elif len(peaks) < 1:
         pass
     elif len(peaks) == 1:
@@ -817,14 +826,14 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
         if point_up_rot2 < 0:
             point_up_rot2 = 0
 
-        textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                            [int(x_max_rot2), int(point_up_rot2)],
-                                            [int(x_max_rot3), int(point_down_rot3)],
-                                            [int(x_min_rot4), int(point_down_rot4)]]))
-        textline_boxes.append(np.array([[int(x_min), int(y_min)],
-                                        [int(x_max), int(y_min)],
-                                        [int(x_max), int(y_max)],
-                                        [int(x_min), int(y_max)]]))
+        textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                            [[int(x_max_rot2), int(point_up_rot2)]],
+                                            [[int(x_max_rot3), int(point_down_rot3)]],
+                                            [[int(x_min_rot4), int(point_down_rot4)]]]))
+        textline_boxes.append(np.array([[[int(x_min), int(y_min)]],
+                                        [[int(x_max), int(y_min)]],
+                                        [[int(x_max), int(y_max)]],
+                                        [[int(x_min), int(y_max)]]]))
     elif len(peaks) == 2:
         dis_to_next = np.abs(peaks[1] - peaks[0])
         for jj in range(len(peaks)):
@@ -872,14 +881,14 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
             if point_up_rot2 < 0:
                 point_up_rot2 = 0
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     else:
         for jj in range(len(peaks)):
             if jj == 0:
@@ -938,14 +947,14 @@ def separate_lines_vertical(img_patch, contour_text_interest, thetha):
             if point_up_rot2 < 0:
                 point_up_rot2 = 0
 
-            textline_boxes_rot.append(np.array([[int(x_min_rot1), int(point_up_rot1)],
-                                                [int(x_max_rot2), int(point_up_rot2)],
-                                                [int(x_max_rot3), int(point_down_rot3)],
-                                                [int(x_min_rot4), int(point_down_rot4)]]))
-            textline_boxes.append(np.array([[int(x_min), int(point_up)],
-                                            [int(x_max), int(point_up)],
-                                            [int(x_max), int(point_down)],
-                                            [int(x_min), int(point_down)]]))
+            textline_boxes_rot.append(np.array([[[int(x_min_rot1), int(point_up_rot1)]],
+                                                [[int(x_max_rot2), int(point_up_rot2)]],
+                                                [[int(x_max_rot3), int(point_down_rot3)]],
+                                                [[int(x_min_rot4), int(point_down_rot4)]]]))
+            textline_boxes.append(np.array([[[int(x_min), int(point_up)]],
+                                            [[int(x_max), int(point_up)]],
+                                            [[int(x_max), int(point_down)]],
+                                            [[int(x_min), int(point_down)]]]))
     return peaks, textline_boxes_rot
 
 def separate_lines_new_inside_tiles2(img_patch, thetha):
@@ -1295,95 +1304,71 @@ def separate_lines_new_inside_tiles(img_path, thetha):
     img_path = cv2.erode(img_path, kernel, iterations=2)
     return img_path
 
-def separate_lines_vertical_cont(img_patch, contour_text_interest, thetha, box_ind, add_boxes_coor_into_textlines):
+def separate_lines_vertical_cont(textline_mask, box_ind):
     kernel = np.ones((5, 5), np.uint8)
-    label = 255
     min_area = 0
     max_area = 1
 
-    if img_patch.ndim == 3:
-        cnts_images = (img_patch[:, :, 0] == label) * 1
-    else:
-        cnts_images = (img_patch[:, :] == label) * 1
-    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
-    contours_imgs, hierarchy = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    _, thresh = cv2.threshold(textline_mask.astype(np.uint8), 0, 255, 0)
+    contours, hierarchy = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours = return_parent_contours(contours, hierarchy)
+    contours = filter_contours_area_of_image_tables(thresh,
+                                                    contours, hierarchy,
+                                                    max_area=max_area,
+                                                    min_area=min_area)
+    contours_final = []
+    for contour in contours:
+        img = np.zeros_like(textline_mask, dtype=np.uint8)
+        img = cv2.fillPoly(img, pts=[contour], color=255)
+        img = cv2.dilate(img, kernel, iterations=4)
+        _, thresh = cv2.threshold(img, 0, 255, 0)
+        contours_text_rot, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
-    contours_imgs = filter_contours_area_of_image_tables(thresh,
-                                                         contours_imgs, hierarchy,
-                                                         max_area=max_area, min_area=min_area)
-    cont_final = []
-    for i in range(len(contours_imgs)):
-        img_contour = np.zeros(cnts_images.shape[:2], dtype=np.uint8)
-        img_contour = cv2.fillPoly(img_contour, pts=[contours_imgs[i]], color=255)
+        contours_final.append(contours_text_rot[0])
 
-        img_contour = cv2.dilate(img_contour, kernel, iterations=4)
-        _, threshrot = cv2.threshold(img_contour, 0, 255, 0)
-        contours_text_rot, _ = cv2.findContours(threshrot.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    return None, contours_final
 
-        ##contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[
-        ##0]
-        ##contour_text_copy[:, 0, 1] = contour_text_copy[:, 0, 1] - box_ind[1]
-        ##if add_boxes_coor_into_textlines:
-        ##contours_text_rot[0][:, 0, 0]=contours_text_rot[0][:, 0, 0] + box_ind[0]
-        ##contours_text_rot[0][:, 0, 1]=contours_text_rot[0][:, 0, 1] + box_ind[1]
-        cont_final.append(contours_text_rot[0])
-
-    return None, cont_final
-
-def textline_contours_postprocessing(textline_mask, slope,
-                                     contour_text_interest, box_ind,
-                                     add_boxes_coor_into_textlines=False):
-    textline_mask = textline_mask * 255
+def textline_contours_postprocessing(textline_mask, angle, contour_parent):
+    x, y, w, h = cv2.boundingRect(contour_parent)
+    label = 255
+    textline_mask = textline_mask * label
     kernel = np.ones((5, 5), np.uint8)
     textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_OPEN, kernel)
     textline_mask = cv2.morphologyEx(textline_mask, cv2.MORPH_CLOSE, kernel)
     textline_mask = cv2.erode(textline_mask, kernel, iterations=2)
     # textline_mask = cv2.erode(textline_mask, kernel, iterations=1)
 
-    x_help = 30
-    y_help = 2
+    textline_mask_d = rotate_image_enlarge(textline_mask, angle)
+    #textline_mask_d[textline_mask_d != 0] = 1
 
-    textline_mask_help = np.zeros((textline_mask.shape[0] + int(2 * y_help),
-                                   textline_mask.shape[1] + int(2 * x_help)))
-    textline_mask_help[y_help : y_help + textline_mask.shape[0],
-                       x_help : x_help + textline_mask.shape[1]] = np.copy(textline_mask[:, :])
+    # if np.abs(angle)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
 
-    dst = rotate_image(textline_mask_help, slope)
-    dst[dst != 0] = 1
+    contour_parent = contour_parent - [x, y]
+    img = np.zeros((h, w), dtype=np.uint8)
+    img = cv2.fillPoly(img, pts=[contour_parent], color=255)
+    img_d = rotate_image_enlarge(img, angle)
 
-    # if np.abs(slope)>.5 and textline_mask.shape[0]/float(textline_mask.shape[1])>3:
-    # plt.imshow(dst)
-    # plt.show()
+    _, thresh = cv2.threshold(img_d, 0, 255, 0)
+    contours_parent_d, _ = cv2.findContours(thresh.astype(np.uint8),
+                                            cv2.RETR_EXTERNAL,
+                                            cv2.CHAIN_APPROX_SIMPLE)
+    contour_parent_d = contours_parent_d[
+        np.argmax(map(cv2.contourArea, contours_parent_d))]
 
-    contour_text_copy = contour_text_interest.copy()
-    contour_text_copy[:, 0, 0] = contour_text_copy[:, 0, 0] - box_ind[0]
-    contour_text_copy[:, 0, 1] = contour_text_copy[:, 0, 1] - box_ind[1]
+    _, contours_rotated_clean = separate_lines(
+        textline_mask_d, contour_parent_d,
+        # already deskewed!
+        #angle, x_off, y_off)
+        0, 0, 0)
 
-    img_contour = np.zeros((box_ind[3], box_ind[2]))
-    img_contour = cv2.fillPoly(img_contour, pts=[contour_text_copy], color=255)
-
-    img_contour_help = np.zeros((img_contour.shape[0] + int(2 * y_help),
-                                 img_contour.shape[1] + int(2 * x_help)))
-    img_contour_help[y_help : y_help + img_contour.shape[0],
-                     x_help : x_help + img_contour.shape[1]] = np.copy(img_contour[:, :])
-
-    img_contour_rot = rotate_image(img_contour_help, slope)
-
-    _, threshrot = cv2.threshold(img_contour_rot, 0, 255, 0)
-    contours_text_rot, _ = cv2.findContours(threshrot.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    len_con_text_rot = [len(contours_text_rot[ib]) for ib in range(len(contours_text_rot))]
-    ind_big_con = np.argmax(len_con_text_rot)
-
-    if abs(slope) > 45:
-        _, contours_rotated_clean = separate_lines_vertical_cont(
-            textline_mask, contours_text_rot[ind_big_con], box_ind, slope,
-            add_boxes_coor_into_textlines=add_boxes_coor_into_textlines)
-    else:
-        _, contours_rotated_clean = separate_lines(
-            dst, contours_text_rot[ind_big_con], slope, x_help, y_help)
-
+    # undo relative coordinates
+    transform = rotate_coordinates(np.eye(3), -angle, 0.5 * np.array([h, w]))
+    transform = shift_coordinates(transform, [x, y])
+    contours_rotated_clean = [np.round(transform_coordinates(contour[:, 0],
+                                                             transform)[:, np.newaxis])
+                              .astype(int)
+                              for contour in contours_rotated_clean
+                              if len(contour) > 3]
     return contours_rotated_clean
 
 def separate_lines_new2(img_crop, thetha, num_col, slope_region, logger=None, plotter=None):
@@ -1493,7 +1478,6 @@ def separate_lines_new2(img_crop, thetha, num_col, slope_region, logger=None, pl
 
     return img_patch_interest_revised
 
-@wrap_ndarray_shared(kw='img')
 def do_image_rotation(angle, img=None, sigma_des=1.0, logger=None):
     if logger is None:
         logger = getLogger(__package__)
@@ -1507,9 +1491,9 @@ def do_image_rotation(angle, img=None, sigma_des=1.0, logger=None):
     return var
 
 def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
-                       main_page=False, logger=None, plotter=None, map=None):
+                       main_page=False, logger=None, plotter=None, name=None):
     if main_page and plotter:
-        plotter.save_plot_of_textline_density(img_patch_org)
+        plotter.save_plot_of_textline_density(img_patch_org, name)
     
     img_int=np.zeros((img_patch_org.shape[0],img_patch_org.shape[1]))
     img_int[:,:]=img_patch_org[:,:]#img_patch_org[:,:,0]
@@ -1527,16 +1511,16 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
 
     if main_page and img_patch_org.shape[1] > img_patch_org.shape[0]:
         angles = np.array([-45, 0, 45, 90,])
-        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, logger=logger, name=name, plotter=plotter)
 
         angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
-        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, _ = get_smallest_skew(img_resized, sigma_des, angles, logger=logger, name=name, plotter=plotter)
     elif main_page:
         #angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
         angles = np.concatenate((np.linspace(-12, -7, n_tot_angles // 4),
                                  np.linspace(-6, 6, n_tot_angles // 2),
                                  np.linspace(7, 12, n_tot_angles // 4)))
-        angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, var = get_smallest_skew(img_resized, sigma_des, angles, logger=logger, name=name, plotter=plotter)
 
         early_slope_edge=11
         if abs(angle) > early_slope_edge:
@@ -1544,12 +1528,12 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
                 angles2 = np.linspace(-90, -12, n_tot_angles)
             else:
                 angles2 = np.linspace(90, 12, n_tot_angles)
-            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, plotter=plotter)
+            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, logger=logger, name=name, plotter=plotter)
             if var2 > var:
                 angle = angle2
     else:
         angles = np.linspace(-25, 25, int(0.5 * n_tot_angles) + 10)
-        angle, var = get_smallest_skew(img_resized, sigma_des, angles, map=map, logger=logger, plotter=plotter)
+        angle, var = get_smallest_skew(img_resized, sigma_des, angles, logger=logger, name=name, plotter=plotter)
 
         early_slope_edge=22
         if abs(angle) > early_slope_edge:
@@ -1557,23 +1541,21 @@ def return_deskew_slop(img_patch_org, sigma_des,n_tot_angles=100,
                 angles2 = np.linspace(-90, -25, int(0.5 * n_tot_angles) + 10)
             else:
                 angles2 = np.linspace(90, 25, int(0.5 * n_tot_angles) + 10)
-            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, map=map, logger=logger, plotter=plotter)
+            angle2, var2 = get_smallest_skew(img_resized, sigma_des, angles2, logger=logger, name=name, plotter=plotter)
             if var2 > var:
                 angle = angle2
+    # precision stage:
+    angles = np.linspace(angle - 2.5, angle + 2.5, n_tot_angles // 2)
+    angle, _ = get_smallest_skew(img_resized, sigma_des, angles, logger=logger, name=name, plotter=plotter)
     return angle
 
-def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map):
+def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, name=None):
     if logger is None:
         logger = getLogger(__package__)
-    if map is None:
-        results = [do_image_rotation.__wrapped__(angle, img=img, sigma_des=sigma_des, logger=logger)
-                   for angle in angles]
-    else:
-        with share_ndarray(img) as img_shared:
-            results = list(map(partial(do_image_rotation, img=img_shared, sigma_des=sigma_des, logger=None),
-                               angles))
+    results = [do_image_rotation(angle, img=img, sigma_des=sigma_des, logger=logger)
+               for angle in angles]
     if plotter:
-        plotter.save_plot_of_rotation_angle(angles, results)
+        plotter.save_plot_of_rotation_angle(angles, results, name)
     try:
         var_res = np.array(results)
         assert var_res.any()
@@ -1586,13 +1568,13 @@ def get_smallest_skew(img, sigma_des, angles, logger=None, plotter=None, map=map
         var = 0
     return angle, var
 
-@wrap_ndarray_shared(kw='textline_mask_tot_ea')
-@wrap_ndarray_shared(kw='mask_texts_only')
 def do_work_of_slopes_new_curved(
-        box_text, contour_par,
-        textline_mask_tot_ea=None, mask_texts_only=None,
-        num_col=1, scale_par=1.0, slope_deskew=0.0,
-        logger=None, MAX_SLOPE=999, KERNEL=None, plotter=None
+        contour_par,
+        textline_mask_tot_ea=None,
+        num_col=1, slope_deskew=0.0,
+        logger=None, MAX_SLOPE=999,
+        KERNEL=None, plotter=None,
+        name=None,
 ):
     if KERNEL is None:
         KERNEL = np.ones((5, 5), np.uint8)
@@ -1600,89 +1582,100 @@ def do_work_of_slopes_new_curved(
         logger = getLogger(__package__)
     logger.debug("enter do_work_of_slopes_new_curved")
 
-    x, y, w, h = box_text
-    all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w].astype(np.uint8)
-    img_int_p = all_text_region_raw[:, :]
+    x, y, w, h = cv2.boundingRect(contour_par)
+
+    mask_parent = np.zeros((h, w), dtype=np.uint8)
+    mask_parent = cv2.fillPoly(mask_parent, pts=[contour_par - [x, y]], color=1)
+    all_text_region_raw = textline_mask_tot_ea[y: y + h, x: x + w] * mask_parent
+    if not np.any(all_text_region_raw):
+        return [], slope_deskew
+    img_int_p = np.copy(all_text_region_raw)
 
     # img_int_p=cv2.erode(img_int_p,KERNEL,iterations = 2)
     # plt.imshow(img_int_p)
     # plt.show()
 
     if not np.prod(img_int_p.shape) or img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
-        slope = 0
-        slope_for_all = slope_deskew
+        slope = slope_deskew
     else:
         try:
             textline_con, hierarchy = return_contours_of_image(img_int_p)
             textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con,
                                                              hierarchy,
                                                              max_area=1, min_area=0.0008)
-            y_diff_mean = find_contours_mean_y_diff(textline_con_fil) if len(textline_con_fil) > 1 else np.NaN
-            if np.isnan(y_diff_mean):
-                slope_for_all = MAX_SLOPE
+            if len(textline_con_fil) > 1:
+                cx, cy = find_center_of_contours(textline_con_fil)
+                y_diff_mean = np.median(np.diff(np.sort(np.array(cy))))
+                x_diff_mean = np.median(np.diff(np.sort(np.array(cx))))
+                if h > w and x_diff_mean / w > 2 * y_diff_mean / h:
+                    # print(len(textline_con_fil), "transposed", x_diff_mean, y_diff_mean)
+                    transposed = True
+                    img_int_p = img_int_p.T
+                    sigma = x_diff_mean
+                else:
+                    transposed = False
+                    sigma = y_diff_mean
+                slope = return_deskew_slop(img_int_p, max(1.0, 0.1 * sigma),
+                                           logger=logger,
+                                           name=name,
+                                           plotter=plotter)
+                if transposed:
+                    slope = -90 - slope if slope < 0 else 90 - slope
+                if abs(slope - slope_deskew) < 0.5:
+                    slope = slope_deskew
             else:
-                sigma_des = max(1, int(y_diff_mean * (4.0 / 40.0)))
-                img_int_p[img_int_p > 0] = 1
-                slope_for_all = return_deskew_slop(img_int_p, sigma_des, logger=logger, plotter=plotter)
-                if abs(slope_for_all) < 0.5:
-                    slope_for_all = slope_deskew
+                if h > 3 * w:
+                    # print(1, "transposed", h, w)
+                    transposed = True
+                    img_int_p = img_int_p.T
+                else:
+                    transposed = False
+                # do linear regression on mask to get slope
+                img_ys, img_xs = img_int_p.nonzero()
+                regression = linregress(x=img_xs, y=img_ys)
+                slope = 180 / np.pi * np.arctan(regression.slope)
+                # print(regression, regression.stderr)
+                if transposed:
+                    slope = 90 - slope
+                if regression.stderr > 0.005:
+                    slope = slope_deskew
         except:
             logger.exception("cannot determine angle of contours")
-            slope_for_all = MAX_SLOPE
+            slope = slope_deskew
 
-        if slope_for_all == MAX_SLOPE:
-            slope_for_all = slope_deskew
-        slope = slope_for_all
+    # print(slope, slope_deskew)
 
-    crop_coor = box2rect(box_text)
+    if abs(slope) < 45:
+        mask_parent = np.zeros((h, w), dtype=np.uint8)
+        mask_parent = cv2.fillPoly(mask_parent, pts=[contour_par - [x, y]], color=1)
+        mask_parent_textline = mask_parent * textline_mask_tot_ea[y : y + h, x : x + w]
 
-    if abs(slope_for_all) < 45:
-        textline_region_in_image = np.zeros(textline_mask_tot_ea.shape)
-        x, y, w, h = cv2.boundingRect(contour_par)
-        mask_biggest = np.zeros(mask_texts_only.shape)
-        mask_biggest = cv2.fillPoly(mask_biggest, pts=[contour_par], color=(1, 1, 1))
-        mask_region_in_patch_region = mask_biggest[y : y + h, x : x + w]
-        textline_biggest_region = mask_biggest * textline_mask_tot_ea
-
-        textline_rotated_separated = separate_lines_new2(textline_biggest_region[y: y+h, x: x+w], 0,
-                                                         num_col, slope_for_all,
+        mask_textlines_separated_d = separate_lines_new2(mask_parent_textline, 0,
+                                                         num_col, slope,
                                                          logger=logger, plotter=plotter)
+        #mask_textlines_separated_d[mask_parent != 1] = 0
 
-
-        textline_rotated_separated[mask_region_in_patch_region[:, :] != 1] = 0
-
-        textline_region_in_image[y : y + h, x : x + w] = textline_rotated_separated
-
-
-        pixel_img = 1
-        cnt_textlines_in_image = return_contours_of_interested_textline(textline_region_in_image, pixel_img)
+        textline_contours = return_contours_of_interested_textline(mask_textlines_separated_d, 1)
 
         textlines_cnt_per_region = []
-        for jjjj in range(len(cnt_textlines_in_image)):
-            mask_biggest2 = np.zeros(mask_texts_only.shape)
-            mask_biggest2 = cv2.fillPoly(mask_biggest2, pts=[cnt_textlines_in_image[jjjj]], color=(1, 1, 1))
-            if num_col + 1 == 1:
-                mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=5)
-            else:
-                mask_biggest2 = cv2.dilate(mask_biggest2, KERNEL, iterations=4)
+        for contour in textline_contours:
+            mask_line = np.zeros_like(mask_parent)
+            mask_line = cv2.fillPoly(mask_line, pts=[contour], color=1)
+            mask_line = cv2.dilate(mask_line, KERNEL, iterations=5 if num_col == 0 else 4)
 
-            pixel_img = 1
-            mask_biggest2 = resize_image(mask_biggest2,
-                                         int(mask_biggest2.shape[0] * scale_par),
-                                         int(mask_biggest2.shape[1] * scale_par))
-            cnt_textlines_in_image_ind = return_contours_of_interested_textline(mask_biggest2, pixel_img)
+            textline_contours2 = return_contours_of_interested_textline(mask_line, 1)
+            textline_areas2 = np.array(list(map(cv2.contourArea, textline_contours2)))
             try:
-                textlines_cnt_per_region.append(cnt_textlines_in_image_ind[0])
+                contour2 = textline_contours2[np.argmax(textline_areas2)]
+                textlines_cnt_per_region.append(contour2 + [x, y])
             except Exception as why:
                 logger.error(why)
     else:
         textlines_cnt_per_region = textline_contours_postprocessing(all_text_region_raw,
-                                                                    slope_for_all, contour_par,
-                                                                    box_text, True)
+                                                                    slope, contour_par)
 
-    return textlines_cnt_per_region[::-1], crop_coor, slope
+    return textlines_cnt_per_region[::-1], slope
 
-@wrap_ndarray_shared(kw='textline_mask_tot_ea')
 def do_work_of_slopes_new_light(
         box_text, contour, contour_par,
         textline_mask_tot_ea=None, slope_deskew=0,
@@ -1693,7 +1686,6 @@ def do_work_of_slopes_new_light(
     logger.debug('enter do_work_of_slopes_new_light')
 
     x, y, w, h = box_text
-    crop_coor = box2rect(box_text)
     mask_textline = np.zeros(textline_mask_tot_ea.shape)
     mask_textline = cv2.fillPoly(mask_textline, pts=[contour], color=(1,1,1))
     all_text_region_raw = textline_mask_tot_ea * mask_textline
@@ -1708,4 +1700,4 @@ def do_work_of_slopes_new_light(
     cnt_clean_rot = filter_contours_area_of_image(all_text_region_raw, cnt_clean_rot_raw, hir_on_cnt_clean_rot,
                                                   max_area=1, min_area=0.00001)
 
-    return cnt_clean_rot, crop_coor, slope_deskew
+    return cnt_clean_rot, slope_deskew

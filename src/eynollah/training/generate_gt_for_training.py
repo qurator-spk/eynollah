@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 import cv2
 import numpy as np
 
-from eynollah.training.gt_gen_utils import (
+from .gt_gen_utils import (
     filter_contours_area_of_image,
     find_format_of_given_filename_in_dir,
     find_new_features_of_contours,
@@ -26,32 +26,37 @@ from eynollah.training.gt_gen_utils import (
 
 @click.group()
 def main():
+    """
+    extract GT data suitable for model training for various tasks
+    """
     pass
 
 @main.command()
 @click.option(
     "--dir_xml",
     "-dx",
-    help="directory of GT page-xml files",
+    help="input directory of GT PAGE-XML files",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
 @click.option(
     "--dir_images",
     "-di",
-    help="directory of org images. If print space cropping or scaling is needed for labels it would be great to provide the original images to apply the same function on them. So if -ps is not set true or in config files no columns_width key is given this argumnet can be ignored. File stems in this directory should be the same as those in dir_xml.",
+    help="input directory of GT image files (only needed for '--printspace' or scaling configured via 'columns_width'; filename stems should match those in --dir_xml)",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
     "--dir_out_images",
     "-doi",
-    help="directory where the output org images after undergoing a process (like print space cropping or scaling) will be written.",
+    help="output directory for training image files (for printspace cropping or scaling)",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
     "--dir_out",
     "-do",
-    help="directory where ground truth label images would be written",
+    help="output directory for training label files",
     type=click.Path(exists=True, file_okay=False),
+    required=True,
 )
 
 @click.option(
@@ -64,24 +69,45 @@ def main():
 @click.option(
     "--type_output",
     "-to",
-    help="this defines how output should be. A 2d image array or a 3d image array encoded with RGB color. Just pass 2d or 3d. The file will be saved one directory up. 2D image array is 3d but only information of one channel would be enough since all channels have the same values.",
+    type=click.Choice(["2d", "3d"]),
+    default="2d",
+    help="generate labels as [H, W] array pseudo index-color images for training ('2d') or [H, W, C] array RGB color images for plotting ('3d')",
 )
 @click.option(
     "--printspace",
     "-ps",
     is_flag=True,
-    help="if this parameter set to true, generated labels and in the case of provided org images cropping will be imposed and cropped labels and images will be written in output directories.",
+    help="crop pages from annotated PrintSpace or Border to generate labels and images (will also require -di for so original images so output images are cropped along with labels)",
+)
+@click.option(
+    "--missing-printspace",
+    "-mps",
+    type=click.Choice(["full", "skip", "project"]),
+    default="full",
+    help="if -ps is set, what to do in case a PAGE-XML has no PrintSpace or Border annotation: keep entire page ('full'), ignore file ('skip') or crop artificially from outer hull of all segments ('project')",
 )
 
-def pagexml2label(dir_xml,dir_out,type_output,config, printspace, dir_images, dir_out_images):
+def pagexml2label(dir_xml, dir_out, type_output, config, printspace, missing_printspace, dir_images, dir_out_images):
+    """
+    extract PAGE-XML GT data suitable for model training for segmentation tasks
+    """
     if config:
         with open(config) as f:
             config_params = json.load(f)
     else:
         print("passed")
         config_params = None
-    gt_list = get_content_of_dir(dir_xml)
-    get_images_of_ground_truth(gt_list,dir_xml,dir_out,type_output, config, config_params, printspace, dir_images, dir_out_images)
+    get_images_of_ground_truth(get_content_of_dir(dir_xml),
+                               dir_xml,
+                               dir_out,
+                               type_output,
+                               config,
+                               config_params,
+                               printspace,
+                               missing_printspace,
+                               dir_images,
+                               dir_out_images
+    )
     
 @main.command()
 @click.option(
@@ -110,6 +136,9 @@ def pagexml2label(dir_xml,dir_out,type_output,config, printspace, dir_images, di
     type=click.Path(exists=True, dir_okay=False),
 )
 def image_enhancement(dir_imgs, dir_out_images, dir_out_labels, scales):
+    """
+    extract image GT data suitable for model training for image enhancement tasks
+    """
     ls_imgs = os.listdir(dir_imgs)
     with open(scales) as f:
         scale_dict = json.load(f)
@@ -175,6 +204,9 @@ def image_enhancement(dir_imgs, dir_out_images, dir_out_labels, scales):
 )
 
 def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, input_height, input_width, min_area_size, min_area_early):
+    """
+    extract PAGE-XML GT data suitable for model training for reading-order task
+    """
     xml_files_ind = os.listdir(dir_xml)
     xml_files_ind = [ind_xml for ind_xml in xml_files_ind if ind_xml.endswith('.xml')]
     input_height = int(input_height)
@@ -205,14 +237,20 @@ def machine_based_reading_order(dir_xml, dir_out_modal_image, dir_out_classes, i
         img_header_and_sep = np.zeros((y_len,x_len), dtype='uint8')
 
         for j in range(len(cy_main)):
-            img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,int(x_min_main[j]):int(x_max_main[j]) ] = 1
+            img_header_and_sep[int(y_max_main[j]):int(y_max_main[j])+12,
+                               int(x_min_main[j]):int(x_max_main[j]) ] = 1
 
 
-        texts_corr_order_index  = [index_tot_regions[tot_region_ref.index(i)] for i in id_all_text ]
-        texts_corr_order_index_int = [int(x) for x in texts_corr_order_index]
-        
+        try:
+            texts_corr_order_index_int  = [int(index_tot_regions[tot_region_ref.index(i)])
+                                           for i in id_all_text]
+        except ValueError as e:
+            print("incomplete ReadingOrder in", xml_file, "- skipping:", str(e))
+            continue
 
-        co_text_all, texts_corr_order_index_int, regions_ar_less_than_early_min = filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int, max_area, min_area, min_area_early)
+        co_text_all, texts_corr_order_index_int, regions_ar_less_than_early_min = \
+            filter_contours_area_of_image(img_poly, co_text_all, texts_corr_order_index_int,
+                                          max_area, min_area, min_area_early)
         
         
         arg_array = np.array(range(len(texts_corr_order_index_int)))

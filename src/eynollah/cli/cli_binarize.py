@@ -21,13 +21,20 @@ import click
     type=click.Path(file_okay=True, dir_okay=True),
     required=True,
 )
+@click.option(
+    "--overwrite",
+    "-O",
+    help="overwrite (instead of skipping) if output xml exists",
+    is_flag=True,
+)
 @click.pass_context
 def binarize_cli(
-    ctx,
-    patches,
-    input_image,
-    dir_in,
-    output,
+        ctx,
+        patches,
+        input_image,
+        dir_in,
+        output,
+        overwrite,
 ):
     """
     Binarize images with a ML model
@@ -39,6 +46,7 @@ def binarize_cli(
         image_path=input_image,
         use_patches=patches,
         output=output,
-        dir_in=dir_in
+        dir_in=dir_in,
+        overwrite=overwrite
     )
 
