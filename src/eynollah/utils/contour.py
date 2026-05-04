@@ -402,27 +402,47 @@ def estimate_skew_contours(contours):
     _, size_in, angle_in = zip(*map(cv2.minAreaRect, contours))
     w_in, h_in = np.array(size_in).T
     angle_in = np.array(angle_in)
+    # 1. depending on how contours are oriented,
+    # and where they start, minAreaRect can present
+    # either side as width or height; so we first
+    # need to normalise
     transposed = h_in > w_in
     # print("transposed", transposed, angle_in)
     w_in[transposed], h_in[transposed] = h_in[transposed], w_in[transposed]
     angle_in[transposed] -= 90
-    usable = w_in > 3 * h_in
+    # 2. now we look at aspect ratio: too short
+    # textlines do not yield reliable angles
+    usable = w_in > 2.5 * h_in
     # print("usable aspect", w_in / h_in, usable, angle_in[usable])
     if not np.any(usable):
         raise ValueError("not enough contours with high aspect ratio")
+    # 3. next, get rid of outliers regarding length
     w_avg = np.median(w_in[usable])
     w_dev = w_in[usable] / w_avg
     usable[usable] = (0.67 <= w_dev) & (w_dev <= 1.33)
-    # print("usable width", usable, w_in[usable], angle_in[usable])
+    # print("usable length", w_in[usable] / w_avg, usable, angle_in[usable])
     if not np.any(usable):
         raise ValueError("not enough contours with consistent length")
-    angle_avg = np.median(angle_in[usable])
-    angle_dev = np.abs(angle_in[usable] - angle_avg)
+    if np.count_nonzero(usable) == 1:
+        return angle_in[usable]
+    # 4. there is no way to distinguish between +90 and -89.9 here,
+    # so map to [0,180] when calculating averages, then map back to [-90,90]
+    # (we don't want -90 and +89 to average zero, or +1 and +179 to average 90)
+    angles = angle_in[usable]
+    if transposed := np.median(np.abs(angles)) >= 45:
+        angles %= 180
+    angle_avg = np.median(angles)
+    angle_dev = np.abs(angles - angle_avg)
     usable[usable] = (angle_dev <= 2 * np.median(angle_dev))
-    # print("usable angle", usable, angle_in[usable], np.mean(angle_in[usable]))
+    # print("usable angle", usable, angle_in[usable])
     if not np.any(usable):
         raise ValueError("not enough contours with consistent angle")
-    return np.mean(angle_in[usable])
+    if transposed:
+        angle = 90 - (90 - np.mean(angle_in[usable] % 180)) % 180
+    else:
+        angle = np.mean(angle_in[usable])
+    # print("mean angle", angle)
+    return angle
 
 def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number]]]], dilate=0):
     polygon = Polygon([point[0] for point in contour])
