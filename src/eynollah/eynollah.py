@@ -986,7 +986,7 @@ class Eynollah:
 
     def get_slopes_and_deskew_new_light2(self, contours_par, textline_mask_tot, slope_deskew):
 
-        polygons_of_textlines = return_contours_of_interested_region(textline_mask_tot, 1, 0.00001)
+        polygons_of_textlines = return_contours_of_interested_region(textline_mask_tot, 1, 0.0001)
         cx_textlines, cy_textlines = find_center_of_contours(polygons_of_textlines)
         w_h_textlines = [cv2.boundingRect(polygon)[2:] for polygon in polygons_of_textlines]
         args_textlines = np.arange(len(polygons_of_textlines))
@@ -1013,6 +1013,10 @@ class Eynollah:
                 slopes.append(estimate_skew_contours(textlines_in))
             except ValueError:
                 slopes.append(slope_deskew)
+            # plt.imshow(textline_mask_tot)
+            # for contour in textlines_in:
+            #     plt.plot(*contour[:, 0].T, linewidth=3, color='red')
+            # plt.show()
 
         return all_found_textline_polygons, slopes
 
