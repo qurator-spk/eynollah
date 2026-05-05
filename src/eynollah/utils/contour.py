@@ -480,28 +480,32 @@ def make_valid(polygon: Polygon) -> Polygon:
     def isint(x):
         return isinstance(x, int) or int(x) == x
     # make sure rounding does not invalidate
-    if not all(map(isint, np.array(polygon.exterior.coords).flat)) and polygon.minimum_clearance < 1.0:
+    if (not all(map(isint, np.array(polygon.exterior.coords).flat)) and
+        polygon.minimum_clearance < 1.0):
         polygon = Polygon(np.round(polygon.exterior.coords))
+    if polygon.is_valid:
+        return polygon
     points = list(polygon.exterior.coords[:-1])
-    # try by re-arranging points
+    def step(split, tolerance):
+        # try by re-arranging points
+        poly = Polygon(points[-split:]+points[:-split])
+        if poly.is_valid:
+            return poly
+        # try by simplification
+        poly = poly.simplify(tolerance + 1.0)
+        if poly.is_valid:
+            return poly
+        # try by enlarging
+        poly = poly.buffer(tolerance)
+        if poly.is_valid:
+            return poly
+        return None
     for split in range(1, len(points)):
-        if polygon.is_valid or polygon.simplify(polygon.area).is_valid:
-            break
-        # simplification may not be possible (at all) due to ordering
-        # in that case, try another starting point
-        polygon = Polygon(points[-split:]+points[:-split])
-    # try by simplification
-    for tolerance in range(int(polygon.area + 1.5)):
-        if polygon.is_valid:
-            break
-        # simplification may require a larger tolerance
-        polygon = polygon.simplify(tolerance + 1)
-    # try by enlarging
-    for tolerance in range(1, int(polygon.area + 2.5)):
-        if polygon.is_valid:
-            break
-        # enlargement may require a larger tolerance
-        polygon = polygon.buffer(tolerance)
+        for tolerance in np.linspace(1, np.sqrt(polygon.area), 100):
+            # simplification may not be possible (at all) due to ordering
+            # in that case, try another starting point
+            if poly := step(split, tolerance):
+                return poly
     assert polygon.is_valid, polygon.wkt
     return polygon
 
