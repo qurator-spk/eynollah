@@ -1,7 +1,10 @@
-sacred
+ocrd-fork-sacred >= 0.8.7.post1
 seaborn
 numpy
 tqdm
 imutils
 scipy
-tensorflow-addons # for connected_components
+tensorflow-addons # for connected_components, depublished and only compatible with tensorflow < 2.16
+tensorflow < 2.16 # for tensorflow-addons, so only needed in training
+tf_data < 2.16 # for tensorflow-addons, so only needed in training
+protobuf < 5 # for tensorflow-addons, so only needed in training
