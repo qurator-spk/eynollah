@@ -7,7 +7,6 @@ import tensorflow as tf
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from PIL import Image, ImageDraw, ImageFont
-from Bio import pairwise2
 
 from .resize import resize_image
 
@@ -503,8 +502,3 @@ def return_rnn_cnn_ocr_of_given_textlines(image,
             ocr_textline_in_textregion.append(text_textline)
         ocr_all_textlines.append(ocr_textline_in_textregion)
     return ocr_all_textlines
-
-def biopython_align(str1, str2):
-    alignments = pairwise2.align.globalms(str1, str2, 2, -1, -2, -2)
-    best_alignment = alignments[0]  # Get the best alignment
-    return best_alignment.seqA, best_alignment.seqB
