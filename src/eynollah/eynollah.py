@@ -2138,14 +2138,11 @@ class Eynollah:
          text_regions_p,
          textline_mask_tot_ea,
          regions_confidence,
-         textline_confidence) = self.get_early_layout(image_page, num_col_classifier)
-        regions_without_separators *= mask_page
-        text_regions_p *= mask_page
-        textline_mask_tot_ea *= mask_page
+         textline_confidence) = self.get_early_layout(image['img_res'], num_col_classifier)
         t2 = time.time()
         self.logger.info("Early layout took %.1fs", t2 - t1)
         if self.plotter:
-            self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image_page, image['name'])
+            self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image['img_res'], image['name'])
 
         if num_col_classifier == 1 or num_col_classifier ==2:
             if num_col_classifier == 1:
@@ -2167,6 +2164,15 @@ class Eynollah:
             self.plotter.save_deskewed_image(slope_deskew, image['img'], image['name'])
         t3 = time.time()
         self.logger.info("Deskewing took %.1fs", t3 - t2)
+
+        page_coord = np.array(page_coord)
+        page_box = (slice(*page_coord[:2]),
+                    slice(*page_coord[2:]))
+        polygons_seplines = [contour - page_coord[::2][::-1][np.newaxis, np.newaxis]
+                             for contour in polygons_seplines]
+        regions_without_separators = regions_without_separators[page_box] * mask_page
+        text_regions_p = text_regions_p[page_box] * mask_page
+        textline_mask_tot_ea = textline_mask_tot_ea[page_box] * mask_page
 
         num_col, num_col_classifier = \
             self.run_columns(text_regions_p,
