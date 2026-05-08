@@ -15,7 +15,6 @@ from tensorflow.keras.layers import (
     Embedding,
     Flatten,
     Input,
-    Lambda,
     Layer,
     LayerNormalization,
     LSTM,
