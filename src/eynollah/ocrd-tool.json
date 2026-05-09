@@ -85,6 +85,14 @@
       },
       "resources": [
         {
+          "url": "https://zenodo.org/records/17727267/files/models_all_v0_8_0.zip",
+          "name": "models_all_v0_8_0",
+          "type": "archive",
+          "size": 5636009377,
+          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization and image enhancement",
+          "version_range": ">= v0.8.0"
+        },
+        {
           "url": "https://zenodo.org/records/17580627/files/models_all_v0_7_0.zip?download=1",
           "name": "models_layout_v0_7_0",
           "type": "archive",
@@ -135,6 +143,14 @@
         }
       },
       "resources": [
+        {
+          "url": "https://zenodo.org/records/17727267/files/models_all_v0_8_0.zip",
+          "name": "models_all_v0_8_0",
+          "type": "archive",
+          "size": 5636009377,
+          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization and image enhancement",
+          "version_range": ">= v0.8.0"
+        },
         {
           "url": "https://zenodo.org/records/17580627/files/models_all_v0_7_0.zip?download=1",
           "name": "models_layout_v0_7_0",

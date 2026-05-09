@@ -1,8 +1,8 @@
 from .specs import EynollahModelSpec, EynollahModelSpecSet
 
 # NOTE: This needs to change whenever models/versions change
-ZENODO = "https://zenodo.org/records/17295988/files"
-MODELS_VERSION = "v0_7_0"
+ZENODO = "https://zenodo.org/records/17727267"
+MODELS_VERSION = "v0_8_0"
 
 def dist_url(dist_name: str="layout") -> str:
     return f'{ZENODO}/models_{dist_name}_{MODELS_VERSION}.zip'
