@@ -14,16 +14,8 @@ from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 from eynollah.model_zoo.model_zoo import EynollahModelZoo
 
 from .sbb_binarize import SbbBinarizer
+from .utils.pil_cv2 import cv2pil
 
-
-def cv2pil(img):
-    return Image.fromarray(img.astype('uint8'))
-
-def pil2cv(img):
-    # from ocrd/workspace.py
-    color_conversion = cv2.COLOR_GRAY2BGR if img.mode in ('1', 'L') else  cv2.COLOR_RGB2BGR
-    pil_as_np_array = np.array(img).astype('uint8') if img.mode == '1' else np.array(img)
-    return cv2.cvtColor(pil_as_np_array, color_conversion)
 
 class SbbBinarizeProcessor(Processor):
     # already employs GPU (without singleton process atm)
@@ -75,7 +67,8 @@ class SbbBinarizeProcessor(Processor):
 
         if oplevel == 'page':
             self.logger.info("Binarizing on 'page' level in page '%s'", page_id)
-            page_image_bin = cv2pil(self.binarizer.run_single(image=pil2cv(page_image), use_patches=True))
+            page_image_bin = cv2pil(self.binarizer.run_single("", img_pil=page_image,
+                                                              use_patches=True))
             # update PAGE (reference the image file):
             page_image_ref = AlternativeImageType(comments=page_xywh['features'] + ',binarized,clipped')
             page.add_AlternativeImage(page_image_ref)
@@ -88,7 +81,8 @@ class SbbBinarizeProcessor(Processor):
             for region in regions:
                 region_image, region_xywh = self.workspace.image_from_segment(
                     region, page_image, page_xywh, feature_filter='binarized')
-                region_image_bin = cv2pil(self.binarizer.run_single(image=pil2cv(region_image), use_patches=True))
+                region_image_bin = cv2pil(self.binarizer.run_single("", img_pil=region_image,
+                                                                    use_patches=True))
                 # update PAGE (reference the image file):
                 region_image_ref = AlternativeImageType(comments=region_xywh['features'] + ',binarized')
                 region.add_AlternativeImage(region_image_ref)
@@ -100,7 +94,8 @@ class SbbBinarizeProcessor(Processor):
                 self.logger.warning("Page '%s' contains no text lines", page_id)
             for line in lines:
                 line_image, line_xywh = self.workspace.image_from_segment(line, page_image, page_xywh, feature_filter='binarized')
-                line_image_bin = cv2pil(self.binarizer.run_single(image=pil2cv(line_image), use_patches=True))
+                line_image_bin = cv2pil(self.binarizer.run_single("", img_pil=line_image,
+                                                                  use_patches=True))
                 # update PAGE (reference the image file):
                 line_image_ref = AlternativeImageType(comments=line_xywh['features'] + ',binarized')
                 line.add_AlternativeImage(line_image_ref)

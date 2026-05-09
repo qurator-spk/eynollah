@@ -33,7 +33,7 @@ class Enhancer(Eynollah):
             
         self.logger = logging.getLogger('eynollah.enhance')
         self.model_zoo = model_zoo
-        self.setup_models()
+        self.setup_models(device=device)
 
     def setup_models(self, device=''):
         loadable = ['enhancement', 'col_classifier', 'page']
@@ -50,7 +50,7 @@ class Enhancer(Eynollah):
     ) -> None:
 
         image = self.cache_images(image_filename=img_filename, image_pil=img_pil)
-        output_filename = os.path.join(dir_out or "", image['name'] +'.png')
+        output_filename = os.path.join(dir_out or "", image['name'] + '.png')
         
         if os.path.exists(output_filename):
             if overwrite:
