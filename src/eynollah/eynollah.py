@@ -334,7 +334,7 @@ class Eynollah:
         if num_col in (1, 2):
             fun = self.calculate_width_height_by_columns_1_2
         else:
-            self.calculate_width_height_by_columns
+            fun = self.calculate_width_height_by_columns
         img_new, _ = fun(img, num_col, conf_col, width_early)
 
         if img_new.shape[1] > img.shape[1]:
@@ -532,7 +532,7 @@ class Eynollah:
                         # now we know the number of classes
                         prediction = np.zeros((img_h, img_w, label_p_pred.shape[-1]), dtype=float)
 
-                    for batch in range(range):
+                    for batch in range(batch):
                         where = np.index_exp[batch_y_d[batch]: batch_y_u[batch],
                                              batch_x_d[batch]: batch_x_u[batch]]
                         # shorter window on last tile
