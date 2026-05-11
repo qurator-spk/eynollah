@@ -1580,19 +1580,20 @@ def do_work_of_slopes_new_curved(
     if not np.any(all_text_region_raw):
         return [], slope_deskew
     img_int_p = np.copy(all_text_region_raw)
+    # correct for relative area
+    rel_area = 1.0 * textline_mask_tot_ea.size / img_int_p.size
 
     # img_int_p=cv2.erode(img_int_p,KERNEL,iterations = 2)
     # plt.imshow(img_int_p)
     # plt.show()
 
-    if not np.prod(img_int_p.shape) or img_int_p.shape[0] / img_int_p.shape[1] < 0.1:
-        slope = slope_deskew
-    else:
+    slope = slope_deskew
+    if h >= 0.1 * w:
         try:
             textline_con, hierarchy = return_contours_of_image(img_int_p)
             textline_con_fil = filter_contours_area_of_image(img_int_p, textline_con,
                                                              hierarchy,
-                                                             max_area=1, min_area=0.0008)
+                                                             min_area=0.0008 * rel_area)
             if len(textline_con_fil) > 1:
                 cx, cy = find_center_of_contours(textline_con_fil)
                 y_diff_mean = np.median(np.diff(np.sort(np.array(cy))))
@@ -1613,7 +1614,7 @@ def do_work_of_slopes_new_curved(
                     slope = -90 - slope if slope < 0 else 90 - slope
                 if abs(slope - slope_deskew) < 0.5:
                     slope = slope_deskew
-            else:
+            elif len(textline_con_fil):
                 if h > 3 * w:
                     # print(1, "transposed", h, w)
                     transposed = True
@@ -1636,24 +1637,32 @@ def do_work_of_slopes_new_curved(
     # print(slope, slope_deskew)
 
     if abs(slope) < 45:
-        mask_parent = np.zeros((h, w), dtype=np.uint8)
-        mask_parent = cv2.fillPoly(mask_parent, pts=[contour_par - [x, y]], color=1)
-        mask_parent_textline = mask_parent * textline_mask_tot_ea[y : y + h, x : x + w]
-
-        mask_textlines_separated_d = separate_lines_new2(mask_parent_textline, 0,
+        # apply horizontal tiling, deskew each patch independently
+        mask_textlines_separated_d = separate_lines_new2(all_text_region_raw, 0,
                                                          num_col, slope,
                                                          logger=logger, plotter=plotter)
-        #mask_textlines_separated_d[mask_parent != 1] = 0
+        # plt.subplot(1, 2, 1, title="textline mask of region")
+        # plt.imshow(all_text_region_raw)
+        # plt.subplot(1, 2, 2, title="separated+deskewed")
+        # plt.imshow(mask_textlines_separated_d)
+        # plt.show()
 
-        textline_contours = return_contours_of_interested_textline(mask_textlines_separated_d, 1)
+        textline_contours = return_contours_of_interested_textline(
+            mask_textlines_separated_d, 1, min_area=3e-9 * rel_area)
 
         textlines_cnt_per_region = []
         for contour in textline_contours:
             mask_line = np.zeros_like(mask_parent)
             mask_line = cv2.fillPoly(mask_line, pts=[contour], color=1)
             mask_line = cv2.dilate(mask_line, KERNEL, iterations=5 if num_col == 0 else 4)
+            # plt.subplot(1, 2, 1, title="parent mask")
+            # plt.imshow(mask_parent)
+            # plt.subplot(1, 2, 2, title="single textline")
+            # plt.imshow(mask_line)
+            # plt.show()
 
-            textline_contours2 = return_contours_of_interested_textline(mask_line, 1)
+            textline_contours2 = return_contours_of_interested_textline(
+                mask_line, 1, min_area=3e-9 * rel_area)
             textline_areas2 = np.array(list(map(cv2.contourArea, textline_contours2)))
             try:
                 contour2 = textline_contours2[np.argmax(textline_areas2)]
