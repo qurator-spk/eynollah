@@ -223,18 +223,12 @@ def get_region_confidences(cnts, confidence_matrix):
         confs.append(np.sum(confidence_matrix * cnt_mask) / np.sum(cnt_mask))
     return confs
 
-def return_contours_of_interested_textline(region_pre_p, label):
-    # pixels of images are identified by 5
-    if region_pre_p.ndim == 3:
-        cnts_images = (region_pre_p[:, :, 0] == label) * 1
-    else:
-        cnts_images = (region_pre_p[:, :] == label) * 1
-    _, thresh = cv2.threshold(cnts_images.astype(np.uint8), 0, 255, 0)
-    contours_imgs, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
+def return_contours_of_interested_textline(region_pre_p, label, min_area=0.0):
+    cnts_images = (region_pre_p == label).astype(np.uint8)
+    contours_imgs, hierarchy = cv2.findContours(cnts_images, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours_imgs = return_parent_contours(contours_imgs, hierarchy)
     contours_imgs = filter_contours_area_of_image_tables(
-        thresh, contours_imgs, hierarchy, max_area=1, min_area=0.000000003)
+        cnts_images, contours_imgs, hierarchy, max_area=1, min_area=min_area)
     return contours_imgs
 
 def return_contours_of_image(image):
