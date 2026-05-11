@@ -65,14 +65,14 @@ class Eynollah_ocr:
         self.b_s = 2 if batch_size is None and tr_ocr else 8 if batch_size is None else batch_size
 
         if tr_ocr:
-            self.model_zoo.load_model('trocr_processor')
-            self.model_zoo.load_model('ocr', 'tr')
+            self.model_zoo.load_models('trocr_processor')
+            self.model_zoo.load_models(['ocr', 'tr'])
             self.model_zoo.get('ocr').to(self.device)
         else:
-            self.model_zoo.load_model('ocr', '')
-            self.model_zoo.load_model('num_to_char')
-            self.model_zoo.load_model('characters')
-            self.end_character = len(self.model_zoo.get('characters', list)) + 2
+            self.model_zoo.load_models('ocr')
+            self.model_zoo.load_models('num_to_char')
+            self.model_zoo.load_models('characters')
+            self.end_character = len(self.model_zoo.get('characters')) + 2
 
     @property
     def device(self):

@@ -94,8 +94,12 @@ class EynollahModelZoo:
             elif model_category.endswith('_patched'):
                 load_args[0] = model_category[:-8]
                 load_kwargs["patched"] = True
-            ret[model_category] = Predictor(self.logger, self)
-            ret[model_category].load_model(*load_args, **load_kwargs, device=device)
+            spec = self.specs.get(model_category, load_args[1] if len(load_args) > 1 else '')
+            if spec.type in ['Keras'] and spec.category != 'ocr':
+                ret[model_category] = Predictor(self.logger, self)
+                ret[model_category].load_model(*load_args, **load_kwargs, device=device)
+            else:
+                ret[model_category] = self.load_model(*load_args, **load_kwargs, device=device)
         self._loaded.update(ret)
         return self._loaded
 
