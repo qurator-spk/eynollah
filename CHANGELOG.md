@@ -5,6 +5,39 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+* Optimize model performance
+  * `multiprocessing.SpawnProcess` predictor wrapper for models to have commmunication with Tensorflow in a separate subprocess in a task queue with parallel jobs configurable via `--num-jobs` and maximum number of failed jobs via `--halt-fail`
+  * Keep batch size low enough for processing fitting into common 8GB GPU (with model-dependent batch resizing prepared but not yet active)
+  * GPU device can be selected manually with `--device`
+  * Handle image resizing and tiling in GPU as much as possible to avoid overhead of switching between GPU and CPU
+  * jit-compile and precompile models where possible (non-autosized, non-patched Keras models)
+  * Fix bugs and homogenize internal labels related to differing labels for early layout and different stages of full layout detection
+  * Replace `Lambda` layers with `ZeroPadding2D`, improving size and optimizability of models for `eynollah layout`
+* Improved training
+  * Use connected components for loss function
+  * Integrate with Tensorboard to observe model training progress, including plots and visualizing intermediate evaluation results
+* Simplified model usage
+  * Models can be overridden individually, so any model trained with `eynollah-training` can replace any model in the [distributions on zenodo](https://zenodo.org/records/17727267)
+  * `--model` is a CLI option of the `eynollah` root CLI now and should point to the same directory for all subcommands
+* Improved reading order detection heuristics
+* Improved drop capital,  marginalia and column detection
+* Fixing bugs in polygon handling and image operations
+  * No more self-intersecting polygons
+  * Correct rotation implementation, enlarging/shrinking canvas as necessary
+  * Use actual area of a polygon instead of length of polygon path or first candidate for comparisons
+* Improved PAGE-XML serialization
+  * Annotate column classifier result in `/PcGts/Page/@custom` (Transkribus convention) and `/PcGts/Metadata/Comment` (QURATOR convention)
+  * Annotate page skew in `/PcGts/Page/@orientation`
+  * Calculate and annotate confidences as `Coords/@conf` for regions, lines, images and tables
+* Massive refactoring and code quality improvement
+  * deduplication, idiomatic python, clean parallel processing, class reuse, consistent and meaningful naming
+
+
+**NOTE** We are aware of a possible issue with regards to the cropping of images. It appears that we have not consistenly cropped images for training. This can lead to suboptimal results for cropped images. If you experience quality issues with the `eynollah layout`, try setting the `-ipe/--ignore_page_extraction` option to skip the builtin cropping. We will rectify this in the next trainings.
+
+
+## [0.7.0] - 2026-01-30
+
 Added:
 
   * "Model zoo", central place to describe and load models, #207
