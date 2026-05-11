@@ -2,7 +2,7 @@ PYTHON ?= python3
 PIP ?= pip3
 EXTRAS ?=
 
-DOCKER_BASE_IMAGE ?= docker.io/ocrd/core-cuda-tf2:3.12.3
+DOCKER_BASE_IMAGE ?= docker.io/ocrd/core-cuda-tf2:3.13.0
 DOCKER_TAG ?= ocrd/eynollah
 DOCKER ?= docker
 WGET = wget -O
@@ -13,7 +13,7 @@ WGET = wget -O
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz
 #SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz
 #SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1
-EYNOLLAH_MODELS_URL := https://zenodo.org/records/17580627/files/models_all_v0_7_0.zip
+EYNOLLAH_MODELS_URL := https://zenodo.org/records/17727267/files/models_all_v0_8_0.zip
 EYNOLLAH_MODELS_ZIP = $(notdir $(EYNOLLAH_MODELS_URL))
 EYNOLLAH_MODELS_DIR = $(EYNOLLAH_MODELS_ZIP:%.zip=%)
 
