@@ -5,6 +5,8 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.8.0] - 2026-05-11
+
 * Optimize model performance
   * `multiprocessing.SpawnProcess` predictor wrapper for models to have commmunication with Tensorflow in a separate subprocess in a task queue with parallel jobs configurable via `--num-jobs` and maximum number of failed jobs via `--halt-fail`
   * Keep batch size low enough for processing fitting into common 8GB GPU (with model-dependent batch resizing prepared but not yet active)
@@ -34,7 +36,6 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 
 **NOTE** We are aware of a possible issue with regards to the cropping of images. It appears that we have not consistenly cropped images for training. This can lead to suboptimal results for cropped images. If you experience quality issues with the `eynollah layout`, try setting the `-ipe/--ignore_page_extraction` option to skip the builtin cropping. We will rectify this in the next trainings.
-
 
 ## [0.7.0] - 2026-01-30
 
@@ -351,6 +352,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.8.0]: ../../compare/v0.8.0...v0.7.0
 [0.7.0]: ../../compare/v0.7.0...v0.6.0
 [0.6.0]: ../../compare/v0.6.0...v0.6.0rc2
 [0.6.0rc2]: ../../compare/v0.6.0rc2...v0.6.0rc1
