@@ -7,7 +7,6 @@ import tensorflow as tf
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from PIL import Image, ImageDraw, ImageFont
-from Bio import pairwise2
 
 from .resize import resize_image
 
@@ -370,8 +369,8 @@ def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved, 
         return img_curved, img_bin_curved
     
 def return_textline_contour_with_added_box_coordinate(textline_contour,  box_ind):
-    textline_contour[:,0] = textline_contour[:,0] + box_ind[2]
-    textline_contour[:,1] = textline_contour[:,1] + box_ind[0]
+    textline_contour[:,:,0] += box_ind[2]
+    textline_contour[:,:,1] += box_ind[0]
     return textline_contour
 
 
@@ -503,8 +502,3 @@ def return_rnn_cnn_ocr_of_given_textlines(image,
             ocr_textline_in_textregion.append(text_textline)
         ocr_all_textlines.append(ocr_textline_in_textregion)
     return ocr_all_textlines
-
-def biopython_align(str1, str2):
-    alignments = pairwise2.align.globalms(str1, str2, 2, -1, -2, -2)
-    best_alignment = alignments[0]  # Get the best alignment
-    return best_alignment.seqA, best_alignment.seqB

@@ -26,7 +26,7 @@ class EynollahCliCtx:
     # NOTE: not mandatory to exist so --help for subcommands works but will log a warning
     #       and raise exception when trying to load models in the CLI
     # type=click.Path(exists=True),
-    default=f'{os.getcwd()}/models_eynollah',
+    default=os.getcwd(),
 )
 @click.option(
     "--model-overrides",

@@ -10,14 +10,14 @@ import click
 @click.option(
     "--out",
     "-o",
-    help="directory for output PAGE-XML files",
+    help="directory for output image files",
     type=click.Path(exists=True, file_okay=False),
     required=True,
 )
 @click.option(
     "--overwrite",
     "-O",
-    help="overwrite (instead of skipping) if output xml exists",
+    help="overwrite (instead of skipping) if output image exists",
     is_flag=True,
 )
 @click.option(
@@ -29,21 +29,30 @@ import click
 @click.option(
     "--num_col_upper",
     "-ncu",
+    default=0,
+    type=click.IntRange(min=0),
     help="lower limit of columns in document image",
 )
 @click.option(
     "--num_col_lower",
     "-ncl",
+    default=0,
+    type=click.IntRange(min=0),
     help="upper limit of columns in document image",
 )
 @click.option(
-    "--save_org_scale/--no_save_org_scale",
-    "-sos/-nosos",
+    "--save_org_scale",
+    "-sos",
     is_flag=True,
-    help="if this parameter set to true, this tool will save the enhanced image in org scale.",
+    help="save the enhanced image in original image size",
+)
+@click.option(
+    "--device",
+    "-D",
+    help="placement of computations in predictors for each model type; if none (by default), will try to use first available GPU or fall back to CPU; set string to force using a device (e.g. 'GPU0', 'GPU1' or 'CPU'). Can also be a comma-separated list of model category to device mappings (e.g. 'col_classifier:CPU,page:GPU0,*:GPU1')",
 )
 @click.pass_context
-def enhance_cli(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower, save_org_scale):
+def enhance_cli(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower, save_org_scale, device):
     """
     Enhance image
     """
@@ -54,6 +63,7 @@ def enhance_cli(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
         save_org_scale=save_org_scale,
+        device=device,
     )
     enhancer.run(overwrite=overwrite,
                  dir_in=dir_in,

@@ -1,9 +1,17 @@
-from tensorflow.keras import backend as K
+import os
+
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
+from tensorflow.keras import backend as K
+from tensorflow.keras.metrics import Metric, MeanMetricWrapper, get
+from tensorflow.keras.initializers import Zeros
+from tensorflow_addons.image import connected_components
 import numpy as np
 
 
-def focal_loss(gamma=2., alpha=4.):
+EPS = K.epsilon()
+
+def focal_loss(gamma=2., alpha=4., epsilon=EPS):
     gamma = float(gamma)
     alpha = float(alpha)
 
@@ -27,7 +35,6 @@ def focal_loss(gamma=2., alpha=4.):
         Returns:
             [tensor] -- loss.
         """
-        epsilon = 1.e-9
         y_true = tf.convert_to_tensor(y_true, tf.float32)
         y_pred = tf.convert_to_tensor(y_pred, tf.float32)
 
@@ -148,7 +155,7 @@ def generalized_dice_loss(y_true, y_pred):
 
 
 # TODO: document where this is from
-def soft_dice_loss(y_true, y_pred, epsilon=1e-6):
+def soft_dice_loss(y_true, y_pred, epsilon=EPS):
     """
     Soft dice loss calculation for arbitrary batch size, number of classes, and number of spatial dimensions.
     Assumes the `channels_last` format.
@@ -361,3 +368,159 @@ def jaccard_distance_loss(y_true, y_pred, smooth=100):
     sum_ = K.sum(K.abs(y_true) + K.abs(y_pred), axis=-1)
     jac = (intersection + smooth) / (sum_ - intersection + smooth)
     return (1 - jac) * smooth
+
+
+def metrics_superposition(*metrics, weights=None):
+    """
+    return a single metric derived by adding all given metrics
+
+    default weights are uniform
+    """
+    if weights is None:
+        weights = len(metrics) * [tf.constant(1.0)]
+    def mixed(y_true, y_pred):
+        results = []
+        for metric, weight in zip(metrics, weights):
+            results.append(metric(y_true, y_pred) * weight)
+        return tf.reduce_mean(tf.stack(results), 0)
+    mixed.__name__ = '/'.join(m.__name__ for m in metrics)
+    return mixed
+
+
+class Superposition(MeanMetricWrapper):
+    def __init__(self, metrics, weights=None, dtype=None):
+        self._metrics = metrics
+        self._weights = weights
+        mixed = metrics_superposition(*metrics, weights=weights)
+        super().__init__(mixed, name=mixed.__name__, dtype=dtype)
+    def get_config(self):
+        return dict(metrics=self._metrics,
+                    weights=self._weights,
+                    **super().get_config())
+
+class ConfusionMatrix(Metric):
+    def __init__(self, nlabels=None, nrm="all", name="confusion_matrix", dtype=tf.float32):
+        super().__init__(name=name, dtype=dtype)
+        assert nlabels is not None
+        self._nlabels = nlabels
+        self._shape = (self._nlabels, self._nlabels)
+        self._matrix = self.add_weight(name, shape=self._shape,
+                                       initializer=Zeros)
+        assert nrm in ("all", "true", "pred", "none")
+        self._nrm = nrm
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_pred = tf.math.argmax(y_pred, axis=-1)
+        y_true = tf.math.argmax(y_true, axis=-1)
+
+        y_pred = tf.reshape(y_pred, shape=(-1,))
+        y_true = tf.reshape(y_true, shape=(-1,))
+
+        y_pred.shape.assert_is_compatible_with(y_true.shape)
+        confusion = tf.math.confusion_matrix(y_true, y_pred, num_classes=self._nlabels, dtype=self._dtype)
+
+        return self._matrix.assign_add(confusion)
+
+    def result(self):
+        """normalize"""
+        if self._nrm == "all":
+            denom = tf.math.reduce_sum(self._matrix, axis=(0, 1))
+        elif self._nrm == "true":
+            denom = tf.math.reduce_sum(self._matrix, axis=1, keepdims=True)
+        elif self._nrm == "pred":
+            denom = tf.math.reduce_sum(self._matrix, axis=0, keepdims=True)
+        else:
+            denom = tf.constant(1.0)
+        return tf.math.divide_no_nan(self._matrix, denom)
+
+    def reset_state(self):
+        for v in self.variables:
+            v.assign(tf.zeros(shape=self._shape))
+
+    def get_config(self):
+        return dict(nlabels=self._nlabels,
+                    **super().get_config())
+
+def connected_components_loss(artificial=0):
+    """
+    metric/loss function capturing the separability of segmentation maps
+
+    For both sides (true and predicted, resp.), computes
+    1. the argmax() of class-wise softmax input (i.e. the segmentation map)
+    2. the connected components (i.e. the instance label map)
+    3. the max() (i.e. the highest label = nr of components)
+
+    The original idea was to then calculate a regression formula
+    between those two targets. But it is insufficient to just
+    approximate the same number of components, for they might be
+    completely different (true components being merged, predicted
+    components splitting others). We really want to capture the
+    correspondence between those labels, which is localised.
+
+    For that we now calculate the label pairs and their counts.
+    Looking at the M,N incidence matrix, we want those counts
+    to be distributed orthogonally (ideally). So we compute a
+    singular value decomposition and compare the sum total of
+    singular values to the sum total of all label counts. The
+    rate of the two determines a measure of congruence.
+
+    Moreover, for the case of artificial boundary segments around
+    regions, optionally introduced by the training extractor to
+    represent segment identity in the loss (and removed at runtime):
+    Reduce this class to background as well.
+    """
+    def metric(y_true, y_pred):
+        if artificial:
+            # convert artificial border class to background
+            y_true = y_true[:, :, :, :artificial]
+            y_pred = y_pred[:, :, :, :artificial]
+        # [B, H, W, C]
+        l_true = tf.math.argmax(y_true, axis=-1)
+        l_pred = tf.math.argmax(y_pred, axis=-1)
+        # [B, H, W]
+        c_true = tf.cast(connected_components(l_true), tf.int64)
+        c_pred = tf.cast(connected_components(l_pred), tf.int64)
+        # [B, H, W]
+        n_batch = y_true.shape[0]
+        C_true = tf.math.reduce_max(c_true, (1, 2)) + 1
+        C_pred = tf.math.reduce_max(c_pred, (1, 2)) + 1
+        MODULUS = tf.constant(2**22, tf.int64)
+        tf.debugging.assert_less(C_true, MODULUS,
+                                 message="cannot compare segments: too many connected components in GT")
+        tf.debugging.assert_less(C_pred, MODULUS,
+                                 message="cannot compare segments: too many connected components in prediction")
+        c_comb = MODULUS * c_pred + c_true
+        tf.debugging.assert_greater_equal(c_comb, tf.constant(0, tf.int64),
+                                          message="overflow pairing components")
+        # [B, H, W]
+        # tf.unique does not support batch dim, so...
+        results = []
+        for c_comb, C_true, C_pred in zip(
+                tf.unstack(c_comb, num=n_batch),
+                tf.unstack(C_true, num=n_batch),
+                tf.unstack(C_pred, num=n_batch),
+        ):
+            prod, _, count = tf.unique_with_counts(tf.reshape(c_comb, (-1,)))
+            # [L]
+            #corr = tf.zeros([C_pred, C_true], tf.int32)
+            #corr[prod // 2**24, prod % 2**24] = count
+            corr = tf.scatter_nd(tf.stack([prod // MODULUS, prod % MODULUS], axis=1),
+                                 count, (C_pred, C_true))
+            corr = tf.cast(corr, tf.float32)
+            # [Cpred, Ctrue]
+            sgv = tf.linalg.svd(corr, compute_uv=False)
+            results.append(tf.reduce_sum(sgv) / tf.reduce_sum(corr))
+        return 1.0 - tf.reduce_mean(tf.stack(results), 0)
+        # c_true = tf.reshape(c_true, (n_batch, -1))
+        # c_pred = tf.reshape(c_pred, (n_batch, -1))
+        # # [B, H*W]
+        # n_true = tf.math.reduce_max(c_true, axis=1)
+        # n_pred = tf.math.reduce_max(c_pred, axis=1)
+        # # [B]
+        # diff = tf.cast(n_true - n_pred, tf.float32)
+        # return tf.reduce_mean(tf.math.abs(diff) + alpha * diff, axis=-1)
+
+    metric.__name__ = 'nCC'
+    metric._direction = 'down'
+    return metric
+

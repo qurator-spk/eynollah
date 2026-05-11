@@ -64,7 +64,7 @@ When using Eynollah with Docker, see [`docker.md`](https://github.com/qurator-sp
 
 ## Models
 
-Pretrained models can be downloaded from [Zenodo](https://zenodo.org/records/17194824) or [Hugging Face](https://huggingface.co/SBB?search_models=eynollah). 
+Pretrained models can be downloaded from [Zenodo](https://zenodo.org/records/17727267) or [Hugging Face](https://huggingface.co/SBB?search_models=eynollah). 
 
 For model documentation and model cards, see [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
 

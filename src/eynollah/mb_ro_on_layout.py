@@ -14,9 +14,10 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 import cv2
-from keras.models import Model
 import numpy as np
 import statistics
+
+os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
 
 from .model_zoo import EynollahModelZoo
@@ -48,7 +49,7 @@ class machine_based_reading_order_on_layout:
         except:
             self.logger.warning("no GPU device available")
             
-        self.model_zoo.load_model('reading_order')
+        self.model_zoo.load_models('reading_order')
 
     def read_xml(self, xml_file):
         tree1 = ET.parse(xml_file, parser = ET.XMLParser(encoding='utf-8'))
@@ -674,7 +675,7 @@ class machine_based_reading_order_on_layout:
                 tot_counter += 1
                 batch.append(j)
                 if tot_counter % inference_bs == 0 or tot_counter == len(ij_list):
-                    y_pr = self.model_zoo.get('reading_order', Model).predict(input_1 , verbose='0')
+                    y_pr = self.model_zoo.get('reading_order').predict(input_1 , verbose='0')
                     for jb, j in enumerate(batch):
                         if y_pr[jb][0]>=0.5:
                             post_list.append(j)

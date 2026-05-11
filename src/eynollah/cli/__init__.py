@@ -2,14 +2,12 @@
 #       this must be the first import of the CLI!
 from ..eynollah_imports import imported_libs
 
-from .cli_models import models_cli
-from .cli_binarize import binarize_cli
-
 from .cli import main
 from .cli_binarize import binarize_cli
 from .cli_enhance import enhance_cli
 from .cli_extract_images import extract_images_cli
 from .cli_layout import layout_cli
+from .cli_models import models_cli
 from .cli_ocr import ocr_cli
 from .cli_readingorder import readingorder_cli
 

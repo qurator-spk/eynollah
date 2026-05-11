@@ -501,7 +501,7 @@ def adhere_drop_capital_region_into_corresponding_textline(
 
 def filter_small_drop_capitals_from_no_patch_layout(layout_no_patch, layout1):
 
-    drop_only = (layout_no_patch[:, :, 0] == 4) * 1
+    drop_only = (layout_no_patch == 4) * 1
     contours_drop, hir_on_drop = return_contours_of_image(drop_only)
     contours_drop_parent = return_parent_contours(contours_drop, hir_on_drop)
 
@@ -529,9 +529,8 @@ def filter_small_drop_capitals_from_no_patch_layout(layout_no_patch, layout1):
             if (((map_of_drop_contour_bb == 1) * 1).sum() / float(((map_of_drop_contour_bb == 5) * 1).sum()) * 100) >= 15:
                 contours_drop_parent_final.append(contours_drop_parent[jj])
 
-    layout_no_patch[:, :, 0][layout_no_patch[:, :, 0] == 4] = 0
-
-    layout_no_patch = cv2.fillPoly(layout_no_patch, pts=contours_drop_parent_final, color=(4, 4, 4))
+    layout_no_patch[layout_no_patch == 4] = 0
+    layout_no_patch = cv2.fillPoly(layout_no_patch, pts=contours_drop_parent_final, color=4)
 
     return layout_no_patch
 

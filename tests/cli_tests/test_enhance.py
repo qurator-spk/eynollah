@@ -20,9 +20,11 @@ def test_run_eynollah_enhancement_filename(
         [
             '-i', str(infile),
             '-o', str(outfile.parent),
+            # force rescaling
+            '-ncu', 3,
         ] + options,
         [
-            'Image was enhanced',
+            'Enhancement applied',
         ]
     )
     with Image.open(infile) as original_img:
@@ -43,10 +45,11 @@ def test_run_eynollah_enhancement_directory(
         [
             '-di', str(resources_dir/ '2files'),
             '-o', str(outdir),
+            # force rescaling
+            '-ncu', 3,
         ],
         [
-            f'Image {image_resources[0]} was enhanced',
-            f'Image {image_resources[1]} was enhanced',
+            'Enhancement applied',
         ]
     )
     assert len(list(outdir.iterdir())) == 2

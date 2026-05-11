@@ -22,7 +22,7 @@ def test_run_eynollah_binarization_filename(
             '-o', str(outfile),
         ] + options,
         [
-            'Predicting'
+            f"output filename: '{str(outfile)}'"
         ]
     )
     assert outfile.exists()
@@ -46,8 +46,8 @@ def test_run_eynollah_binarization_directory(
             '-o', str(outdir),
         ],
         [
-            f'Predicting {image_resources[0].name}',
-            f'Predicting {image_resources[1].name}',
+            str(image_resources[0]),
+            str(image_resources[1]),
         ]
     )
     assert len(list(outdir.iterdir())) == 2
