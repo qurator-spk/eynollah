@@ -1,6 +1,8 @@
 import click
 
-@click.command()
+@click.command(context_settings=dict(
+    help_option_names=['-h', '--help'],
+    show_default=True))
 @click.option(
     "--input",
     "-i",

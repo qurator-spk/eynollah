@@ -1,6 +1,8 @@
 import click
 
-@click.command()
+@click.command(context_settings=dict(
+    help_option_names=['-h', '--help'],
+    show_default=True))
 @click.option(
     "--image",
     "-i",
@@ -16,7 +18,7 @@ import click
 @click.option(
     "--dir_in_bin",
     "-dib",
-    help=("directory of binarized images (in addition to --dir_in for RGB images; filename stems must match the RGB image files, with '.png' \n                                                                          Perform prediction using both RGB and binary images. (This does not necessarily improve results, however it may be beneficial for certain document images."),                                                 
+    help=("directory of binarized images (in addition to --dir_in for RGB images; filename stems must match the RGB image files, with '.png'. \n                                                                          Perform prediction using both RGB and binary images. (This may improve results for certain document images.)"),
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
@@ -47,25 +49,30 @@ import click
 )
 @click.option(
     "--tr_ocr",
-    "-trocr/-notrocr",
+    "-trocr",
     is_flag=True,
-    help="if this parameter set to true, transformer ocr will be applied, otherwise cnn_rnn model.",
+    help="use transformer OCR (instead of classic CNN-RNN) model",
 )
 @click.option(
     "--do_not_mask_with_textline_contour",
-    "-nmtc/-mtc",
+    "-nmtc",
     is_flag=True,
-    help="if this parameter set to true, cropped textline images will not be masked with textline contour.",
+    help="skip masking each cropped textline image with its corresponding textline contour",
 )
 @click.option(
     "--batch_size",
     "-bs",
+    default=0,
+    type=click.IntRange(min=0),
     help="number of inference batch size. Default b_s for trocr and cnn_rnn models are 2 and 8 respectively",
 )
 @click.option(
     "--min_conf_value_of_textline_text",
     "-min_conf",
-    help="minimum OCR confidence value. Text lines with a confidence value lower than this threshold will not be included in the output XML file.",
+    default=0.3,
+    type=click.FloatRange(min=0.0, max=1.0),
+    help="minimum OCR confidence threshold. Text lines with a lower confidence value will not be included in the output XML file.",
+)
 @click.option(
     "--device",
     "-D",
