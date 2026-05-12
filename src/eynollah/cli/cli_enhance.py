@@ -48,13 +48,8 @@ import click
     is_flag=True,
     help="save the enhanced image in original image size",
 )
-@click.option(
-    "--device",
-    "-D",
-    help="placement of computations in predictors for each model type; if none (by default), will try to use first available GPU or fall back to CPU; set string to force using a device (e.g. 'GPU0', 'GPU1' or 'CPU'). Can also be a comma-separated list of model category to device mappings (e.g. 'col_classifier:CPU,page:GPU0,*:GPU1')",
-)
 @click.pass_context
-def enhance_cli(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower, save_org_scale, device):
+def enhance_cli(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower, save_org_scale):
     """
     Enhance image
     """
@@ -62,10 +57,10 @@ def enhance_cli(ctx, image, out, overwrite, dir_in, num_col_upper, num_col_lower
     from ..image_enhancer import Enhancer
     enhancer = Enhancer(
         model_zoo=ctx.obj.model_zoo,
+        device=ctx.obj.device,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
         save_org_scale=save_org_scale,
-        device=device,
     )
     enhancer.run(overwrite=overwrite,
                  dir_in=dir_in,

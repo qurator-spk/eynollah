@@ -73,11 +73,6 @@ import click
     type=click.FloatRange(min=0.0, max=1.0),
     help="minimum OCR confidence threshold. Text lines with a lower confidence value will not be included in the output XML file.",
 )
-@click.option(
-    "--device",
-    "-D",
-    help="placement of computations in predictors for each model type; if none (by default), will try to use first available GPU or fall back to CPU; set string to force using a device (e.g. 'GPU0', 'GPU1' or 'CPU'). Can also be a comma-separated list of model category to device mappings (e.g. 'col_classifier:CPU,page:GPU0,*:GPU1')",
-)
 @click.pass_context
 def ocr_cli(
     ctx,
@@ -92,7 +87,6 @@ def ocr_cli(
     do_not_mask_with_textline_contour,
     batch_size,
     min_conf_value_of_textline_text,
-    device,
 ):
     """
     Recognize text with a CNN/RNN or transformer ML model.
@@ -101,11 +95,12 @@ def ocr_cli(
     from ..eynollah_ocr import Eynollah_ocr
     eynollah_ocr = Eynollah_ocr(
         model_zoo=ctx.obj.model_zoo,
+        device=ctx.obj.device,
         tr_ocr=tr_ocr,
         do_not_mask_with_textline_contour=do_not_mask_with_textline_contour,
         batch_size=batch_size,
         min_conf_value_of_textline_text=min_conf_value_of_textline_text,
-        device=device)
+    )
     eynollah_ocr.run(overwrite=overwrite,
                      dir_in=dir_in,
                      dir_in_bin=dir_in_bin,

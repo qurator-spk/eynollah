@@ -15,6 +15,7 @@ class EynollahCliCtx:
     Holds options relevant for all eynollah subcommands
     """
     model_zoo: EynollahModelZoo
+    device: str = ''
     log_level : Union[str, None] = 'INFO'
 
 
@@ -36,13 +37,18 @@ class EynollahCliCtx:
     multiple=True,
 )
 @click.option(
+    "--device",
+    "-D",
+    help="placement of computations in predictors for each model type; if none (by default), will try to use first available GPU or fall back to CPU; set string to force using a device (e.g. 'GPU0', 'GPU1' or 'CPU'). Can also be a comma-separated list of model category to device mappings (e.g. 'col_classifier:CPU,page:GPU0,*:GPU1')",
+)
+@click.option(
     "--log_level",
     "-l",
     type=click.Choice(['OFF', 'DEBUG', 'INFO', 'WARN', 'ERROR']),
     help="Override log level globally to this",
 )
 @click.pass_context
-def main(ctx, model_basedir, model_overrides, log_level):
+def main(ctx, model_basedir, model_overrides, device, log_level):
     """
     eynollah - Document Layout Analysis, Image Enhancement, OCR
     """
@@ -58,6 +64,7 @@ def main(ctx, model_basedir, model_overrides, log_level):
     # Initialize CLI context
     ctx.obj = EynollahCliCtx(
         model_zoo=model_zoo,
+        device=device,
         log_level=log_level,
     )
 
