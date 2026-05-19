@@ -313,4 +313,3 @@ class EynollahModelZoo:
             for needle in list(self._loaded.keys()):
                 if isinstance(self._loaded[needle], Predictor):
                     self._loaded[needle].shutdown()
-                del self._loaded[needle]
