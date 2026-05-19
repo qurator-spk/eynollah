@@ -562,7 +562,8 @@ def run(_config,
         if reload_weights:
             model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
             dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
-            model.save(dir_save, include_optimizer=False)
+            #model.save(dir_save, include_optimizer=False)
+            model.export(dir_save)
             with open(os.path.join(dir_save, "config.json"), "w") as fp:
                 json.dump(_config, fp)  # encode dict into JSON
             _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)
@@ -725,7 +726,8 @@ def run(_config,
         if reload_weights:
             model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
             dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
-            model.save(dir_save, include_optimizer=False)
+            #model.save(dir_save, include_optimizer=False)
+            model.export(dir_save)
             with open(os.path.join(dir_save, "config.json"), "w") as fp:
                 json.dump(_config, fp)  # encode dict into JSON
             _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)
@@ -843,7 +845,8 @@ def run(_config,
         if reload_weights:
             model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
             dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
-            model.save(dir_save, include_optimizer=False)
+            #model.save(dir_save, include_optimizer=False)
+            model.export(dir_save)
             with open(os.path.join(dir_save, "config.json"), "w") as fp:
                 json.dump(_config, fp)  # encode dict into JSON
             _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)

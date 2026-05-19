@@ -191,14 +191,12 @@ class EynollahModelZoo:
         try:
             # avoid wasting VRAM on non-transformer models
             model = load_model(model_path, compile=False)
-        except Exception as e:
-            self.logger.error(e)
-            model = load_model(
-                model_path, compile=False,
-                custom_objects=dict(PatchEncoder=PatchEncoder,
-                                    Patches=Patches))
+            assert isinstance(model, KerasModel)
             model.make_predict_function()
-        assert isinstance(model, KerasModel)
+        except ValueError:
+            model = tf.saved_model.load(model_path)
+            model.predict_on_batch = model.serve
+            model.input_shape = model.signatures.get('serving_default').inputs[0].shape
         model._name = model_category
         if resized:
             model = wrap_layout_model_resized(model)
