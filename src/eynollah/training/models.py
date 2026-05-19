@@ -309,11 +309,10 @@ def transformer_block(img,
         # Skip connection 2.
         encoded_patches = Add()([x3, x2])
 
-    encoded_patches = tf.reshape(encoded_patches,
-                                 [-1,
-                                  img.shape[1],
-                                  img.shape[2],
-                                  projection_dim // (patchsize_x * patchsize_y)])
+    encoded_patches = Reshape(target_shape=(img.shape[1],
+                                            img.shape[2],
+                                            projection_dim // (patchsize_x * patchsize_y)),
+                              name="reshape_patches")(encoded_patches)
     return encoded_patches
 
 def vit_resnet50_unet(num_patches,

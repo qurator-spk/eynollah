@@ -26,16 +26,17 @@ RELOADABLE_MODELS = \
 all: $(RELOADABLE_MODELS)
 
 $(MODELS_DST)/%: $(MODELS_SRC)/%
-	mkdir -p $@
 	test -e $</config.json || exit 1
-	eynollah-training train --force \
+	{ mkdir -p $@ \
+	&& eynollah-training train --force \
 		with $</config.json \
 		reload_weights=True \
 		continue_training=False \
 		dir_output=$(dir $@) \
 		dir_of_start_model=$< \
+	&& cp $</config.json $@/config.json \
+	|| { rm -rf $@; false; }; } \
 	2>&1 | tee $(notdir $<).log
-	cp $</config.json $@/config.json
 
 compare: 
 	for i in `find $(MODELS_DST) -mindepth 2`;do \
