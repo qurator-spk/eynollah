@@ -1,5 +1,6 @@
 import math
 import copy
+from itertools import islice
 
 import numpy as np
 import cv2
@@ -502,3 +503,8 @@ def return_rnn_cnn_ocr_of_given_textlines(image,
             ocr_textline_in_textregion.append(text_textline)
         ocr_all_textlines.append(ocr_textline_in_textregion)
     return ocr_all_textlines
+
+def batched(iterable, n):
+    iterator = iter(iterable)
+    while batch := tuple(islice(iterator, n)):
+        yield batch
