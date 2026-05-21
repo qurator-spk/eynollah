@@ -247,9 +247,9 @@ class EynollahModelZoo:
         if variant == 'tr':
             from transformers import VisionEncoderDecoderModel
             import torch
-            ret = VisionEncoderDecoderModel.from_pretrained(model_dir)
-            assert isinstance(ret, VisionEncoderDecoderModel)
-            dev = torch.device('cpu')
+            model = VisionEncoderDecoderModel.from_pretrained(model_dir)
+            assert isinstance(model, VisionEncoderDecoderModel)
+            device0 = torch.device('cpu')
             if not device and torch.cuda.is_available():
                 device = 'GPU' # try
             if device and ':' in device:
@@ -260,17 +260,17 @@ class EynollahModelZoo:
                         break
             if device and device.startswith('GPU'):
                 try:
-                    dev = torch.device('cuda', int(device[3:] or 0))
-                    name = torch.cuda.get_device_name(dev)
-                    self.logger.info("using GPU %s (%s) for model ocr:tr", dev, name)
+                    device0 = torch.device('cuda', int(device[3:] or 0))
+                    name = torch.cuda.get_device_name(device0)
+                    self.logger.info("using GPU %s (%s) for model ocr:tr", device0, name)
                 except:
                     self.logger.exception("cannot configure GPU device")
-                    dev = torch.device('cpu')
-            if dev.type == 'cuda':
-                ret.to(dev)
+                    device0 = torch.device('cpu')
+            if device0.type == 'cuda':
+                model.to(device0)
             else:
                 self.logger.warning("no GPU device available")
-            return ret
+            return model
 
         return self.load_model('ocr', model_variant=variant, device=device)
 
