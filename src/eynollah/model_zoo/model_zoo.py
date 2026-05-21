@@ -169,7 +169,23 @@ class EynollahModelZoo:
                 gpus = gpus[:1] # TF will always use first allowable
             tf.config.set_visible_devices(gpus, 'GPU')
             for device in gpus:
-                tf.config.experimental.set_memory_growth(device, True)
+                # tf.config.experimental.set_memory_growth(device, True)
+                # dynamic growth never frees memory (to avoid fragmentation),
+                # so the VRAM requirements end up much larger than feasible
+                # (for small GPUs); so try hard (calibrated) limits instead:
+                tf.config.set_logical_device_configuration(
+                    device,
+                    [tf.config.LogicalDeviceConfiguration(memory_limit={
+                        "binarization": 868, # due to bs 5
+                        "enhancement": 980, # due to bs 3
+                        "col_classifier": 210,
+                        "page": 618,
+                        "textline": 1680, # 954 for bs 1
+                        "region_1_2": 1580,
+                        "region_fl_np": 1756,
+                        "table": 1818,
+                        "reading_order": 632,
+                    }[model_category])])
                 vendor_name = (
                     tf.config.experimental.get_device_details(device)
                     .get('device_name', 'unknown'))
