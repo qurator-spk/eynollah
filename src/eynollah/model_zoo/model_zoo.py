@@ -189,7 +189,8 @@ class EynollahModelZoo:
             self.override_models((model_category, model_variant, model_path_override))
         model_path = self.model_path(model_category, model_variant)
         try:
-            # avoid wasting VRAM on non-transformer models
+            if model_path.is_dir() and not (model_path / "keras_metadata.pb").exists():
+                raise ValueError()
             model = load_model(model_path, compile=False)
             model.make_predict_function()
         except (AttributeError, ValueError):
