@@ -113,9 +113,10 @@ class Eynollah_ocr(Eynollah):
                 total_bb_coordinates.append([x, y, w, h])
 
                 img_crop = img[y: y + h, x: x + w]
-                mask_poly = np.zeros(img_crop.shape[:2], dtype=np.uint8)
-                mask_poly = cv2.fillPoly(mask_poly, pts=[cont - [x, y]], color=1)
-                img_crop[mask_poly == 0] = 255 # FIXME: or median color?
+                if not self.do_not_mask_with_textline_contour:
+                    mask_poly = np.zeros(img_crop.shape[:2], dtype=np.uint8)
+                    mask_poly = cv2.fillPoly(mask_poly, pts=[cont - [x, y]], color=1)
+                    img_crop[mask_poly == 0] = 255 # FIXME: or median color?
 
                 if h > 0.1 * w:
                     cropped_lines.append(resize_image(img_crop,
