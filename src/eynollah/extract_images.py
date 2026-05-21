@@ -9,7 +9,6 @@ import os
 import time
 from typing import Optional
 from pathlib import Path
-import tensorflow as tf
 import numpy as np
 import cv2
 
@@ -64,12 +63,6 @@ class EynollahImageExtractor(Eynollah):
 
         t_start = time.time()
 
-        try:
-            for device in tf.config.list_physical_devices('GPU'):
-                tf.config.experimental.set_memory_growth(device, True)
-        except:
-            self.logger.warning("no GPU device available")
-            
         self.logger.info("Loading models...")
         self.setup_models()
         self.logger.info(f"Model initialization complete ({time.time() - t_start:.1f}s)")

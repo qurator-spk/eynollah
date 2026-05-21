@@ -269,6 +269,10 @@ class EynollahModelZoo:
         """
         Load decoder for OCR
         """
+        os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
+        from ocrd_utils import tf_disable_interactive_logs
+        tf_disable_interactive_logs()
+
         from tensorflow.keras.layers import StringLookup
 
         characters = self._load_characters()

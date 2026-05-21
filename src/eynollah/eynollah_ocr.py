@@ -14,10 +14,6 @@ from cv2.typing import MatLike
 from xml.etree import ElementTree as ET
 from PIL import Image, ImageDraw
 import numpy as np
-try:
-    import torch
-except ImportError:
-    torch = None
 
 
 from .eynollah import Eynollah

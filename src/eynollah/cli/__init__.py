@@ -1,7 +1,3 @@
-# NOTE: For predictable order of imports of torch/shapely/tensorflow
-#       this must be the first import of the CLI!
-from ..eynollah_imports import imported_libs
-
 from .cli import main
 from .cli_binarize import binarize_cli
 from .cli_enhance import enhance_cli
