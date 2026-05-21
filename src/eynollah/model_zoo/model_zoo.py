@@ -185,6 +185,7 @@ class EynollahModelZoo:
                         "region_fl_np": 1756,
                         "table": 1818,
                         "reading_order": 632,
+                        "ocr": 850,
                     }[model_category])])
                 vendor_name = (
                     tf.config.experimental.get_device_details(device)
