@@ -6,8 +6,8 @@ from tensorflow.keras import layers, models
 class PatchEncoder(layers.Layer):
 
     # 441=21*21 # 14*14 # 28*28
-    def __init__(self, num_patches=441, projection_dim=64):
-        super().__init__()
+    def __init__(self, num_patches=441, projection_dim=64, name='encode_patches'):
+        super().__init__(name=name)
         self.num_patches = num_patches
         self.projection_dim = projection_dim
         self.projection = layers.Dense(self.projection_dim)
@@ -23,8 +23,8 @@ class PatchEncoder(layers.Layer):
                     **super().get_config())
 
 class Patches(layers.Layer):
-    def __init__(self, patch_size_x=1, patch_size_y=1):
-        super().__init__()
+    def __init__(self, patch_size_x=1, patch_size_y=1, name='extract_patches'):
+        super().__init__(name=name)
         self.patch_size_x = patch_size_x
         self.patch_size_y = patch_size_y
 
