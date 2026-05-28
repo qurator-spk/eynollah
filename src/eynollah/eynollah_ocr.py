@@ -14,16 +14,14 @@ from cv2.typing import MatLike
 from xml.etree import ElementTree as ET
 from PIL import Image, ImageDraw
 import numpy as np
-from eynollah.model_zoo import EynollahModelZoo
-from eynollah.utils.font import get_font
-from eynollah.utils.xml import etree_namespace_for_element_tag
-try:
-    import torch
-except ImportError:
-    torch = None
+from ocrd_utils import polygon_from_points, xywh_from_polygon
 
 
+from .eynollah import Eynollah
+from .model_zoo import EynollahModelZoo
 from .utils import is_image_filename
+from .utils.font import get_font
+from .utils.xml import etree_namespace_for_element_tag
 from .utils.resize import resize_image
 from .utils.utils_ocr import (
     break_curved_line_into_small_pieces_and_then_merge,
@@ -34,6 +32,7 @@ from .utils.utils_ocr import (
     preprocess_and_resize_image_for_ocrcnn_model,
     return_textlines_split_if_needed,
     rotate_image_with_padding,
+    batched,
 )
 
 # TODO: refine typing
@@ -44,45 +43,44 @@ class EynollahOcrResult:
     cropped_lines_region_indexer: List
     total_bb_coordinates:List
 
-class Eynollah_ocr:
+class Eynollah_ocr(Eynollah):
     def __init__(
         self,
         *,
         model_zoo: EynollahModelZoo,
         tr_ocr=False,
-        batch_size: Optional[int]=None,
+        batch_size: int=0,
         do_not_mask_with_textline_contour: bool=False,
-        min_conf_value_of_textline_text : Optional[float]=None,
+        min_conf_value_of_textline_text : float=0.3,
         logger: Optional[Logger]=None,
+        device: str = '',
     ):
         self.tr_ocr = tr_ocr
         # masking for OCR and GT generation, relevant for skewed lines and bounding boxes
         self.do_not_mask_with_textline_contour = do_not_mask_with_textline_contour
         self.logger = logger if logger else getLogger('eynollah.ocr')
-        self.model_zoo = model_zoo
         
-        self.min_conf_value_of_textline_text = min_conf_value_of_textline_text if min_conf_value_of_textline_text else 0.3
-        self.b_s = 2 if batch_size is None and tr_ocr else 8 if batch_size is None else batch_size
+        self.min_conf_value_of_textline_text = min_conf_value_of_textline_text
+        self.b_s = batch_size or 2 if tr_ocr else 8
 
-        if tr_ocr:
-            self.model_zoo.load_models('trocr_processor')
-            self.model_zoo.load_models(['ocr', 'tr'])
-            self.model_zoo.get('ocr').to(self.device)
+        self.model_zoo = model_zoo
+        self.setup_models(device=device)
+
+    def setup_models(self, device=''):
+        if self.tr_ocr:
+            self.model_zoo.load_models('trocr_processor',
+                                       ('ocr', 'tr'),
+                                       device=device)
         else:
-            self.model_zoo.load_models('ocr')
-            self.model_zoo.load_models('num_to_char')
-            self.model_zoo.load_models('characters')
+            self.model_zoo.load_models('ocr',
+                                       'num_to_char',
+                                       'characters',
+                                       device=device)
             self.end_character = len(self.model_zoo.get('characters')) + 2
 
     @property
     def device(self):
-        assert torch
-        if torch.cuda.is_available():
-            self.logger.info("Using GPU acceleration")
-            return torch.device("cuda:0")
-        else:
-            self.logger.info("Using CPU processing")
-            return torch.device("cpu")
+        return self.model_zoo.get('ocr').device
 
     def run_trocr(
         self,
@@ -94,174 +92,94 @@ class Eynollah_ocr:
     ) -> EynollahOcrResult:
         
         total_bb_coordinates = []
-
-            
         cropped_lines = []
         cropped_lines_region_indexer = []
         cropped_lines_meging_indexing = []
-        
         extracted_texts = []
+        extracted_confs = []
 
-        indexer_text_region = 0
-        indexer_b_s = 0
-        
-        for nn in page_tree.getroot().iter(f'{{{page_ns}}}TextRegion'):
-            for child_textregion in nn:
-                if child_textregion.tag.endswith("TextLine"):
-                    
-                    for child_textlines in child_textregion:
-                        if child_textlines.tag.endswith("Coords"):
-                            cropped_lines_region_indexer.append(indexer_text_region)
-                            p_h=child_textlines.attrib['points'].split(' ')
-                            textline_coords =  np.array( [ [int(x.split(',')[0]),
-                                                            int(x.split(',')[1]) ]
-                                                            for x in p_h] )
-                            x,y,w,h = cv2.boundingRect(textline_coords)
-                            
-                            total_bb_coordinates.append([x,y,w,h])
-                            
-                            h2w_ratio = h/float(w)
-                            
-                            img_poly_on_img = np.copy(img)
-                            mask_poly = np.zeros(img.shape)
-                            mask_poly = cv2.fillPoly(mask_poly, pts=[textline_coords], color=(1, 1, 1))
-                            
-                            mask_poly = mask_poly[y:y+h, x:x+w, :]
-                            img_crop = img_poly_on_img[y:y+h, x:x+w, :]
-                            img_crop[mask_poly==0] = 255
-                            
-                            self.logger.debug("processing %d lines for '%s'",
-                                                len(cropped_lines), nn.attrib['id'])
-                            if h2w_ratio > 0.1:
-                                cropped_lines.append(resize_image(img_crop,
-                                                                    tr_ocr_input_height_and_width,
-                                                                    tr_ocr_input_height_and_width)  )
-                                cropped_lines_meging_indexing.append(0)
-                                indexer_b_s+=1
-                                if indexer_b_s==self.b_s:
-                                    imgs = cropped_lines[:]
-                                    cropped_lines = []
-                                    indexer_b_s = 0
-                                    
-                                    pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
-                                    generated_ids_merged = self.model_zoo.get('ocr').generate(
-                                        pixel_values_merged.to(self.device))
-                                    generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(
-                                        generated_ids_merged, skip_special_tokens=True)
-                                    
-                                    extracted_texts = extracted_texts + generated_text_merged
-                                    
-                            else:
-                                splited_images, _ = return_textlines_split_if_needed(img_crop, None)
-                                #print(splited_images)
-                                if splited_images:
-                                    cropped_lines.append(resize_image(splited_images[0],
-                                                                        tr_ocr_input_height_and_width,
-                                                                        tr_ocr_input_height_and_width))
-                                    cropped_lines_meging_indexing.append(1)
-                                    indexer_b_s+=1
-                                    
-                                    if indexer_b_s==self.b_s:
-                                        imgs = cropped_lines[:]
-                                        cropped_lines = []
-                                        indexer_b_s = 0
-                                        
-                                        pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
-                                        generated_ids_merged = self.model_zoo.get('ocr').generate(
-                                            pixel_values_merged.to(self.device))
-                                        generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(
-                                            generated_ids_merged, skip_special_tokens=True)
-                                        
-                                        extracted_texts = extracted_texts + generated_text_merged
-                                    
-                                    
-                                    cropped_lines.append(resize_image(splited_images[1],
-                                                                        tr_ocr_input_height_and_width,
-                                                                        tr_ocr_input_height_and_width))
-                                    cropped_lines_meging_indexing.append(-1)
-                                    indexer_b_s+=1
-                                    
-                                    if indexer_b_s==self.b_s:
-                                        imgs = cropped_lines[:]
-                                        cropped_lines = []
-                                        indexer_b_s = 0
-                                        
-                                        pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
-                                        generated_ids_merged = self.model_zoo.get('ocr').generate(
-                                            pixel_values_merged.to(self.device))
-                                        generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(
-                                            generated_ids_merged, skip_special_tokens=True)
-                                        
-                                        extracted_texts = extracted_texts + generated_text_merged
-                                        
-                                else:
-                                    cropped_lines.append(img_crop)
-                                    cropped_lines_meging_indexing.append(0)
-                                    indexer_b_s+=1
-                                    
-                                    if indexer_b_s==self.b_s:
-                                        imgs = cropped_lines[:]
-                                        cropped_lines = []
-                                        indexer_b_s = 0
-                                        
-                                        pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
-                                        generated_ids_merged = self.model_zoo.get('ocr').generate(
-                                            pixel_values_merged.to(self.device))
-                                        generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(
-                                            generated_ids_merged, skip_special_tokens=True)
-                                        
-                                        extracted_texts = extracted_texts + generated_text_merged
-                                        
-            
-                                    
-            indexer_text_region = indexer_text_region +1
+        for n_region, region in enumerate(page_tree.getroot().iter('{%s}TextRegion' % page_ns)):
+            for n_line, line in enumerate(region.iter('{%s}TextLine' % page_ns)):
+                cropped_lines_region_indexer.append(n_region)
 
-        if indexer_b_s!=0:
-            imgs = cropped_lines[:]
-            cropped_lines = []
-            indexer_b_s = 0
-            
-            pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
-            generated_ids_merged = self.model_zoo.get('ocr').generate(pixel_values_merged.to(self.device))
-            generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(generated_ids_merged, skip_special_tokens=True)
-            
-            extracted_texts = extracted_texts + generated_text_merged
-            
-        ####extracted_texts = []
-        ####n_iterations  = math.ceil(len(cropped_lines) / self.b_s) 
+                coords = line.find('{%s}Coords' % page_ns)
+                if coords is None:
+                    self.logger.warning("region '%s' line '%s' has no Coords", region.attrib['id'], line.attrib['id'])
+                    continue
+                poly = np.array(polygon_from_points(coords.attrib['points'])).astype(int)
+                cont = poly[:, np.newaxis]
+                xywh = xywh_from_polygon(poly)
+                x, y, w, h = xywh['x'], xywh['y'], xywh['w'], xywh['h']
 
-        ####for i in range(n_iterations):
-            ####if i==(n_iterations-1):
-                ####n_start = i*self.b_s
-                ####imgs = cropped_lines[n_start:]
-            ####else:
-                ####n_start = i*self.b_s
-                ####n_end = (i+1)*self.b_s
-                ####imgs = cropped_lines[n_start:n_end]
-            ####pixel_values_merged = self.model_zoo.get('trocr_processor')(imgs, return_tensors="pt").pixel_values
-            ####generated_ids_merged = self.model_ocr.generate(
-            ####    pixel_values_merged.to(self.device))
-            ####generated_text_merged = self.model_zoo.get('trocr_processor').batch_decode(
-            ####    generated_ids_merged, skip_special_tokens=True)
-            
-            ####extracted_texts = extracted_texts + generated_text_merged
-            
+                total_bb_coordinates.append([x, y, w, h])
+
+                img_crop = img[y: y + h, x: x + w]
+                if not self.do_not_mask_with_textline_contour:
+                    mask_poly = np.zeros(img_crop.shape[:2], dtype=np.uint8)
+                    mask_poly = cv2.fillPoly(mask_poly, pts=[cont - [x, y]], color=1)
+                    img_crop[mask_poly == 0] = 255 # FIXME: or median color?
+
+                if h > 0.1 * w:
+                    cropped_lines.append(resize_image(img_crop,
+                                                        tr_ocr_input_height_and_width,
+                                                        tr_ocr_input_height_and_width)  )
+                    cropped_lines_meging_indexing.append(0)
+                else:
+                    splited_images, _ = return_textlines_split_if_needed(img_crop, None)
+                    if splited_images:
+                        cropped_lines.append(resize_image(splited_images[0],
+                                                            tr_ocr_input_height_and_width,
+                                                            tr_ocr_input_height_and_width))
+                        cropped_lines_meging_indexing.append(1)
+                        cropped_lines.append(resize_image(splited_images[1],
+                                                            tr_ocr_input_height_and_width,
+                                                            tr_ocr_input_height_and_width))
+                        cropped_lines_meging_indexing.append(-1)
+                    else:
+                        cropped_lines.append(img_crop)
+                        cropped_lines_meging_indexing.append(0)
+
+
+        self.logger.debug("processing %d lines for %d regions",
+                          len(cropped_lines), len(set(cropped_lines_region_indexer)))
+        for imgs in batched(cropped_lines, self.b_s):
+            pixel_values = self.model_zoo.get('trocr_processor')(
+                imgs, return_tensors="pt").pixel_values
+            output = self.model_zoo.get('ocr').generate(
+                pixel_values.to(self.device),
+                # beam search instead of greedy decoding:
+                num_beams=4,
+                # also return probability
+                output_scores=True,
+                return_dict_in_generate=True)
+            if output.sequences_scores is not None:
+                # log-prob averaged over length
+                conf = output.sequences_scores.exp().clamp(0.0, 1.0).tolist()
+            else:
+                conf = [1.0] * len(output.sequences)
+            text = self.model_zoo.get('trocr_processor').batch_decode(
+                output.sequences,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False)
+            extracted_confs.extend(conf)
+            extracted_texts.extend(text)
         del cropped_lines
         gc.collect()
 
         extracted_texts_merged = [extracted_texts[ind]
-                                    if cropped_lines_meging_indexing[ind]==0
-                                    else extracted_texts[ind]+" "+extracted_texts[ind+1]
-                                    if cropped_lines_meging_indexing[ind]==1
-                                    else None
-                                    for ind in range(len(cropped_lines_meging_indexing))]
-
-        extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
-        #print(extracted_texts_merged, len(extracted_texts_merged))
+                                  if cropped_lines_meging_indexing[ind] == 0
+                                  else extracted_texts[ind] + " " + extracted_texts[ind + 1]
+                                  for ind in range(len(cropped_lines_meging_indexing))
+                                  if cropped_lines_meging_indexing[ind] >= 0]
+        extracted_confs_merged = [extracted_confs[ind]
+                                  if cropped_lines_meging_indexing[ind] == 0
+                                  else 0.5 * (extracted_confs[ind] + extracted_confs[ind + 1])
+                                  for ind in range(len(cropped_lines_meging_indexing))
+                                  if cropped_lines_meging_indexing[ind] >= 0]
 
         return EynollahOcrResult(
             extracted_texts_merged=extracted_texts_merged,
-            extracted_conf_value_merged=None,
+            extracted_conf_value_merged=extracted_confs_merged,
             cropped_lines_region_indexer=cropped_lines_region_indexer,
             total_bb_coordinates=total_bb_coordinates,
         )
@@ -717,6 +635,7 @@ class Eynollah_ocr:
             
             has_textline = False
             for child_textregion in nn:
+                # FIXME: should remove Word level, if it already exists
                 if child_textregion.tag.endswith("TextLine"):
                     
                     is_textline_text = False
@@ -754,6 +673,7 @@ class Eynollah_ocr:
                 indexer_textregion = indexer_textregion + 1
                 
         ET.register_namespace("",page_ns)
+        self.logger.info("output filename: '%s'", out_file_ocr)
         page_tree.write(out_file_ocr, xml_declaration=True, method='xml', encoding="utf-8", default_namespace=None)
 
     def run(

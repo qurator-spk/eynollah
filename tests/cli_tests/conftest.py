@@ -1,4 +1,5 @@
 from typing import List
+import os
 import pytest
 import logging
 
@@ -31,6 +32,8 @@ def run_eynollah_ok_and_check_logs(
                 subcommand,
                 *args
         ]
+        if 'EYNOLLAH_OPTIONS' in os.environ:
+            args = os.environ['EYNOLLAH_OPTIONS'].split() + args
         if pytestconfig.getoption('verbose') > 0:
             args = ['-l', 'DEBUG'] + args
         caplog.set_level(logging.INFO)

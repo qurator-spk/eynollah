@@ -309,11 +309,10 @@ def transformer_block(img,
         # Skip connection 2.
         encoded_patches = Add()([x3, x2])
 
-    encoded_patches = tf.reshape(encoded_patches,
-                                 [-1,
-                                  img.shape[1],
-                                  img.shape[2],
-                                  projection_dim // (patchsize_x * patchsize_y)])
+    encoded_patches = Reshape((img.shape[1],
+                               img.shape[2],
+                               projection_dim // (patchsize_x * patchsize_y)),
+                              name="reshape_patches")(encoded_patches)
     return encoded_patches
 
 def vit_resnet50_unet(num_patches,
@@ -423,11 +422,11 @@ def machine_based_reading_order_model(n_classes,input_height=224,input_width=224
 
     return model
 
-def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_seq=None):
-    input_img = Input(shape=(image_height, image_width, 3), name="image")
+def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_len=None, inference=False):
+    inputs = Input(shape=(image_height, image_width, 3), name="image")
     labels = Input(name="label", shape=(None,))
 
-    x = Conv2D(64,kernel_size=(3,3),padding="same")(input_img)
+    x = Conv2D(64,kernel_size=(3,3),padding="same")(inputs)
     x = BatchNormalization(name="bn1")(x)
     x = Activation("relu", name="relu1")(x)
     x = Conv2D(64,kernel_size=(3,3),padding="same")(x)
@@ -459,44 +458,93 @@ def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_s
     x = Activation("relu", name="relu8")(x)
     x2d = MaxPooling2D(pool_size=(1,2),strides=(1,2))(x)
     x4d = MaxPooling2D(pool_size=(1,2),strides=(1,2))(x2d)
-    
 
     new_shape = (x.shape[1]*x.shape[2], x.shape[3])
     new_shape2 = (x2d.shape[1]*x2d.shape[2], x2d.shape[3])
     new_shape4 = (x4d.shape[1]*x4d.shape[2], x4d.shape[3])
-    
-    x = Reshape(target_shape=new_shape, name="reshape")(x)
-    x2d = Reshape(target_shape=new_shape2, name="reshape2")(x2d)
-    x4d = Reshape(target_shape=new_shape4, name="reshape4")(x4d)
-    
+
+    x = Reshape(new_shape, name="reshape")(x)
+    x2d = Reshape(new_shape2, name="reshape2")(x2d)
+    x4d = Reshape(new_shape4, name="reshape4")(x4d)
+
     xrnnorg = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x)
     xrnn2d = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x2d)
     xrnn4d = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x4d)
-    
-    xrnn2d = Reshape(target_shape=(1, xrnn2d.shape[1], xrnn2d.shape[2]), name="reshape6")(xrnn2d)
-    xrnn4d = Reshape(target_shape=(1, xrnn4d.shape[1], xrnn4d.shape[2]), name="reshape8")(xrnn4d)
-    
+
+    xrnn2d = Reshape((1, xrnn2d.shape[1], xrnn2d.shape[2]), name="reshape6")(xrnn2d)
+    xrnn4d = Reshape((1, xrnn4d.shape[1], xrnn4d.shape[2]), name="reshape8")(xrnn4d)
 
     xrnn2dup = UpSampling2D(size=(1, 2), interpolation="nearest")(xrnn2d)
     xrnn4dup = UpSampling2D(size=(1, 4), interpolation="nearest")(xrnn4d)
-    
-    xrnn2dup = Reshape(target_shape=(xrnn2dup.shape[2], xrnn2dup.shape[3]), name="reshape10")(xrnn2dup)
-    xrnn4dup = Reshape(target_shape=(xrnn4dup.shape[2], xrnn4dup.shape[3]), name="reshape12")(xrnn4dup)
+
+    xrnn2dup = Reshape((xrnn2dup.shape[2], xrnn2dup.shape[3]), name="reshape10")(xrnn2dup)
+    xrnn4dup = Reshape((xrnn4dup.shape[2], xrnn4dup.shape[3]), name="reshape12")(xrnn4dup)
 
     addition = Add()([xrnnorg, xrnn2dup, xrnn4dup])
-    
+
     addition_rnn = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(addition)
-    
-    out = Conv1D(max_seq, 1, data_format="channels_first")(addition_rnn)
+
+    out = Conv1D(max_len, 1, data_format="channels_first")(addition_rnn)
     out = BatchNormalization(name="bn9")(out)
     out = Activation("relu", name="relu9")(out)
     #out = Conv1D(n_classes, 1, activation='relu', data_format="channels_last")(out)
 
     out = Dense(n_classes, activation="softmax", name="dense2")(out)
 
-    # Add CTC layer for calculating CTC loss at each step.
-    output = CTCLayer(name="ctc_loss")(labels, out)
-    
-    model = Model(inputs=(input_img, labels), outputs=output, name="handwriting_recognizer")
+    if inference:
+        return Model(inputs, out)
 
-    return model
+    # Add CTC layer for calculating CTC loss at each step.
+    out = CTCLayer(name="ctc_loss")(labels, out)
+    
+    return Model((inputs, labels), out)
+
+def get_model(config, logger):
+    from sacred.config import create_captured_function
+
+    task = config['task']
+    if task in ["segmentation", "enhancement", "binarization"]:
+        if config['backbone_type'] == 'nontransformer':
+            builder = resnet50_unet
+        else:
+            num_patches_x, num_patches_y = config['transformer_num_patches_xy']
+            num_patches = num_patches_x * num_patches_y
+
+            if config['transformer_cnn_first']:
+                builder = vit_resnet50_unet
+                multiple = 32
+            else:
+                builder = vit_resnet50_unet_transformer_before_cnn
+                multiple = 1
+
+            assert config['input_height'] == (
+                num_patches_y * config['transformer_patchsize_y'] * multiple), (
+                "transformer_patchsize_y or transformer_num_patches_xy height value error: "
+                "input_height should be equal to "
+                "(transformer_num_patches_xy height value * transformer_patchsize_y * %d)" % multiple)
+            assert config['input_width'] == (
+                num_patches_x * config['transformer_patchsize_x'] * multiple), (
+                    "transformer_patchsize_x or transformer_num_patches_xy width value error: "
+                    "input_width should be equal to "
+                    "(transformer_num_patches_xy width value * transformer_patchsize_x * %d)" % multiple)
+            assert 0 == (config['transformer_projection_dim'] %
+                         (config['transformer_patchsize_y'] *
+                          config['transformer_patchsize_x'])), (
+                             "transformer_projection_dim error: "
+                             "The remainder when parameter transformer_projection_dim is divided by "
+                             "(transformer_patchsize_y*transformer_patchsize_x) should be zero")
+
+            config['num_patches'] = num_patches
+    elif task == "cnn-rnn-ocr":
+        builder = cnn_rnn_ocr_model
+    elif task=='classification':
+        builder = resnet50_classifier
+    elif task=='reading_order':
+        builder = machine_based_reading_order_model
+    else:
+        raise ValueError("unknown model task '%s'" % task)
+
+    builder = create_captured_function(builder)
+    builder.config = config
+    builder.logger = logger
+    return builder()

@@ -1,9 +1,12 @@
 import math
 import copy
+from itertools import islice
 
 import numpy as np
 import cv2
-import tensorflow as tf
+# avoid module-level import:
+# import tensorflow as tf
+# (wait for tf-keras and logging setup in ModelZoo.load_model)
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from PIL import Image, ImageDraw, ImageFont
@@ -12,6 +15,8 @@ from .resize import resize_image
 
 
 def decode_batch_predictions(pred, num_to_char, max_len = 128):
+    import tensorflow as tf
+
     # input_len is the product of the batch size and the
     # number of time steps.
     input_len = np.ones(pred.shape[0]) * pred.shape[1]
@@ -39,6 +44,8 @@ def decode_batch_predictions(pred, num_to_char, max_len = 128):
     
     
 def distortion_free_resize(image, img_size):
+    import tensorflow as tf
+
     w, h = img_size
     image = tf.image.resize(image, size=(h, w), preserve_aspect_ratio=True)
 
@@ -502,3 +509,8 @@ def return_rnn_cnn_ocr_of_given_textlines(image,
             ocr_textline_in_textregion.append(text_textline)
         ocr_all_textlines.append(ocr_textline_in_textregion)
     return ocr_all_textlines
+
+def batched(iterable, n):
+    iterator = iter(iterable)
+    while batch := tuple(islice(iterator, n)):
+        yield batch

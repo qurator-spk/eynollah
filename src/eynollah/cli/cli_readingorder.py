@@ -1,6 +1,8 @@
 import click
 
-@click.command()
+@click.command(context_settings=dict(
+    help_option_names=['-h', '--help'],
+    show_default=True))
 @click.option(
     "--input",
     "-i",
@@ -25,9 +27,10 @@ def readingorder_cli(ctx, input, dir_in, out):
     """
     Generate ReadingOrder with a ML model
     """
-    from ..mb_ro_on_layout import machine_based_reading_order_on_layout
+    from ..mb_ro_on_layout import Reorder
     assert bool(input) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    orderer = machine_based_reading_order_on_layout(model_zoo=ctx.obj.model_zoo)
+    orderer = Reorder(model_zoo=ctx.obj.model_zoo,
+                      device=ctx.obj.device)
     orderer.run(xml_filename=input,
                 dir_in=dir_in,
                 dir_out=out,

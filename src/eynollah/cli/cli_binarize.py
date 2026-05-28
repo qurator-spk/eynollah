@@ -1,6 +1,8 @@
 import click
 
-@click.command()
+@click.command(context_settings=dict(
+    help_option_names=['-h', '--help'],
+    show_default=True))
 @click.option(
     '--patches/--no-patches',
     default=True,
@@ -31,11 +33,6 @@ import click
     help="overwrite (instead of skipping) if output xml exists",
     is_flag=True,
 )
-@click.option(
-    "--device",
-    "-D",
-    help="placement of computations in predictors for each model type; if none (by default), will try to use first available GPU or fall back to CPU; set string to force using a device (e.g. 'GPU0', 'GPU1' or 'CPU'). Can also be a comma-separated list of model category to device mappings (e.g. 'col_classifier:CPU,page:GPU0,*:GPU1')",
-)
 @click.pass_context
 def binarize_cli(
         ctx,
@@ -44,14 +41,14 @@ def binarize_cli(
         dir_in,
         output,
         overwrite,
-        device,
 ):
     """
     Binarize images with a ML model
     """
     from ..sbb_binarize import SbbBinarizer
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    binarizer = SbbBinarizer(model_zoo=ctx.obj.model_zoo, device=device)
+    binarizer = SbbBinarizer(model_zoo=ctx.obj.model_zoo,
+                             device=ctx.obj.device)
     binarizer.run(
         image_filename=input_image,
         use_patches=patches,

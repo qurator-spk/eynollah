@@ -11,7 +11,7 @@ from shapely.geometry.polygon import orient
 from shapely import set_precision, affinity
 from shapely.ops import unary_union, nearest_points
 
-from .rotate import rotate_image, rotation_image_new
+from .rotate import rotate_image
 
 def contours_in_same_horizon(cy_main_hor):
     """
@@ -119,94 +119,6 @@ def return_contours_of_interested_region(region_pre_p, label, min_area=0.0002, d
                                                          min_area=min_area,
                                                          dilate=dilate)
     return contours_imgs
-
-def do_work_of_contours_in_image(contour, index_r_con, img, slope_first):
-    img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
-    img_copy = cv2.fillPoly(img_copy, pts=[contour], color=1)
-
-    img_copy = rotation_image_new(img_copy, -slope_first)
-    _, thresh = cv2.threshold(img_copy, 0, 255, 0)
-
-    cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
-    cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
-
-    return cont_int[0], index_r_con
-
-def get_textregion_contours_in_org_image_multi(cnts, img, slope_first, map=map):
-    if not len(cnts):
-        return [], []
-    results = map(partial(do_work_of_contours_in_image,
-                          img=img,
-                          slope_first=slope_first,
-                          ),
-                  cnts, range(len(cnts)))
-    return tuple(zip(*results))
-
-def get_textregion_contours_in_org_image(cnts, img, slope_first):
-    cnts_org = []
-    # print(cnts,'cnts')
-    for i in range(len(cnts)):
-        img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
-        img_copy = cv2.fillPoly(img_copy, pts=[cnts[i]], color=1)
-
-        # plt.imshow(img_copy)
-        # plt.show()
-
-        # print(img.shape,'img')
-        img_copy = rotation_image_new(img_copy, -slope_first)
-        ##print(img_copy.shape,'img_copy')
-        # plt.imshow(img_copy)
-        # plt.show()
-
-        _, thresh = cv2.threshold(img_copy, 0, 255, 0)
-
-        cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
-        cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
-        # print(np.shape(cont_int[0]))
-        cnts_org.append(cont_int[0])
-
-    return cnts_org
-
-def get_textregion_confidences_old(cnts, img, slope_first):
-    zoom = 3
-    img = cv2.resize(img, (img.shape[1] // zoom,
-                           img.shape[0] // zoom),
-                     interpolation=cv2.INTER_NEAREST)
-    cnts_org = []
-    for cnt in cnts:
-        img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
-        img_copy = cv2.fillPoly(img_copy, pts=[cnt // zoom], color=1)
-
-        img_copy = rotation_image_new(img_copy, -slope_first).astype(np.uint8)
-        _, thresh = cv2.threshold(img_copy, 0, 255, 0)
-
-        cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
-        cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
-        cnts_org.append(cont_int[0] * zoom)
-
-    return cnts_org
-
-def do_back_rotation_and_get_cnt_back(contour_par, index_r_con, img, slope_first, confidence_matrix):
-    img_copy = np.zeros(img.shape[:2], dtype=np.uint8)
-    img_copy = cv2.fillPoly(img_copy, pts=[contour_par], color=1)
-    confidence_matrix_mapped_with_contour = confidence_matrix * img_copy
-    confidence_contour = np.sum(confidence_matrix_mapped_with_contour) / float(np.sum(img_copy))
-
-    img_copy = rotation_image_new(img_copy, -slope_first).astype(np.uint8)
-    _, thresh = cv2.threshold(img_copy, 0, 255, 0)
-
-    cont_int, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    if len(cont_int)==0:
-        cont_int = [contour_par]
-        confidence_contour = 0
-    else:
-        cont_int[0][:, 0, 0] = cont_int[0][:, 0, 0] + np.abs(img_copy.shape[1] - img.shape[1])
-        cont_int[0][:, 0, 1] = cont_int[0][:, 0, 1] + np.abs(img_copy.shape[0] - img.shape[0])
-    return cont_int[0], index_r_con, confidence_contour
 
 def get_region_confidences(cnts, confidence_matrix):
     if not len(cnts):
@@ -418,7 +330,7 @@ def estimate_skew_contours(contours):
     if not np.any(usable):
         raise ValueError("not enough contours with consistent length")
     if np.count_nonzero(usable) == 1:
-        return angle_in[usable]
+        return angle_in[usable][0]
     # 4. there is no way to distinguish between +90 and -89.9 here,
     # so map to [0,180] when calculating averages, then map back to [-90,90]
     # (we don't want -90 and +89 to average zero, or +1 and +179 to average 90)

@@ -30,7 +30,7 @@ def test_run_eynollah_ocr_filename(
             '-o', str(outfile.parent),
         ] + options,
         [
-            # FIXME: ocr has no logging!
+            'output filename:'
         ]
     )
     assert outfile.exists()
@@ -57,7 +57,7 @@ def test_run_eynollah_ocr_directory(
             '-o', str(outdir),
         ],
         [
-            # FIXME: ocr has no logging!
+            'output filename:'
         ]
     )
     assert len(list(outdir.iterdir())) == 2

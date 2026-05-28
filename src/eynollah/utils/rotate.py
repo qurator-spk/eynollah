@@ -2,10 +2,6 @@ import math
 import cv2
 
 
-def rotation_image_new(img, thetha):
-    rotated = rotate_image(img, thetha)
-    return rotate_max_area_new(img, rotated, thetha)
-
 def rotate_image(img_patch, slope):
     (h, w) = img_patch.shape[:2]
     center = (w // 2, h // 2)

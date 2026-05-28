@@ -194,17 +194,18 @@ class Predictor(mp.context.SpawnProcess):
 
     def shutdown(self):
         # do not terminate from forked processor instances
-        if mp.parent_process() is None:
+        if not hasattr(self, 'model'):
             self.stopped.set()
+            self.join()
             self.taskq.close()
             self.taskq.cancel_join_thread()
             self.resultq.close()
             self.resultq.cancel_join_thread()
             self.logq.close()
-            self.terminate()
+            #self.terminate()
         else:
             del self.model
 
     def __del__(self):
-        #self.logger.debug(f"deinit of {self} in {mp.current_process().name}")
+        #self.logger.debug(f"deinit of {self.name} in {mp.current_process().name}")
         self.shutdown()
