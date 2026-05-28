@@ -14,6 +14,19 @@ from .default_specs import DEFAULT_MODEL_SPECS
 from .types import AnyModel, T
 
 
+MODEL_VRAM_LIMITS = {
+    "binarization": 868, # due to bs 5
+    "enhancement": 980, # due to bs 3
+    "col_classifier": 210,
+    "page": 618,
+    "textline": 1680, # 954 for bs 1
+    "region_1_2": 1580,
+    "region_fl_np": 1756,
+    "table": 1818,
+    "reading_order": 632,
+    "ocr": 850,
+}
+
 class EynollahModelZoo:
     """
     Wrapper class that handles storage and loading of models for all eynollah runners.
@@ -73,6 +86,10 @@ class EynollahModelZoo:
         if model_path.suffix == '.h5' and Path(model_path.stem).exists():
             # prefer SavedModel over HDF5 format if it exists
             model_path = Path(model_path.stem)
+        if model_path.with_suffix('.onnx').exists():
+            # prefer ONNX over SavedModel format if it exists
+            model_path = model_path.with_suffix('.onnx')
+
         return model_path
 
     def load_models(
@@ -136,20 +153,34 @@ class EynollahModelZoo:
         """
         Load any model
         """
-        os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
+        if model_path_override:
+            self.override_models((model_category, model_variant, model_path_override))
+        model_path = self.model_path(model_category, model_variant)
+
+        if model_path.is_dir() and (model_path / "keras_metadata.pb").exists():
+            # Keras model
+            model = self._load_keras_model(model_category, model_path, device=device)
+        elif model_path.is_dir():
+            # TF-Serving model
+            model = self._load_serving_model(model_category, model_path, device=device)
+        elif model_path.suffix == '.onnx':
+            # ONNX model
+            model = self._load_onnx_model(model_category, model_path, device=device)
+        else:
+            raise ValueError("unknown model type for '%s'" % str(model_path))
+        model._name = model_category
+        return model
+
+    def get(self, model_category: str) -> Union[Predictor, AnyModel]:
+        if model_category not in self._loaded:
+            raise ValueError(f'Model "{model_category}" not previously loaded with "load_model(..)"')
+        return self._loaded[model_category]
+
+    def _configure_tf_device(self, model_category, device=''):
         from ocrd_utils import tf_disable_interactive_logs
         tf_disable_interactive_logs()
-
         import tensorflow as tf
-        from tensorflow.keras.models import load_model
-        from tensorflow.keras.models import Model as KerasModel
 
-        from ..patch_encoder import (
-            PatchEncoder,
-            Patches,
-            wrap_layout_model_patched,
-            wrap_layout_model_resized,
-        )
         cuda = False
         try:
             gpus = tf.config.list_physical_devices('GPU')
@@ -175,18 +206,8 @@ class EynollahModelZoo:
                 # (for small GPUs); so try hard (calibrated) limits instead:
                 tf.config.set_logical_device_configuration(
                     device,
-                    [tf.config.LogicalDeviceConfiguration(memory_limit={
-                        "binarization": 868, # due to bs 5
-                        "enhancement": 980, # due to bs 3
-                        "col_classifier": 210,
-                        "page": 618,
-                        "textline": 1680, # 954 for bs 1
-                        "region_1_2": 1580,
-                        "region_fl_np": 1756,
-                        "table": 1818,
-                        "reading_order": 632,
-                        "ocr": 850,
-                    }[model_category])])
+                    [tf.config.LogicalDeviceConfiguration(
+                        memory_limit=MODEL_VRAM_LIMITS[model_category])])
                 vendor_name = (
                     tf.config.experimental.get_device_details(device)
                     .get('device_name', 'unknown'))
@@ -194,52 +215,124 @@ class EynollahModelZoo:
                 self.logger.info("using GPU %s (%s) for model %s",
                                  device.name,
                                  vendor_name,
-                                 model_category + (
-                                     "_patched" if patched else
-                                     "_resized" if resized else ""))
+                                 model_category # + (
+                                     # "_patched" if patched else
+                                     # "_resized" if resized else "")
+                )
         except RuntimeError:
             self.logger.exception("cannot configure GPU devices")
         if not cuda:
             self.logger.warning("no GPU device available")
 
-        if model_path_override:
-            self.override_models((model_category, model_variant, model_path_override))
-        model_path = self.model_path(model_category, model_variant)
-        try:
-            if model_path.is_dir() and not (model_path / "keras_metadata.pb").exists():
-                # short-cut to avoid warning for exported models
-                raise ValueError()
-            model = load_model(model_path, compile=False)
-            model.make_predict_function()
-        except (AttributeError, ValueError):
-            model = tf.saved_model.load(model_path)
-            model.predict_on_batch = model.serve
-            model.input_shape = tuple(model.signatures.get('serving_default').inputs[0].shape)
-        model._name = model_category
-        if resized:
-            model = wrap_layout_model_resized(model)
-            model._name = model_category + '_resized'
-        elif patched:
-            model = wrap_layout_model_patched(model)
-            model._name = model_category + '_patched'
-        else:
-            # increases required VRAM, does not always work
-            # (depending on CUDA/libcudnn/TF version):
-            #model.jit_compile = True
-            pass
+    def _load_keras_model(self, model_category, model_path, device=''):
+        os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
+        from ocrd_utils import tf_disable_interactive_logs
+        tf_disable_interactive_logs()
+
+        from tensorflow.keras.models import load_model
+        from tensorflow.keras.models import Model as KerasModel
+
+        self._configure_tf_device(model_category, device=device)
+
+        model = load_model(model_path, compile=False)
+
+        # from ..patch_encoder import (
+        #     wrap_layout_model_patched,
+        #     wrap_layout_model_resized,
+        # )
+        # if resized:
+        #     model = wrap_layout_model_resized(model)
+        #     model._name = model_category + '_resized'
+        # elif patched:
+        #     model = wrap_layout_model_patched(model)
+        #     model._name = model_category + '_patched'
 
         if model_category == 'ocr':
-            model = KerasModel(
-                model.get_layer(name="image").input,   # type: ignore
-                model.get_layer(name="dense2").output, # type: ignore
-        )
+            # cnn-rnn-ocr task model may not be in inference mode, yet
+            try:
+                model.get_layer(name='ctc_loss')
+            except ValueError:
+                pass
+            else:
+                model = KerasModel(
+                    model.get_layer(name="image").input,   # type: ignore
+                    model.get_layer(name="dense2").output, # type: ignore
+                )
+
+        model.make_predict_function()
 
         return model
 
-    def get(self, model_category: str) -> Union[Predictor, AnyModel]:
-        if model_category not in self._loaded:
-            raise ValueError(f'Model "{model_category}" not previously loaded with "load_model(..)"')
-        return self._loaded[model_category]
+    def _load_serving_model(self, model_category, model_path, device=''):
+        from ocrd_utils import tf_disable_interactive_logs
+        tf_disable_interactive_logs()
+        import tensorflow as tf
+
+        self._configure_tf_device(model_category, device=device)
+        model = tf.saved_model.load(model_path)
+        model.predict_on_batch = model.serve
+        model.input_shape = tuple(model.signatures.get('serving_default').inputs[0].shape)
+
+        return model
+
+    def _load_onnx_model(self, model_category, model_path, device=''):
+        import onnxruntime as ort
+        import numpy as np
+
+        providers = ort.get_available_providers()
+        if device:
+            if ':' in device:
+                for spec in device.split(','):
+                    cat, dev = spec.split(':')
+                    if fnmatchcase(model_category, cat):
+                        device = dev
+                        break
+            if device == 'CPU':
+                gpu = -1
+            else:
+                assert device.startswith('GPU')
+                gpu = int(device[3:] or "0")
+        else:
+            gpu = 0 # try first allowable
+        # configure and prioritise
+        if 'CUDAExecutionProvider' in providers:
+            providers.remove('CUDAExecutionProvider')
+            if gpu >= 0:
+                providers = [('CUDAExecutionProvider', {
+                    'device_id': gpu,
+                    # 'arena_extend_strategy': 'kNextPowerOfTwo',
+                    'gpu_mem_limit': MODEL_VRAM_LIMITS[model_category] * 1024 * 1024,
+                    # 'cudnn_conv_algo_search': 'EXHAUSTIVE',
+                    # 'do_copy_in_default_stream': True,
+                    # ...
+                })] + providers
+        if 'TensorrtExecutionProvider' in providers:
+            providers.remove('TensorrtExecutionProvider')
+            if gpu >= 0:
+                providers = [('TensorrtExecutionProvider', {
+                    'device_id': gpu,
+                    'trt_max_workspace_size': MODEL_VRAM_LIMITS[model_category] * 1024 * 1024,
+                    # 'trt_fp16_enable': True,
+                    # 'trt_engine_cache_enable': True,
+                    # 'trt_timing_cache_enable': True,
+                    # ...
+                })] + providers
+        model = ort.InferenceSession(
+            model_path,
+            providers=providers)
+        # FIXME: notify about selected provider/device
+        input_name = model.get_inputs()[0].name
+        output_name = model.get_outputs()[0].name
+        def predict_onnx(inputs):
+            # models expect data_type() == 'tensor(float)', but np.float16 is 'tensor(float16)'
+            # FIXME: do this dynamically (but how to convert .type to np.dtype?)
+            inputs = inputs.astype(np.float32)
+            return model.run(
+                [output_name], {input_name: inputs})[0]
+        model.predict_on_batch = predict_onnx
+        model.input_shape = model.get_inputs()[0].shape
+
+        return model
 
     def _load_ocr_model(self, variant: str, device: str = "") -> AnyModel:
         """
