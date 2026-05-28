@@ -499,3 +499,52 @@ def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_l
     
     return Model((inputs, labels), out)
 
+def get_model(config, logger):
+    from sacred.config import create_captured_function
+
+    task = config['task']
+    if task in ["segmentation", "enhancement", "binarization"]:
+        if config['backbone_type'] == 'nontransformer':
+            builder = resnet50_unet
+        else:
+            num_patches_x, num_patches_y = config['transformer_num_patches_xy']
+            num_patches = num_patches_x * num_patches_y
+
+            if config['transformer_cnn_first']:
+                builder = vit_resnet50_unet
+                multiple = 32
+            else:
+                builder = vit_resnet50_unet_transformer_before_cnn
+                multiple = 1
+
+            assert config['input_height'] == (
+                num_patches_y * config['transformer_patchsize_y'] * multiple), (
+                "transformer_patchsize_y or transformer_num_patches_xy height value error: "
+                "input_height should be equal to "
+                "(transformer_num_patches_xy height value * transformer_patchsize_y * %d)" % multiple)
+            assert config['input_width'] == (
+                num_patches_x * config['transformer_patchsize_x'] * multiple), (
+                    "transformer_patchsize_x or transformer_num_patches_xy width value error: "
+                    "input_width should be equal to "
+                    "(transformer_num_patches_xy width value * transformer_patchsize_x * %d)" % multiple)
+            assert 0 == (config['transformer_projection_dim'] %
+                         (config['transformer_patchsize_y'] *
+                          config['transformer_patchsize_x'])), (
+                             "transformer_projection_dim error: "
+                             "The remainder when parameter transformer_projection_dim is divided by "
+                             "(transformer_patchsize_y*transformer_patchsize_x) should be zero")
+
+            config['num_patches'] = num_patches
+    elif task == "cnn-rnn-ocr":
+        builder = cnn_rnn_ocr_model
+    elif task=='classification':
+        builder = resnet50_classifier
+    elif task=='reading_order':
+        builder = machine_based_reading_order_model
+    else:
+        raise ValueError("unknown model task '%s'" % task)
+
+    builder = create_captured_function(builder)
+    builder.config = config
+    builder.logger = logger
+    return builder()
