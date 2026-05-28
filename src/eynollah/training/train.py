@@ -2,6 +2,7 @@ import os
 import sys
 import io
 import json
+import click
 
 from tqdm import tqdm
 import requests
@@ -791,3 +792,23 @@ def run(_config,
             model_dir = os.path.join(dir_out,'model_best')
             model.save(model_dir)
         '''
+
+@click.command(context_settings=dict(
+        ignore_unknown_options=True,
+))
+@click.argument('SACRED_ARGS', nargs=-1, type=click.UNPROCESSED)
+def train_cli(sacred_args):
+    """
+    train model on extracted GT
+
+    SACRED_ARGS as per CLI interface of Sacred, cf.
+    https://sacred.readthedocs.io/en/stable/command_line.html:
+
+    \b
+    To configure the learning task, pass the string `with`,
+    followed by any number of
+    - config JSON file paths
+    - parameter overrides in the form of key=value
+    (where the later settings will override the former).
+    """
+    ex.run_commandline([sys.argv[0]] + list(sacred_args))

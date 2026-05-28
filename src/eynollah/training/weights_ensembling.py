@@ -43,6 +43,7 @@ def run_ensembling(model_dirs, out_dir):
 @click.option(
     "--in",
     "-i",
+    "in_",
     help="input directory of checkpoint models to be read",
     multiple=True,
     required=True,
