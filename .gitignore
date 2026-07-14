@@ -14,3 +14,8 @@ TAGS
 uv.lock
 /ignore
 *.log
+.env
+models/reloaded
+models/packages
+models/models_eynollah
+models/pretrained_model
