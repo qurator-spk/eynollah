@@ -15,7 +15,7 @@ LABEL \
     org.opencontainers.image.documentation="https://github.com/qurator-spk/eynollah/blob/${VCS_REF}/README.md" \
     org.opencontainers.image.revision=$VCS_REF \
     org.opencontainers.image.created=$BUILD_DATE \
-    org.opencontainers.image.base.name=ocrd/core-cuda-tf2
+    org.opencontainers.image.base.name=ocrd/core-cuda-onnx
 
 ENV DEBIAN_FRONTEND=noninteractive
 # set proper locales
@@ -39,9 +39,10 @@ RUN ocrd ocrd-tool ocrd-tool.json dump-tools > $(dirname $(ocrd bashlib filename
 # prepackage ocrd-all-module-dir.json
 RUN ocrd ocrd-tool ocrd-tool.json dump-module-dirs > $(dirname $(ocrd bashlib filename))/ocrd-all-module-dir.json
 # install everything and reduce image size
-RUN make install EXTRAS=OCR && rm -rf /build/eynollah
-# fixup for broken cuDNN installation (Torch pulls in 8.5.0, which is incompatible with Tensorflow)
-RUN pip install nvidia-cudnn-cu11==8.6.0.163
+# FIXME: EXTRAS=OCR (should become extra Dockerfile based on ocrd/core-cuda-tf2 and ocrd/core-cuda-torch)
+RUN make install && rm -rf /build/eynollah
+# fixup for broken cuDNN installation (Torch may pull in version which is incompatible with Tensorflow)
+RUN pip install "nvidia-cudnn-cu12<9.10.2.21"
 # smoke test
 RUN eynollah --help
 

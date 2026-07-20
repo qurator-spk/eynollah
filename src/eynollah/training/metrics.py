@@ -5,7 +5,10 @@ import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras.metrics import Metric, MeanMetricWrapper, get
 from tensorflow.keras.initializers import Zeros
-from tensorflow_addons.image import connected_components
+try:
+    from tensorflow_addons.image import connected_components
+except ModuleNotFoundError:
+    pass # n/a beyond TF 2.15 (and only needed for training) ...
 import numpy as np
 
 

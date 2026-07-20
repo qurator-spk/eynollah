@@ -1,6 +1,8 @@
 import click
 
-@click.command()
+@click.command(context_settings=dict(
+    help_option_names=['-h', '--help'],
+    show_default=True))
 @click.option(
     "--image",
     "-i",
@@ -30,36 +32,40 @@ import click
 @click.option(
     "--save_images",
     "-si",
-    help="if a directory is given, images in documents will be cropped and saved there",
+    help="if a directory is given, cropped images of pages will be saved there",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
-    "--enable-plotting/--disable-plotting",
-    "-ep/-noep",
+    "--enable-plotting",
+    "-ep",
     is_flag=True,
-    help="If set, will plot intermediary files and images",
+    help="plot intermediary diagnostic images to files",
 )
 @click.option(
-    "--input_binary/--input-RGB",
-    "-ib/-irgb",
+    "--input_binary",
+    "-ib",
     is_flag=True,
-    help="In general, eynollah uses RGB as input but if the input document is very dark, very bright or for any other reason you can turn on input binarization. When this flag is set, eynollah will binarize the RGB input document, you should always provide RGB images to eynollah.",
+    help="In general, eynollah uses RGB as input, but if the input document is very dark, very bright or for any other reason you can turn on internal binarization here. When set, eynollah will binarize the RGB input document first.",
 )
 @click.option(
-    "--ignore_page_extraction/--extract_page_included",
-    "-ipe/-epi",
+    "--ignore_page_extraction",
+    "-ipe",
     is_flag=True,
-    help="if this parameter set to true, this tool would ignore page extraction",
+    help="ignore page extraction (cropping via page frame detection model)",
 )
 @click.option(
     "--num_col_upper",
     "-ncu",
-    help="lower limit of columns in document image",
+    default=0,
+    type=click.IntRange(min=0),
+    help="lower limit of columns in document image; 0 means autodetected from model",
 )
 @click.option(
     "--num_col_lower",
     "-ncl",
-    help="upper limit of columns in document image",
+    default=0,
+    type=click.IntRange(min=0),
+    help="upper limit of columns in document image; 0 means autodetected from model",
 )
 @click.pass_context
 def extract_images_cli(

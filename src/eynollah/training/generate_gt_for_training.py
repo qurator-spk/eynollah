@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import cv2
 import numpy as np
+from eynollah.utils.font import get_font
 
 from .gt_gen_utils import (
     filter_contours_area_of_image,
@@ -393,11 +394,15 @@ def visualize_reading_order(xml_file, dir_xml, dir_out, dir_imgs):
             layout = np.zeros( (y_len,x_len,3) ) 
             layout = cv2.fillPoly(layout, pts =co_text_all, color=(1,1,1))
                 
-            img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
-            img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
-            
-            overlayed = overlay_layout_on_image(layout, img, cx_ordered, cy_ordered, color, thickness)
-            cv2.imwrite(os.path.join(dir_out, f_name+'.png'), overlayed)
+            try:
+                img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
+                img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+                
+                overlayed = overlay_layout_on_image(layout, img, cx_ordered, cy_ordered, color, thickness)
+                cv2.imwrite(os.path.join(dir_out, f_name+'.png'), overlayed)
+            except:
+                pass
+
             
         else:
             img = np.zeros( (y_len,x_len,3) ) 
@@ -452,14 +457,17 @@ def visualize_textline_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
         xml_file = os.path.join(dir_xml,ind_xml )
         f_name = Path(ind_xml).stem
         
-        img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
-        img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+        try:
+            img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
+            img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+                
+            co_tetxlines, y_len, x_len = get_textline_contours_for_visualization(xml_file)
             
-        co_tetxlines, y_len, x_len = get_textline_contours_for_visualization(xml_file)
-        
-        added_image = visualize_image_from_contours(co_tetxlines, img)
-        
-        cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
+            added_image = visualize_image_from_contours(co_tetxlines, img)
+            
+            cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
+        except:
+            pass
 
         
         
@@ -509,15 +517,17 @@ def visualize_layout_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
             f_name = Path(ind_xml).stem
         print(f_name, 'f_name')
         
-        img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
-        img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+        try:
+            img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
+            img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
+                
+            co_text, co_graphic, co_sep, co_img, co_table, co_map, co_music, co_noise, y_len, x_len = get_layout_contours_for_visualization(xml_file)
             
-        co_text, co_graphic, co_sep, co_img, co_table, co_map, co_noise, y_len, x_len = get_layout_contours_for_visualization(xml_file)
-        
-        
-        added_image = visualize_image_from_contours_layout(co_text['paragraph'], co_text['header']+co_text['heading'], co_text['drop-capital'], co_sep, co_img, co_text['marginalia'], co_table, img)
+            added_image = visualize_image_from_contours_layout(co_text['paragraph'], co_text['header']+co_text['heading'], co_text['drop-capital'], co_sep, co_img, co_text['marginalia'], co_table, co_map, co_music, img)
 
-        cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
+            cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
+        except:
+            pass
 
 
 
@@ -552,8 +562,8 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
     else:
         xml_files_ind = [xml_file]
         
-    font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
-    font = ImageFont.truetype(font_path, 40)
+    ###font_path = "Charis-7.000/Charis-Regular.ttf"  # Make sure this file exists!
+    font = get_font(font_size=40)#ImageFont.truetype(font_path, 40)
         
     for ind_xml in tqdm(xml_files_ind):
         indexer = 0
@@ -590,11 +600,11 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
                 
                 
                 is_vertical = h > 2*w  # Check orientation
-                font = fit_text_single_line(draw, ocr_texts[index], font_path, w, int(h*0.4) )
+                font = fit_text_single_line(draw, ocr_texts[index], w, int(h*0.4) )
                 
                 if is_vertical:
                     
-                    vertical_font = fit_text_single_line(draw, ocr_texts[index], font_path, h, int(w * 0.8))
+                    vertical_font = fit_text_single_line(draw, ocr_texts[index], h, int(w * 0.8))
 
                     text_img = Image.new("RGBA", (h, w), (255, 255, 255, 0))  # Note: dimensions are swapped
                     text_draw = ImageDraw.Draw(text_img)

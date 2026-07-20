@@ -3,49 +3,69 @@ The command-line interface can be called like this:
 
 ```sh
 eynollah \
+  [GENERIC_OPTIONS] \
+  layout \
   -i <single image file> | -di <directory containing image files> \
   -o <output directory> \
-  -m <directory containing model files> \
-     [OPTIONS]
+  [LAYOUT_OPTIONS]
 ```
 
-## Processing options
-The following options can be used to further configure the processing:
+## Generic options
+Pass any of the following options:
 
-| option            | description                                                                    |
+| **option**                                        | **description**                                                 |
+|---------------------------------------------------|:----------------------------------------------------------------|
+| -m <directory containing model files>             | override default directory `$PWD/models_eynollah`               |
+| -mv <model category> <model variant> <model path> | override specific models, e.g. `region_1_2 '' /path/to/my.onnx` |
+| -D <device specifier>                             | allocate models to GPUs, e.g. `col*:CPU,page:GPU1,*:GPU0`       |
+| -l <log level>                                    | override default `INFO` log level e.g. `DEBUG`                  |
+
+## Processing options
+The following options can be used to further control layout analysis:
+
+| **option**        | **description**                                                                |
 |-------------------|:-------------------------------------------------------------------------------|
-| `-fl`             | full layout analysis including all steps and segmentation classes              |
-| `-light`          | lighter and faster but simpler method for main region detection and deskewing  |
+| `-fl`             | full layout analysis including all steps and segmentation classes (recommended)|
 | `-tab`            | apply table detection                                                          |
 | `-ae`             | apply enhancement (the resulting image is saved to the output directory)       |
 | `-as`             | apply scaling                                                                  |
-| `-cl`             | apply contour detection for curved text lines instead of bounding boxes        |
+| `-cl`             | apply contour detection for curved text lines, deskewing regions independently |
 | `-ib`             | apply binarization (the resulting image is saved to the output directory)      |
 | `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`) |
-| `-eoi`            | extract only images to output directory (other processing will not be done)    |
 | `-ho`             | ignore headers for reading order dectection                                    |
 | `-si <directory>` | save image regions detected to this directory                                  |
 | `-sd <directory>` | save deskewed image to this directory                                          |
 | `-sl <directory>` | save layout prediction as plot to this directory                               |
 | `-sp <directory>` | save cropped page image to this directory                                      |
 | `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory               |
+| `-thart`          | confidence threshold of artifical boundary class during textline detection     |
+| `-tharl`          | confidence threshold of artifical boundary class during region detection       |
+| `-ncu`            | upper limit of columns in document image                                       |
+| `-ncl`            | lower limit of columns in document image                                       |
+| `-slro`           | skip layout detection and reading order                                        |
+| `-romb`           | apply machine based reading order detection                                    |
+| `-ipe`            | ignore page extraction                                                         |
+| `-j`              | number of CPU jobs to run parallel (useful with -di)                           |
+| `-H`              | when to halt if some jobs fail, e.g. `0.1` for 10% or `3` for 3 pages          |
 
 If no option is set, the tool performs detection of main regions (background, text, images, separators and marginals).
 
-### `--full-layout` vs `--no-full-layout`
+### `--full-layout` vs shallow
 
-Here are the difference in elements detected depending on the `--full-layout`/`--no-full-layout` command line flags:
+Here are the differences in segment types detected:
 
-|                          | `--full-layout` | `--no-full-layout` |
-|--------------------------|-----------------|--------------------|
-| reading order            | x               | x                  |
-| header regions           | x               | -                  |
-| text regions             | x               | x                  |
-| text regions / text line | x               | x                  |
-| drop-capitals            | x               | -                  |
-| marginals                | x               | x                  |
-| marginals / text line    | x               | x                  |
-| image region             | x               | x                  |
+|                          | `-fl` | without |
+|--------------------------|-------|---------|
+| reading order            | x     | x       |
+| header regions           | x     | -       |
+| text regions             | x     | x       |
+| text regions / textlines | x     | x       |
+| drop-capitals            | x     | -       |
+| marginals                | x     | x       |
+| marginals / textlines    | x     | x       |
+| image regions            | x     | x       |
+
+(Note: No marginals are detected for pages with 3 columns or more.)
 
 ## Use as OCR-D processor
 Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) processor that is described in 
@@ -54,13 +74,13 @@ Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) proc
 The source image file group with (preferably) RGB images should be used as input for Eynollah like this:
 
 ```
-ocrd-eynollah-segment -I OCR-D-IMG -O SEG-LINE -P models
+ocrd-eynollah-segment -I OCR-D-IMG -O SEG-LINE -P full_layout true
 ```
     
 Any image referenced by `@imageFilename` in PAGE-XML is passed on directly to Eynollah as a processor, so that e.g.
 
 ```
-ocrd-eynollah-segment -I OCR-D-IMG-BIN -O SEG-LINE -P models
+ocrd-eynollah-segment -I OCR-D-IMG-BIN -O SEG-LINE -P full_layout true
 ```
     
 uses the original (RGB) image despite any binarization that may have occured in previous OCR-D processing steps.

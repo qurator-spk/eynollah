@@ -6,5 +6,10 @@ imutils
 scipy
 tensorflow-addons # for connected_components, depublished and only compatible with tensorflow < 2.16
 tensorflow < 2.16 # for tensorflow-addons, so only needed in training
-tf_data < 2.16 # for tensorflow-addons, so only needed in training
+tf-keras < 2.16 # avoid keras 3 (also needs TF_USE_LEGACY_KERAS=1)
 protobuf < 5 # for tensorflow-addons, so only needed in training
+torch
+transformers <= 4.30.2 ; python_version < '3.10'
+transformers >= 5 ; python_version >= '3.10'
+eynollah-fork-tf2onnx == 1.17.0.post2
+ml_dtypes >= 0.5

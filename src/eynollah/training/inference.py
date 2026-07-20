@@ -132,15 +132,31 @@ class SBBPredict:
             self.model = Model(
                 self.model.get_layer(name = "image").input, 
                 self.model.get_layer(name = "dense2").output)
+            assert isinstance(self.model, Model)
+        elif self.task == "transformer-ocr":
+            import torch
+            from transformers import VisionEncoderDecoderModel, TrOCRProcessor
+
+            self.model = VisionEncoderDecoderModel.from_pretrained(self.model_dir)
+            self.processor = TrOCRProcessor.from_pretrained(self.model_dir)
+
+            if self.cpu:
+                self.device = torch.device('cpu')
+            else:
+                self.device = torch.device('cuda:0')
+
+            self.model.to(self.device)
+
+            assert isinstance(self.model, torch.nn.Module)
         else:
             self.model = load_model(self.model_dir, compile=False,
                                     custom_objects={"PatchEncoder": PatchEncoder,
                                                     "Patches": Patches})
+            assert isinstance(self.model, Model)
 
         ##if self.weights_dir!=None:
             ##self.model.load_weights(self.weights_dir)
             
-        assert isinstance(self.model, Model)
         if self.task != 'classification' and self.task != 'reading_order':
             last = self.model.layers[-1]
             self.img_height = last.output_shape[1]
@@ -230,6 +246,13 @@ class SBBPredict:
             pred_texts = decode_batch_predictions(preds, num_to_char)
             pred_texts = pred_texts[0].replace("[UNK]", "")
             return pred_texts
+
+        elif self.task == "transformer-ocr":
+            from PIL import Image
+            image = Image.open(image_dir).convert("RGB")
+            pixel_values = self.processor(image, return_tensors="pt").pixel_values
+            generated_ids = self.model.generate(pixel_values.to(self.device))
+            return self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
             
             
         elif self.task == 'reading_order':
@@ -566,6 +589,8 @@ class SBBPredict:
                     cv2.imwrite(self.save,res)
             elif self.task == "cnn-rnn-ocr":
                 print(f"Detected text: {res}")
+            elif self.task == "transformer-ocr":
+                print(f"Detected text: {res}")
             else:
                 img_seg_overlayed, only_layout  = self.visualize_model_output(res, self.img_org, self.task)
                 if self.save:
@@ -672,7 +697,7 @@ def main(image, dir_in, model, patches, save, save_layout, ground_truth, xml_fil
     with open(os.path.join(model,'config.json')) as f:
         config_params_model = json.load(f)
     task = config_params_model['task']
-    if task not in ['classification', 'reading_order', "cnn-rnn-ocr"]:
+    if task not in ['classification', 'reading_order', "cnn-rnn-ocr", "transformer-ocr"]:
         assert not image or save, "For segmentation or binarization, an input single image -i also requires an output filename -s"
         assert not dir_in or out, "For segmentation or binarization, an input directory -di also requires an output directory -o"
     x = SBBPredict(image, dir_in, model, task, config_params_model,

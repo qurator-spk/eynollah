@@ -1,9 +1,7 @@
 # ocrd includes opencv, numpy, shapely, click
 ocrd >= 3.3.0
-numpy < 2.0
+onnxruntime-gpu[cuda,cudnn] # w/ .onnx models
+tensorrt_cu12 < 11 # 11 incompatible with CUDA libs from onnxruntime-gpu[cuda,cudnn]
 scikit-learn >= 0.23.2
-tensorflow
-tf-keras # avoid keras 3 (also needs TF_USE_LEGACY_KERAS=1)
-numba <= 0.58.1
 scikit-image
 tabulate

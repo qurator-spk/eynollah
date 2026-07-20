@@ -276,7 +276,7 @@ class Eynollah:
             img_new = np.copy(img)
             img_is_resized = False
         #elif conf_col < 0.8 and img_h_new >= 8000:
-        elif img_h_new >= 8000:
+        elif conf_col < 0.9 and img_h_new >= 8000:
             # don't upsample if too large
             img_new = np.copy(img)
             img_is_resized = False
@@ -901,7 +901,7 @@ class Eynollah:
         if N > 1:
             mean_y_diff = np.median(diff_cy)
             mean_x_diff = np.median(diff_cx)
-            count_hor = np.count_nonzero(np.diff(w_h_textline) > 0)
+            count_hor = np.count_nonzero(np.diff(w_h_textline, axis=0) > 0)
             count_ver = N - count_hor
         else:
             mean_y_diff = 0
@@ -1148,7 +1148,6 @@ class Eynollah:
             boxes,
             textline_mask_tot
     ):
-        assert np.any(textline_mask_tot)
         self.logger.debug("enter do_order_of_regions")
         contours_only_text_parent = ensure_array(contours_only_text_parent)
         contours_only_text_parent_h = ensure_array(contours_only_text_parent_h)
@@ -2143,7 +2142,8 @@ class Eynollah:
                 conf_textregions=[0],
             )
             self.logger.info("Basic processing complete")
-            writer.write_pagexml(pcgts)
+            if writer.pcgts is None:
+                writer.write_pagexml(pcgts)
             self.logger.info("Job done in %.1fs", time.time() - t0)
             return
 
@@ -2222,7 +2222,8 @@ class Eynollah:
                 cont_page=cont_page,
                 polygons_seplines=[],
             )
-            writer.write_pagexml(pcgts)
+            if writer.pcgts is None:
+                writer.write_pagexml(pcgts)
             self.logger.info("Job done in %.1fs", time.time() - t0)
             return
 
@@ -2509,6 +2510,7 @@ class Eynollah:
                 conf_tables=conf_tables,
             )
 
-        writer.write_pagexml(pcgts)
+        if writer.pcgts is None:
+            writer.write_pagexml(pcgts)
         self.logger.info("Job done in %.1fs", time.time() - t0)
         return

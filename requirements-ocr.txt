@@ -1,3 +1,5 @@
-torch
+torch < 2.11 # avoid pull CUDA 13 (which will clash with 12)
 transformers <= 4.30.2 ; python_version < '3.10'
 transformers >= 5 ; python_version >= '3.10'
+tensorflow[and-cuda]
+tf-keras # avoid keras 3 (also needs TF_USE_LEGACY_KERAS=1)

@@ -1,0 +1,1 @@
+../../../../models_eynollah/characters_org.txt

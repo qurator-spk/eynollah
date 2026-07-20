@@ -1,4 +1,5 @@
 import os
+import json
 
 os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
 import tensorflow as tf
@@ -20,9 +21,11 @@ from tensorflow.keras.layers import (
     LSTM,
     MaxPooling2D,
     MultiHeadAttention,
+    Permute,
     Reshape,
     UpSampling2D,
     ZeroPadding2D,
+    StringLookup,
     add,
     concatenate
 )
@@ -57,6 +60,51 @@ class CTCLayer(Layer):
 
         # At test time, just return the computed predictions.
         return y_pred
+
+class CTCDecoder(Layer):
+    def call(self, inputs):
+        n_samples = tf.shape(inputs)[0]
+        n_steps = inputs.shape[1]
+        n_classes = inputs.shape[2]
+        lengths = tf.ones(n_samples, dtype=tf.int32) * n_steps
+        ## Keras beam search seems to mess with double letters
+        ## but Keras greedy sometimes removes arbitrary letters
+        # outputs, logits = tf.keras.backend.ctc_decode(inputs,
+        #                                               lengths,
+        #                                               beam_width=20,
+        #                                               greedy=False, # True,
+        #                                               # backend does not allow these kwargs
+        #                                               #merge_repeated=False,
+        #                                               #mask_index=inputs.shape[2]-1,
+        # )
+        # tf.nn.ctc_*_decoder (in contrast to tf.keras.backend.ctc_decode)
+        # needs logits instead of probs and time-major (batch 2nd dim)
+        inputs = tf.math.log(
+            tf.transpose(inputs, perm=[1, 0, 2]) + tf.keras.backend.epsilon()
+        )
+        # tf.compat.v1.nn.ctc_beam_search_decoder() also needs merge_repeated=False
+        # tf.nn.ctc_beam_search_decoder() is not supported by ONNX, yet
+        # tf.nn.ctc_greedy_decoder() is not as precise, though:
+        decoded, logits = tf.nn.ctc_beam_search_decoder(
+            inputs,
+            lengths,
+            beam_width=10,
+            top_paths=1
+        )
+        # get top path for all sequences in batch
+        decoded = decoded[0]
+        logits = logits[:, 0]
+        probs = tf.exp(-logits / n_steps)
+        # convert to dense
+        outputs = tf.SparseTensor(decoded.indices, decoded.values,
+                                  (n_samples, n_steps))
+        outputs = tf.sparse.to_dense(sp_input=outputs, default_value=n_classes-1)
+        # # drop non-tokens (-1) and OOV (0)
+        # result = []
+        # for output in outputs:
+        #     result.append(tf.gather(output, tf.where(output > 0)))
+        # outputs = tf.stack(result)
+        return outputs, probs
     
 def mlp(x, hidden_units, dropout_rate):
     for units in hidden_units:
@@ -309,11 +357,10 @@ def transformer_block(img,
         # Skip connection 2.
         encoded_patches = Add()([x3, x2])
 
-    encoded_patches = tf.reshape(encoded_patches,
-                                 [-1,
-                                  img.shape[1],
-                                  img.shape[2],
-                                  projection_dim // (patchsize_x * patchsize_y)])
+    encoded_patches = Reshape((img.shape[1],
+                               img.shape[2],
+                               projection_dim // (patchsize_x * patchsize_y)),
+                              name="reshape_patches")(encoded_patches)
     return encoded_patches
 
 def vit_resnet50_unet(num_patches,
@@ -423,11 +470,11 @@ def machine_based_reading_order_model(n_classes,input_height=224,input_width=224
 
     return model
 
-def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_seq=None):
-    input_img = Input(shape=(image_height, image_width, 3), name="image")
+def cnn_rnn_ocr_model(input_height=None, input_width=None, n_classes=None, max_len=None, inference=False, characters_txt_file=None):
+    inputs = Input(shape=(input_height, input_width, 3), name="image")
     labels = Input(name="label", shape=(None,))
 
-    x = Conv2D(64,kernel_size=(3,3),padding="same")(input_img)
+    x = Conv2D(64,kernel_size=(3,3),padding="same")(inputs)
     x = BatchNormalization(name="bn1")(x)
     x = Activation("relu", name="relu1")(x)
     x = Conv2D(64,kernel_size=(3,3),padding="same")(x)
@@ -451,52 +498,142 @@ def cnn_rnn_ocr_model(image_height=None, image_width=None, n_classes=None, max_s
     x = Activation("relu", name="relu6")(x)
     x = MaxPooling2D(pool_size=(2,2),strides=(2,2))(x)
 
-    x = Conv2D(image_width,kernel_size=(3,3),padding="same")(x)
+    x = Conv2D(input_width,kernel_size=(3,3),padding="same")(x)
     x = BatchNormalization(name="bn7")(x)
     x = Activation("relu", name="relu7")(x)
-    x = Conv2D(image_width,kernel_size=(16,1))(x)
+    x = Conv2D(input_width,kernel_size=(16,1))(x)
     x = BatchNormalization(name="bn8")(x)
     x = Activation("relu", name="relu8")(x)
     x2d = MaxPooling2D(pool_size=(1,2),strides=(1,2))(x)
     x4d = MaxPooling2D(pool_size=(1,2),strides=(1,2))(x2d)
-    
 
     new_shape = (x.shape[1]*x.shape[2], x.shape[3])
     new_shape2 = (x2d.shape[1]*x2d.shape[2], x2d.shape[3])
     new_shape4 = (x4d.shape[1]*x4d.shape[2], x4d.shape[3])
-    
-    x = Reshape(target_shape=new_shape, name="reshape")(x)
-    x2d = Reshape(target_shape=new_shape2, name="reshape2")(x2d)
-    x4d = Reshape(target_shape=new_shape4, name="reshape4")(x4d)
-    
-    xrnnorg = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x)
-    xrnn2d = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x2d)
-    xrnn4d = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(x4d)
-    
-    xrnn2d = Reshape(target_shape=(1, xrnn2d.shape[1], xrnn2d.shape[2]), name="reshape6")(xrnn2d)
-    xrnn4d = Reshape(target_shape=(1, xrnn4d.shape[1], xrnn4d.shape[2]), name="reshape8")(xrnn4d)
-    
+
+    x = Reshape(new_shape, name="reshape")(x)
+    x2d = Reshape(new_shape2, name="reshape2")(x2d)
+    x4d = Reshape(new_shape4, name="reshape4")(x4d)
+
+    xrnnorg = Bidirectional(LSTM(input_width, return_sequences=True, dropout=0.25))(x)
+    xrnn2d = Bidirectional(LSTM(input_width, return_sequences=True, dropout=0.25))(x2d)
+    xrnn4d = Bidirectional(LSTM(input_width, return_sequences=True, dropout=0.25))(x4d)
+
+    xrnn2d = Reshape((1, xrnn2d.shape[1], xrnn2d.shape[2]), name="reshape6")(xrnn2d)
+    xrnn4d = Reshape((1, xrnn4d.shape[1], xrnn4d.shape[2]), name="reshape8")(xrnn4d)
 
     xrnn2dup = UpSampling2D(size=(1, 2), interpolation="nearest")(xrnn2d)
     xrnn4dup = UpSampling2D(size=(1, 4), interpolation="nearest")(xrnn4d)
-    
-    xrnn2dup = Reshape(target_shape=(xrnn2dup.shape[2], xrnn2dup.shape[3]), name="reshape10")(xrnn2dup)
-    xrnn4dup = Reshape(target_shape=(xrnn4dup.shape[2], xrnn4dup.shape[3]), name="reshape12")(xrnn4dup)
+
+    xrnn2dup = Reshape((xrnn2dup.shape[2], xrnn2dup.shape[3]), name="reshape10")(xrnn2dup)
+    xrnn4dup = Reshape((xrnn4dup.shape[2], xrnn4dup.shape[3]), name="reshape12")(xrnn4dup)
 
     addition = Add()([xrnnorg, xrnn2dup, xrnn4dup])
-    
-    addition_rnn = Bidirectional(LSTM(image_width, return_sequences=True, dropout=0.25))(addition)
-    
-    out = Conv1D(max_seq, 1, data_format="channels_first")(addition_rnn)
+
+    addition_rnn = Bidirectional(LSTM(input_width, return_sequences=True, dropout=0.25))(addition)
+
+    #out = Conv1D(max_len, 1, data_format="channels_first")(addition_rnn)
+    out = Permute((2, 1))(addition_rnn)
+    out = Conv1D(max_len, 1, data_format="channels_last")(out)
+    out = Permute((2, 1))(out)
     out = BatchNormalization(name="bn9")(out)
     out = Activation("relu", name="relu9")(out)
-    #out = Conv1D(n_classes, 1, activation='relu', data_format="channels_last")(out)
 
     out = Dense(n_classes, activation="softmax", name="dense2")(out)
 
-    # Add CTC layer for calculating CTC loss at each step.
-    output = CTCLayer(name="ctc_loss")(labels, out)
-    
-    model = Model(inputs=(input_img, labels), outputs=output, name="handwriting_recognizer")
+    if inference:
+        # add second path for binarization
+        inputs_bin = Input(shape=(input_height, input_width, 3), name="image_bin")
+        out_bin = Model(inputs, out)(inputs_bin)
+        # ensemble raw results
+        out = 0.5 * (out + out_bin)
+        # get tf.string batch
+        out, prob = CTCDecoder()(out)
+        # decode int to str
+        with open(characters_txt_file, "r") as voc_file:
+            voc = json.load(voc_file)
+        char2num = StringLookup(vocabulary=voc)
+        voc = char2num.get_vocabulary()
+        num2char = StringLookup(vocabulary=voc, invert=True)
+        output = num2char(out)
 
-    return model
+        return Model((inputs, inputs_bin), (output, prob))
+
+    # Add CTC layer for calculating CTC loss at each step.
+    out = CTCLayer(name="ctc_loss")(labels, out)
+    
+    return Model((inputs, labels), out)
+
+def cnn_rnn_ocr_model4inference(model, model_path):
+    """convert trained cnn-rnn-ocr model to inference model post-hoc"""
+    try:
+        model.get_layer(name='ctc_loss')
+    except ValueError:
+        # likely already converted
+        return model
+    else:
+        inputs = model.get_layer(name='image').input
+        output = model.get_layer(name='dense2').output
+        inputs_bin = Input(inputs.shape[1:], name='image_bin')
+        output_bin = Model(inputs, output)(inputs_bin)
+        output = 0.5 * (output + output_bin)
+        output, prob = CTCDecoder()(output)
+        with open(model_path / "characters_org.txt", "r") as voc_file:
+            voc = json.load(voc_file)
+        char2num = StringLookup(vocabulary=voc)
+        voc = char2num.get_vocabulary()
+        num2char = StringLookup(vocabulary=voc, invert=True)
+        output = num2char(output)
+        inputs = (inputs, inputs_bin)
+        outputs = (output, prob)
+        return Model(inputs, outputs)
+
+def get_model(config, logger):
+    from sacred.config import create_captured_function
+
+    task = config['task']
+    if task in ["segmentation", "enhancement", "binarization"]:
+        if config['backbone_type'] == 'nontransformer':
+            builder = resnet50_unet
+        else:
+            num_patches_x, num_patches_y = config['transformer_num_patches_xy']
+            num_patches = num_patches_x * num_patches_y
+
+            if config['transformer_cnn_first']:
+                builder = vit_resnet50_unet
+                multiple = 32
+            else:
+                builder = vit_resnet50_unet_transformer_before_cnn
+                multiple = 1
+
+            assert config['input_height'] == (
+                num_patches_y * config['transformer_patchsize_y'] * multiple), (
+                "transformer_patchsize_y or transformer_num_patches_xy height value error: "
+                "input_height should be equal to "
+                "(transformer_num_patches_xy height value * transformer_patchsize_y * %d)" % multiple)
+            assert config['input_width'] == (
+                num_patches_x * config['transformer_patchsize_x'] * multiple), (
+                    "transformer_patchsize_x or transformer_num_patches_xy width value error: "
+                    "input_width should be equal to "
+                    "(transformer_num_patches_xy width value * transformer_patchsize_x * %d)" % multiple)
+            assert 0 == (config['transformer_projection_dim'] %
+                         (config['transformer_patchsize_y'] *
+                          config['transformer_patchsize_x'])), (
+                             "transformer_projection_dim error: "
+                             "The remainder when parameter transformer_projection_dim is divided by "
+                             "(transformer_patchsize_y*transformer_patchsize_x) should be zero")
+
+            config['num_patches'] = num_patches
+    elif task == "cnn-rnn-ocr":
+        builder = cnn_rnn_ocr_model
+    elif task=='classification':
+        builder = resnet50_classifier
+    elif task=='reading_order':
+        builder = machine_based_reading_order_model
+    else:
+        raise ValueError("unknown model task '%s'" % task)
+
+    builder = create_captured_function(builder)
+    builder.config = config
+    builder.logger = logger
+    return builder()

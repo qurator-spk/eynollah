@@ -172,11 +172,6 @@ import click
     type=click.FloatRange(min=0),
     help="abort when number of failed images exceeds this value (if >=1) or ratio of failed over total images exceeds this value (if <1); 0 means ignore failures",
 )
-@click.option(
-    "--device",
-    "-D",
-    help="placement of computations in predictors for each model type; if none (by default), will try to use first available GPU or fall back to CPU; set string to force using a device (e.g. 'GPU0', 'GPU1' or 'CPU'). Can also be a comma-separated list of model category to device mappings (e.g. 'col_classifier:CPU,page:GPU0,*:GPU1')",
-)
 @click.pass_context
 def layout_cli(
     ctx,
@@ -207,7 +202,6 @@ def layout_cli(
     ignore_page_extraction,
     num_jobs,
     halt_fail,
-    device,
 ):
     """
     Detect Layout (with optional image enhancement and reading order detection)
@@ -223,7 +217,7 @@ def layout_cli(
     assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
     eynollah = Eynollah(
         model_zoo=ctx.obj.model_zoo,
-        device=device,
+        device=ctx.obj.device,
         enable_plotting=enable_plotting,
         allow_enhancement=allow_enhancement,
         curved_line=curved_line,

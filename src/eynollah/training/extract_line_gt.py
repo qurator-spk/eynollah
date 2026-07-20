@@ -50,6 +50,12 @@ from ..utils import is_image_filename
     is_flag=True,
     help="if this parameter set to true, cropped textline images will not be masked with textline contour.",
 )
+@click.option(
+    "--exclude_vertical_lines",
+    "-exv",
+    is_flag=True,
+    help="if this parameter set to true, vertical textline images will be excluded.",
+)
 def linegt_cli(
     image,
     dir_in,
@@ -57,6 +63,7 @@ def linegt_cli(
     dir_out,
     pref_of_dataset,
     do_not_mask_with_textline_contour,
+    exclude_vertical_lines,
 ):
     assert bool(dir_in) ^ bool(image), "Set --dir-in or --image-filename, not both"
     if dir_in:
@@ -99,6 +106,9 @@ def linegt_cli(
                             textline_coords = np.array([[int(x.split(',')[0]), int(x.split(',')[1])] for x in p_h])
 
                             x, y, w, h = cv2.boundingRect(textline_coords)
+
+                            if exclude_vertical_lines and h > 2 * w:
+                                continue
 
                             total_bb_coordinates.append([x, y, w, h])
 

@@ -6,11 +6,12 @@ from ocrd_models.constants import NAMESPACES as NS
     "options",
     [
             [], # defaults
-            #["--allow_scaling", "--curved-line"],
-            ["--allow_scaling", "--curved-line", "--full-layout"],
-            ["--allow_scaling", "--curved-line", "--full-layout", "--reading_order_machine_based"],
+            #["--curved-line"],
+            ["--curved-line", "--full-layout"],
+            ["--curved-line", "--full-layout", "--reading_order_machine_based"],
             # -ep ...
-            # -eoi ...
+            # --input_binary
+            # --ignore_page_extraction
             # --skip_layout_and_reading_order
     ], ids=str)
 def test_run_eynollah_layout_filename(

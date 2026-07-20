@@ -6,23 +6,61 @@
     "ocrd-eynollah-segment": {
       "executable": "ocrd-eynollah-segment",
       "categories": ["Layout analysis"],
-      "description": "Segment page into regions and lines and do reading order detection with eynollah",
+      "description": "Segment page into regions and lines and detect reading order with Eynollah",
       "input_file_grp_cardinality": 1,
       "output_file_grp_cardinality": 1,
       "steps": ["layout/segmentation/region", "layout/segmentation/line"],
       "parameters": {
+        "device": {
+          "type": "string",
+          "default": "",
+          "description": "Allocate models to computation device; can be a single device name for all models, or a comma-delimited, colon-tagged mapping from model category to device name (where model categories are binarization, col_classifier, page, textline, region_1_2, region_fl_np, table, reading_order, but can be abbreviated by glob expressions), e.g. col*:CPU,page:GPU0,*:GPU1. If empty, selects the first available GPU for all models."
+        },
         "models": {
           "type": "string",
           "format": "uri",
           "content-type": "text/directory",
           "cacheable": true,
-          "description": "Directory containing models to be used (See https://qurator-data.de/eynollah)",
+          "description": "Directory containing models to be used (See https://huggingface.co/collections/SBB/eynollah-models)",
           "required": true
+        },
+        "model_overrides": {
+          "type": "object",
+          "properties": {
+            "binarization": {
+              "type": "object"
+            },
+            "enhancement": {
+              "type": "object"
+            },
+            "col_classifier": {
+              "type": "object"
+            },
+            "page": {
+              "type": "object"
+            },
+            "textline": {
+              "type": "object"
+            },
+            "region_1_2": {
+              "type": "object"
+            },
+            "region_fl_np": {
+              "type": "object"
+            },
+            "table": {
+              "type": "object"
+            },
+            "reading_order": {
+              "type": "object"
+            }
+          },
+          "description": "Map model categories to mappings from model variant to model path, e.g. {'ocr': {'tr': 'path/to/my/trocr-model'}}."
         },
         "dpi": {
           "type": "number",
           "format": "float",
-          "description": "pixel density in dots per inch (overrides any meta-data in the images); ignored if <= 0 (with fall-back 230)",
+          "description": "ignored (only for backwards-compatibility)",
           "default": 0
         },
         "full_layout": {
@@ -57,10 +95,20 @@
           "default": false,
           "description": "if true, do not attempt page frame detection (cropping)"
         },
+        "skip_layout_and_reading_order": {
+          "type": "boolean",
+          "default": false,
+          "description": "skip regions, only run textlines, stuffing them in a single text region for the entire page"
+        },
+        "binarize": {
+          "type": "boolean",
+          "default": false,
+          "description": "run adaptive thresholding on input image with dedicated model before analysis (may be useful for degraded input)."
+        },
         "allow_scaling": {
           "type": "boolean",
           "default": false,
-          "description": "check the resolution against the number of detected columns and if needed, scale the image up or down during layout detection (heuristic to improve quality and performance)"
+          "description": "ignored (only for backwards-compatibility)"
         },
         "allow_enhancement": {
           "type": "boolean",
@@ -71,6 +119,20 @@
           "type": "boolean",
           "default": false,
           "description": "if true, return reading order in right-to-left reading direction."
+        },
+        "num_col_upper": {
+          "type": "number",
+          "format": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Constrain detection of number of columns by this upper boundary (ignored when zero)."
+        },
+        "num_col_lower": {
+          "type": "number",
+          "format": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Constrain detection of number of columns by this lower boundary (ignored when zero)."
         },
         "headers_off": {
           "type": "boolean",
@@ -84,6 +146,22 @@
         }
       },
       "resources": [
+        {
+          "url": "https://zenodo.org/records/21381102/files/models_inference_layout_v0_9_1.zip",
+          "name": "models_inference_layout_v0_9_1",
+          "type": "archive",
+	  "size": 1847700967,
+          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization and image enhancement",
+          "version_range": ">= v0.9.0"
+        },
+        {
+          "url": "https://zenodo.org/records/21362927/files/models_inference_layout_v0_9_0.zip",
+          "name": "models_inference_layout_v0_9_0",
+          "type": "archive",
+	  "size": 1572255489,
+          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization and image enhancement",
+          "version_range": ">= v0.9.0"
+        },
         {
           "url": "https://zenodo.org/records/17727267/files/models_all_v0_8_0.zip",
           "name": "models_all_v0_8_0",
@@ -143,6 +221,22 @@
         }
       },
       "resources": [
+        {
+          "url": "https://zenodo.org/records/21381102/files/models_inference_layout_v0_9_1.zip",
+          "name": "models_inference_layout_v0_9_1",
+          "type": "archive",
+	  "size": 1847700967,
+          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization and image enhancement",
+          "version_range": ">= v0.9.0"
+        },
+        {
+          "url": "https://zenodo.org/records/21381102/files/models_inference_all_v0_9_1.zip",
+          "name": "models_inference_all_v0_9_1",
+          "type": "archive",
+          "size": 3761011909,
+          "description": "Models for layout detection, reading order detection, textline detection, page extraction, column classification, table detection, binarization and image enhancement",
+          "version_range": ">= v0.9.0"
+        },
         {
           "url": "https://zenodo.org/records/17727267/files/models_all_v0_8_0.zip",
           "name": "models_all_v0_8_0",

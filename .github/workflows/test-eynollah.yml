@@ -64,6 +64,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        # preempt CUDA dependencies (which need core's recipe)
+        pip install onnxruntime tensorflow tf-keras "torch<2.11"
+        sed -i '/onnxruntime-gpu/d;/tensorrt/d;/torch/d;/tensorflow/d' requirements*.txt
         make install-dev EXTRAS=OCR,plotting
         make deps-test EXTRAS=OCR,plotting
 

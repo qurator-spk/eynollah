@@ -2,6 +2,8 @@ import os
 import sys
 import io
 import json
+import click
+from typing import Optional
 
 from tqdm import tqdm
 import requests
@@ -17,7 +19,6 @@ from tensorflow.keras.layers import StringLookup
 from tensorflow.keras.utils import image_dataset_from_directory
 from tensorflow.keras.backend import one_hot
 from sacred import Experiment
-from sacred.config import create_captured_function
 
 import numpy as np
 import cv2
@@ -32,16 +33,9 @@ from .metrics import (
     connected_components_loss,
 )
 from .models import (
-    PatchEncoder,
-    Patches,
-    machine_based_reading_order_model,
-    resnet50_classifier,
-    resnet50_unet,
-    vit_resnet50_unet,
-    vit_resnet50_unet_transformer_before_cnn,
-    cnn_rnn_ocr_model,
     RESNET50_WEIGHTS_PATH,
-    RESNET50_WEIGHTS_URL
+    RESNET50_WEIGHTS_URL,
+    get_model
 )
 from .utils import (
     generate_arrays_from_folder_reading_order,
@@ -355,10 +349,9 @@ def config_params():
     dir_output = None  # Directory where the augmented training data and the model checkpoints will be saved.
     pretraining = False  # Set to true to (down)load pretrained weights of ResNet50 encoder.
     save_interval = None # frequency for writing model checkpoints (positive integer for number of batches saved under "model_step_{batch:04d}", otherwise epoch saved under "model_{epoch:02d}")
-    reload_weights = False # Set true to build new model from config, load weights from dir_of_start_model, save under dir_output and exit.
     continue_training = False  # Whether to continue training an existing model.
+    dir_of_start_model = ''  # Directory of model checkpoint to load to continue training or load weights from. (E.g. if you already trained for 3 epochs, set "dir_of_start_model=dir_output/model_03".)
     if continue_training:
-        dir_of_start_model = ''  # Directory of model checkpoint to load to continue training. (E.g. if you already trained for 3 epochs, set "dir_of_start_model=dir_output/model_03".)
         index_start = 0  #  Epoch counter initial value to continue training. (E.g. if you already trained for 3 epochs, set "index_start=3" to continue naming checkpoints model_04, model_05 etc.)
     data_is_provided = False  # Whether the preprocessed input data (subdirectories "images" and "labels" in both subdirectories "train" and "eval" of "dir_output") has already been generated (in the first epoch of a previous run).
 
@@ -379,7 +372,6 @@ def run(_config,
         weight_decay,
         learning_rate,
         continue_training,
-        reload_weights,
         save_interval,
         augmentation,
         # dependent config keys need a default,
@@ -406,7 +398,7 @@ def run(_config,
         f1_threshold_classification=None,
         classification_classes_name=None,
         ## if task=cnn-rnn-ocr
-        characters_txt_file=None,
+        characters_txt_file: Optional[str]=None,
         color_padding_rotation=False,
         thetha_padd=None,
         bin_deg=False,
@@ -477,58 +469,15 @@ def run(_config,
         if task == "enhancement":
             assert not is_loss_soft_dice, "for enhancement, soft_dice loss does not apply"
             assert not weighted_loss, "for enhancement, weighted loss does not apply"
+
         if continue_training:
-            custom_objects = dict()
-            if is_loss_soft_dice:
-                custom_objects.update(soft_dice_loss=soft_dice_loss)
-            elif weighted_loss:
-                custom_objects.update(loss=weighted_categorical_crossentropy(weights))
-            if backbone_type == 'transformer':
-                custom_objects.update(PatchEncoder=PatchEncoder,
-                                      Patches=Patches)
-            model = load_model(dir_of_start_model, compile=False,
-                               custom_objects=custom_objects)
+            model = load_model(dir_of_start_model, compile=False)
         else:
             index_start = 0
-            if backbone_type == 'nontransformer':
-                model = resnet50_unet(n_classes,
-                                      input_height,
-                                      input_width,
-                                      task,
-                                      weight_decay,
-                                      pretraining)
-            else:
-                num_patches_x = transformer_num_patches_xy[0]
-                num_patches_y = transformer_num_patches_xy[1]
-                num_patches = num_patches_x * num_patches_y
-
-                if transformer_cnn_first:
-                    model_builder = vit_resnet50_unet
-                    multiple = 32
-                else:
-                    model_builder = vit_resnet50_unet_transformer_before_cnn
-                    multiple = 1
-
-                assert input_height == (
-                    num_patches_y * transformer_patchsize_y * multiple), (
-                    "transformer_patchsize_y or transformer_num_patches_xy height value error: "
-                    "input_height should be equal to "
-                    "(transformer_num_patches_xy height value * transformer_patchsize_y * %d)" % multiple)
-                assert input_width == (
-                    num_patches_x * transformer_patchsize_x * multiple), (
-                        "transformer_patchsize_x or transformer_num_patches_xy width value error: "
-                        "input_width should be equal to "
-                        "(transformer_num_patches_xy width value * transformer_patchsize_x * %d)" % multiple)
-                assert 0 == (transformer_projection_dim %
-                             (transformer_patchsize_y * transformer_patchsize_x)), (
-                                 "transformer_projection_dim error: "
-                                 "The remainder when parameter transformer_projection_dim is divided by "
-                                 "(transformer_patchsize_y*transformer_patchsize_x) should be zero")
-
-                model_builder = create_captured_function(model_builder)
-                model_builder.config = _config
-                model_builder.logger = _log
-                model = model_builder(num_patches)
+            model = get_model(_config, _log)
+            if dir_of_start_model:
+                model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
+                _log.info("reloaded weights from %s", dir_of_start_model)
 
         assert model is not None
         #if you want to see the model structure just uncomment model summary.
@@ -558,15 +507,6 @@ def run(_config,
                       #jit_compile=True,
                       optimizer=Adam(learning_rate=learning_rate),
                       metrics=metrics)
-
-        if reload_weights:
-            model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
-            dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
-            model.save(dir_save, include_optimizer=False)
-            with open(os.path.join(dir_save, "config.json"), "w") as fp:
-                json.dump(_config, fp)  # encode dict into JSON
-            _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)
-            return
 
         if not data_is_provided:
             # first create a directory in output for both training and evaluations
@@ -708,10 +648,11 @@ def run(_config,
             model = load_model(dir_of_start_model)
         else:
             index_start = 0
-            model = cnn_rnn_ocr_model(image_height=input_height,
-                                      image_width=input_width,
-                                      n_classes=n_classes,
-                                      max_seq=max_len)
+            model = get_model(_config, _log)
+            if dir_of_start_model:
+                model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
+                _log.info("reloaded weights from %s", dir_of_start_model)
+
         #initial_learning_rate = 1e-4
         #decay_steps = int (n_epochs * ( len_dataset / n_batch ))
         #alpha = 0.01
@@ -721,15 +662,6 @@ def run(_config,
         model.compile(optimizer=opt) # rs: loss seems to be (ctc_batch_cost) in last layer
 
         #print(model.summary())
-
-        if reload_weights:
-            model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
-            dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
-            model.save(dir_save, include_optimizer=False)
-            with open(os.path.join(dir_save, "config.json"), "w") as fp:
-                json.dump(_config, fp)  # encode dict into JSON
-            _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)
-            return
 
         # todo: use Dataset.map() on Dataset.list_files()
         def get_dataset(dir_img, dir_lab):
@@ -767,29 +699,92 @@ def run(_config,
             callbacks=callbacks,
             initial_epoch=index_start)
 
+    elif task=="transformer-ocr":
+        import torch
+        from torch.utils.data import Dataset as TorchDataset
+        from transformers import TrOCRProcessor, VisionEncoderDecoderModel, Seq2SeqTrainer, Seq2SeqTrainingArguments, default_data_collator
+        dir_img, dir_lab = get_dirs_or_files(dir_train)
+
+        if continue_training:
+            model = VisionEncoderDecoderModel.from_pretrained(dir_of_start_model)
+        else:
+            model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-printed")
+            
+        processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
+        
+        
+        # Create a DataLoader
+        class TransformerOCRTorchDataset(TorchDataset):
+            """
+            Wraps preprocess_imgs in a format consumable by torch
+            """
+            def __init__(self, config, dir_img, dir_lab):
+                self.samples = preprocess_imgs(
+                        config,
+                        dir_img,
+                        dir_lab,
+                        processor=processor,
+                    )
+
+            def __len__(self):
+                return len(self.samples)
+
+            def __iter__(self):
+                yield from self.samples
+
+        dataset = TransformerOCRTorchDataset(_config, dir_img, dir_lab)
+        data_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
+        train_dataset = data_loader.dataset
+            
+        # set special tokens used for creating the decoder_input_ids from the labels
+        model.config.decoder_start_token_id = processor.tokenizer.cls_token_id
+        model.config.pad_token_id = processor.tokenizer.pad_token_id
+        # make sure vocab size is set correctly
+        model.config.vocab_size = model.config.decoder.vocab_size
+
+        # set beam search parameters
+        model.config.eos_token_id = processor.tokenizer.sep_token_id
+        model.config.max_length = max_len
+        model.config.early_stopping = True
+        model.config.no_repeat_ngram_size = 3
+        model.config.length_penalty = 2.0
+        model.config.num_beams = 4
+        
+        
+        training_args = Seq2SeqTrainingArguments(
+            predict_with_generate=True,
+            num_train_epochs=n_epochs,
+            learning_rate=learning_rate,
+            per_device_train_batch_size=n_batch,
+            fp16=True, 
+            output_dir=dir_output,
+            logging_steps=2,
+            save_steps=save_interval,
+        )
+        
+        # instantiate trainer
+        trainer = Seq2SeqTrainer(
+            model=model,
+            tokenizer=processor.feature_extractor,
+            args=training_args,
+            train_dataset=train_dataset,
+            data_collator=default_data_collator,
+        )
+        trainer.train()
+
     elif task=='classification':
         if continue_training:
             model = load_model(dir_of_start_model, compile=False)
         else:
             index_start = 0
-            model = resnet50_classifier(n_classes,
-                                        input_height,
-                                        input_width,
-                                        weight_decay,
-                                        pretraining)
+            model = get_model(_config, _log)
+            if dir_of_start_model:
+                model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
+                _log.info("reloaded weights from %s", dir_of_start_model)
 
         model.compile(loss='categorical_crossentropy',
                       optimizer=Adam(learning_rate=0.001), # rs: why not learning_rate?
                       metrics=['accuracy', F1Score(average='macro', name='f1')])
-
-        if reload_weights:
-            model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
-            dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
-            model.save(dir_save, include_optimizer=False)
-            with open(os.path.join(dir_save, "config.json"), "w") as fp:
-                json.dump(_config, fp)  # encode dict into JSON
-            _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)
-            return
 
         list_classes = list(classification_classes_name.values())
         data_args = dict(label_mode="categorical",
@@ -820,7 +815,7 @@ def run(_config,
             usable_checkpoints = [os.path.join(dir_output, 'model_{epoch:02d}'.format(epoch=epoch + 1))
                                   for epoch in usable_checkpoints]
             ens_path = os.path.join(dir_output, 'model_ens_avg')
-            run_ensembling(usable_checkpoints, ens_path)
+            run_ensembling(usable_checkpoints, ens_path, framework='tensorflow')
             _log.info("ensemble model saved under '%s'", ens_path)
 
     elif task=='reading_order':
@@ -828,26 +823,16 @@ def run(_config,
             model = load_model(dir_of_start_model, compile=False)
         else:
             index_start = 0
-            model = machine_based_reading_order_model(n_classes,
-                                                      input_height,
-                                                      input_width,
-                                                      weight_decay,
-                                                      pretraining)
+            model = get_model(_config, _log)
+            if dir_of_start_model:
+                model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
+                _log.info("reloaded weights from %s", dir_of_start_model)
 
         #f1score_tot = [0]
         model.compile(loss="binary_crossentropy",
                       #optimizer=SGD(learning_rate=0.01, momentum=0.9),
                       optimizer=Adam(learning_rate=0.0001), # rs: why not learning_rate?
                       metrics=['accuracy'])
-
-        if reload_weights:
-            model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
-            dir_save = os.path.join(dir_output, os.path.basename(os.path.normpath(dir_of_start_model)))
-            model.save(dir_save, include_optimizer=False)
-            with open(os.path.join(dir_save, "config.json"), "w") as fp:
-                json.dump(_config, fp)  # encode dict into JSON
-            _log.info("reloaded model from %s to %s", dir_of_start_model, dir_save)
-            return
 
         dir_flow_train_imgs = os.path.join(dir_train, 'images')
         dir_flow_train_labels = os.path.join(dir_train, 'labels')
@@ -881,3 +866,23 @@ def run(_config,
             model_dir = os.path.join(dir_out,'model_best')
             model.save(model_dir)
         '''
+
+@click.command(context_settings=dict(
+        ignore_unknown_options=True,
+))
+@click.argument('SACRED_ARGS', nargs=-1, type=click.UNPROCESSED)
+def train_cli(sacred_args):
+    """
+    train model on extracted GT
+
+    SACRED_ARGS as per CLI interface of Sacred, cf.
+    https://sacred.readthedocs.io/en/stable/command_line.html:
+
+    \b
+    To configure the learning task, pass the string `with`,
+    followed by any number of
+    - config JSON file paths
+    - parameter overrides in the form of key=value
+    (where the later settings will override the former).
+    """
+    ex.run_commandline([sys.argv[0]] + list(sacred_args))

@@ -3,15 +3,20 @@ import copy
 
 import numpy as np
 import cv2
-import tensorflow as tf
+# avoid module-level import:
+# import tensorflow as tf
+# (wait for tf-keras and logging setup in ModelZoo.load_model)
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
 from PIL import Image, ImageDraw, ImageFont
 
+from . import pairwise
 from .resize import resize_image
 
 
 def decode_batch_predictions(pred, num_to_char, max_len = 128):
+    import tensorflow as tf
+
     # input_len is the product of the batch size and the
     # number of time steps.
     input_len = np.ones(pred.shape[0]) * pred.shape[1]
@@ -36,43 +41,6 @@ def decode_batch_predictions(pred, num_to_char, max_len = 128):
         d = d.numpy().decode("utf-8")
         output.append(d)
     return output
-    
-    
-def distortion_free_resize(image, img_size):
-    w, h = img_size
-    image = tf.image.resize(image, size=(h, w), preserve_aspect_ratio=True)
-
-    # Check tha amount of padding needed to be done.
-    pad_height = h - tf.shape(image)[0]
-    pad_width = w - tf.shape(image)[1]
-
-    # Only necessary if you want to do same amount of padding on both sides.
-    if pad_height % 2 != 0:
-        height = pad_height // 2
-        pad_height_top = height + 1
-        pad_height_bottom = height
-    else:
-        pad_height_top = pad_height_bottom = pad_height // 2
-
-    if pad_width % 2 != 0:
-        width = pad_width // 2
-        pad_width_left = width + 1
-        pad_width_right = width
-    else:
-        pad_width_left = pad_width_right = pad_width // 2
-
-    image = tf.pad(
-        image,
-        paddings=[
-            [pad_height_top, pad_height_bottom],
-            [pad_width_left, pad_width_right],
-            [0, 0],
-        ],
-    )
-
-    image = tf.transpose(image, (1, 0, 2))
-    image = tf.image.flip_left_right(image)
-    return image
 
 def return_start_and_end_of_common_text_of_textline_ocr_without_common_section(textline_image):
     width = np.shape(textline_image)[1]
@@ -214,10 +182,11 @@ def get_orientation_moments(contour):
     
 def get_orientation_moments_of_mask(mask):
     mask=mask.astype('uint8')
-    contours, _ = cv2.findContours(mask[:,:,0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    largest_contour = max(contours, key=cv2.contourArea) if contours else None
-    
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if not len(contours):
+        return 0
+    largest_contour = max(contours, key=cv2.contourArea)
     moments = cv2.moments(largest_contour)
     if moments["mu20"] - moments["mu02"] == 0:  # Avoid division by zero
         return 90 if moments["mu11"] > 0 else -90
@@ -256,249 +225,58 @@ def return_splitting_point_of_image(image_to_spliited):
     
     return np.sort(peaks_sort_4)
     
-def break_curved_line_into_small_pieces_and_then_merge(img_curved, mask_curved, img_bin_curved=None):
-    peaks_4 = return_splitting_point_of_image(img_curved)
-    if len(peaks_4)>0:
+def break_curved_line_into_small_pieces_and_then_merge(img_rgb_curved, img_bin_curved, mask_curved):
+    peaks_4 = return_splitting_point_of_image(img_rgb_curved)
+    if len(peaks_4):
         imgs_tot = []
-        
-        for ind in range(len(peaks_4)+1):
-            if ind==0:
-                img = img_curved[:, :peaks_4[ind], :]
-                if img_bin_curved is not None:
-                    img_bin = img_bin_curved[:, :peaks_4[ind], :]
-                mask = mask_curved[:, :peaks_4[ind], :]
-            elif ind==len(peaks_4):
-                img = img_curved[:, peaks_4[ind-1]:, :]
-                if img_bin_curved is not None:
-                    img_bin = img_bin_curved[:, peaks_4[ind-1]:, :]
-                mask = mask_curved[:, peaks_4[ind-1]:, :]
-            else:
-                img = img_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
-                if img_bin_curved is not None:
-                    img_bin = img_bin_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
-                mask = mask_curved[:, peaks_4[ind-1]:peaks_4[ind], :]
-                
+        for left, right in pairwise([None] + list(peaks_4) + [None]):
+            img_rgb = img_rgb_curved[:, left: right]
+            img_bin = img_bin_curved[:, left: right]
+            mask = mask_curved[:, left: right]
             or_ma = get_orientation_moments_of_mask(mask)
-            
-            if img_bin_curved is not None:
-                imgs_tot.append([img, mask, or_ma, img_bin] )
-            else:
-                imgs_tot.append([img, mask, or_ma] )
-        
+            imgs_tot.append([img_rgb, img_bin, mask, or_ma])
         
         w_tot_des_list = []
-        w_tot_des = 0
-        imgs_deskewed_list = []
+        imgs_rgb_deskewed_list = []
         imgs_bin_deskewed_list = []
         
-        for ind in range(len(imgs_tot)):
-            img_in = imgs_tot[ind][0]
-            mask_in = imgs_tot[ind][1]
-            ori_in = imgs_tot[ind][2]
-            if img_bin_curved is not None:
-                img_bin_in = imgs_tot[ind][3]
-            
-            if abs(ori_in)<45:
-                img_in_des = rotate_image_with_padding(img_in, ori_in, border_value=(255,255,255) )
-                if img_bin_curved is not None:
-                    img_bin_in_des = rotate_image_with_padding(img_bin_in, ori_in, border_value=(255,255,255) )
+        for img_rgb_in, img_bin_in, mask_in, ori_in in imgs_tot:
+            if abs(ori_in) < 45:
+                img_rgb_in_des = rotate_image_with_padding(img_rgb_in, ori_in, border_value=(255,255,255) )
+                img_bin_in_des = rotate_image_with_padding(img_bin_in, ori_in, border_value=(255,255,255) )
                 mask_in_des = rotate_image_with_padding(mask_in, ori_in)
-                mask_in_des = mask_in_des.astype('uint8')
-                
-                #new bounding box
-                x_n, y_n, w_n, h_n = get_contours_and_bounding_boxes(mask_in_des[:,:,0])
-                
-                if w_n==0 or h_n==0:
-                    img_in_des = np.copy(img_in)
-                    if img_bin_curved is not None:
-                        img_bin_in_des = np.copy(img_bin_in)
-                    w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
-                    if w_relative==0:
-                        w_relative = img_in_des.shape[1]
-                    img_in_des = resize_image(img_in_des, 32, w_relative)
-                    if img_bin_curved is not None:
-                        img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
+                # get new bounding box
+                x_n, y_n, w_n, h_n = get_contours_and_bounding_boxes(mask_in_des)
+                if w_n and h_n:
+                    img_rgb_in_des = img_rgb_in_des[y_n: y_n + h_n, x_n: x_n + w_n]
+                    img_bin_in_des = img_bin_in_des[y_n: y_n + h_n, x_n: x_n + w_n]
                 else:
-                    mask_in_des = mask_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                    img_in_des = img_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                    if img_bin_curved is not None:
-                        img_bin_in_des = img_bin_in_des[y_n:y_n+h_n, x_n:x_n+w_n, :]
-                    
-                    w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
-                    if w_relative==0:
-                        w_relative = img_in_des.shape[1]
-                    img_in_des = resize_image(img_in_des, 32, w_relative)
-                    if img_bin_curved is not None:
-                        img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
-                
-
-            else:
-                img_in_des = np.copy(img_in)
-                if img_bin_curved is not None:
+                    img_rgb_in_des = np.copy(img_rgb_in)
                     img_bin_in_des = np.copy(img_bin_in)
-                w_relative = int(32 * img_in_des.shape[1]/float(img_in_des.shape[0]) )
-                if w_relative==0:
-                    w_relative = img_in_des.shape[1]
-                img_in_des = resize_image(img_in_des, 32, w_relative)
-                if img_bin_curved is not None:
-                    img_bin_in_des = resize_image(img_bin_in_des, 32, w_relative)
-                
-            w_tot_des+=img_in_des.shape[1]
-            w_tot_des_list.append(img_in_des.shape[1])
-            imgs_deskewed_list.append(img_in_des)
-            if img_bin_curved is not None:
-                imgs_bin_deskewed_list.append(img_bin_in_des)
-            
-            
-            
+            else:
+                img_rgb_in_des = np.copy(img_rgb_in)
+                img_bin_in_des = np.copy(img_bin_in)
 
-        img_final_deskewed = np.zeros((32, w_tot_des, 3))+255
-        if img_bin_curved is not None:
-            img_bin_final_deskewed = np.zeros((32, w_tot_des, 3))+255
-        else:
-            img_bin_final_deskewed = None
+            h, w = img_rgb_in_des.shape[:2]
+            new_h = 32
+            new_w = 32 * w // h
+            new_w = new_w or w
+            img_rgb_in_des = resize_image(img_rgb_in_des, new_h, new_w)
+            img_bin_in_des = resize_image(img_bin_in_des, new_h, new_w)
+                
+            w_tot_des_list.append(new_w)
+            imgs_rgb_deskewed_list.append(img_rgb_in_des)
+            imgs_bin_deskewed_list.append(img_bin_in_des)
+
+        img_rgb_final_deskewed = np.ones((new_h, sum(w_tot_des_list), 3)) * 255
+        img_bin_final_deskewed = np.ones((new_h, sum(w_tot_des_list), 3)) * 255
         
         w_indexer = 0
         for ind in range(len(w_tot_des_list)):
-            img_final_deskewed[:,w_indexer:w_indexer+w_tot_des_list[ind],:] = imgs_deskewed_list[ind][:,:,:]
-            if img_bin_curved is not None:
-                img_bin_final_deskewed[:,w_indexer:w_indexer+w_tot_des_list[ind],:] = imgs_bin_deskewed_list[ind][:,:,:]
-            w_indexer = w_indexer+w_tot_des_list[ind]
-        return img_final_deskewed, img_bin_final_deskewed
+            w_indexer2 = w_indexer + w_tot_des_list[ind]
+            img_rgb_final_deskewed[:, w_indexer: w_indexer2] = imgs_rgb_deskewed_list[ind]
+            img_bin_final_deskewed[:, w_indexer: w_indexer2] = imgs_bin_deskewed_list[ind]
+            w_indexer = w_indexer2
+        return img_rgb_final_deskewed, img_bin_final_deskewed
     else:
-        return img_curved, img_bin_curved
-    
-def return_textline_contour_with_added_box_coordinate(textline_contour,  box_ind):
-    textline_contour[:,:,0] += box_ind[2]
-    textline_contour[:,:,1] += box_ind[0]
-    return textline_contour
-
-
-def return_rnn_cnn_ocr_of_given_textlines(image,
-                                          all_found_textline_polygons,
-                                          all_box_coord,
-                                          prediction_model,
-                                          b_s_ocr, num_to_char,
-                                          curved_line=False):
-    max_len = 512
-    padding_token = 299
-    image_width = 512#max_len * 4
-    image_height = 32
-    ind_tot = 0
-    #cv2.imwrite('./img_out.png', image_page)
-    ocr_all_textlines = []
-    cropped_lines_region_indexer = []
-    cropped_lines_meging_indexing = []
-    cropped_lines = []
-    indexer_text_region = 0
-    
-    for indexing, ind_poly_first in enumerate(all_found_textline_polygons):
-        #ocr_textline_in_textregion = []
-        if len(ind_poly_first)==0:
-            cropped_lines_region_indexer.append(indexer_text_region)
-            cropped_lines_meging_indexing.append(0)
-            img_fin = np.ones((image_height, image_width, 3))*1
-            cropped_lines.append(img_fin)
-
-        else:
-            for indexing2, ind_poly in enumerate(ind_poly_first):
-                cropped_lines_region_indexer.append(indexer_text_region)
-                if not curved_line:
-                    ind_poly = copy.deepcopy(ind_poly)
-                    box_ind = all_box_coord[indexing]
-
-                    ind_poly = return_textline_contour_with_added_box_coordinate(ind_poly, box_ind)
-                    #print(ind_poly_copy)
-                    ind_poly[ind_poly<0] = 0
-                x, y, w, h = cv2.boundingRect(ind_poly)
-                
-                w_scaled = w *  image_height/float(h)
-
-                mask_poly = np.zeros(image.shape)
-
-                img_poly_on_img = np.copy(image)
-                
-                mask_poly = cv2.fillPoly(mask_poly, pts=[ind_poly], color=(1, 1, 1))
-
-
-                
-                mask_poly = mask_poly[y:y+h, x:x+w, :]
-                img_crop = img_poly_on_img[y:y+h, x:x+w, :]
-                
-                img_crop[mask_poly==0] = 255
-                
-                if w_scaled < 640:#1.5*image_width:
-                    img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop, image_height, image_width)
-                    cropped_lines.append(img_fin)
-                    cropped_lines_meging_indexing.append(0)
-                else:
-                    splited_images, splited_images_bin = return_textlines_split_if_needed(img_crop, None)
-                    
-                    if splited_images:
-                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[0],
-                                                                               image_height,
-                                                                               image_width)
-                        cropped_lines.append(img_fin)
-                        cropped_lines_meging_indexing.append(1)
-                        
-                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(splited_images[1],
-                                                                               image_height,
-                                                                               image_width)
-                        
-                        cropped_lines.append(img_fin)
-                        cropped_lines_meging_indexing.append(-1)
-                        
-                    else:
-                        img_fin = preprocess_and_resize_image_for_ocrcnn_model(img_crop,
-                                                                               image_height,
-                                                                               image_width)
-                        cropped_lines.append(img_fin)
-                        cropped_lines_meging_indexing.append(0)
-            
-        indexer_text_region+=1
-        
-    extracted_texts = []
-
-    n_iterations  = math.ceil(len(cropped_lines) / b_s_ocr) 
-
-    for i in range(n_iterations):
-        if i==(n_iterations-1):
-            n_start = i*b_s_ocr
-            imgs = cropped_lines[n_start:]
-            imgs = np.array(imgs)
-            imgs = imgs.reshape(imgs.shape[0], image_height, image_width, 3)
-            
-            
-        else:
-            n_start = i*b_s_ocr
-            n_end = (i+1)*b_s_ocr
-            imgs = cropped_lines[n_start:n_end]
-            imgs = np.array(imgs).reshape(b_s_ocr, image_height, image_width, 3)
-            
-
-        preds = prediction_model.predict(imgs, verbose=0)
-        
-        pred_texts = decode_batch_predictions(preds, num_to_char)
-
-        for ib in range(imgs.shape[0]):
-            pred_texts_ib = pred_texts[ib].replace("[UNK]", "")
-            extracted_texts.append(pred_texts_ib)
-            
-    extracted_texts_merged = [extracted_texts[ind]
-                              if cropped_lines_meging_indexing[ind]==0
-                              else extracted_texts[ind]+" "+extracted_texts[ind+1]
-                              if cropped_lines_meging_indexing[ind]==1
-                              else None
-                              for ind in range(len(cropped_lines_meging_indexing))]
-
-    extracted_texts_merged = [ind for ind in extracted_texts_merged if ind is not None]
-    unique_cropped_lines_region_indexer = np.unique(cropped_lines_region_indexer)
-    
-    ocr_all_textlines = []
-    for ind in unique_cropped_lines_region_indexer:
-        ocr_textline_in_textregion = []
-        extracted_texts_merged_un = np.array(extracted_texts_merged)[np.array(cropped_lines_region_indexer)==ind]
-        for  it_ind, text_textline in enumerate(extracted_texts_merged_un):
-            ocr_textline_in_textregion.append(text_textline)
-        ocr_all_textlines.append(ocr_textline_in_textregion)
-    return ocr_all_textlines
+        return img_rgb_curved, img_bin_curved

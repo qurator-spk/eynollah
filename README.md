@@ -25,9 +25,12 @@
 documents using a combination of multiple deep learning models and heuristics; therefore processing can be slow.
 
 ## Installation
-Python `3.8-3.11` with Tensorflow `<2.13` on Linux are currently supported.
-For (limited) GPU support the CUDA toolkit needs to be installed. 
-A working config is CUDA `11.8` with cuDNN `8.6`.
+
+Python `3.8-3.11` with ONNX Runtime on Linux are currently supported.
+
+For GPU support, NVidia drivers supporting CUDA 12 must be installed.
+The runtime dependencies will pull in ONNX, TensorRT and CUDA runtime
+libraries (including cuDNN) from PyPI.
 
 You can either install from PyPI
 
@@ -52,6 +55,13 @@ pip install "eynollah[OCR]"
 make install EXTRAS=OCR
 ```
 
+> **Note**: Requirements for OCR are more involved, 
+> as they may need Tensorflow (with tf-keras) and/or
+> Torch (with transformers). Those two frameworks may
+> also have conflicting CUDA dependencies. An ONNX
+> conversion for these models may be achieved soon.
+> :construction:
+
 ### Docker
 
 Use
@@ -64,7 +74,12 @@ When using Eynollah with Docker, see [`docker.md`](https://github.com/qurator-sp
 
 ## Models
 
-Pretrained models can be downloaded from [Zenodo](https://zenodo.org/records/17727267) or [Hugging Face](https://huggingface.co/SBB?search_models=eynollah). 
+Pretrained models can be downloaded from [Zenodo](https://doi.org/10.5281/zenodo.17194823) or [Hugging Face](https://huggingface.co/SBB?search_models=eynollah).
+
+For fast runtime inference, download the ONNX models distributed as `models_inference_...zip`. 
+
+For finetuning training, download the original (Tensorflow / Torch) models distributed as `models_training...zip`
+(and install the `[training]` extra).
 
 For model documentation and model cards, see [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
 
@@ -83,18 +98,26 @@ Eynollah supports five use cases:
 
 Some example outputs can be found in [`examples.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/examples.md).
 
+The **generic options** shared by all subcommands are:
+```sh
+  -m <directory containing model files>
+  -mv <model category> <model variant> <model path>
+  -D <device specifier>
+  -l <log level>
+```
+
 ### Layout Analysis
 
-The layout analysis module is responsible for detecting layout elements, identifying text lines, and determining reading 
-order using heuristic methods or a [pretrained model](https://github.com/qurator-spk/eynollah#machine-based-reading-order).
+Detects layout elements, i.e. regions of various types and text lines,
+and determines their reading order using either heuristic methods or a
+[pretrained model](https://github.com/qurator-spk/eynollah#machine-based-reading-order).
 
 The command-line interface for layout analysis can be called like this:
 
 ```sh
-eynollah layout \
+eynollah [GENERIC_OPTIONS] layout \
   -i <single image file> | -di <directory containing image files> \
   -o <output directory> \
-  -m <directory containing model files> \
      [OPTIONS]
 ```
 
@@ -106,7 +129,7 @@ The following options can be used to further configure the processing:
 | `-tab`            | apply table detection                                                                       |
 | `-ae`             | apply enhancement (the resulting image is saved to the output directory)                    |
 | `-as`             | apply scaling                                                                               |
-| `-cl`             | apply contour detection for curved text lines instead of bounding boxes                     |
+| `-cl`             | apply contour detection for curved text lines, deskewing all regions independently          |
 | `-ib`             | apply binarization (the resulting image is saved to the output directory)                   |
 | `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`)              |
 | `-ho`             | ignore headers for reading order dectection                                                 |
@@ -115,79 +138,93 @@ The following options can be used to further configure the processing:
 | `-sl <directory>` | save layout prediction as plot to this directory                                            |
 | `-sp <directory>` | save cropped page image to this directory                                                   |
 | `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory                            |
-| `-thart`          | threshold of artifical class in the case of textline detection. The default value is 0.1    |
-| `-tharl`          | threshold of artifical class in the case of layout detection. The default value is 0.1      |
+| `-thart`          | confidence threshold of artifical boundary class during textline detection                  |
+| `-tharl`          | confidence threshold of artifical boundary class during region detection                    |
 | `-ncu`            | upper limit of columns in document image                                                    |
 | `-ncl`            | lower limit of columns in document image                                                    |
 | `-slro`           | skip layout detection and reading order                                                     |
 | `-romb`           | apply machine based reading order detection                                                 |
 | `-ipe`            | ignore page extraction                                                                      |
+| `-j`              | number of CPU jobs to run parallel (useful with -di)                                        |
+| `-H`              | when to halt when some jobs fail                                                            |
 
+The default is to only perform layout detection of main regions
+(background, text, images, separators and marginals).
 
-If no further option is set, the tool performs layout detection of main regions (background, text, images, separators 
-and marginals).
-The best output quality is achieved when RGB images are used as input rather than greyscale or binarized images.
+The best output quality is achieved when RGB images are used as input
+rather than greyscale or binarized images.
 
-Additional documentation can be found in [`usage.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/usage.md).
+Additional documentation can be found in
+[`usage.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/usage.md).
 
 ### Binarization
 
-The binarization module performs document image binarization using pretrained pixelwise segmentation models. 
+Performs document image binarization (thresholding)
+using pretrained pixelwise segmentation models. 
 
 The command-line interface for binarization can be called like this:
 
 ```sh
-eynollah binarization \
+eynollah [GENERIC_OPTIONS] binarization \
   -i <single image file> | -di <directory containing image files> \
   -o <output directory> \
-  -m <directory containing model files> 
+  [OPTIONS]
 ```
 
 ### Image Enhancement
-TODO
+
+This enlarges and enhances images. Useful in case the scan quality is low.
+
+```sh
+eynollah [GENERIC_OPTIONS] enhancement \
+  -i <single image file> | -di <directory containing image files> \
+  -o <output directory> \
+  [OPTIONS]
+```
+
+| option            | description                                                                                 |
+|-------------------|:--------------------------------------------------------------------------------------------|
+| `-sos`            | save the enhanced image in original image size                                              |
+| `-ncu`            | upper limit of columns in document image                                                    |
+| `-ncl`            | lower limit of columns in document image                                                    |
 
 ### OCR
 
-The OCR module performs text recognition using either a CNN-RNN model or a Transformer model.
+Performs text recognition using either a CNN-RNN model or a Transformer model.
+Needs a PAGE-XML input file.
 
 The command-line interface for OCR can be called like this:
 
 ```sh
-eynollah ocr \
+eynollah [GENERIC_OPTIONS] ocr \
   -i <single image file> | -di <directory containing image files> \
   -dx <directory of xmls> \
   -o <output directory> \
-  -m <directory containing model files> | --model_name <path to specific model>
 ```
 
 The following options can be used to further configure the ocr processing:
 
 | option            | description                                                                                |
 |-------------------|:-------------------------------------------------------------------------------------------|
+| `-trocr`          | use transformer OCR model instead of CNN-RNN model                                         |
 | `-dib`            | directory of binarized images (file type must be '.png'), prediction with both RGB and bin |
 | `-doit`           | directory for output images rendered with the predicted text                               |
-| `--model_name`    | file path to use specific model for OCR                                                    |
-| `-trocr`          | use transformer ocr model (otherwise cnn_rnn model is used)                                |
-| `-etit`           | export textline images and text in xml to output dir (OCR training data)                   |
 | `-nmtc`           | cropped textline images will not be masked with textline contour                           |
 | `-bs`             | ocr inference batch size. Default batch size is 2 for trocr and 8 for cnn_rnn models       |
-| `-ds_pref`        | add an abbrevation of dataset name to generated training data                              |
 | `-min_conf`       | minimum OCR confidence value. OCR with textline conf lower than this will be ignored       |
 
 
 ### Reading Order Detection
-Reading order detection can be performed either as part of layout analysis based on image input, or, currently under 
-development, based on pre-existing layout analysis data in PAGE-XML format as input.
 
-The reading order detection module employs a pretrained model to identify the reading order from layouts represented in PAGE-XML files.
+Reading order can be detected either during layout analysis,
+or as a separate module, which requires a PAGE-XML input file.
 
 The command-line interface for machine based reading order can be called like this:
 
 ```sh
-eynollah machine-based-reading-order \
+eynollah [GENERIC_OPTIONS] machine-based-reading-order \
   -i <single image file> | -di <directory containing image files> \
   -xml <xml file name> | -dx <directory containing xml files> \
-  -m <path to directory containing model files> \
   -o <output directory> 
 ```
 

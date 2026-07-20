@@ -2,6 +2,7 @@ from typing import Iterable, List, Tuple
 from logging import getLogger
 import time
 import math
+from itertools import islice
 
 try:
     import matplotlib.pyplot as plt
@@ -32,6 +33,11 @@ def pairwise(iterable):
     for b in iterator:
         yield a, b
         a = b
+
+def batched(iterable, n):
+    iterator = iter(iterable)
+    while batch := tuple(islice(iterator, n)):
+        yield batch
 
 def return_multicol_separators_x_start_end(
         regions_without_separators, peak_points, top, bot,
@@ -1660,37 +1666,6 @@ def return_boxes_of_images_by_order_of_reading_new(
         #print(peaks_neg_tot,'peaks_neg_tot')
         peaks_neg_tot_tables.append(peaks_neg_tot)
 
-        all_columns = set(range(len(peaks_neg_tot) - 1))
-        #print("all_columns", all_columns)
-
-        # elongate horizontal separators+headings as much as possible without overlap
-        args_nonver = matrix_new[:, 9] != 1
-        for i in np.flatnonzero(args_nonver):
-            xmin, xmax, ymin, ymax, typ = matrix_new[i, [2, 3, 6, 7, 9]]
-            cut = sep_mask[ymin: ymax]
-            # dbg_imshow([xmin, xmax, ymin, ymax], "separator %d (%s)" % (i, "heading" if typ else "horizontal"))
-            starting = xmin - peaks_neg_tot
-            min_start = np.flatnonzero(starting >= 0)[-1] # last left-of
-            ending = xmax - peaks_neg_tot
-            max_end = np.flatnonzero(ending <= 0)[0] # first right-of
-            # skip elongation unless this is already a multi-column separator/heading:
-            if not max_end - min_start > 1:
-                continue
-            # is there anything left of min_start?
-            for j in range(min_start):
-                # dbg_imshow([peaks_neg_tot[j], xmin, ymin, ymax], "start of %d candidate %d" % (i, j))
-                if not np.any(cut[:, peaks_neg_tot[j]: xmin]):
-                    # print("elongated sep", i, "typ", typ, "start", xmin, "to", j, peaks_neg_tot[j])
-                    matrix_new[i, 2] = peaks_neg_tot[j] + 1 # elongate to start of this column
-                    break
-            # is there anything right of max_end?
-            for j in range(len(peaks_neg_tot) - 1, max_end, -1):
-                # dbg_imshow([xmax, peaks_neg_tot[j], ymin, ymax], "end of %d candidate %d" % (i, j))
-                if not np.any(cut[:, xmax: peaks_neg_tot[j]]):
-                    # print("elongated sep", i, "typ", typ, "end", xmax, "to", j, peaks_neg_tot[j])
-                    matrix_new[i, 3] = peaks_neg_tot[j] - 1 # elongate to end of this column
-                    break
-
         args_hor = matrix_new[:, 9] == 0
         x_min_hor_some = matrix_new[:, 2][args_hor]
         x_max_hor_some = matrix_new[:, 3][args_hor]
@@ -1821,8 +1796,8 @@ def return_boxes_of_images_by_order_of_reading_new(
                                  (peaks_neg_tot[last] - peaks_neg_tot[start])) > 0.1 * l_count
                             # But do allow cutting tiny passages with less 10% of height
                             # (i.e. label is already almost separated by columns)
-                            and sum(text_mask[
-                                y_top: y_bot, peaks_neg_tot[start + 1]]) > 0.1 * (y_bot - y_top)),
+                            and text_mask[y_top: y_bot,
+                                          peaks_neg_tot[start + 1]].sum() > 0.1 * (y_bot - y_top)),
                            # Otherwise advance only 1 column.
                            default=start + 1)
             def add_sep(cur):

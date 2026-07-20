@@ -2,5 +2,9 @@ tests
 dist
 build
 env*
+venv*
 *.egg-info
 models_eynollah*
+reloaded
+*.h5
+config_files*

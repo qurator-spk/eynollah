@@ -67,6 +67,7 @@ source = ["eynollah"]
 
 [tool.ruff]
 line-length = 120
+include = ["pyproject.toml", "src/eynollah/**/*.py"]
 
 [tool.ruff.lint]
 ignore = [

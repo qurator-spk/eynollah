@@ -1,8 +1,8 @@
 from .specs import EynollahModelSpec, EynollahModelSpecSet
 
 # NOTE: This needs to change whenever models/versions change
-ZENODO = "https://zenodo.org/records/17727267"
-MODELS_VERSION = "v0_8_0"
+ZENODO = "https://zenodo.org/records/21381102"
+MODELS_VERSION = "v0_9_1"
 
 def dist_url(dist_name: str="layout") -> str:
     return f'{ZENODO}/models_{dist_name}_{MODELS_VERSION}.zip'
@@ -209,44 +209,12 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
     ),
 
     EynollahModelSpec(
-        category="num_to_char",
-        variant='',
-        filename="characters_org.txt",
-        dist_url=dist_url("ocr"),
-        type='decoder',
-    ),
-
-    EynollahModelSpec(
-        category="characters",
-        variant='',
-        filename="characters_org.txt",
-        dist_url=dist_url("ocr"),
-        type='List[str]',
-    ),
-
-    EynollahModelSpec(
         category="ocr",
         variant='tr',
         filename="models_eynollah/model_eynollah_ocr_trocr_20250919",
         dist_url=dist_url("ocr"),
         help='much slower transformer-based',
         type='Keras',
-    ),
-
-    EynollahModelSpec(
-        category="trocr_processor",
-        variant='',
-        filename="models_eynollah/model_eynollah_ocr_trocr_20250919",
-        dist_url=dist_url("ocr"),
-        type='TrOCRProcessor',
-    ),
-
-    EynollahModelSpec(
-        category="trocr_processor",
-        variant='htr',
-        filename="models_eynollah/microsoft/trocr-base-handwritten",
-        dist_url=dist_url("extra"),
-        type='TrOCRProcessor',
     ),
 
 ])

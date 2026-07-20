@@ -14,7 +14,13 @@ class EynollahProcessor(Processor):
 
     def setup(self) -> None:
         assert self.parameter
-        model_zoo = EynollahModelZoo(basedir=self.parameter['models'])
+        basedir = self.resolve_resource(self.parameter['models'])
+        overrides = []
+        for category, override in self.parameter.get('model_overrides', {}).items():
+            for variant, path in override.items():
+                path = self.resolve_resource(path)
+                overrides.append((category, variant, path))
+        model_zoo = EynollahModelZoo(basedir, model_overrides=overrides)
         self.eynollah = Eynollah(
             model_zoo=model_zoo,
             allow_enhancement=self.parameter['allow_enhancement'],
@@ -22,10 +28,15 @@ class EynollahProcessor(Processor):
             right2left=self.parameter['right_to_left'],
             reading_order_machine_based=self.parameter['reading_order_machine_based'],
             ignore_page_extraction=self.parameter['ignore_page_extraction'],
+            skip_layout_and_reading_order=self.parameter['skip_layout_and_reading_order'],
             full_layout=self.parameter['full_layout'],
             allow_scaling=self.parameter['allow_scaling'],
             headers_off=self.parameter['headers_off'],
             tables=self.parameter['tables'],
+            device=self.parameter['device'],
+            input_binary=self.parameter['binarize'],
+            num_col_upper=self.parameter['num_col_upper'],
+            num_col_lower=self.parameter['num_col_lower'],
             logger=self.logger
         )
         self.eynollah.plotter = None
@@ -48,13 +59,17 @@ class EynollahProcessor(Processor):
 
         \b
         - If ``tables``, try to detect table blocks and add them as TableRegion.
-        - If ``full_layout``, then in addition to paragraphs and marginals, also
-          try to detect drop capitals and headings.
+        - If ``full_layout`` (the default), then in addition to paragraphs and marginals,
+          also try to detect drop capitals and headings.
+        - If ``ignore_page_extraction``, then attempt no cropping of the page.
         - If ``ignore_page_extraction``, then attempt no cropping of the page.
         - If ``curved_line``, then compute contour polygons for text lines
           instead of simple bounding boxes.
         - If ``reading_order_machine_based``, then detect reading order via
           data-driven model instead of geometrical heuristics.
+        - If ``binarize``, then run internal binarization on the raw image.
+        - If ``num_col_upper`` or ``num_col_lower`` are non-zero, these will
+          constrain the column detection (upper or lower bound, respectively).
 
         Produce a new output file by serialising the resulting hierarchy.
         """

@@ -789,7 +789,7 @@ def preprocess_imgs(config,
             lab = cv2.imread(os.path.join(dir_lab, img_name + '.png'))
         elif config['task'] == "enhancement":
             lab = cv2.imread(os.path.join(dir_lab, img))
-        elif config['task'] == "cnn-rnn-ocr":
+        elif config['task'] in ["cnn-rnn-ocr", "transformer-ocr"]:
             # assert lab == 'img_name + '.txt'
             with open(os.path.join(dir_lab, img_name + '.txt'), 'r') as f:
                 lab = f.read().split('\n')[0]
@@ -797,7 +797,7 @@ def preprocess_imgs(config,
             lab = None
 
         try:
-            if config['task'] == "cnn-rnn-ocr":
+            if config['task'] in ["cnn-rnn-ocr", "transformer-ocr"]:
                 yield from preprocess_img_ocr(img, img_name, lab, **config)
                 continue
             else:
@@ -1116,14 +1116,33 @@ def preprocess_img_ocr(
         number_of_backgrounds_per_image=None,
         list_all_possible_background_images=None,
         list_all_possible_foreground_rgbs=None,
+        task=None,
+        processor=None,
         **kwargs
 ):
     def scale_image(img):
         return scale_padd_image_for_ocr(img, input_height, input_width).astype(np.float32) / 255.
     #lab = vectorize_label(lab, char_to_num, padding_token, max_len)
     # now padded at Dataset.padded_batch
-    lab = char_to_num(tf.strings.unicode_split(lab, input_encoding="UTF-8"))
-    yield scale_image(img), lab
+    if task == 'cnn-rnn-ocr':
+        assert char_to_num, 'task is cnn-rnn-ocr, so preprocess_imgs_ocr should be passed "char_to_num"'
+        lab = char_to_num(tf.strings.unicode_split(lab, input_encoding="UTF-8"))
+        def yield_encoder(x):
+            return x
+    elif task == 'transformer-ocr':
+        import torch
+        assert processor, 'task is transformer-ocr, so preprocess_imgs_ocr should be passed "processor"'
+        # TODO make max_length configurable again, if deemed sensible
+        lab = [tok if tok != processor.tokenizer.pad_token_id else -100
+                for tok in processor.tokenizer(lab,
+                                               padding="max_length",
+                                               max_length=128
+                ).input_ids]
+        def yield_encoder(img_, lab_):
+            return {"pixel_values": processor(Image.fromarray(img_),
+                                              return_tensors="pt").pixel_values.squeeze(),
+                    "labels": torch.tensor(lab_)}
+    yield yield_encoder(scale_image(img), lab)
     #to_yield = {"image": ret_x, "label": ret_y}
 
     if dir_img_bin:
@@ -1139,32 +1158,32 @@ def preprocess_img_ocr(
             for padd_col in padd_colors:
                 img_pad = do_padding_for_ocr(img, 1.2, padd_col)
                 img_rot = rotation_not_90_func_single_image(img_pad, thetha_ind)
-                yield scale_image(img_rot), lab
+                yield yield_encoder(scale_image(img_rot), lab)
     if rotation_not_90:
         for thetha_ind in thetha:
             img_rot = rotation_not_90_func_single_image(img, thetha_ind)
-            yield scale_image(img_rot), lab
+            yield yield_encoder(scale_image(img_rot), lab)
     if blur_aug:
         for blur_type in blur_k:
             img_blur = bluring(img, blur_type)
-            yield scale_image(img_blur), lab
+            yield yield_encoder(scale_image(img_blur), lab)
     if degrading:
         for deg_scale_ind in degrade_scales:
             img_deg = do_degrading(img, deg_scale_ind)
-            yield scale_image(img_deg), lab
+            yield yield_encoder(scale_image(img_deg), lab)
     if bin_deg:
         for deg_scale_ind in degrade_scales:
             img_deg  = do_degrading(img_bin_corr, deg_scale_ind)
-            yield scale_image(img_deg), lab
+            yield yield_encoder(scale_image(img_deg), lab)
     if brightening:
         for bright_scale_ind in brightness:
             img_bright  = do_brightening(img, bright_scale_ind)
-            yield scale_image(img_bright), lab
+            yield yield_encoder(scale_image(img_bright), lab)
     if padding_white:
         for padding_size in white_padds:
             for padd_col in padd_colors:
                 img_pad = do_padding_for_ocr(img, padding_size, padd_col)
-                yield scale_image(img_pad), lab
+                yield yield_encoder(scale_image(img_pad), lab)
     if adding_rgb_foreground:
         for i_n in range(number_of_backgrounds_per_image):
             background_image_chosen_name = random.choice(list_all_possible_background_images)
@@ -1178,7 +1197,7 @@ def preprocess_img_ocr(
             img_fg = \
                 return_binary_image_with_given_rgb_background_and_given_foreground_rgb(
                     img_bin_corr, img_rgb_background_chosen, foreground_rgb_chosen)
-            yield scale_image(img_fg), lab
+            yield yield_encoder(scale_image(img_fg), lab)
     if adding_rgb_background:
         for i_n in range(number_of_backgrounds_per_image):
             background_image_chosen_name = random.choice(list_all_possible_background_images)
@@ -1186,59 +1205,59 @@ def preprocess_img_ocr(
                 cv2.imread(dir_rgb_backgrounds + '/' + background_image_chosen_name)
             img_bg = \
                 return_binary_image_with_given_rgb_background(img_bin_corr, img_rgb_background_chosen)
-            yield scale_image(img_bg), lab
+            yield yield_encoder(scale_image(img_bg), lab)
     if binarization:
-        yield scale_image(img_bin_corr), lab
+        yield yield_encoder(scale_image(img_bin_corr), lab)
     if image_inversion:
         img_inv = invert_image(img_bin_corr)
-        yield scale_image(img_inv), lab
+        yield yield_encoder(scale_image(img_inv), lab)
     if channels_shuffling:
         for shuffle_index in shuffle_indexes:
             img_shuf = return_shuffled_channels(img, shuffle_index)
-            yield scale_image(img_shuf), lab
+            yield yield_encoder(scale_image(img_shuf), lab)
     if add_red_textlines:
         img_red = return_image_with_red_elements(img, img_bin_corr)
-        yield scale_image(img_red), lab
+        yield yield_encoder(scale_image(img_red), lab)
     if white_noise_strap:
         img_noisy = return_image_with_strapped_white_noises(img)
-        yield scale_image(img_noisy), lab
+        yield yield_encoder(scale_image(img_noisy), lab)
     if textline_skewing:
         for des_scale_ind in skewing_amplitudes:
             img_rot  = do_deskewing(img, des_scale_ind)
-            yield scale_image(img_rot), lab
+            yield yield_encoder(scale_image(img_rot), lab)
     if textline_skewing_bin:
         for des_scale_ind in skewing_amplitudes:
             img_rot  = do_deskewing(img_bin_corr, des_scale_ind)
-            yield scale_image(img_rot), lab
+            yield yield_encoder(scale_image(img_rot), lab)
     if textline_left_in_depth:
         img_warp  = do_direction_in_depth(img, 'left')
-        yield scale_image(img_warp), lab
+        yield yield_encoder(scale_image(img_warp), lab)
     if textline_left_in_depth_bin:
         img_warp  = do_direction_in_depth(img_bin_corr, 'left')
-        yield scale_image(img_warp), lab
+        yield yield_encoder(scale_image(img_warp), lab)
     if textline_right_in_depth:
         img_warp  = do_direction_in_depth(img, 'right')
-        yield scale_image(img_warp), lab
+        yield yield_encoder(scale_image(img_warp), lab)
     if textline_right_in_depth_bin:
         img_warp  = do_direction_in_depth(img_bin_corr, 'right')
-        yield scale_image(img_warp), lab
+        yield yield_encoder(scale_image(img_warp), lab)
     if textline_up_in_depth:
         img_warp  = do_direction_in_depth(img, 'up')
-        yield scale_image(img_warp), lab
+        yield yield_encoder(scale_image(img_warp), lab)
     if textline_up_in_depth_bin:
         img_warp  = do_direction_in_depth(img_bin_corr, 'up')
-        yield scale_image(img_warp), lab
+        yield yield_encoder(scale_image(img_warp), lab)
     if textline_down_in_depth:
         img_warp  = do_direction_in_depth(img, 'down')
-        yield scale_image(img_warp), lab
+        yield yield_encoder(scale_image(img_warp), lab)
     if textline_down_in_depth_bin:
         img_warp  = do_direction_in_depth(img_bin_corr, 'down')
-        yield scale_image(img_warp), lab
+        yield yield_encoder(scale_image(img_warp), lab)
     if pepper_aug:
         for pepper_ind in pepper_indexes:
             img_noisy = add_salt_and_pepper_noise(img, pepper_ind, pepper_ind)
-            yield scale_image(img_noisy), lab
+            yield yield_encoder(scale_image(img_noisy), lab)
     if pepper_bin_aug:
         for pepper_ind in pepper_indexes:
             img_noisy = add_salt_and_pepper_noise(img_bin_corr, pepper_ind, pepper_ind)
-            yield scale_image(img_noisy), lab
+            yield yield_encoder(scale_image(img_noisy), lab)
