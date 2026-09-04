@@ -1350,7 +1350,7 @@ def find_number_of_columns_in_document(
     regions_y = gaussian_filter1d(regions_without_separators.sum(axis=1), 10)
     peaks_y, _ = find_peaks(regions_y.max() - regions_y, distance=20)
     for peak_y in peaks_y:
-        if regions_without_separators[peak_y].any():
+        if regions_y[peak_y] > 0.02 * width or vertical[peak_y].any():
             continue
         if not regions_without_separators[:peak_y].any():
             continue
