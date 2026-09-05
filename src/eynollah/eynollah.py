@@ -1640,7 +1640,13 @@ class Eynollah:
         if self.plotter:
             self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image['img_res'], image['name'])
 
-        if num_col_classifier == 1 or num_col_classifier ==2:
+        if num_col_classifier == 1:
+            # variation of projection profile: from gaps between text lines
+            axis = 1
+        else:
+            # variation of projection profile: from column gaps
+            axis = 0
+        if num_col_classifier < 3:
             if num_col_classifier == 1:
                 img_w_new = 1000
             else:
@@ -1648,11 +1654,9 @@ class Eynollah:
             img_h_new = img_w_new * textline_mask_tot_ea.shape[0] // textline_mask_tot_ea.shape[1]
 
             textline_mask_tot_ea_deskew = resize_image(textline_mask_tot_ea,img_h_new, img_w_new )
-            # variation of projection profile: from gaps between text lines
-            slope_deskew = self.run_deskew(textline_mask_tot_ea_deskew, axis=1)
+            slope_deskew = self.run_deskew(textline_mask_tot_ea_deskew, axis=axis)
         else:
-            # variation of projection profile: from column gaps
-            slope_deskew = self.run_deskew(textline_mask_tot_ea, axis=0)
+            slope_deskew = self.run_deskew(textline_mask_tot_ea, axis=axis)
         # if ratio of text regions to page area is smaller that 30%,
         # then ignore skew angle above 45°
         if (abs(slope_deskew) > 45 and
