@@ -923,6 +923,10 @@ def order_of_regions(textline_mask, contours_main, contours_head, contours_drop,
 
     # ax1 = plt.subplot(1, 2, 1, title="order_of_regions textline_mask")
     # ax1.imshow(textline_mask, aspect='auto')
+    h, w = textline_mask.shape
+    if not h or not total:
+        return [], [], []
+
     y = textline_mask.sum(axis=1) # horizontal projection profile
     y_padded = np.zeros(len(y) + 40)
     y_padded[20 : len(y) + 20] = y
@@ -942,11 +946,16 @@ def order_of_regions(textline_mask, contours_main, contours_head, contours_drop,
     zneg_rev = np.max(y_padded) - y_padded
     zneg = np.zeros(len(zneg_rev) + 40)
     zneg[20 : len(zneg_rev) + 20] = zneg_rev
-    zneg = gaussian_filter1d(zneg, sigma_gaus)
+    #zneg = gaussian_filter1d(zneg, sigma_gaus)
 
-    peaks_neg, _ = find_peaks(zneg, height=0)
-    # ax2.hlines(peaks_neg - 40, 0, textline_mask.shape[1], label="peaks")
-    # ax1.hlines(peaks_neg - 40, 0, textline_mask.shape[1], label="peaks")
+    # cluster at vertical gaps, so we can distinguish between
+    # - between groups: top-down ordering
+    # - within groups: left-right ordering
+    # but finding too few minima risks turning top-down into left-right
+    # while finding too many risks turning left-right into top-down
+    peaks_neg, _ = find_peaks(zneg, distance=10, height=0.5 * y.max())
+    # ax2.hlines(peaks_neg - 40, 0, w, label="peaks")
+    # ax1.hlines(peaks_neg - 40, 0, w, label="peaks")
     # plt.legend()
     # plt.show()
     peaks_neg = peaks_neg - 20 - 20
@@ -954,8 +963,8 @@ def order_of_regions(textline_mask, contours_main, contours_head, contours_drop,
     peaks_neg_new = np.array([0] +
                              # peaks can be beyond box due to padding and smoothing
                              [peak for peak in peaks_neg
-                              if 0 < peak < textline_mask.shape[0]] +
-                             [textline_mask.shape[0]])
+                              if 0 < peak < h] +
+                             [h])
     # offset from bbox of mask
     peaks_neg_new += y_ref
 
@@ -1026,7 +1035,7 @@ def order_of_regions(textline_mask, contours_main, contours_head, contours_drop,
         .union(range(len(contours_head)))
         .union(range(len(contours_drop))))
 
-    return np.array(final_indexers_sorted), np.array(final_types), np.array(final_index_type)
+    return final_indexers_sorted, final_types, final_index_type
 
 def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
         img_p_in_ver: np.ndarray,
