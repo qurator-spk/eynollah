@@ -823,14 +823,14 @@ class Eynollah:
                 confidence_regions,
                 confidence_textline)
 
-    def do_order_of_regions(
+    def get_order_of_regions(
             self,
             contours_only_text_parent,
             contours_only_text_parent_h,
             contours_drop_capitals,
             boxes,
     ):
-        self.logger.debug("enter do_order_of_regions")
+        self.logger.debug("enter get_order_of_regions")
         contours_only_text_parent = ensure_array(contours_only_text_parent)
         contours_only_text_parent_h = ensure_array(contours_only_text_parent_h)
         contours_drop_capitals = ensure_array(contours_drop_capitals)
@@ -921,7 +921,7 @@ class Eynollah:
             self.logger.exception("cannot match region contours w/ reading order boxes")
             results = order_from_boxes(True)
 
-        self.logger.debug("exit do_order_of_regions")
+        self.logger.debug("exit get_order_of_regions")
         return results
 
     def delete_separator_around(self, splitter_y, peaks_neg, image_by_region, label_seps, label_table):
@@ -1095,7 +1095,7 @@ class Eynollah:
                 rotate_image(regions_without_separators, slope_deskew),
         )
 
-    def run_boxes_order(
+    def get_boxes_order(
             self,
             text_regions_p,
             num_col_classifier,
@@ -1117,7 +1117,7 @@ class Eynollah:
             logger=self.logger)
         return boxes
 
-    def do_order_of_regions_with_model(
+    def run_order_of_regions_with_model(
             self,
             contours_only_text_parent,
             contours_only_text_parent_h,
@@ -1301,7 +1301,7 @@ class Eynollah:
         else:
             return ordered
 
-    def do_order_of_regions_heuristic(
+    def run_order_of_regions_heuristic(
             self,
             textregions_cont,
             textregions_h_cont,
@@ -1314,12 +1314,12 @@ class Eynollah:
         if not erosion_hurts:
             regions_without_separators = cv2.erode(regions_without_separators, KERNEL, iterations=2)
 
-        boxes = self.run_boxes_order(text_regions_p,
+        boxes = self.get_boxes_order(text_regions_p,
                                      num_col_classifier,
                                      erosion_hurts,
                                      regions_without_separators,
                                      contours_h=textregions_h_cont)
-        order_text = self.do_order_of_regions(
+        order_text = self.get_order_of_regions(
             textregions_cont,
             textregions_h_cont,
             drop_caps_cont,
@@ -1855,14 +1855,14 @@ class Eynollah:
 
         if self.reading_order_machine_based:
             self.logger.info("Using machine-based detection")
-            order_text = self.do_order_of_regions_with_model(
+            order_text = self.run_order_of_regions_with_model(
                 contours(textregions),
                 contours(textregions_h) if not self.headers_off else [],
                 contours(drop_caps),
                 text_regions_p)
         else:
             if np.abs(slope_deskew) < SLOPE_THRESHOLD:
-                order_text = self.do_order_of_regions_heuristic(
+                order_text = self.run_order_of_regions_heuristic(
                     contours(textregions),
                     contours(textregions_h) if not self.headers_off else [],
                     contours(drop_caps),
@@ -1871,7 +1871,7 @@ class Eynollah:
                     num_col_classifier,
                     erosion_hurts)
             else:
-                order_text = self.do_order_of_regions_heuristic(
+                order_text = self.run_order_of_regions_heuristic(
                     contours(textregions_d),
                     contours(textregions_h_d) if not self.headers_off else [],
                     contours(drop_caps),

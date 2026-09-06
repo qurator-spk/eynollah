@@ -237,7 +237,7 @@ class Reorder(Eynollah):
         self.logger.debug("ordering %d paragraphs, %d headings and %d drop-capitals",
                           len(para_ids), len(head_ids), len(drop_ids))
         if self.model_based:
-            order_text = self.do_order_of_regions_with_model(
+            order_text = self.run_order_of_regions_with_model(
                 para_cont,
                 head_cont,
                 drop_cont,
@@ -306,7 +306,7 @@ class Reorder(Eynollah):
                 head_cont = [np.dot(cont, M).astype(int) - off for cont in head_cont]
                 drop_cont = [np.dot(cont, M).astype(int) - off for cont in drop_cont]
 
-            order_text = self.do_order_of_regions_heuristic(
+            order_text = self.run_order_of_regions_heuristic(
                 para_cont,
                 head_cont,
                 drop_cont,
