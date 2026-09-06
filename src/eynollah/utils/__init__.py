@@ -971,14 +971,14 @@ def order_of_regions(contours_main, contours_head, contours_drop, r2l=False):
 
     return rorder, types[rorder], local_index[rorder]
 
-def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
+def combine_hor_lines(
         img_p_in_ver: np.ndarray,
         img_p_in_hor: np.ndarray,
         num_col_classifier: int,
 ) -> tuple[np.ndarray, list[float]]:
     """
     Given a horizontal and vertical separator mask, combine horizontal separators
-    (where possible) and make sure they do not cross each other.
+    (where possible) and identify those spanning the entire page
 
     Arguments:
       * img_p_in_ver: mask of vertical separators
@@ -1180,8 +1180,7 @@ def find_number_of_columns_in_document(
     vertical = cv2.morphologyEx(vertical, cv2.MORPH_OPEN, verticalStructure)
     vertical = cv2.dilate(vertical, kernel, iterations=1)
 
-    horizontal, special_separators = \
-        combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
+    horizontal, special_separators = combine_hor_lines(
             vertical, horizontal, num_col_classifier)
 
     contours_seps_ver, _ = cv2.findContours(vertical.astype(np.uint8),
