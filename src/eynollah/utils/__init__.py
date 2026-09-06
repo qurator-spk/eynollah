@@ -894,148 +894,82 @@ def small_textlines_to_parent_adherence2(
                 # replace original
                 textregion.lines[idx_large].contour = polygon2contour(large_poly)
 
-def order_of_regions(textline_mask, contours_main, contours_head, contours_drop, y_ref, x_ref):
+def order_of_regions(contours_main, contours_head, contours_drop, r2l=False):
     """
     Order text region contours within a single column bbox in a top-down-left-right way.
 
-    First, determine the vertical gaps. Then iterate over each vertical segment,
-    identifying the contours centered in that segment. Order them by their
-    horizontal center, and add them to the overall order.
+    \b
+    First, pre-sort by vertical centers. Then, from the adjacent contours, 
+    form groups to be sorted by horizontal centers: contours belong
+    into the same group, iff
+    - they overlap each other vertically and
+    - they do not overlap each other horizontally significantly.
 
     Arguments:
-      * textline_mask: the mask of the textline segmentation, cropped for that box
-      * contours_main: the paragraph text region contours expected to be here
-      * contours_head: the heading text region contours expected to be here
-      * contours_drop: the drop-capital region contours expected to be here
-      * y_ref: the vertical offset of that box within the page
-      * x_ref: the horizontal offset of that box within the page
+      * contours_main: paragraph text region contours to be sorted
+      * contours_head: the heading text region contours to be sorted
+      * contours_drop: the drop-capital region contours to be sorted
+
+    Keyword Args:
+      * r2l: whether contours within groups should be ordered
+        right-to-left (instead of left-to-right)
 
     Returns: a tuple of
-      * the array of contour indexes overall within this box
+      * the list of contour indexes overall within this box
             (i.e. into main+head+drop)
-      * the array of types
+      * the list of types
             (1 for paragraph, 2 for heading, 3 for drop-capital)
-      * the array of contour indexes for the respective type
+      * the list of contour indexes for the respective type
             (i.e. into contours_main or contours_head or contours_drop)
     """
     total = len(contours_main) + len(contours_head) + len(contours_drop)
-    assert total == 0 or np.any(textline_mask)
-
-    # ax1 = plt.subplot(1, 2, 1, title="order_of_regions textline_mask")
-    # ax1.imshow(textline_mask, aspect='auto')
-    h, w = textline_mask.shape
-    if not h or not total:
+    if not total:
         return [], [], []
 
-    y = textline_mask.sum(axis=1) # horizontal projection profile
-    y_padded = np.zeros(len(y) + 40)
-    y_padded[20 : len(y) + 20] = y
+    contours = np.concatenate((contours_main, contours_head, contours_drop))
+    index = np.arange(len(contours))
+    types = np.array([1] * len(contours_main) +
+                     [2] * len(contours_head) +
+                     [3] * len(contours_drop))
+    local_index = np.array(list(range(len(contours_main))) +
+                           list(range(len(contours_head))) +
+                           list(range(len(contours_drop))))
+    cx, cy = find_center_of_contours(contours)
+    y_min = [contour[:, 0, 1].min() for contour in contours]
+    y_max = [contour[:, 0, 1].max() for contour in contours]
+    x_min = [contour[:, 0, 0].min() for contour in contours]
+    x_max = [contour[:, 0, 0].max() for contour in contours]
+    yorder = np.argsort(cy)
+    groups = [[yorder[0]]]
+    for i, j in pairwise(yorder):
+        if (
+                # i/j overlap vertically:
+                (y_max[i] >= y_min[j] and y_max[j] >= y_min[i])
+                and
+                # i/j are centered vertically:
+                (y_min[j] <= cy[i] < y_max[j] or
+                 y_min[i] <= cy[j] < y_max[i])
+                and
+                # there is no k (=i or any contour already in that group)
+                # horizontally in j's vicinity (overlapping more than 10% of their width):
+                not any(max(0, min(x_max[j], x_max[k]) - max(x_min[j], x_min[k])) >
+                        min(x_max[j] - x_min[j], x_max[k] - x_min[k]) * 0.1
+                        for k in groups[-1])
+                ):
+            groups[-1].append(j)
+        else:
+            groups.append([j])
+    cx = np.array(cx)
+    cy = np.array(cy)
+    rorder = []
+    for group in groups:
+        group = np.array(group)
+        xorder = np.argsort(cx[group])[::-1 if r2l else 1]
+        rorder.extend(group[xorder])
 
-    sigma_gaus = 5
-    #z = gaussian_filter1d(y_padded, sigma_gaus)
-    #peaks, _ = find_peaks(z, height=0)
-    #peaks = peaks - 20
-    # ax2 = plt.subplot(1, 2, 2, title="smoothed horizontal projection", sharey=ax1)
-    # ax2plot = ax2.plot(y, label="projection", color="r")[0]
-    # xdata = ax2plot.get_xdata()
-    # ydata = ax2plot.get_ydata()
-    # ax2plot.set_xdata(ydata)
-    # ax2plot.set_ydata(xdata)
-    # ax2.set_xlim(*ax1.get_xlim())
-    # ax2.set_ylim(*ax1.get_ylim())
-    zneg_rev = np.max(y_padded) - y_padded
-    zneg = np.zeros(len(zneg_rev) + 40)
-    zneg[20 : len(zneg_rev) + 20] = zneg_rev
-    #zneg = gaussian_filter1d(zneg, sigma_gaus)
+    assert len(set(rorder)) == total
 
-    # cluster at vertical gaps, so we can distinguish between
-    # - between groups: top-down ordering
-    # - within groups: left-right ordering
-    # but finding too few minima risks turning top-down into left-right
-    # while finding too many risks turning left-right into top-down
-    peaks_neg, _ = find_peaks(zneg, distance=10, height=0.5 * y.max())
-    # ax2.hlines(peaks_neg - 40, 0, w, label="peaks")
-    # ax1.hlines(peaks_neg - 40, 0, w, label="peaks")
-    # plt.legend()
-    # plt.show()
-    peaks_neg = peaks_neg - 20 - 20
-
-    peaks_neg_new = np.array([0] +
-                             # peaks can be beyond box due to padding and smoothing
-                             [peak for peak in peaks_neg
-                              if 0 < peak < h] +
-                             [h])
-    # offset from bbox of mask
-    peaks_neg_new += y_ref
-
-    cx_main, cy_main = find_center_of_contours(contours_main)
-    cx_head, cy_head = find_center_of_contours(contours_head)
-    cx_drop, cy_drop = find_center_of_contours(contours_drop)
-    # assert not len(cy_main) or np.min(peaks_neg_new) <= np.min(cy_main) and np.max(cy_main) <= np.max(peaks_neg_new)
-    # assert not len(cy_head) or np.min(peaks_neg_new) <= np.min(cy_head) and np.max(cy_head) <= np.max(peaks_neg_new)
-    # assert not len(cy_drop) or np.min(peaks_neg_new) <= np.min(cy_drop) and np.max(cy_drop) <= np.max(peaks_neg_new)
-
-    slice_main = slice(0, len(contours_main))
-    slice_head = slice(len(contours_main),
-                       len(contours_main) + len(contours_head))
-    slice_drop = slice(len(contours_main) + len(contours_head),
-                       total)
-    matrix_of_orders = np.zeros((total, 5), dtype=int)
-    matrix_of_orders[:, 0] = np.arange(total)
-    matrix_of_orders[slice_main, 1] = 1
-    matrix_of_orders[slice_head, 1] = 2
-    matrix_of_orders[slice_drop, 1] = 3
-    matrix_of_orders[slice_main, 2] = cx_main
-    matrix_of_orders[slice_head, 2] = cx_head
-    matrix_of_orders[slice_drop, 2] = cx_drop
-    matrix_of_orders[slice_main, 3] = cy_main
-    matrix_of_orders[slice_head, 3] = cy_head
-    matrix_of_orders[slice_drop, 3] = cy_drop
-    matrix_of_orders[slice_main, 4] = np.arange(len(contours_main))
-    matrix_of_orders[slice_head, 4] = np.arange(len(contours_head))
-    matrix_of_orders[slice_drop, 4] = np.arange(len(contours_drop))
-
-    # print(peaks_neg_new,'peaks_neg_new')
-    # print(matrix_of_orders,'matrix_of_orders')
-    # print(peaks_neg_new,np.max(peaks_neg_new))
-    final_indexers_sorted = []
-    final_types = []
-    final_index_type = []
-    for top, bot in pairwise(peaks_neg_new):
-        indexes_in, types_in, cxs_in, cys_in, typed_indexes_in = \
-             matrix_of_orders[(matrix_of_orders[:, 3] >= top) &
-                              (matrix_of_orders[:, 3] < bot)].T
-        # if indexes_in.size:
-        #     img = textline_mask.copy()
-        #     plt.imshow(img)
-        #     plt.gca().add_patch(mpatches.Rectangle((0, top-y_ref), img.shape[1], bot-top, alpha=0.5, color='gray'))
-        #     xrange = np.arange(0, img.shape[1], 50)
-        #     yrange = np.arange(0, img.shape[0], 50)
-        #     plt.gca().set_xticks(xrange, xrange + x_ref)
-        #     plt.gca().set_yticks(yrange, yrange + y_ref)
-        #     for idx, type_, cx, cy in zip(typed_indexes_in, types_in, cxs_in, cys_in):
-        #         cnt = {1: contours_main, 2: contours_head, 3: contours_drop}[type_][idx]
-        #         col = {1: 'red', 2: 'blue', 3: 'green'}[type_]
-        #         plt.scatter(cx - x_ref, cy - y_ref, 20, c=col, marker='o')
-        #         plt.text(cx - x_ref, cy - y_ref, str(idx), c=col)
-        #         plt.gca().add_patch(mpatches.Polygon(cnt[:, 0] - [[x_ref, y_ref]], closed=False, fill=False, color=col))
-        #     plt.title("box contours centered in %d:%d (red=main / blue=heading / green=drop-capital)" % (top, bot))
-        #     plt.show()
-
-        sorted_inside = np.argsort(cxs_in)
-        final_indexers_sorted.extend(indexes_in[sorted_inside])
-        final_types.extend(types_in[sorted_inside])
-        final_index_type.extend(typed_indexes_in[sorted_inside])
-
-    ##matrix_of_orders[:len_main,4]=final_indexers_sorted[:]
-
-    assert len(set(final_indexers_sorted)) == total
-    assert set(final_index_type) == (
-        set(range(len(contours_main)))
-        .union(range(len(contours_head)))
-        .union(range(len(contours_drop))))
-
-    return final_indexers_sorted, final_types, final_index_type
+    return rorder, types[rorder], local_index[rorder]
 
 def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
         img_p_in_ver: np.ndarray,

@@ -829,7 +829,6 @@ class Eynollah:
             contours_only_text_parent_h,
             contours_drop_capitals,
             boxes,
-            textline_mask_tot
     ):
         self.logger.debug("enter do_order_of_regions")
         contours_only_text_parent = ensure_array(contours_only_text_parent)
@@ -888,11 +887,11 @@ class Eynollah:
                 args_contours_box_drop = args_contours_drop[arg_text_con_drop == iij]
 
                 _, kind_of_texts_sorted, index_by_kind_sorted = order_of_regions(
-                    textline_mask_tot[ys, xs],
                     contours_only_text_parent[args_contours_box_main],
                     contours_only_text_parent_h[args_contours_box_head],
                     contours_drop_capitals[args_contours_box_drop],
-                    box[2], box[0])
+                    r2l=self.right2left
+                )
 
                 for tidx, kind in zip(index_by_kind_sorted, kind_of_texts_sorted):
                     if kind == 1:
@@ -1312,7 +1311,6 @@ class Eynollah:
             num_col_classifier,
             erosion_hurts,
     ):
-        text_mask = np.copy(regions_without_separators) # before erosion
         if not erosion_hurts:
             regions_without_separators = cv2.erode(regions_without_separators, KERNEL, iterations=2)
 
@@ -1325,8 +1323,7 @@ class Eynollah:
             textregions_cont,
             textregions_h_cont,
             drop_caps_cont,
-            boxes,
-            text_mask)
+            boxes)
         return order_text
 
     def filter_small_regions(
