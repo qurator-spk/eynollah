@@ -992,7 +992,9 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
     height, width = img_p_in_ver.shape
 
     # cut horizontal seps by vertical seps
-    img_p_in_hor[img_p_in_ver > 0] = 0
+    # rs: does more harm than good
+    # (continuous horizontal seps are needed as page splitters)
+    #img_p_in_hor[img_p_in_ver > 0] = 0
 
     #img_p_in_ver = cv2.erode(img_p_in_ver, self.kernel, iterations=2)
     contours_seps_ver, _ = cv2.findContours(img_p_in_ver.astype(np.uint8),
@@ -1088,7 +1090,8 @@ def combine_hor_lines_and_delete_cross_points_and_get_lines_features_back_new(
             img_p_in = img_p_in_hor
             special_separators = []
 
-        #img_p_in_ver[img_p_in_ver == 1] = 1
+        # rs: removing seps around crossings: unnecessary
+        #     and causes small isolated seps at crosspoints
         # sep_ver_hor_cross = 1 * ((img_p_in > 0) & (img_p_in_ver > 0))
         # contours_cross, _ = cv2.findContours(thresh.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         # center_cross = np.array(find_center_of_contours(contours_cross), dtype=int)
