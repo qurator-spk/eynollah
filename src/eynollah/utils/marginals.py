@@ -1,3 +1,5 @@
+from logging import getLogger
+
 import numpy as np
 import cv2
 from shapely.geometry import Polygon, LineString
@@ -48,7 +50,9 @@ def get_marginals(num_col, slope_deskew,
                   allow_l=True,
                   allow_r=True,
                   kernel=None,
+                  logger=None,
                   label_text=1,
+                  label_seps=3,
                   label_marg=4,
                   label_tabs=10,
 ):
@@ -101,12 +105,16 @@ def get_marginals(num_col, slope_deskew,
     - there are no sufficient peaks
     - there would be no remaining main text
     """
+    if logger is None:
+        logger = getLogger(__package__)
     kernel = np.ones((2, 2), dtype=np.uint8)
     kernel_hor = np.ones((1, 2), dtype=np.uint8)
 
     text_mask = ((early_layout == label_text) |
                  (early_layout == label_tabs)).astype(np.uint8)
+    seps_mask = (early_layout == label_seps).astype(np.uint8)
     text_mask_d = rotate_image(text_mask, slope_deskew)
+    seps_mask_d = rotate_image(seps_mask, slope_deskew)
     height, width = text_mask_d.shape
 
     # plt.figure("text mask")
@@ -156,9 +164,11 @@ def get_marginals(num_col, slope_deskew,
         # ax1.imshow(early_layout, aspect='auto')
         # plt.legend()
         # plt.show()
+        logger.debug("marginalia: insufficient max vertical thickness (%d%%)",
+                     max_text_thickness_percent)
         return
 
-    text_mask_d_ys = gaussian_filter1d(text_mask_d_y, 3)
+    text_mask_d_ys = gaussian_filter1d(text_mask_d_y, 1)
     #text_mask_d_xs = gaussian_filter1d(text_mask_d_x, 3)
     first_nonzero = text_mask_d_ys.nonzero()[0][0] # outer left
     last_nonzero = text_mask_d_ys.nonzero()[0][-1] # outer right
@@ -196,8 +206,8 @@ def get_marginals(num_col, slope_deskew,
     #             [text_mask_d_y.max()], color='r',
     #             label='max = %d%%' % max_text_thickness_percent)
     # ax2.scatter(gaps_y, text_mask_d_ys[gaps_y], label='gaps_y', color='m')
-    # # for i in range(len(peaks_y)):
-    # #     ax2.text(gaps_y[i], text_mask_d_ys[gaps_y[i]], str(props_y['prominences'][i]))
+    # for i in range(len(peaks_y)):
+    #     ax2.text(gaps_y[i], text_mask_d_ys[gaps_y[i]], str(props_y['prominences'][i]))
     # ax1 = plt.subplot(2, 2, 4, title="early layout")
     # ax1.imshow(early_layout, aspect='auto')
     # plt.legend()
@@ -243,6 +253,7 @@ def get_marginals(num_col, slope_deskew,
     # then look at positive/negative peaks of derivative on left/right side,
     # to identify smaller plateaus of sufficient thickness:
     if len(gaps_l) == 0 and allow_l:
+        logger.debug("marginalia: trying to find jumps instead of gaps on the left")
         text_mask_d_ys2 = np.diff(text_mask_d_ys[:mid_point+1].astype(int))
         jumps, _ = find_peaks(text_mask_d_ys2,
                               # constrain slope lower bound
@@ -257,6 +268,14 @@ def get_marginals(num_col, slope_deskew,
             jumps_l = jumps[jumps < mid_point]
         else:
             jumps_l = jumps[jumps < mid_point_l]
+        # suppress these if there are horizontal separators spanning across
+        seps_cont_l, _ = cv2.findContours(seps_mask_d[:, :mid_point_l],
+                                          cv2.RETR_EXTERNAL,
+                                          cv2.CHAIN_APPROX_NONE)
+        seps_x_min_l = np.array([contour[:, 0, 0].min() + 15 for contour in seps_cont_l])
+        seps_x_max_l = np.array([contour[:, 0, 0].max() - 15 for contour in seps_cont_l])
+        jumps_l = jumps_l[~((seps_x_min_l[:, np.newaxis] <= jumps_l[np.newaxis]) &
+                            (seps_x_max_l[:, np.newaxis] > jumps_l[np.newaxis])).any(axis=0)]
         # to discern between left marginalia and left indentation,
         # analyse horizontal projection of (left half) of text mask:
         # if there are subpeaks left of (=above) the main peaks (=paragraphs)
@@ -267,7 +286,8 @@ def get_marginals(num_col, slope_deskew,
         text_mask_d_lxs2 = np.diff(text_mask_d_lxs.astype(int))
         peaks_lx, props_lx = find_peaks(text_mask_d_lx,
                                         prominence=MIN_DIST_GAPS)
-        props_lx['prominences_l'] = text_mask_d_lx[peaks_lx] - text_mask_d_lx[props_lx['left_bases']]
+        bases_lx = props_lx['left_bases']
+        proms_lx = text_mask_d_lx[peaks_lx] - text_mask_d_lx[bases_lx]
         med_main_width_l = np.median(text_mask_d_lx[peaks_lx])
         # ax3.plot(text_mask_d_lx, list(range(height)), label='unsmoothed', color='b')
         # ax3.plot(text_mask_d_lxs, list(range(height)), label='smoothed', color='m')
@@ -284,14 +304,17 @@ def get_marginals(num_col, slope_deskew,
             subpeaks_lx = flexpoints_lx[
                 ~np.isclose(text_mask_d_lx[flexpoints_lx], med_main_width_l, rtol=0.05) &
                 ~np.isclose(text_mask_d_lx[flexpoints_lx], 0, atol=20)]
-            subpeaks_lx = subpeaks_lx[np.searchsorted(props_lx['left_bases'], subpeaks_lx, 'right')
-                                      == np.searchsorted(peaks_lx, subpeaks_lx)]
+            # consider only those subpeaks left of peaks:
+            subpeaks_lx = subpeaks_lx[np.searchsorted(bases_lx, subpeaks_lx, 'right') ==
+                                      np.searchsorted(peaks_lx, subpeaks_lx) + 1]
             if len(subpeaks_lx):
                 med_preceding_width_l = np.median(text_mask_d_lx[subpeaks_lx])
-                jumps_l = jumps_l[
-                    ~np.isclose(jumps_l - first_nonzero,
-                                med_main_width_l - med_preceding_width_l,
-                                rtol=0.1, atol=10)]
+                indent_l = np.isclose(jumps_l - first_nonzero,
+                                      med_main_width_l - med_preceding_width_l,
+                                      rtol=0.1, atol=10)
+                logger.debug("%d out of %d step candidates for left margin are from indentation",
+                             np.count_nonzero(indent_l), len(jumps_l))
+                jumps_l = jumps_l[~indent_l]
                 # ax3.scatter(text_mask_d_lx[subpeaks_lx], subpeaks_lx, label="subpeaks_lx", color='y')
                 # ax3.vlines([med_preceding_width_l], 0, height, colors='b')
         # search from right (widest) to left
@@ -308,6 +331,7 @@ def get_marginals(num_col, slope_deskew,
                 break
             # TODO: try another criterion: deviation in average textline heights
     if len(gaps_r) == 0 and allow_r:
+        logger.debug("marginalia: trying to find jumps instead of gaps on the right")
         text_mask_d_ys2 = -np.diff(text_mask_d_ys[mid_point-1:].astype(int))
         jumps, _ = find_peaks(text_mask_d_ys2,
                               # constrain slope lower bound
@@ -323,6 +347,14 @@ def get_marginals(num_col, slope_deskew,
             jumps_r = jumps[jumps > mid_point]
         else:
             jumps_r = jumps[jumps > mid_point_r]
+        # suppress these if there are horizontal separators spanning across
+        seps_cont_r, _ = cv2.findContours(seps_mask_d[:, mid_point_r:],
+                                          cv2.RETR_EXTERNAL,
+                                          cv2.CHAIN_APPROX_NONE)
+        seps_x_min_r = np.array([contour[:, 0, 0].min() + 15 + mid_point_r for contour in seps_cont_r])
+        seps_x_max_r = np.array([contour[:, 0, 0].max() - 15 + mid_point_r for contour in seps_cont_r])
+        jumps_r = jumps_r[~((seps_x_min_r[:, np.newaxis] <= jumps_r[np.newaxis]) &
+                            (seps_x_max_r[:, np.newaxis] > jumps_r[np.newaxis])).any(axis=0)]
         # to discern between right marginalia and right indentation
         # (i.e. unjustified final lines of a paragraph),
         # analyse horizontal projection of (right half) of text mask:
@@ -334,7 +366,8 @@ def get_marginals(num_col, slope_deskew,
         text_mask_d_rxs2 = np.diff(text_mask_d_rxs.astype(int))
         peaks_rx, props_rx = find_peaks(text_mask_d_rx,
                                         prominence=MIN_DIST_GAPS)
-        props_rx['prominences_r'] = text_mask_d_rx[peaks_rx] - text_mask_d_rx[props_rx['right_bases']]
+        bases_rx = props_rx['right_bases']
+        proms_rx = text_mask_d_rx[peaks_rx] - text_mask_d_rx[bases_rx]
         med_main_width_r = np.median(text_mask_d_rx[peaks_rx])
         # ax3.plot(text_mask_d_rx + mid_point_r, list(range(height)), label='unsmoothed', color='b')
         # ax3.plot(text_mask_d_rxs + mid_point_r, list(range(height)), label='smoothed', color='m')
@@ -351,14 +384,17 @@ def get_marginals(num_col, slope_deskew,
             subpeaks_rx = flexpoints_rx[
                 ~np.isclose(text_mask_d_rx[flexpoints_rx], med_main_width_r, rtol=0.05) &
                 ~np.isclose(text_mask_d_rx[flexpoints_rx], 0, atol=20)]
+            # consider only those subpeaks right of peaks:
             subpeaks_rx = subpeaks_rx[np.searchsorted(peaks_rx, subpeaks_rx, 'right') ==
-                                      np.searchsorted(props_rx['right_bases'], subpeaks_rx)]
+                                      np.searchsorted(bases_rx, subpeaks_rx) + 1]
             if len(subpeaks_rx):
                 med_following_width_r = np.median(text_mask_d_rx[subpeaks_rx])
-                jumps_r = jumps_r[
-                    ~np.isclose(last_nonzero - jumps_r,
-                                med_main_width_r - med_following_width_r,
-                                rtol=0.1, atol=10)]
+                indent_r = np.isclose(last_nonzero - jumps_r,
+                                      med_main_width_r - med_following_width_r,
+                                      rtol=0.1, atol=10)
+                logger.debug("%d out of %d step candidates for right margin are from indentation",
+                             np.count_nonzero(indent_r), len(jumps_r))
+                jumps_r = jumps_r[~indent_r]
                 # ax3.scatter(text_mask_d_rx[subpeaks_rx] + mid_point_r, subpeaks_rx, label="subpeaks_rx", color='y')
                 # ax3.vlines([med_following_width_r + mid_point_r], 0, height, colors='b')
         # search from left (widest) to right

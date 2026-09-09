@@ -1027,6 +1027,7 @@ class Eynollah:
         get_marginals(*args,
                       allow_l=self.allow_marginalia in ('left', 'both'),
                       allow_r=self.allow_marginalia in ('right', 'both'),
+                      logger=self.logger,
                       kernel=KERNEL)
 
     def get_full_layout(
