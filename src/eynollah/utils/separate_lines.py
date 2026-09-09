@@ -560,13 +560,17 @@ def separate_lines_new2(img_crop, _, num_col, slope_region, logger=None, plotter
 def do_image_rotation(angle, img=None, axis=1, sigma_des=1.0, logger=None):
     if logger is None:
         logger = getLogger(__package__)
+    if not img.size:
+        return 0
     img_rot = rotate_image(img, angle)
-    try:
-        var = get_projection_var(img_rot, sigma_des, axis=axis)
-    except:
-        logger.exception("cannot determine variance for angle %.2f°", angle)
-        var = 0
-    return var
+    if axis == 0:
+        # produce both col and row results
+        var_cols = get_projection_var(img_rot, sigma_des, axis=0)
+        var_rows = get_projection_var(img_rot, sigma_des, axis=1)
+        return var_cols, var_rows
+    else:
+        var_rows = get_projection_var(img_rot, sigma_des, axis=1)
+        return var_rows
 
 def return_deskew_slop(img,
                        sigma_des,
@@ -616,24 +620,24 @@ def return_deskew_slop(img,
 
     if main_page and width > height:
         angles = np.array([-45, 0, 45, 90,])
-        angle, _ = best_angle(angles)
+        angle = best_angle(angles)
 
         angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
-        angle, _ = best_angle(angles)
+        angle = best_angle(angles)
     elif main_page:
         #angles = np.linspace(-12, 12, n_tot_angles)#np.array([0 , 45 , 90 , -45])
         angles = np.concatenate((np.linspace(-12, -7, n_tot_angles // 4),
                                  np.linspace(-6, 6, n_tot_angles // 2),
                                  np.linspace(7, 12, n_tot_angles // 4)))
-        angle, _ = best_angle(angles)
+        angle = best_angle(angles)
 
     else:
         angles = np.linspace(-25, 25, int(0.5 * n_tot_angles) + 10)
-        angle, _ = best_angle(angles)
+        angle = best_angle(angles)
 
     # precision stage:
     angles = np.linspace(angle - 1.5, angle + 1.5, n_tot_angles // 2)
-    angle, _ = best_angle(angles)
+    angle = best_angle(angles)
 
     return angle
 
@@ -655,14 +659,44 @@ def get_smallest_skew(img, sigma_des, angles,
     try:
         var_res = np.array(results)
         assert var_res.any()
-        idx = np.argmax(var_res)
-        angle = angles[idx]
-        var = var_res[idx]
+        if var_res.ndim == 2:
+            # axis = 0 (cols): analyse both col and row results
+            sort_cols = np.argsort(var_res[:, 0])
+            sort_rows = np.argsort(var_res[:, 1])
+            angle1_cols = angles[sort_cols[-1]]
+            angle2_cols = angles[sort_cols[-2]]
+            angle1_rows = angles[sort_rows[-1]]
+            angle2_rows = angles[sort_rows[-2]]
+            var1_cols = var_res[sort_cols[-1], 0]
+            var2_cols = var_res[sort_cols[-2], 0]
+            var1_rows = var_res[sort_rows[-1], 1]
+            var2_rows = var_res[sort_rows[-2], 1]
+            if angle1_cols != angle2_cols:
+                dist_cols = (var1_cols / var2_cols) / abs(angle1_cols - angle2_cols)
+            else:
+                dist_cols = 0
+            if angle1_rows != angle2_rows:
+                dist_rows = (var1_rows / var2_rows) / abs(angle1_rows - angle2_rows)
+            else:
+                dist_rows = 0
+            if dist_cols > dist_rows:
+                return angle1_cols
+            else:
+                return angle1_rows
+
+        sort = np.argsort(var_res)
+        angle1 = angles[sort[-1]]
+        angle2 = angles[sort[-2]]
+        var1 = var_res[sort[-1]]
+        var2 = var_res[sort[-2]]
+        if angle1 != angle2:
+            dist = (var1 / var2) / abs(angle1 - angle2)
+        else:
+            dist = 0
+        return angle1
     except:
         logger.exception("cannot determine best angle among %s", str(angles))
-        angle = 0
-        var = 0
-    return angle, var
+        return 0
 
 def do_work_of_slopes_new_curved(
         contour_par,
