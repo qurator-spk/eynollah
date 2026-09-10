@@ -1335,6 +1335,23 @@ def return_boxes_of_images_by_order_of_reading_new(
             label_right = min(width_tot - 1, label_right)
             label_top = max(0, label_top)
             label_bot = min(height_tot - 1, label_bot)
+            # disregard vertical portions of the cross-column label
+            # if they are split by vertical separators already
+            # (thus connected across columns only above or below
+            #  those portions in a T- or H- or ⟂-shape):
+            vsep_overlap_y, _ = vertical_seps[label_top: label_bot,
+                                              label_left: label_right].nonzero()
+            if len(vsep_overlap_y):
+                # keep only largest portion not overlapped by any vseps
+                non_overlap_y = np.setdiff1d(np.arange(label_top, label_bot),
+                                             vsep_overlap_y + label_top)
+                if not len(non_overlap_y):
+                    # print("not keeping ccomp %d completely along vseps" % label)
+                    continue
+                # print("reducing ccomp %d vertically from %d:%d to %d:%d due to vseps" %
+                #       (label, label_top, label_bot, non_overlap_y.min(), non_overlap_y.max()))
+                label_top = non_overlap_y.min()
+                label_bot = non_overlap_y.max()
             # if label_count < 0.9 * label_area:
             #     # mostly not in this part of the page
             #     continue
