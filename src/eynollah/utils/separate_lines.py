@@ -607,7 +607,7 @@ def return_deskew_slop(img,
     onset_x = int(0.5 * (max_shape - width))
     onset_y = int(0.5 * (max_shape - height))
 
-    img_resized = np.zeros((max_shape, max_shape))
+    img_resized = np.zeros((max_shape, max_shape), dtype=np.uint8)
     img_resized[onset_y: onset_y + height,
                 onset_x: onset_x + width] = img
 
