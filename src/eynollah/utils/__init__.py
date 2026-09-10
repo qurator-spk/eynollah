@@ -846,8 +846,8 @@ def combine_hor_lines(
                 some_x_max=x_max_hor[pair]
                 some_y_min=y_min_hor[pair]
                 some_y_max=y_max_hor[pair]
-                if np.any(img_p_in_ver[some_y_min.min(): some_y_max.max(),
-                                       some_x_max.min(): some_x_min.max()]):
+                if np.any(img_p_in_ver[some_y_min.min() - 0: some_y_max.max() + 0,
+                                       some_x_max.min() - 3: some_x_min.max() + 3]):
                     # print("horizontal pair cut by vertical sep", pair, some_args, some_cy,
                     #       "%d:%d" % (some_x_min[0], some_x_max[0]),
                     #       "%d:%d" % (some_x_min[1], some_x_max[1]))
