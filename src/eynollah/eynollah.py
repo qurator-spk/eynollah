@@ -1008,10 +1008,25 @@ class Eynollah:
         #textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
         return textline_mask_tot_ea, textline_conf
 
-    def run_deskew(self, textline_mask_tot_ea, axis=1):
+    def run_deskew(self, textline_mask_tot_ea, num_col_classifier):
         if not np.any(textline_mask_tot_ea):
             self.logger.info("slope_deskew: empty page")
             return 0
+
+        if num_col_classifier == 1:
+            # variation of projection profile: from gaps between text lines
+            axis = 1
+        else:
+            # variation of projection profile: from column gaps
+            axis = 0
+
+        if num_col_classifier < 3:
+            if num_col_classifier == 1:
+                img_w_new = 1000
+            else:
+                img_w_new = 1300
+            img_h_new = img_w_new * textline_mask_tot_ea.shape[0] // textline_mask_tot_ea.shape[1]
+            textline_mask_tot_ea = resize_image(textline_mask_tot_ea, img_h_new, img_w_new)
 
         #print(textline_mask_tot_ea.shape, 'textline_mask_tot_ea deskew')
         textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, KERNEL, iterations=2)
@@ -1638,23 +1653,7 @@ class Eynollah:
         if self.plotter:
             self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image['img_res'], image['name'])
 
-        if num_col_classifier == 1:
-            # variation of projection profile: from gaps between text lines
-            axis = 1
-        else:
-            # variation of projection profile: from column gaps
-            axis = 0
-        if num_col_classifier < 3:
-            if num_col_classifier == 1:
-                img_w_new = 1000
-            else:
-                img_w_new = 1300
-            img_h_new = img_w_new * textline_mask_tot_ea.shape[0] // textline_mask_tot_ea.shape[1]
-
-            textline_mask_tot_ea_deskew = resize_image(textline_mask_tot_ea,img_h_new, img_w_new )
-            slope_deskew = self.run_deskew(textline_mask_tot_ea_deskew, axis=axis)
-        else:
-            slope_deskew = self.run_deskew(textline_mask_tot_ea, axis=axis)
+        slope_deskew = self.run_deskew(textline_mask_tot_ea, num_col_classifier)
         # if ratio of text regions to page area is smaller that 30%,
         # then ignore skew angle above 45°
         if (abs(slope_deskew) > 45 and
