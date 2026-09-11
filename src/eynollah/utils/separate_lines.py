@@ -612,15 +612,19 @@ def return_deskew_slop(img,
                 onset_x: onset_x + width] = img
 
     def best_angle(angles):
+        if not len(angles):
+            angles = np.array([-45, 0, 45, 90,])
+            axis0 = 1 # try only rows
+        else:
+            axis0 = axis
         return get_smallest_skew(img_resized, sigma_des, angles,
-                                 axis=axis,
+                                 axis=axis0,
                                  logger=logger,
                                  name=name,
                                  plotter=plotter)
 
     if main_page and width > height:
-        angles = np.array([-45, 0, 45, 90,])
-        angle = best_angle(angles)
+        angle = best_angle([])
 
         angles = np.linspace(angle - 22.5, angle + 22.5, n_tot_angles)
         angle = best_angle(angles)
@@ -645,7 +649,8 @@ def get_smallest_skew(img, sigma_des, angles,
                       axis=1,
                       logger=None,
                       plotter=None,
-                      name=None
+                      name=None,
+                      MIN_VAR_BOOST_DEG_NRM=0.3,
 ):
     if logger is None:
         logger = getLogger(__package__)
@@ -661,39 +666,50 @@ def get_smallest_skew(img, sigma_des, angles,
         assert var_res.any()
         if var_res.ndim == 2:
             # axis = 0 (cols): analyse both col and row results
-            sort_cols = np.argsort(var_res[:, 0])
-            sort_rows = np.argsort(var_res[:, 1])
-            angle1_cols = angles[sort_cols[-1]]
-            angle2_cols = angles[sort_cols[-2]]
-            angle1_rows = angles[sort_rows[-1]]
-            angle2_rows = angles[sort_rows[-2]]
-            var1_cols = var_res[sort_cols[-1], 0]
-            var2_cols = var_res[sort_cols[-2], 0]
-            var1_rows = var_res[sort_rows[-1], 1]
-            var2_rows = var_res[sort_rows[-2], 1]
-            if angle1_cols != angle2_cols:
-                dist_cols = (var1_cols / var2_cols) / abs(angle1_cols - angle2_cols)
+            var0_cols = get_projection_var(img, sigma_des, axis=0)
+            var0_rows = get_projection_var(img, sigma_des, axis=1)
+            idx_cols = np.argmax(var_res[:, 0])
+            idx_rows = np.argmax(var_res[:, 1])
+            angle_cols = angles[idx_cols]
+            angle_rows = angles[idx_rows]
+            var_cols = var_res[idx_cols, 0]
+            var_rows = var_res[idx_rows, 1]
+            if angle_cols:
+                dist_cols = var_cols / var0_cols / abs(angle_cols)
             else:
                 dist_cols = 0
-            if angle1_rows != angle2_rows:
-                dist_rows = (var1_rows / var2_rows) / abs(angle1_rows - angle2_rows)
+            if angle_rows:
+                dist_rows = var_rows / var0_rows / abs(angle_rows)
             else:
                 dist_rows = 0
             if dist_cols > dist_rows:
-                return angle1_cols
+                var0, var, angle, dist = var0_cols, var_cols, angle_cols, dist_cols
             else:
-                return angle1_rows
+                var0, var, angle, dist = var0_rows, var_rows, angle_rows, dist_rows
 
-        sort = np.argsort(var_res)
-        angle1 = angles[sort[-1]]
-        angle2 = angles[sort[-2]]
-        var1 = var_res[sort[-1]]
-        var2 = var_res[sort[-2]]
-        if angle1 != angle2:
-            dist = (var1 / var2) / abs(angle1 - angle2)
         else:
-            dist = 0
-        return angle1
+            var0 = get_projection_var(img, sigma_des, axis=axis)
+            idx = np.argmax(var_res)
+            angle = angles[idx]
+            var = var_res[idx]
+            if angle:
+                dist = var / var0 / abs(angle)
+            else:
+                dist = 0
+
+        if angle and dist < MIN_VAR_BOOST_DEG_NRM:
+            # from matplotlib import pyplot as plt
+            # plt.figure()
+            # plt.subplot(1, 2, 1)
+            # plt.imshow(img)
+            # plt.subplot(1, 2, 2)
+            # plt.plot(angles, results)
+            # plt.scatter(angle, var)
+            # plt.scatter(0, var0)
+            # plt.show()
+            logger.warning("signal from projection curve is too weak (%.1f) for deskewing", dist)
+            return 0
+        return angle
     except:
         logger.exception("cannot determine best angle among %s", str(angles))
         return 0
