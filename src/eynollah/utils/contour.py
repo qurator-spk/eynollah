@@ -159,7 +159,12 @@ def get_region_confidences(cnts, confidence_matrix):
     for cnt in cnts:
         cnt_mask = np.zeros_like(confidence_matrix)
         cnt_mask = cv2.fillPoly(cnt_mask, pts=[cnt // 6], color=1.0)
-        confs.append(np.sum(confidence_matrix * cnt_mask) / np.sum(cnt_mask))
+        cnt_area = np.sum(cnt_mask)
+        if cnt_area:
+            cnt_conf = np.sum(confidence_matrix * cnt_mask) / cnt_area
+        else:
+            cnt_conf = 0.
+        confs.append(cnt_conf)
     return confs
 
 def rotate_contours(
