@@ -22,13 +22,12 @@ from ocrd_utils import (
     xywh_from_points,
 )
 
-from .eynollah import Eynollah
+from .eynollah import Eynollah, SLOPE_THRESHOLD
 from .model_zoo import EynollahModelZoo
 from .utils.resize import resize_image
+from .utils.rotate import rotate_image
+from .utils.contour import rotate_contours
 from .utils import is_xml_filename
-
-DPI_THRESHOLD = 298
-KERNEL = np.ones((5, 5), np.uint8)
 
 
 class Reorder(Eynollah):
@@ -284,27 +283,13 @@ class Reorder(Eynollah):
             nonsep_labels[label_imgs] = 0
 
             # deskew
-            if np.abs(skew) >= 0.13: # in Eynollah: SLOPE_THRESHOLD
-                _, region_labels, nonsep_labels = self.get_deskewed_masks(
-                    skew, np.zeros((1, 1)), region_labels, nonsep_labels)
-                # also deskew contours
-                # (directly instead of match_deskewed_contours)
-                # rotate_image() does not enlarge canvas,
-                # so our calculation must compensate
-                h_o, w_o = image['img_res'].shape[:2]
-                M = cv2.getRotationMatrix2D((0.5 * w_o, 0.5 * h_o), -skew, 1.0)[:2, :2]
-                cos = np.abs(M[0, 0])
-                sin = np.abs(M[0, 1])
-                off = np.array([[0.5 * (w_o * cos + h_o * sin - w_o),
-                                 0.5 * (w_o * sin + h_o * cos - h_o)]],
-                               dtype=int)
-                if skew > 0:
-                    off[0, 1] = -off[0, 1]
-                else:
-                    off[0, 0] = -off[0, 0]
-                para_cont = [np.dot(cont, M).astype(int) - off for cont in para_cont]
-                head_cont = [np.dot(cont, M).astype(int) - off for cont in head_cont]
-                drop_cont = [np.dot(cont, M).astype(int) - off for cont in drop_cont]
+            if np.abs(skew) >= SLOPE_THRESHOLD:
+                orig_shape = region_labels.shape
+                region_labels = rotate_image(region_labels, skew)
+                nonsep_labels = rotate_image(nonsep_labels, skew)
+                para_cont = rotate_contours(para_cont, skew, orig_shape)
+                head_cont = rotate_contours(head_cont, skew, orig_shape)
+                drop_cont = rotate_contours(drop_cont, skew, orig_shape)
 
             order_text = self.run_order_of_regions_heuristic(
                 para_cont,

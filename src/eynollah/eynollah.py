@@ -43,8 +43,8 @@ from .utils.contour import (
     find_features_of_contours,
     get_region_confidences,
     return_contours_of_class,
-    match_deskewed_contours,
     estimate_skew_contours,
+    rotate_contours,
 )
 from .utils.rotate import rotate_image
 from .utils.separate_lines import (
@@ -1099,18 +1099,6 @@ class Eynollah:
         self.logger.debug('exit get_full_layout')
         return regions_fully, regionsfl_confidence
 
-    def get_deskewed_masks(
-            self,
-            slope_deskew,
-            textline_mask_tot,
-            text_regions_p,
-            regions_without_separators,
-    ):
-        return (rotate_image(textline_mask_tot, slope_deskew),
-                rotate_image(text_regions_p, slope_deskew),
-                rotate_image(regions_without_separators, slope_deskew),
-        )
-
     def get_boxes_order(
             self,
             text_regions_p,
@@ -1756,26 +1744,12 @@ class Eynollah:
         textregions = [TextRegion(cont, lines=[]) for cont in textregions_cont]
 
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD and not self.reading_order_machine_based:
-            (text_regions_p_d,
-             textline_mask_tot_ea_d,
-             regions_without_separators_d) = self.get_deskewed_masks(
-                 slope_deskew,
-                 text_regions_p,
-                 textline_mask_tot_ea,
-                 regions_without_separators)
+            text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
+            textline_mask_tot_ea_d = rotate_image(textline_mask_tot_ea, slope_deskew)
+            regions_without_separators_d = rotate_image(regions_without_separators, slope_deskew)
 
-            textregions_cont_d = return_contours_of_class(text_regions_p_d, label_text, MIN_AREA_REGION)
+            textregions_cont_d = rotate_contours(textregions_cont, slope_deskew, textline_mask_tot_ea.shape)
             textregions_d = [TextRegion(cont, lines=[]) for cont in textregions_cont_d]
-            if (len(textregions) and
-                len(textregions_d)):
-                textregions_cont_d = \
-                    match_deskewed_contours(
-                        slope_deskew,
-                        textregions,
-                        textregions_d,
-                        text_regions_p.shape,
-                        text_regions_p_d.shape)
-                textregions_d = [TextRegion(cont, lines=[]) for cont in textregions_cont_d]
         else:
             textregions_d = []
 
