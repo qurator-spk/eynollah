@@ -187,7 +187,10 @@ def rotate_contours(
     else:
         off[0, 0] = -off[0, 0]
     # apply transformation
-    return [np.dot(cont, M).astype(int) - off
+    contours = [np.dot(cont, M).astype(int) - off
+                for cont in contours]
+    # clip to (unchanged) canvas
+    return [np.maximum(0, np.minimum([w_o, h_o], cont))
             for cont in contours]
 
 def estimate_skew_contours(contours):
