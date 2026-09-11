@@ -419,7 +419,6 @@ def get_marginals(num_col, slope_deskew,
     # ax1.imshow(text_mask_d)
     # ax1.vlines([point_l], 0, height, label='point_l', colors='r')
     # ax1.vlines([point_r], 0, height, label='point_r', colors='r')
-    # ax2 = plt.subplot(2, 2, 2, title='main_mask_d (deskewed main mask)', sharey=ax1)
     # ax3 = plt.subplot(2, 2, 3, title='text_mask_d_y (projection for minima)', sharex=ax1)
     # ax3.plot(list(range(width)), text_mask_d_y)
     # ax3.set_aspect('auto')
@@ -433,27 +432,28 @@ def get_marginals(num_col, slope_deskew,
     if point_l == 0 and point_r == width - 1:
         return
 
+    line_l = LineString([(point_l, -0.4 * height), (point_l, 1.4 * height)])
+    line_r = LineString([(point_r, -0.4 * height), (point_r, 1.4 * height)])
     # rotate back (into undeskewed/original shape as early_layout input):
-    marg_l = Polygon([[point_l, 0], [point_l, height],
-                      [0, height], [0, 0]])
-    marg_r = Polygon([[point_r, 0], [point_r, height],
-                      [width, height], [width, 0]])
-    main = Polygon([[point_l, 0], [point_l, height],
-                    [point_r, height], [point_r, 0]])
-    # plt.imshow(text_mask_d)
+    line_l = rotate_polygon(line_l, slope_deskew, origin=(0.5 * width, 0.5 * height))
+    line_r = rotate_polygon(line_r, slope_deskew, origin=(0.5 * width, 0.5 * height))
+    main = Polygon([(0, 0), (0, height), (width, height), (width, 0)])
+    if point_l > 0:
+        page_l = split_polygon(main, line_l)
+        marg_l, main = page_l.geoms
+    else:
+        marg_l = Polygon()
+    if point_r < width - 1:
+        page_r = split_polygon(main, line_r)
+        main, marg_r = page_r.geoms
+    else:
+        marg_r = Polygon()
+
+    # plt.imshow(early_layout)
     # plot_polygon(marg_l, color='yellow')
     # plot_polygon(marg_r, color='red')
     # plot_polygon(main, color='magenta')
     # plt.show()
-    marg_l = rotate_polygon(marg_l, slope_deskew, origin=(0.5 * width, 0.5 * height))
-    marg_r = rotate_polygon(marg_r, slope_deskew, origin=(0.5 * width, 0.5 * height))
-    main = rotate_polygon(main, slope_deskew, origin=(0.5 * width, 0.5 * height))
-    # plot_polygon(marg_l, color='yellow')
-    # plot_polygon(marg_r, color='red')
-    # plot_polygon(main, color='magenta')
-    # plt.show()
-    line_l = LineString(marg_l.exterior.coords[:2])
-    line_r = LineString(marg_r.exterior.coords[:2])
     marg_l3 = marg_l.buffer(3)
     marg_r3 = marg_r.buffer(3)
     line_l3 = line_l.offset_curve(5)
@@ -467,6 +467,7 @@ def get_marginals(num_col, slope_deskew,
         poly = contour2polygon(cont)
         if not poly.area:
             continue # fixme: warn
+        # plt.imshow(early_layout)
         minx, miny, maxx, maxy = poly.bounds
         aspect = (maxy - miny) / (maxx - minx)
         if poly.within(marg_l3) or poly.within(marg_r3):
@@ -488,7 +489,7 @@ def get_marginals(num_col, slope_deskew,
                         continue
                     if not geom.within(marg_l3):
                         continue
-                    # plot_polygon(geom, color='yellow')
+                    # plot_polygon(geom, color='blue')
                     marg_contours.append(polygon2contour(geom))
             inter = poly.intersection(marg_r)
             iminx, iminy, imaxx, imaxy = inter.bounds
@@ -502,10 +503,13 @@ def get_marginals(num_col, slope_deskew,
                         continue
                     if not geom.within(marg_r3):
                         continue
-                    # plot_polygon(geom, color='red')
+                    # plot_polygon(geom, color='green')
                     marg_contours.append(polygon2contour(geom))
             # plt.show()
         else:
+            # plot_polygon(main, color='magenta')
+            # plot_polygon(poly, color='red')
+            # plt.show()
             assert False
 
     # write marginals to segmentation
