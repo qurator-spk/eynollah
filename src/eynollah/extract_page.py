@@ -29,13 +29,14 @@ class EynollahPageExtractor(Eynollah):
         enable_plotting : bool = False,
         input_binary : bool = False,
         ignore_page_extraction : bool = False,
+        skip_layout_and_reading_order : bool = True,
         num_col_upper : int | None = None,
         num_col_lower : int | None = None,
         full_layout : bool = False,
         tables : bool = False,
         curved_line : bool = False,
         allow_enhancement : bool = False,
-        
+        enable_deskewing : bool = False,
     ):
         self.logger = logging.getLogger('eynollah.extract_page')
         self.model_zoo = model_zoo
@@ -49,6 +50,7 @@ class EynollahPageExtractor(Eynollah):
         self.input_binary = input_binary
         self.full_layout = full_layout
         self.ignore_page_extraction = ignore_page_extraction
+        self.skip_layout_and_reading_order = skip_layout_and_reading_order
         if num_col_upper:
             self.num_col_upper = int(num_col_upper)
         else:
@@ -57,6 +59,7 @@ class EynollahPageExtractor(Eynollah):
             self.num_col_lower = int(num_col_lower)
         else:
             self.num_col_lower = num_col_lower
+        self.enable_deskewing = enable_deskewing
 
         # for parallelization of CPU-intensive tasks:
         self.executor = ProcessPoolExecutor(max_workers=cpu_count())
@@ -75,6 +78,8 @@ class EynollahPageExtractor(Eynollah):
         ]
         if self.input_binary:
             loadable.append("binarization")
+        if self.enable_deskewing:
+            loadable.append("textline")
         self.model_zoo.load_models(*loadable, device=device)
 
     def run(self,
@@ -144,7 +149,16 @@ class EynollahPageExtractor(Eynollah):
         t1 = time.time()
         page_cont, _, _ = self.extract_page(image)
         page = Region(page_cont)
-        
+
+        if self.enable_deskewing:
+            t2 = time.time()
+            _, _, _, _, _, textline_mask, _, _ = self.get_early_layout(
+                image['img_res'], num_col_classifier)
+            page.skew = self.run_deskew(
+                textline_mask, num_col_classifier)
+            t3 = time.time()
+            self.logger.info("Deskewing took %.1fs", t3 - t2)
+            
         pcgts = writer.build_pagexml(
             page=page,
             img_bin=self.imread(image, binary=True) if self.input_binary else None,

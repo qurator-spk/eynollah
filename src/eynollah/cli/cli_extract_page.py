@@ -49,6 +49,12 @@ import click
     type=click.IntRange(min=0),
     help="upper limit of columns in document image; 0 means autodetected from model",
 )
+@click.option(
+    "--enable_deskewing",
+    "-ed",
+    is_flag=True,
+    help="Also run textline detection and deskewing on the page.",
+)
 @click.pass_context
 def extract_page_cli(
     ctx,
@@ -59,6 +65,7 @@ def extract_page_cli(
     input_binary,
     num_col_upper,
     num_col_lower,
+    enable_deskewing,
 ):
     """
     Detect image regions only
@@ -71,6 +78,7 @@ def extract_page_cli(
         input_binary=input_binary,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
+        enable_deskewing=enable_deskewing,
     )
     extractor.run(overwrite=overwrite,
                  image_filename=image,
