@@ -1677,7 +1677,6 @@ class Eynollah:
                              num_column_is_classified,
                              erosion_hurts)
         t4 = time.time()
-        textline_mask_tot_ea_org = np.copy(textline_mask_tot_ea)
 
         if not num_col and len(text_early_cont) == 0 or not image_page.size:
             self.logger.info("No columns detected - generating empty PAGE-XML")
@@ -1694,7 +1693,7 @@ class Eynollah:
 
         if num_col_classifier in (1,2) and self.allow_marginalia != 'off':
             self.run_marginals(num_col_classifier, slope_deskew,
-                               text_regions_p, textline_mask_tot_ea_org)
+                               text_regions_p, textline_mask_tot_ea)
             t5 = time.time()
             self.logger.info("Marginalia extraction took %.1fs", t5 - t4)
         else:
@@ -1715,8 +1714,7 @@ class Eynollah:
             drop_caps_mask = np.zeros_like(regions_without_separators)
             drop_caps_mask = cv2.fillPoly(drop_caps_mask, pts=drop_caps_cont, color=1)
             regions_without_separators[drop_caps_mask] = 1 # also cover in reading-order
-            textline_mask_tot_ea_org[drop_caps_mask] = 0 # skip for textlines
-            textline_mask_tot_ea[drop_caps_mask] = 1 # needed for reading order
+            textline_mask_tot_ea[drop_caps_mask] = 0 # skip for textlines
             t6 = time.time()
             self.logger.info("Full layout took %.1fs", t6 - t5)
         else:
@@ -1745,10 +1743,9 @@ class Eynollah:
 
         if np.abs(slope_deskew) >= SLOPE_THRESHOLD and not self.reading_order_machine_based:
             text_regions_p_d = rotate_image(text_regions_p, slope_deskew)
-            textline_mask_tot_ea_d = rotate_image(textline_mask_tot_ea, slope_deskew)
             regions_without_separators_d = rotate_image(regions_without_separators, slope_deskew)
 
-            textregions_cont_d = rotate_contours(textregions_cont, slope_deskew, textline_mask_tot_ea.shape)
+            textregions_cont_d = rotate_contours(textregions_cont, slope_deskew, text_regions_p.shape)
             textregions_d = [TextRegion(cont, lines=[]) for cont in textregions_cont_d]
         else:
             textregions_d = []
@@ -1767,7 +1764,7 @@ class Eynollah:
 
         if not self.curved_line:
             self.logger.info("Mode: Light line detection")
-            args = (textline_mask_tot_ea_org,
+            args = (textline_mask_tot_ea,
                     textline_confidence,
                     slope_deskew)
             self.get_slopes_and_deskew_new_light2(textregions, *args)
@@ -1776,8 +1773,8 @@ class Eynollah:
         else:
             self.logger.info("Mode: Curved line detection")
 
-            textline_mask_tot_ea_erode = cv2.erode(textline_mask_tot_ea_org, kernel=KERNEL, iterations=2)
-            args = (textline_mask_tot_ea_erode,
+            textline_mask_tot_ea = cv2.erode(textline_mask_tot_ea, kernel=KERNEL, iterations=2)
+            args = (textline_mask_tot_ea,
                     textline_confidence,
                     num_col_classifier,
                     slope_deskew,
