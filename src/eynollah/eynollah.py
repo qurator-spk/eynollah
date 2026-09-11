@@ -860,8 +860,8 @@ class Eynollah:
                         break
                 if not box_found:
                     dists_tr_from_box = np.linalg.norm(c_boxes - np.array([[cy[ii]], [cx[ii]]]), axis=0)
-                    pcontained_in_box = ((boxes[:, 2] <= cy[ii]) & (cy[ii] < boxes[:, 3]) &
-                                         (boxes[:, 0] <= cx[ii]) & (cx[ii] < boxes[:, 1]))
+                    pcontained_in_box = ((boxes[:, 2] <= cy[ii]) & (cy[ii] <= boxes[:, 3]) &
+                                         (boxes[:, 0] <= cx[ii]) & (cx[ii] <= boxes[:, 1]))
                     assert pcontained_in_box.any(), (ii, cx[ii], cy[ii])
                     ind_min = np.argmin(np.ma.masked_array(dists_tr_from_box, ~pcontained_in_box))
                     arg_text_con[ii] = ind_min
