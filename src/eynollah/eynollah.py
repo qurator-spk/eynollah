@@ -576,7 +576,7 @@ class Eynollah:
             textline_confidence: np.ndarray,
             slope_deskew: float
     ):
-        textlines_cont = return_contours_of_class(textline_mask_tot, 1, 1e-4)
+        textlines_cont = return_contours_of_class(textline_mask_tot, 1, 1e-5)
         textlines_conf = get_region_confidences(textlines_cont, textline_confidence)
         textlines_cx, textlines_cy = find_center_of_contours(textlines_cont)
         textlines_w_h = [cv2.boundingRect(polygon)[2:] for polygon in textlines_cont]
