@@ -1,4 +1,5 @@
-from typing import Sequence, Union
+from __future__ import annotations
+from collections.abc import Sequence
 from numbers import Number
 from functools import partial
 import itertools
@@ -34,38 +35,17 @@ def get_text_region_boxes_by_given_contours(contours):
     return [cv2.boundingRect(contour)
             for contour in contours]
 
-def filter_contours_area_of_image(image, contours, hierarchy, max_area=1.0, min_area=0.0, dilate=0):
+def filter_contours_area_of_image(image, contours, hierarchy, max_area=1.0, min_area=0.0):
     found_polygons_early = []
     for jv, contour in enumerate(contours):
         if len(contour) < 3:  # A polygon cannot have less than 3 points
             continue
 
-        polygon = contour2polygon(contour, dilate=dilate)
-        area = polygon.area
+        area = cv2.contourArea(contour)
         if (area >= min_area * np.prod(image.shape[:2]) and
             area <= max_area * np.prod(image.shape[:2]) and
             hierarchy[0][jv][3] == -1):
-            found_polygons_early.append(polygon2contour(polygon))
-    return found_polygons_early
-
-def filter_contours_area_of_image_tables(image, contours, hierarchy, max_area=1.0, min_area=0.0, dilate=0):
-    found_polygons_early = []
-    for jv, contour in enumerate(contours):
-        if len(contour) < 3:  # A polygon cannot have less than 3 points
-            continue
-
-        polygon = contour2polygon(contour, dilate=dilate)
-        # area = cv2.contourArea(contour)
-        area = polygon.area
-        ##print(np.prod(thresh.shape[:2]))
-        # Check that polygon has area greater than minimal area
-        # print(hierarchy[0][jv][3],hierarchy )
-        if (area >= min_area * image.size and
-            area <= max_area * image.size and
-            # hierarchy[0][jv][3]==-1
-            True):
-            # print(contour[0][0][1])
-            found_polygons_early.append(polygon2contour(polygon))
+            found_polygons_early.append(contour)
     return found_polygons_early
 
 def find_center_of_contours(contours):
@@ -106,19 +86,66 @@ def return_parent_contours(contours, hierarchy):
                        if hierarchy[0][i][3] == -1]
     return contours_parent
 
-def return_contours_of_interested_region(region_pre_p, label, min_area=0.0002, dilate=0):
-    if region_pre_p.ndim == 3:
-        mask = (region_pre_p[:, :, 0] == label).astype(np.uint8)
-    else:
-        mask = (region_pre_p[:, :] == label).astype(np.uint8)
+def return_contours_of_class(region_pre_p, label, min_area=0.0, holes=False):
+    mask = (region_pre_p == label).astype(np.uint8)
+    if holes:
+        min_area *= region_pre_p.size
+        contours, hierarchy = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        if not len(contours):
+            return []
+        areas = [cv2.contourArea(contour) for contour in contours]
+        parents = []
+        for contour, area, relations in zip(contours, areas, hierarchy[0]):
+            if len(contour) < 3:  # A polygon cannot have less than 3 points
+                continue
+            if relations[3] == -1: # parent
+                if area < min_area:
+                    continue
+                children = []
+                child = relations[2] # next_child
+                while child >= 0:
+                    relations = hierarchy[0][child]
+                    area -= areas[child]
+                    if len(contours[child]) >= 4 and areas[child] >= min_area:
+                        children.append(contours[child])
+                    child = relations[0] # next
+                if area < min_area:
+                    continue
+                parents.append((contour, children))
+        # open holes
+        contours = []
+        for contour, children in parents:
+            if len(children):
+                poly = contour2polygon(contour)
+                interiors = [contour2polygon(interior) for interior in children]
+                # from shapely.plotting import plot_polygon
+                # from matplotlib import pyplot as plt
+                # plt.figure("child contours")
+                # plt.subplot(2, 2, 1, title="original")
+                # plot_polygon(Polygon(shell=poly, holes=interiors))
+                new_interior = join_polygons(interiors)
+                # plt.subplot(2, 2, 2, title="new_interior")
+                # plot_polygon(poly)
+                # plot_polygon(new_interior, color='r')
+                bridge = bridge_polygons(poly.exterior, orient(new_interior, -1))
+                # plt.subplot(2, 2, 3, title="bridge")
+                # plot_polygon(poly)
+                # plot_polygon(bridge)
+                poly = poly.difference(bridge).difference(new_interior)
+                # plt.subplot(2, 2, 4, title="new")
+                # plot_polygon(poly)
+                # plt.show()
+                contour = polygon2contour(ensure_polygon(poly))
+            contours.append(contour)
+        return contours
 
-    contours_imgs, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
-    contours_imgs = filter_contours_area_of_image_tables(mask, contours_imgs, hierarchy,
-                                                         max_area=1,
-                                                         min_area=min_area,
-                                                         dilate=dilate)
-    return contours_imgs
+    # filter_contours_area_of_image also allows non-children only,
+    # so instead of a tree we can retrieve only the external contours
+    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = filter_contours_area_of_image(mask, contours, hierarchy,
+                                             max_area=1.0,
+                                             min_area=min_area)
+    return contours
 
 def get_region_confidences(cnts, confidence_matrix):
     if not len(cnts):
@@ -132,175 +159,39 @@ def get_region_confidences(cnts, confidence_matrix):
     for cnt in cnts:
         cnt_mask = np.zeros_like(confidence_matrix)
         cnt_mask = cv2.fillPoly(cnt_mask, pts=[cnt // 6], color=1.0)
-        confs.append(np.sum(confidence_matrix * cnt_mask) / np.sum(cnt_mask))
+        cnt_area = np.sum(cnt_mask)
+        if cnt_area:
+            cnt_conf = np.sum(confidence_matrix * cnt_mask) / cnt_area
+        else:
+            cnt_conf = 0.
+        confs.append(cnt_conf)
     return confs
 
-def return_contours_of_interested_textline(region_pre_p, label, min_area=0.0):
-    cnts_images = (region_pre_p == label).astype(np.uint8)
-    contours_imgs, hierarchy = cv2.findContours(cnts_images, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    contours_imgs = return_parent_contours(contours_imgs, hierarchy)
-    contours_imgs = filter_contours_area_of_image_tables(
-        cnts_images, contours_imgs, hierarchy, max_area=1, min_area=min_area)
-    return contours_imgs
-
-def return_contours_of_image(image):
-    if len(image.shape) == 2:
-        image = image.astype(np.uint8)
-        imgray = image
+def rotate_contours(
+        contours: np.ndarray | Sequence[np.ndarray],
+        slope_deskew: float,
+        shape_o: tuple[int, int],
+) -> list[np.ndarray]:
+    # rotate_image() does not enlarge canvas,
+    # so our calculation must compensate
+    h_o, w_o = shape_o
+    M = cv2.getRotationMatrix2D((0.5 * w_o, 0.5 * h_o), -slope_deskew, 1.0)[:2, :2]
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+    off = np.array([[0.5 * (w_o * cos + h_o * sin - w_o),
+                     0.5 * (w_o * sin + h_o * cos - h_o)]],
+                   dtype=int)
+    # no idea why this is necessary...
+    if slope_deskew > 0:
+        off[0, 1] = -off[0, 1]
     else:
-        image = image.astype(np.uint8)
-        imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(imgray, 0, 255, 0)
-    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    return contours, hierarchy
-
-def dilate_textline_contours(all_found_textline_polygons):
-    from . import ensure_array
-    return [ensure_array(
-        [polygon2contour(contour2polygon(contour, dilate=6))
-         for contour in region])
-            for region in all_found_textline_polygons]
-
-def dilate_textregion_contours(all_found_textregion_polygons):
-    from . import ensure_array
-    return ensure_array(
-        [polygon2contour(contour2polygon(contour, dilate=6))
-         for contour in all_found_textregion_polygons])
-
-def match_deskewed_contours(slope_deskew, contours_o, contours_d, shape_o, shape_d):
-    from . import ensure_array
-
-    cntareas_o = np.array([cv2.contourArea(contour) for contour in contours_o])
-    cntareas_d = np.array([cv2.contourArea(contour) for contour in contours_d])
-    cntareas_o = cntareas_o / float(np.prod(shape_o[:2]))
-    cntareas_d = cntareas_d / float(np.prod(shape_d[:2]))
-
-    contours_o = ensure_array(contours_o)
-    contours_d = ensure_array(contours_d)
-
-    sort_o = np.argsort(cntareas_o)
-    sort_d = np.argsort(cntareas_d)
-    contours_o = contours_o[sort_o]
-    contours_d = contours_d[sort_d]
-    cntareas_o = cntareas_o[sort_o]
-    cntareas_d = cntareas_d[sort_d]
-
-    centers_o = np.stack(find_center_of_contours(contours_o)) # [2, N]
-    centers_d = np.stack(find_center_of_contours(contours_d)) # [2, N]
-    center0_o = centers_o[:, -1:] # [2, 1]
-    center0_d = centers_d[:, -1:] # [2, 1]
-
-    # find the largest among the largest 5 deskewed contours
-    # that is also closest to the largest original contour
-    last5_centers_d = centers_d[:, -5:]
-    dists_d = np.linalg.norm(center0_o - last5_centers_d, axis=0)
-    ind_largest = len(contours_d) - last5_centers_d.shape[1] + np.argmin(dists_d)
-    center0_d[:, 0] = centers_d[:, ind_largest]
-
-    # order new contours the same way as the undeskewed contours
-    # (by calculating the offset of the largest contours, respectively,
-    #  of the new and undeskewed image; then for each contour,
-    #  finding the closest new contour, with proximity calculated
-    #  as distance of their centers modulo offset vector)
-    h_o, w_o = shape_o[:2]
-    center_o = (w_o // 2, h_o // 2)
-    M = cv2.getRotationMatrix2D(center_o, slope_deskew, 1.0)
-    M_22 = np.array(M)[:2, :2]
-    center0_o = np.dot(M_22, center0_o) # [2, 1]
-    offset = center0_o - center0_d # [2, 1]
-
-    centers_o = np.dot(M_22, centers_o) - offset # [2,N]
-    # add dimension for area (so only contours of similar size will be considered close)
-    centers_o = np.append(centers_o, cntareas_o[np.newaxis], axis=0)
-    centers_d = np.append(centers_d, cntareas_d[np.newaxis], axis=0)
-
-    dists = np.zeros((len(contours_o), len(contours_d)))
-    for i in range(len(contours_o)):
-        dists[i] = np.linalg.norm(centers_o[:, i: i + 1] - centers_d, axis=0)
-    corresp = np.zeros(dists.shape, dtype=bool)
-    # keep searching next-closest until at least one correspondence on each side
-    while not np.all(corresp.sum(axis=1)) or not np.all(corresp.sum(axis=0)):
-        idx = np.nanargmin(dists)
-        i, j = np.unravel_index(idx, dists.shape)
-        dists[i, j] = np.nan
-        corresp[i, j] = True
-    # print("original/deskewed adjacency", corresp.nonzero())
-    contours_d_ordered = contours_d[np.argmax(corresp, axis=1)]
-    # from matplotlib import pyplot as plt
-    # img1 = np.zeros(shape_d[:2], dtype=np.uint8)
-    # for i in range(len(contours_o)):
-    #     cv2.fillPoly(img1, pts=[contours_d_ordered[i]], color=i + 1)
-    # plt.subplot(1, 4, 1, title="direct corresp contours")
-    # plt.imshow(img1)
-    # img2 = np.zeros(shape_d[:2], dtype=np.uint8)
-    # join deskewed regions mapping to single original ones
-    for i in range(len(contours_o)):
-        if np.count_nonzero(corresp[i]) > 1:
-            indices = np.flatnonzero(corresp[i])
-            # print("joining", indices)
-            polygons_d = [contour2polygon(contour)
-                          for contour in contours_d[indices]]
-            contour_d_joined = polygon2contour(join_polygons(polygons_d))
-            contours_d_ordered[i] = contour_d_joined
-    #         cv2.fillPoly(img2, pts=[contour_d_joined], color=i + 1)
-    # plt.subplot(1, 4, 2, title="joined contours")
-    # plt.imshow(img2)
-    # img3 = np.zeros(shape_d[:2], dtype=np.uint8)
-    # split deskewed regions mapping to multiple original ones
-    def deskew(polygon):
-        polygon = affinity.rotate(polygon, -slope_deskew, origin=center_o)
-        #polygon = affinity.translate(polygon, *offset.squeeze())
-        return polygon
-    for j in range(len(contours_d)):
-        if np.count_nonzero(corresp[:, j]) > 1:
-            indices = np.flatnonzero(corresp[:, j])
-            # print("splitting along", indices)
-            polygons_o = [deskew(contour2polygon(contour))
-                          for contour in contours_o[indices]]
-            polygon_d = contour2polygon(contours_d[j])
-            polygons_d = [make_intersection(polygon_d, polygon)
-                          for polygon in polygons_o]
-            # ignore where there is no actual overlap
-            indices = indices[np.flatnonzero(polygons_d)]
-            contours_d_joined = [polygon2contour(polygon_d)
-                                 for polygon_d in polygons_d
-                                 if polygon_d]
-            contours_d_ordered[indices] = contours_d_joined
-    #         cv2.fillPoly(img3, pts=contours_d_joined, color=j + 1)
-    # plt.subplot(1, 4, 3, title="split contours")
-    # plt.imshow(img3)
-    # img4 = np.zeros(shape_d[:2], dtype=np.uint8)
-    # for i in range(len(contours_o)):
-    #     cv2.fillPoly(img4, pts=[contours_d_ordered[i]], color=i + 1)
-    # plt.subplot(1, 4, 4, title="result contours")
-    # plt.imshow(img4)
-    # plt.show()
-    # from matplotlib import patches as ptchs
-    # plt.subplot(1, 2, 1, title="undeskewed")
-    # plt.imshow(mask_o)
-    # centers_o = np.stack(find_center_of_contours(contours_o)) # [2, N]
-    # for i in range(len(contours_o)):
-    #     cnt = contours_o[i]
-    #     ctr = centers_o[:, i]
-    #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='blue'))
-    #     plt.gca().scatter(ctr[0], ctr[1], 20, c='blue', marker='x')
-    #     plt.gca().text(ctr[0], ctr[1], str(i), c='blue')
-    # plt.subplot(1, 2, 2, title="deskewed")
-    # plt.imshow(mask_d)
-    # centers_d = np.stack(find_center_of_contours(contours_d_ordered)) # [2, N]
-    # for i in range(len(contours_o)):
-    #     cnt = contours_o[i]
-    #     cnt = polygon2contour(deskew(contour2polygon(cnt)))
-    #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='blue'))
-    # for i in range(len(contours_d_ordered)):
-    #     cnt = contours_d_ordered[i]
-    #     ctr = centers_d[:, i]
-    #     plt.gca().add_patch(ptchs.Polygon(cnt[:, 0], closed=False, fill=False, color='red'))
-    #     plt.gca().scatter(ctr[0], ctr[1], 20, c='red', marker='x')
-    #     plt.gca().text(ctr[0], ctr[1], str(i), c='red')
-    # plt.show()
-    invsort_o = np.argsort(sort_o)
-    return contours_d_ordered[invsort_o]
+        off[0, 0] = -off[0, 0]
+    # apply transformation
+    contours = [np.dot(cont, M).astype(int) - off
+                for cont in contours]
+    # clip to (unchanged) canvas
+    return [np.maximum(0, np.minimum([w_o, h_o], cont))
+            for cont in contours]
 
 def estimate_skew_contours(contours):
     if not len(contours):
@@ -350,10 +241,33 @@ def estimate_skew_contours(contours):
     # print("mean angle", angle)
     return angle
 
-def contour2polygon(contour: Union[np.ndarray, Sequence[Sequence[Sequence[Number]]]], dilate=0):
+def contour2polygon(
+        contour: np.ndarray | Sequence[Sequence[Sequence[Number]]],
+        dilate: int = 0,
+        holes: bool = False,
+):
     polygon = Polygon([point[0] for point in contour])
     if dilate:
         polygon = polygon.buffer(dilate)
+        if holes and len(polygon.interiors):
+            # from shapely.plotting import plot_polygon
+            # from matplotlib import pyplot as plt
+            # plt.figure("dilation interiors")
+            # plt.subplot(2, 2, 1, title="original")
+            # plot_polygon(polygon)
+            new_interior = join_polygons(Polygon(poly) for poly in polygon.interiors)
+            # plt.subplot(2, 2, 2, title="new_interior")
+            # plot_polygon(polygon)
+            # plot_polygon(new_interior, color='r')
+            bridge = bridge_polygons(polygon.exterior, new_interior)
+            # plt.subplot(2, 2, 3, title="bridge")
+            # plot_polygon(polygon)
+            # plot_polygon(bridge, color='r')
+            polygon = polygon.difference(bridge).difference(new_interior)
+            # plt.subplot(2, 2, 4, title="new")
+            # plot_polygon(polygon)
+            # plt.show()
+        polygon = ensure_polygon(polygon)
     return ensure_polygon(make_valid(polygon))
 
 def polygon2contour(polygon: Polygon) -> np.ndarray:
@@ -423,7 +337,8 @@ def join_polygons(polygons: Sequence[Polygon], scale=20) -> Polygon:
                         [poly.geoms
                          if poly.geom_type in ['MultiPolygon', 'GeometryCollection']
                          else [poly]
-                         for poly in polygons])]
+                         for poly in polygons])
+                if not poly.is_empty]
     npoly = len(polygons)
     if npoly == 1:
         return polygons[0]
@@ -432,8 +347,7 @@ def join_polygons(polygons: Sequence[Polygon], scale=20) -> Polygon:
     dists = np.zeros((npoly, npoly), dtype=float)
     for i, j in pairs:
         dist = polygons[i].distance(polygons[j])
-        if dist < 1e-5:
-            dist = 1e-5 # if pair merely touches, we still need to get an edge
+        dist = max(dist, 1e-5) # if pair merely touches, we still need to get an edge
         dists[i, j] = dist
         dists[j, i] = dist
     dists = minimum_spanning_tree(dists, overwrite=True)
@@ -441,9 +355,7 @@ def join_polygons(polygons: Sequence[Polygon], scale=20) -> Polygon:
     for prevp, nextp in zip(*dists.nonzero()):
         prevp = polygons[prevp]
         nextp = polygons[nextp]
-        nearest = nearest_points(prevp, nextp)
-        bridgep = orient(LineString(nearest).buffer(max(1, scale/5), resolution=1), -1)
-        polygons.append(bridgep)
+        polygons.append(bridge_polygons(prevp, nextp, max(1, scale/5)))
     jointp = unary_union(polygons)
     if jointp.geom_type == 'MultiPolygon':
         jointp = unary_union(jointp.geoms)
@@ -456,3 +368,9 @@ def join_polygons(polygons: Sequence[Polygon], scale=20) -> Polygon:
         jointp2 = make_valid(jointp2)
     assert jointp2.geom_type == 'Polygon', jointp2.wkt
     return jointp2
+
+def bridge_polygons(poly1, poly2, strength=1):
+    nearest = nearest_points(poly1, poly2)
+    bridgep = orient(LineString(nearest).buffer(strength, resolution=1), -1)
+    return bridgep
+

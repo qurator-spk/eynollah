@@ -1,5 +1,5 @@
+from __future__ import annotations
 from pathlib import Path
-from typing import Set, Tuple
 import click
 
 from eynollah.model_zoo.default_specs import MODELS_VERSION
@@ -46,8 +46,8 @@ def package(
 
     SRC should contain a directory "models_eynollah" containing all the models.
     """
-    mkdirs: Set[Path] = set([])
-    copies: Set[Tuple[Path, Path]] = set([])
+    mkdirs: set[Path] = set()
+    copies: set[tuple[Path, Path]] = set()
     for spec in ctx.obj.model_zoo.specs.specs:
         # skip these as they are dependent on the ocr model
         if spec.category in ('num_to_char', 'characters'):

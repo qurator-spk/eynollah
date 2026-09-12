@@ -1,6 +1,11 @@
 def test_utils_import():
     import eynollah.utils
     import eynollah.utils.contour
-    import eynollah.utils.drop_capitals
+    import eynollah.utils.separate_lines
+    import eynollah.utils.marginals
+    import eynollah.utils.tiling
     import eynollah.utils.is_nan
     import eynollah.utils.rotate
+    import eynollah.utils.resize
+    import eynollah.utils.shm
+    import eynollah.utils.xml

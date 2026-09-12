@@ -1,5 +1,7 @@
+from __future__ import annotations
 from contextlib import ExitStack
-from typing import List, Dict, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Union
 import logging
 import logging.handlers
 import multiprocessing as mp
@@ -8,7 +10,7 @@ import numpy as np
 from .utils.shm import share_ndarray, ndarray_shared
 
 QSIZE = 200
-ArrayT = Union[np.ndarray, Tuple[np.ndarray]]
+ArrayT = Union[np.ndarray, tuple[np.ndarray]]
 
 
 class Predictor(mp.context.SpawnProcess):
@@ -41,10 +43,10 @@ class Predictor(mp.context.SpawnProcess):
     def input_shape(self):
         return self({})
 
-    def predict(self, data: Union[Sequence[ArrayT], ArrayT], verbose=0) -> Union[Sequence[ArrayT], ArrayT]:
+    def predict(self, data: Sequence[ArrayT] | ArrayT, verbose=0) -> Sequence[ArrayT] | ArrayT:
         return self(data)
 
-    def __call__(self, data: Union[Sequence[ArrayT], ArrayT, Dict]) -> Union[ArrayT, Tuple]:
+    def __call__(self, data: Sequence[ArrayT] | ArrayT | dict) -> ArrayT | tuple:
         # unusable as per python/cpython#79967
         #with self.jobid.get_lock():
         # would work, but not public:
@@ -184,8 +186,8 @@ class Predictor(mp.context.SpawnProcess):
                             else:
                                 data.append(stack.enter_context(ndarray_shared(shared_data)))
                         if multi_input:
-                            data = list(np.concatenate(data0)
-                                        for data0 in zip(*data))
+                            data = [np.concatenate(data0)
+                                    for data0 in zip(*data)]
                         else:
                             data = np.concatenate(data)
                         #result = self.model.predict(data, verbose=0)
@@ -233,11 +235,11 @@ class Predictor(mp.context.SpawnProcess):
     def load_model(self, *load_args, **load_kwargs):
         assert len(load_args)
         self.name = '_'.join(list(load_args[:1]) +
-                             list(load_kwargs[key] for key in load_kwargs
-                                  if key == 'model_variant') +
-                             list(key for key in load_kwargs
-                                  if key in ['patched', 'resized']
-                                  and load_kwargs[key]))
+                             [load_kwargs[key] for key in load_kwargs
+                              if key == 'model_variant'] +
+                             [key for key in load_kwargs
+                              if key in ['patched', 'resized']
+                              and load_kwargs[key]])
         self.load_args = load_args
         self.load_kwargs = load_kwargs
         self.start() # call run() in subprocess

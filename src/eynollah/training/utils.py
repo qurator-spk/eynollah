@@ -772,8 +772,8 @@ def preprocess_imgs(config,
     # override keys from call
     config.update(kwargs)
 
-    imgs_list = list(sorted(os.listdir(dir_img)))
-    labs_list = list(sorted(os.listdir(dir_lab)))
+    imgs_list = sorted(os.listdir(dir_img))
+    labs_list = sorted(os.listdir(dir_lab))
 
     seed = random.getstate()
     random.shuffle(imgs_list)
@@ -801,11 +801,11 @@ def preprocess_imgs(config,
                 yield from preprocess_img_ocr(img, img_name, lab, **config)
                 continue
             else:
-                for img, lab in preprocess_img(img, img_name, lab, **config):
-                    yield (resize_image(img,
+                for img0, lab0 in preprocess_img(img, img_name, lab, **config):
+                    yield (resize_image(img0,
                                         config['input_height'],
                                         config['input_width']),
-                           resize_image(lab,
+                           resize_image(lab0,
                                         config['input_height'],
                                         config['input_width']))
         except:
