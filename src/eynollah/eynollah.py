@@ -662,8 +662,8 @@ class Eynollah:
                 line.conf = conf
         self.logger.debug("exit get_slopes_and_deskew_new_curved")
 
-    def textline_contours(self, img, use_patches):
-        self.logger.debug('enter textline_contours')
+    def get_textlines(self, img, use_patches):
+        self.logger.debug('enter get_textlines')
 
         if (self.tables or
             self.reading_order_machine_based or
@@ -683,7 +683,7 @@ class Eynollah:
 
         #prediction_textline_longshot = do_prediction(img, self.model_zoo.get("textline"), patches=False)
 
-        self.logger.debug('exit textline_contours')
+        self.logger.debug('exit get_textlines')
         # suppress artificial boundary label
         result = (prediction_textline == 1).astype(np.uint8)
         #, (prediction_textline_longshot==1).astype(np.uint8)
@@ -1004,7 +1004,7 @@ class Eynollah:
         return num_col_classifier, num_column_is_classified
 
     def run_textline(self, image_page):
-        textline_mask_tot_ea, textline_conf = self.textline_contours(image_page, True)
+        textline_mask_tot_ea, textline_conf = self.get_textlines(image_page, True)
         #textline_mask_tot_ea = textline_mask_tot_ea.astype(np.int16)
         return textline_mask_tot_ea, textline_conf
 
