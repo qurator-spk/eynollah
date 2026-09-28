@@ -197,8 +197,8 @@ def estimate_skew_contours(contours):
     if not len(contours):
         raise ValueError("not enough contours")
     _, size_in, angle_in = zip(*map(cv2.minAreaRect, contours))
-    # angle_in ranges [-90, 0)
     w_in, h_in = np.array(size_in).T
+    # angle_in ranges [-90, 0)
     angle_in = np.array(angle_in)
     # 1. depending on how contours are oriented,
     # and where they start, minAreaRect can present
@@ -211,26 +211,41 @@ def estimate_skew_contours(contours):
     # angle_in now ranges [-90, 90)
     # 2. now we look at aspect ratio: too short
     # textlines do not yield reliable angles
-    usable = w_in > 2.5 * h_in
+    usable = w_in > 4.0 * h_in
     # print("usable aspect", w_in / h_in, usable, angle_in[usable])
     if not np.any(usable):
         raise ValueError("not enough contours with high aspect ratio")
-    # 3. next, get rid of outliers regarding length
-    w_avg = np.median(w_in[usable])
-    w_dev = w_in[usable] / w_avg
-    usable[usable] = (0.67 <= w_dev) & (w_dev <= 1.33)
+    # 3. next, get rid of outliers regarding length/height
+    #    (but pick the "better" one in case of a tie)
+    if np.count_nonzero(usable) == 2:
+        # let's assume bigger is better
+        usable[usable][np.argmin(w_in[usable] * h_in[usable])] = False
+    else:
+        w_avg = np.median(w_in[usable])
+        w_dev = w_in[usable] / w_avg
+        h_avg = np.median(h_in[usable])
+        h_dev = h_in[usable] / h_avg
+        usable[usable] = ((0.67 <= w_dev) & (w_dev <= 1.5) &
+                          (0.8 <= h_dev) & (h_dev <= 1.2))
     # print("usable length", w_in[usable] / w_avg, usable, angle_in[usable])
     if not np.any(usable):
         raise ValueError("not enough contours with consistent length")
     # 4. there is no way to distinguish between +90 and -89.9 here,
     # so map to [0,180] when calculating averages, then map back to [-90,90]
     # (we don't want -90 and +89 to average zero, or +1 and +179 to average 90)
-    angles = angle_in[usable]
+    # angles = angle_in[usable]
+    # angle from minAreaRect is not as reliable as fitLine...
+    angles = [cv2.fitLine(cont, cv2.DIST_L2, 0, 0.01, 0.01)[:, 0][:2][::-1]
+              for cont, use in zip(contours, usable)
+              if use]
+    angles = np.degrees(np.arctan2(*zip(*angles)))
+    angle_in[usable] = angles
     if transposed := np.median(np.abs(angles)) >= 45:
         angles %= 180
     angle_avg = np.median(angles)
     angle_dev = np.abs(angles - angle_avg)
-    usable[usable] = (angle_dev <= 2 * np.median(angle_dev))
+    angle_max = 1.0
+    usable[usable] = (angle_dev <= angle_max)
     # print("usable angle", usable, angle_in[usable])
     if not np.any(usable):
         raise ValueError("not enough contours with consistent angle")
