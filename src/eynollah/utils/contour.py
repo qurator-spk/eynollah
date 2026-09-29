@@ -196,6 +196,9 @@ def rotate_contours(
 def estimate_skew_contours(contours):
     if not len(contours):
         raise ValueError("not enough contours")
+    box_in = np.array([cv2.boundingRect(cont) for cont in contours])
+    off_in = box_in[:, :2]
+    shape_in = box_in[:, 2:][:, ::-1]
     _, size_in, angle_in = zip(*map(cv2.minAreaRect, contours))
     w_in, h_in = np.array(size_in).T
     # angle_in ranges [-90, 0)
@@ -235,9 +238,17 @@ def estimate_skew_contours(contours):
     # (we don't want -90 and +89 to average zero, or +1 and +179 to average 90)
     # angles = angle_in[usable]
     # angle from minAreaRect is not as reliable as fitLine...
-    angles = [cv2.fitLine(cont, cv2.DIST_L2, 0, 0.01, 0.01)[:, 0][:2][::-1]
-              for cont, use in zip(contours, usable)
-              if use]
+    angles = [
+        cv2.fitLine(
+            np.argwhere(
+                cv2.fillPoly(
+                    np.zeros(shape, bool),
+                    pts=[cont - off],
+                    color=True))[:, ::-1],
+            cv2.DIST_L2, 0, 0.01, 0.01)[:, 0][:2][::-1]
+        for cont, off, shape, use in zip(contours, off_in, shape_in, usable)
+        if use
+    ]
     angles = np.degrees(np.arctan2(*zip(*angles)))
     angle_in[usable] = angles
     if transposed := np.median(np.abs(angles)) >= 45:
