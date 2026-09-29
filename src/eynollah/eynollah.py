@@ -1123,16 +1123,23 @@ class Eynollah:
 
     def get_boxes_order(
             self,
-            separator_mask,
+            text_regions_p,
+            regions_without_separators,
             num_col_classifier,
             erosion_hurts,
-            regions_without_separators,
             contours_h=[], # noqa: B006 (not modified)
+            label_seps_fl=6,
     ):
+        separator_mask = text_regions_p == label_seps_fl
+        nonsep_mask = (text_regions_p != label_seps_fl) & (text_regions_p > 0)
+
+        # nonsep_mask: images included (to avoid splitters cutting through)
         matrix_of_seps_ch, splitter_y_new = find_number_of_columns_in_document(
-            regions_without_separators, separator_mask, num_col_classifier, self.tables,
+            nonsep_mask, separator_mask, num_col_classifier, self.tables,
             contours_h=contours_h)
 
+        # regions_without_separators: images not included (to allow column boxes
+        # cutting through)
         boxes, _ = return_boxes_of_images_by_order_of_reading_new(
             splitter_y_new, regions_without_separators,
             separator_mask, matrix_of_seps_ch,
@@ -1346,7 +1353,7 @@ class Eynollah:
             marginals_r_cont,
             tables_cont,
             images_cont,
-            separator_mask,
+            text_regions_p,
             regions_without_separators,
             num_col_classifier,
             erosion_hurts,
@@ -1354,7 +1361,7 @@ class Eynollah:
     ):
         if np.abs(skew) >= SLOPE_THRESHOLD:
             # rotate masks and contours
-            shape = separator_mask.shape
+            shape = text_regions_p.shape
             textregions_cont = rotate_contours(textregions_cont, skew, shape)
             textregions_h_cont = rotate_contours(textregions_h_cont, skew, shape)
             drop_caps_cont = rotate_contours(drop_caps_cont, skew, shape)
@@ -1362,18 +1369,18 @@ class Eynollah:
             marginals_r_cont = rotate_contours(marginals_r_cont, skew, shape)
             tables_cont = rotate_contours(tables_cont, skew, shape)
             images_cont = rotate_contours(images_cont, skew, shape)
-            separator_mask = rotate_image(separator_mask, skew)
+            text_regions_p = rotate_image(text_regions_p, skew)
             regions_without_separators = rotate_image(regions_without_separators, skew)
 
         if not erosion_hurts:
             regions_without_separators = cv2.erode(regions_without_separators, KERNEL, iterations=2)
 
-        boxes = self.get_boxes_order(separator_mask,
+        boxes = self.get_boxes_order(text_regions_p,
+                                     regions_without_separators,
                                      num_col_classifier,
                                      erosion_hurts,
-                                     regions_without_separators,
                                      contours_h=textregions_h_cont)
-        order_text = self.get_order_of_regions(
+        order = self.get_order_of_regions(
             textregions_cont,
             textregions_h_cont,
             drop_caps_cont,
@@ -1382,7 +1389,7 @@ class Eynollah:
             tables_cont,
             images_cont,
             boxes)
-        return order_text
+        return order
 
     def filter_small_regions(
             self,
@@ -1781,7 +1788,6 @@ class Eynollah:
         images_conf = get_region_confidences(images_cont, regions_confidence)
         images = [Region(cont, conf=conf)
                   for cont, conf in zip(images_cont, images_conf)]
-        separator_mask = (text_regions_p == label_seps_fl).astype(np.uint8)
 
         textregions_cont = return_contours_of_class(text_regions_p, label_text, MIN_AREA_REGION)
         textregions_conf = get_region_confidences(textregions_cont, regions_confidence)
@@ -1870,7 +1876,7 @@ class Eynollah:
                 contours(marginals_right),
                 contours(tables),
                 contours(images),
-                separator_mask,
+                text_regions_p,
                 regions_without_separators,
                 num_col_classifier,
                 erosion_hurts,
