@@ -18,7 +18,7 @@ import click
 @click.option(
     "--dir_in_bin",
     "-dib",
-    help=("directory of binarized images (in addition to --dir_in for RGB images; filename stems must match the RGB image files, with '.png'. \n                                                                          Perform prediction using both RGB and binary images. (This may improve results for certain document images.)"),
+    help="directory of binarized images (in addition to --dir_in for RGB images; filename stems must match the RGB image files, with '.png'). \n                                                                          Perform prediction using both RGB and binary images. This may improve results for certain document images.",
     type=click.Path(exists=True, file_okay=False),
 )
 @click.option(
