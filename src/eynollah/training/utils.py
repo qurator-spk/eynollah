@@ -49,7 +49,7 @@ def add_salt_and_pepper_noise(img, salt_prob, pepper_prob):
     Add salt-and-pepper noise to an image.
     
     Parameters:
-        image: ndarray
+        img ndarray
             Input image.
         salt_prob: float
             Probability of salt noise.
