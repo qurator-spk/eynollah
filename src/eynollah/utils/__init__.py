@@ -814,12 +814,7 @@ def order_of_regions(
     for group in groups:
         group = np.array(group)
         xorder = np.argsort(cx[group])[::-1 if r2l else 1]
-        group = group[xorder]
-        for j in np.flatnonzero(types[group] == "rmar"):
-            # right marginalia must be sorted r2l locally
-            if j:
-                group[j - 1], group[j] = group[j], group[j - 1]
-        rorder.extend(group)
+        rorder.extend(group[xorder])
 
     assert len(set(rorder)) == total
 
