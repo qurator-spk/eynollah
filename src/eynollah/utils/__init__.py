@@ -729,7 +729,7 @@ def order_of_regions(
       * contours_lmar: the left marginalia region contours to be sorted
       * contours_rmar: the right marginalia region contours to be sorted
       * contours_tabs: the table region contours to be sorted
-      * contours_igms: the image region contours to be sorted
+      * contours_imgs: the image region contours to be sorted
 
     Keyword Args:
       * r2l: whether contours within groups should be ordered
@@ -1183,7 +1183,7 @@ def return_boxes_of_images_by_order_of_reading_new(
              (needed to find per-part columns and to combine separators if possible)
        * sep_mask: binary separator region mask
              (needed to elongate separators if possible)
-       * matrix_of_seps: type and coordinates of horizontal and vertical separators,
+       * matrix_of_seps_ch: type and coordinates of horizontal and vertical separators,
              as well as headings
        * num_col_classifier: predicted number of columns for the entire page
        * erosion_hurts: whether region masks have already been eroded
