@@ -23,30 +23,30 @@ Pass any of the following options:
 ## Processing options
 The following options can be used to further control layout analysis:
 
-| **option**        | **description**                                                                |
-|-------------------|:-------------------------------------------------------------------------------|
-| `-fl`             | full layout analysis including all steps and segmentation classes (recommended)|
-| `-tab`            | apply table detection                                                          |
-| `-ae`             | apply enhancement (the resulting image is saved to the output directory)       |
-| `-as`             | apply scaling                                                                  |
-| `-cl`             | apply contour detection for curved text lines, deskewing regions independently |
-| `-ib`             | apply binarization (the resulting image is saved to the output directory)      |
-| `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`) |
-| `-ho`             | ignore headers for reading order dectection                                    |
-| `-si <directory>` | save image regions detected to this directory                                  |
-| `-sd <directory>` | save deskewed image to this directory                                          |
-| `-sl <directory>` | save layout prediction as plot to this directory                               |
-| `-sp <directory>` | save cropped page image to this directory                                      |
-| `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory               |
-| `-thart`          | confidence threshold of artifical boundary class during textline detection     |
-| `-tharl`          | confidence threshold of artifical boundary class during region detection       |
-| `-ncu`            | upper limit of columns in document image                                       |
-| `-ncl`            | lower limit of columns in document image                                       |
-| `-slro`           | skip layout detection and reading order                                        |
-| `-romb`           | apply machine based reading order detection                                    |
-| `-ipe`            | ignore page extraction                                                         |
-| `-j`              | number of CPU jobs to run parallel (useful with -di)                           |
-| `-H`              | when to halt if some jobs fail, e.g. `0.1` for 10% or `3` for 3 pages          |
+| **option**        | **description**                                                                 |
+|-------------------|:--------------------------------------------------------------------------------|
+| `-fl`             | full layout analysis including all steps and segmentation classes (recommended) |
+| `-tab`            | apply table detection                                                           |
+| `-ae`             | apply enhancement (the resulting image is saved to the output directory)        |
+| `-as`             | apply scaling                                                                   |
+| `-cl`             | apply contour detection for curved text lines, deskewing regions independently  |
+| `-ib`             | apply binarization (the resulting image is saved to the output directory)       |
+| `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`)  |
+| `-ho`             | ignore headers for reading order dectection                                     |
+| `-si <directory>` | save image regions detected to this directory                                   |
+| `-sd <directory>` | save deskewed image to this directory                                           |
+| `-sl <directory>` | save layout prediction as plot to this directory                                |
+| `-sp <directory>` | save cropped page image to this directory                                       |
+| `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory                |
+| `-thart`          | confidence threshold of artifical boundary class during textline detection      |
+| `-tharl`          | confidence threshold of artifical boundary class during region detection        |
+| `-ncu`            | upper limit of columns in document image                                        |
+| `-ncl`            | lower limit of columns in document image                                        |
+| `-slro`           | skip layout detection and reading order                                         |
+| `-romb`           | apply machine based reading order detection                                     |
+| `-ipe`            | ignore page extraction                                                          |
+| `-j`              | number of CPU jobs to run parallel (useful with -di)                            |
+| `-H`              | when to halt if some jobs fail, e.g. `0.1` for 10% or `3` for 3 pages           |
 
 If no option is set, the tool performs detection of main regions (background, text, images, separators and marginals).
 

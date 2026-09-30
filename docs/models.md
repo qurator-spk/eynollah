@@ -162,32 +162,32 @@ We have trained three OCR models: two CNN-RNN–based models and one transformer
 
 This model is trained on data where most of the samples are in Fraktur german script.
 
-|      Dataset          |  Input |     CER    |    WER    |
-|-----------------------|:-------|:-----------|:----------|
-| OCR-D-GT-Archiveform  |  BIN   |   0.02147  |  0.05685  |
-| OCR-D-GT-Archiveform  |  RGB   |   0.01636  |  0.06285  |
+|      Dataset    | Input | CER     | WER     |
+|-----------------|:------|:--------|:--------|
+| OCR-D-GT-VD-SBB | BIN   | 0.02147 | 0.05685 |
+| OCR-D-GT-VD-SBB | RGB   | 0.01636 | 0.06285 |
 
 #### CNN-RNN model: 	model_eynollah_ocr_cnnrnn_20250904 (Default)
 
 Compared to the model_eynollah_ocr_cnnrnn_20250805 model, this model is trained on a larger proportion of Antiqua data and achieves superior performance.
 
-|      Dataset          |  Input      |     CER    |    WER    |
-|-----------------------|:------------|:-----------|:----------|
-| OCR-D-GT-Archiveform  |  BIN        |   0.01635  |  0.05410  |
-| OCR-D-GT-Archiveform  |  RGB        |   0.01471  |  0.05813  |
-| BLN600                |  RGB        |   0.04409  |  0.08879  |
-| BLN600                |  Enhanced   |   0.03599  |  0.06244  |
+|      Dataset    | Input    | CER     | WER     |
+|-----------------|:---------|:--------|:--------|
+| OCR-D-GT-VD-SBB | BIN      | 0.01635 | 0.05410 |
+| OCR-D-GT-VD-SBB | RGB      | 0.01471 | 0.05813 |
+| BLN600          | RGB      | 0.04409 | 0.08879 |
+| BLN600          | Enhanced | 0.03599 | 0.06244 |
 
 
 #### Transformer OCR model: model_eynollah_ocr_trocr_20250919
 
 This transformer OCR model is trained on the same data as model_eynollah_ocr_trocr_20250919.
 
-|      Dataset          |  Input      |     CER    |    WER    |
-|-----------------------|:------------|:-----------|:----------|
-| OCR-D-GT-Archiveform  |  BIN        |   0.01841  |  0.05589  |
-| OCR-D-GT-Archiveform  |  RGB        |   0.01552  |  0.06177  |
-| BLN600                |  RGB        |   0.06347  |  0.13853  |
+| Dataset         | Input | CER     | WER     |
+|-----------------|:------|:--------|:--------|
+| OCR-D-GT-VD-SBB | BIN   | 0.01841 | 0.05589 |
+| OCR-D-GT-VD-SBB | RGB   | 0.01552 | 0.06177 |
+| BLN600          | RGB   | 0.06347 | 0.13853 |
 
 ##### Qualitative evaluation of the models
 
