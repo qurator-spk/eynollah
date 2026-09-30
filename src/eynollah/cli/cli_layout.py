@@ -150,14 +150,14 @@ import click
     "-tharl",
     default=0.1,
     type=click.FloatRange(min=0.0, max=1.0),
-    help="confidence threshold of artifical boundary class during region detection",
+    help="confidence threshold of artificial boundary class during region detection",
 )
 @click.option(
     "--threshold_art_class_textline",
     "-thart",
     default=0.1,
     type=click.FloatRange(min=0.0, max=1.0),
-    help="confidence threshold of artifical boundary class during textline detection",
+    help="confidence threshold of artificial boundary class during textline detection",
 )
 @click.option(
     "--skip_layout_and_reading_order",

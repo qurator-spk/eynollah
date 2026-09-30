@@ -35,7 +35,7 @@ hdf5: $(CURRENT_MODELS:%=$(MODELS_DST)/%.h5)
 onnx: $(CURRENT_MODELS:%=$(MODELS_DST)/%.onnx)
 
 # distinguish tf from tf-serving: target pattern is the same,
-# so check if either is current goal, otherwise assumg tf
+# so check if either is current goal, otherwise assume tf
 $(MODELS_DST)/%: FORMAT = $(or $(filter tf-serving,$(MAKECMDGOALS)), tf)
 $(MODELS_DST)/%: $(MODELS_SRC)/%
 	$(if $(and $(filter tf-serving,$(FORMAT)),$(findstring _ocr,$@)),$(warning skipping $@: OCR CTC decoder fails in TF-Serving) : )\

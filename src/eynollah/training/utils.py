@@ -403,11 +403,11 @@ def bluring(img_in, kind):
 
 # TODO: document where this is from
 def elastic_transform(image, alpha, sigma, seedj, random_state=None):
-    """Elastic deformation of images as described in [Simard2003]_.
-    .. [Simard2003] Simard, Steinkraus and Platt, "Best Practices for
-       Convolutional Neural Networks applied to Visual Document Analysis", in
-       Proc. of the International Conference on Document Analysis and
-       Recognition, 2003.
+    """Elastic deformation of images as described in [Simard2003].
+       [Simard2003] Simard, Steinkraus and Platt, "Best Practices for
+       Convolutional Neural Networks applied to Visual Document Analysis",
+       In Proceedings of the International Conference on Document Analysis
+       and Recognition (ICDAR), 2003.
     """
     if random_state is None:
         random_state = np.random.RandomState(seedj)

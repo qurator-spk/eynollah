@@ -1,4 +1,4 @@
-# Prerequisistes
+# Prerequisites
 
 ## 1. Install Eynollah with training dependencies
 
@@ -30,7 +30,7 @@ which contains `images` and `labels` folders.
 
 * [`pagexml2img`](https://github.com/qurator-spk/page2img)
 > Tool to extract 2-D or 3-D RGB images from PAGE-XML data. In the former case, the output will be 1 2-D image array which each class has filled with a pixel value. In the case of a 3-D RGB image, 
-each class will be defined with a RGB value and beside images, a text file of classes will also be produced.
+each class will be defined with an RGB value and beside images, a text file of classes will also be produced.
 * [`cocoSegmentationToPng`](https://github.com/nightrome/cocostuffapi/blob/17acf33aef3c6cc2d6aca46dcf084266c2778cf0/PythonAPI/pycocotools/cocostuffhelper.py#L130)
 > Convert COCO GT or results for a single image to a segmentation map and write it to disk.
 * [`ocrd-segment-extract-pages`](https://github.com/OCR-D/ocrd_segment/blob/master/ocrd_segment/extract_pages.py)
@@ -192,7 +192,7 @@ types:
 In the custom JSON example shown above, `header` and `heading` are extracted as the same class, 
 while `marginalia` is modelled as a different class. All other text region types, including `drop-capital`,
 are grouped into the same class. For graphic regions, `stamp` has its own class, while all other types
-are classified together. `ImageRegion` and `SeparatorRegion` will also represented with a class label in the
+are classified together. `ImageRegion` and `SeparatorRegion` will also be represented with a class label in the
 training data. However, other regions like `NoiseRegion` or `TableRegion` will not be included in the PNG files,
 even if they were present in the PAGE XML.
 
@@ -380,7 +380,7 @@ The reading-order model can be trained like the classification case command line
 
 ### Segmentation (Textline, Binarization, Page extraction and layout) and enhancement
 
-#### Parameter configuration for segmentation or enhancement usecases
+#### Parameter configuration for segmentation or enhancement use cases
 
 The following parameter configuration can be applied to all segmentation use cases and enhancements. The augmentation,
 its sub-parameters, and continued training are defined only for segmentation use cases and enhancements, not for
@@ -414,11 +414,11 @@ classification and machine-based reading order, as you can see in their example 
 * `input_height`: the image height for the model's input.
 * `input_width`: the image width for the model's input.
 * `weight_decay`: Weight decay of l2 regularization of model layers.
-* `weighted_loss`: If `true`, this means that you want to apply weighted categorical crossentropy as loss function.  
+* `weighted_loss`: If `true`, this means that you want to apply weighted categorical cross entropy as loss function.  
    (Mutually exclusive with `is_loss_soft_dice`, and only applies for `segmentation` and `binarization` tasks.)
 * `pretraining`: Set to `true` to (download and) initialise pretrained weights of ResNet50 encoder.
 * `dir_train`: Path to directory of raw training data (as extracted via `pagexml2labels`, i.e. with subdirectories
-  `images` and `labels` for input images and output labels.  
+  `images` and `labels` for input images and output labels).  
    (These are not prepared for training the model, yet. Upon first run, the raw data will be transformed to suitable size
     needed for the model, and written in `dir_output` under `train` and `eval` subdirectories. See `data_is_provided`.)
 * `dir_eval`: Ditto for raw evaluation data.
@@ -490,14 +490,14 @@ eynollah-training train with config_classification.json
 
 ### Ground truth format
 
-Lables for each pixel are identified by a number. So if you have a 
+Labels for each pixel are identified by a number. So if you have a 
 binary case, ``n_classes`` should be set to ``2`` and labels should 
 be ``0`` and ``1`` for each class and pixel.
 
 In the case of multiclass, just set ``n_classes`` to the number of classes 
 you have and the try to produce the labels by pixels set from ``0 , 1 ,2 .., n_classes-1``.
 The labels format should be png. 
-Our lables are 3 channel png images but only information of first channel is used. 
+Our labels are 3 channel png images but only information of first channel is used. 
 If you have an image label with height and width of 10, for a binary case the first channel should look like this:
     
     Label: [ [1, 0, 0, 1, 1, 0, 0, 1, 0, 0],
@@ -509,7 +509,7 @@ If you have an image label with height and width of 10, for a binary case the fi
  This means that you have an image by `10*10*3` and `pixel[0,0]` belongs
  to class `1` and `pixel[0,1]` belongs to class `0`.
  
- A small sample of training data for binarization experiment can be found here, [Training data sample](https://qurator-data.de/~vahid.rezanezhad/binarization_training_data_sample/), which contains images and lables folders.
+ A small sample of training data for binarization experiment can be found here, [Training data sample](https://qurator-data.de/~vahid.rezanezhad/binarization_training_data_sample/), which contains images and labels folders.
     
 
 An example config json file for binarization can be like this:

@@ -78,7 +78,7 @@ def image_categorical_cross_entropy(y_true, y_pred, weights=None):
     """
     :param y_true: tensor of shape (batch_size, height, width) representing the ground truth.
     :param y_pred: tensor of shape (batch_size, height, width) representing the prediction.
-    :return: The mean cross-entropy on softmaxed tensors.
+    :return: The mean cross-entropy on softmaxxed tensors.
     """
 
     labels_floats = tf.cast(y_true, tf.float32)
@@ -358,8 +358,8 @@ def jaccard_distance_loss(y_true, y_pred, smooth=100):
     Jaccard = (|X & Y|)/ (|X|+ |Y| - |X & Y|)
             = sum(|A*B|)/(sum(|A|)+sum(|B|)-sum(|A*B|))
     
-    The jaccard distance loss is usefull for unbalanced datasets. This has been
-    shifted so it converges on 0 and is smoothed to avoid exploding or disapearing
+    The jaccard distance loss is useful for unbalanced datasets. This has been
+    shifted so it converges on 0 and is smoothed to avoid exploding or disappearing
     gradient.
     
     Ref: https://en.wikipedia.org/wiki/Jaccard_index

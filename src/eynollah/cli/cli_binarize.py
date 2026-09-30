@@ -43,7 +43,12 @@ def binarize_cli(
         overwrite,
 ):
     """
-    Binarize images with a ML model
+    Binarize images with a deep learning model:
+    A hybrid CNN-Transformer model for Historical Document Image Binarization.
+    Vahid Rezanezhad, Konstantin Baierer, Clemens Neudecker. 2023.
+    In Proceedings of the 7th International Workshop on Historical Document Imaging and Processing (HIP'23).
+    Association for Computing Machinery, New York, NY, USA, 79–84.
+    https://doi.org/10.1145/3604951.3605508
     """
     from ..sbb_binarize import SbbBinarizer
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."

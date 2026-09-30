@@ -78,7 +78,7 @@ import click
     "-bs",
     default=0,
     type=click.IntRange(min=0),
-    help="number of inference batch size. Default b_s for trocr and cnn_rnn models are 2 and 8 respectively",
+    help="number of inference batch size. Default b_s for TrOCR and CNN-RNN models are 2 and 8 respectively",
 )
 @click.option(
     "--min_conf_value_of_textline_text",

@@ -1,5 +1,5 @@
 
-# cannot use importlib.resources until we move to 3.9+ forimportlib.resources.files
+# cannot use importlib.resources until we move to 3.9+ for importlib.resources.files
 import sys
 from PIL import ImageFont
 

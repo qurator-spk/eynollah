@@ -32,14 +32,14 @@ The following options can be used to further control layout analysis:
 | `-cl`             | apply contour detection for curved text lines, deskewing regions independently  |
 | `-ib`             | apply binarization (the resulting image is saved to the output directory)       |
 | `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`)  |
-| `-ho`             | ignore headers for reading order dectection                                     |
+| `-ho`             | ignore headers for reading order detection                                      |
 | `-si <directory>` | save image regions detected to this directory                                   |
 | `-sd <directory>` | save deskewed image to this directory                                           |
 | `-sl <directory>` | save layout prediction as plot to this directory                                |
 | `-sp <directory>` | save cropped page image to this directory                                       |
 | `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory                |
-| `-thart`          | confidence threshold of artifical boundary class during textline detection      |
-| `-tharl`          | confidence threshold of artifical boundary class during region detection        |
+| `-thart`          | confidence threshold of artificial boundary class during textline detection     |
+| `-tharl`          | confidence threshold of artificial boundary class during region detection       |
 | `-ncu`            | upper limit of columns in document image                                        |
 | `-ncl`            | lower limit of columns in document image                                        |
 | `-slro`           | skip layout detection and reading order                                         |
@@ -83,7 +83,7 @@ Any image referenced by `@imageFilename` in PAGE-XML is passed on directly to Ey
 ocrd-eynollah-segment -I OCR-D-IMG-BIN -O SEG-LINE -P full_layout true
 ```
     
-uses the original (RGB) image despite any binarization that may have occured in previous OCR-D processing steps.
+uses the original (RGB) image despite any binarization that may have occurred in previous OCR-D processing steps.
 
 ## Use with Docker
 TODO

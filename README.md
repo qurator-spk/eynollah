@@ -28,7 +28,7 @@ documents using a combination of multiple deep learning models and heuristics; t
 
 Python `3.8-3.11` with ONNX Runtime on Linux are currently supported.
 
-For GPU support, NVidia drivers supporting CUDA 12 must be installed.
+For GPU support, Nvidia drivers supporting CUDA 12 must be installed.
 The runtime dependencies will pull in ONNX, TensorRT and CUDA runtime
 libraries (including cuDNN) from PyPI.
 
@@ -123,30 +123,30 @@ eynollah [GENERIC_OPTIONS] layout \
 
 The following options can be used to further configure the processing:
 
-| option            | description                                                                                 |
-|-------------------|:--------------------------------------------------------------------------------------------|
-| `-fl`             | full layout analysis including all steps and segmentation classes (recommended)             |
-| `-tab`            | apply table detection                                                                       |
-| `-ae`             | apply enhancement (the resulting image is saved to the output directory)                    |
-| `-as`             | apply scaling                                                                               |
-| `-cl`             | apply contour detection for curved text lines, deskewing all regions independently          |
-| `-ib`             | apply binarization (the resulting image is saved to the output directory)                   |
-| `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`)              |
-| `-ho`             | ignore headers for reading order dectection                                                 |
-| `-si <directory>` | save image regions detected to this directory                                               |
-| `-sd <directory>` | save deskewed image to this directory                                                       |
-| `-sl <directory>` | save layout prediction as plot to this directory                                            |
-| `-sp <directory>` | save cropped page image to this directory                                                   |
-| `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory                            |
-| `-thart`          | confidence threshold of artifical boundary class during textline detection                  |
-| `-tharl`          | confidence threshold of artifical boundary class during region detection                    |
-| `-ncu`            | upper limit of columns in document image                                                    |
-| `-ncl`            | lower limit of columns in document image                                                    |
-| `-slro`           | skip layout detection and reading order                                                     |
-| `-romb`           | apply machine based reading order detection                                                 |
-| `-ipe`            | ignore page extraction                                                                      |
-| `-j`              | number of CPU jobs to run parallel (useful with -di)                                        |
-| `-H`              | when to halt when some jobs fail                                                            |
+| option            | description                                                                        |
+|-------------------|:-----------------------------------------------------------------------------------|
+| `-fl`             | full layout analysis including all steps and segmentation classes (recommended)    |
+| `-tab`            | apply table detection                                                              |
+| `-ae`             | apply enhancement (the resulting image is saved to the output directory)           |
+| `-as`             | apply scaling                                                                      |
+| `-cl`             | apply contour detection for curved text lines, deskewing all regions independently |
+| `-ib`             | apply binarization (the resulting image is saved to the output directory)          |
+| `-ep`             | enable plotting (MUST always be used with `-sl`, `-sd`, `-sa`, `-si` or `-ae`)     |
+| `-ho`             | ignore headers for reading order detection                                         |
+| `-si <directory>` | save image regions detected to this directory                                      |
+| `-sd <directory>` | save deskewed image to this directory                                              |
+| `-sl <directory>` | save layout prediction as plot to this directory                                   |
+| `-sp <directory>` | save cropped page image to this directory                                          |
+| `-sa <directory>` | save all (plot, enhanced/binary image, layout) to this directory                   |
+| `-thart`          | confidence threshold of artificial boundary class during textline detection        |
+| `-tharl`          | confidence threshold of artificial boundary class during region detection          |
+| `-ncu`            | upper limit of columns in document image                                           |
+| `-ncl`            | lower limit of columns in document image                                           |
+| `-slro`           | skip layout detection and reading order                                            |
+| `-romb`           | apply machine based reading order detection                                        |
+| `-ipe`            | ignore page extraction                                                             |
+| `-j`              | number of CPU jobs to run parallel (useful with -di)                               |
+| `-H`              | when to halt when some jobs fail                                                   |
 
 The default is to only perform layout detection of main regions
 (background, text, images, separators and marginals).
@@ -210,7 +210,7 @@ The following options can be used to further configure the ocr processing:
 | `-dib`            | directory of binarized images (file type must be '.png'), prediction with both RGB and bin |
 | `-doit`           | directory for output images rendered with the predicted text                               |
 | `-nmtc`           | cropped textline images will not be masked with textline contour                           |
-| `-bs`             | ocr inference batch size. Default batch size is 2 for trocr and 8 for cnn_rnn models       |
+| `-bs`             | ocr inference batch size. Default batch size is 2 for TrOCR and 8 for CNN-RNN models       |
 | `-min_conf`       | minimum OCR confidence value. OCR with textline conf lower than this will be ignored       |
 
 

@@ -74,7 +74,7 @@ def get_marginals(num_col, slope_deskew,
     Constrain the ranges of left and right points depending on the
     given number of columns:
     1. for one-column pages, the left / right positions can be between
-       the first / last occurrance of text and the middle of both
+       the first / last occurrence of text and the middle of both
     2. for two-column pages, similarly, but also one third towards
        the left / right from the middle.
 

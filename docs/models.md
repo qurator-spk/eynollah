@@ -95,7 +95,7 @@ strengths of multiple epochs to enhance its overall performance and deliver cons
 
 Model card: [Full Region Detection (1,2-column documents)](https://huggingface.co/SBB/eynollah-full-regions-1column)
 
-This model deals with documents comprising of one and two columns.
+This model deals with documents comprising one and two columns.
 
 ### Full region detection (3,n-column documents)
 

@@ -268,10 +268,10 @@ def config_params():
     learning_rate = 1e-4  # Set the learning rate.
     if task in ["segmentation", "binarization"]:
         is_loss_soft_dice = False  # Use soft dice as loss function. When set to true, "weighted_loss" must be false.
-        weighted_loss = False  # Use weighted categorical cross entropy as loss fucntion. When set to true, "is_loss_soft_dice" must be false.
+        weighted_loss = False  # Use weighted categorical cross entropy as loss function. When set to true, "is_loss_soft_dice" must be false.
         add_ncc_loss = 0 # Add regression loss for number of connected components. When non-zero, use this as weight for the nCC term.
     elif task == "classification":
-        f1_threshold_classification = None # This threshold is used to consider models with an evaluation f1 scores bigger than it. The selected model weights undergo a weights ensembling. And avreage ensembled model will be written to output.
+        f1_threshold_classification = None # This threshold is used to consider models with an evaluation f1 scores bigger than it. The selected model weights undergo a weights ensembling. And average ensembled model will be written to output.
         classification_classes_name = None # Dictionary of classification classes names.
     patches = False  # Divides input image into smaller patches (input size of the model) when set to true. For the model to see the full image, like page extraction, set this to false.
     augmentation = False  # To apply any kind of augmentation, this parameter must be set to true.

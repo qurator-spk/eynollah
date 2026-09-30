@@ -39,10 +39,10 @@ from ..utils import is_image_filename
     required=True,
 )
 @click.option(
-    "--dataset_abbrevation",
+    "--dataset_abbreviation",
     "-ds_pref",
     'pref_of_dataset',
-    help="in the case of extracting textline and text from a xml GT file user can add an abbrevation of dataset name to generated dataset",
+    help="in the case of extracting textline and text from a xml GT file user can add an abbreviation of dataset name to generated dataset",
 )
 @click.option(
     "--do_not_mask_with_textline_contour",

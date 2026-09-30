@@ -327,7 +327,7 @@ class SBBPredict:
             index_update = 0
             index_selected = starting_list_of_regions[0]
             
-            scalibility_num = 0
+            scalability_num = 0
             while index_update>=0:
                 ij_list = starting_list_of_regions[index_update] 
                 i = ij_list[0]
@@ -375,7 +375,7 @@ class SBBPredict:
                     
                     if batch_counter==inference_bs or ( (tot_counter//inference_bs)==full_bs_ite and tot_counter%inference_bs==last_bs):
                         y_pr = self.model.predict(input_1 , verbose='0')
-                        scalibility_num = scalibility_num+1
+                        scalability_num = scalability_num+1
                         
                         if batch_counter==inference_bs:
                             iteration_batches = inference_bs

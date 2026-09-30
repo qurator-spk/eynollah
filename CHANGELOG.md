@@ -69,7 +69,7 @@ Changed:
    * separate off `.png` files if `dir_in_bin==dir_in`
    * batch flipped line candidates together with normal lines
  - training/setup:
-   * refactor imports from `.models` (single auto-configured `get_model()` call, no `custom_objects` loading)
+   * refactor imports from `.models` (single autoconfigured `get_model()` call, no `custom_objects` loading)
    * drop new setting `reload_weights` in favour of `--rebuild` option for new CLI `eynollah-training convert`
    * new CLI for model conversion between Keras (formats HDF5 / native Keras, TF SavedModel), TF-Serving (i.e. `model.export()`) and ONNX
    * extract `MusicRegion` from PAGE GT, too
@@ -97,7 +97,7 @@ Changed:
 ## [0.8.0] - 2026-05-11
 
 * Optimize model performance
-  * `multiprocessing.SpawnProcess` predictor wrapper for models to have commmunication with Tensorflow in a separate subprocess in a task queue with parallel jobs configurable via `--num-jobs` and maximum number of failed jobs via `--halt-fail`
+  * `multiprocessing.SpawnProcess` predictor wrapper for models to have communication with Tensorflow in a separate subprocess in a task queue with parallel jobs configurable via `--num-jobs` and maximum number of failed jobs via `--halt-fail`
   * Keep batch size low enough for processing fitting into common 8GB GPU (with model-dependent batch resizing prepared but not yet active)
   * GPU device can be selected manually with `--device`
   * Handle image resizing and tiling in GPU as much as possible to avoid overhead of switching between GPU and CPU
@@ -124,7 +124,7 @@ Changed:
   * deduplication, idiomatic python, clean parallel processing, class reuse, consistent and meaningful naming
 
 
-**NOTE** We are aware of a possible issue with regards to the cropping of images. It appears that we have not consistenly cropped images for training. This can lead to suboptimal results for cropped images. If you experience quality issues with the `eynollah layout`, try setting the `-ipe/--ignore_page_extraction` option to skip the builtin cropping. We will rectify this in the next trainings.
+**NOTE** We are aware of a possible issue with the cropping of images. It appears that we have not consistently cropped images for training. This can lead to suboptimal results for cropped images. If you experience quality issues with the `eynollah layout`, try setting the `-ipe/--ignore_page_extraction` option to skip the builtin cropping. We will rectify this in the next trainings.
 
 ## [0.7.0] - 2026-01-30
 
@@ -358,7 +358,7 @@ Changed:
 
 Added:
 
-  * parmeter `tables` to toggle table detectino, #91
+  * parameter `tables` to toggle table detection, #91
   * default model described in ocrd-tool.json, #91
 
 ## [0.1.0] - 2023-03-22
