@@ -7,6 +7,8 @@ from shapely.affinity import rotate as rotate_polygon
 from shapely.ops import split as split_polygon
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
+
+from . import pairwise
 from .contour import (
     contour2polygon,
     polygon2contour,
@@ -189,6 +191,12 @@ def get_marginals(num_col, slope_deskew,
         # constrain the distance at least 2 characters at 12pt
         distance=MIN_DIST_GAPS)
 
+    # def extend_ticks(axis, locations, labels, minor=True, **labelargs):
+    #     locs = list(axis.get_ticklocs(minor=minor))
+    #     labs = list(axis.get_ticklabels(minor=minor))
+    #     locs += locations
+    #     labs += labels
+    #     axis.set_ticks(locs, labels=labs, minor=minor, **labelargs)
     # plt.figure("gaps")
     # ax1 = plt.subplot(2, 2, 1, title="text_mask_d")
     # ax1.imshow(text_mask_d, aspect='auto')
@@ -196,12 +204,15 @@ def get_marginals(num_col, slope_deskew,
     # ax2 = plt.subplot(2, 2, 3, title="text_mask_d_y", sharex=ax1)
     # ax2.plot(list(range(width)), text_mask_d_y, label='unsmoothed', color='b')
     # ax2.plot(list(range(width)), text_mask_d_ys, label='smoothed', color='m')
-    # ax2.hlines(int(0.14 * height), 0, width,
-    #            label='max_text_thickness=14%', colors='r')
-    # ax2.hlines([min_text_thickness], 0, width,
-    #            label='min_text_thickness', colors='m')
-    # ax2.vlines([first_nonzero], 0, height, label='first_nonzero', colors='r')
-    # ax2.vlines([last_nonzero], 0, height, label='last_nonzero', colors='r')
+    # ax2.hlines(int(0.14 * height), 0, width, colors='r')
+    # extend_ticks(ax2.yaxis, [int(0.14 * height)], ['max=14%%'])
+    # ax2.hlines([min_text_thickness], 0, width, colors='m')
+    # extend_ticks(ax2.yaxis, [min_text_thickness], ['min'])
+    # ax2.vlines([first_nonzero, last_nonzero], 0, height, colors='r')
+    # extend_ticks(ax2.xaxis, [first_nonzero, last_nonzero], ['first', 'last'])
+    # ax2.vlines([mid_point_l, qrt_point_l], 0, height, colors='b')
+    # ax2.vlines([mid_point_r, qrt_point_r], 0, height, colors='b')
+    # extend_ticks(ax2.xaxis, [mid_point_l, qrt_point_l], ['mid_l', 'qrt_l'])
     # if num_col == 2:
     #     ax2.vlines([mid_point], 0, height, label='mid_point', colors='r')
     # ax2.scatter([np.argmax(text_mask_d_y)],
@@ -210,6 +221,9 @@ def get_marginals(num_col, slope_deskew,
     # ax2.scatter(gaps_y, text_mask_d_ys[gaps_y], label='gaps_y', color='m')
     # for i in range(len(gaps_y)):
     #     ax2.text(gaps_y[i], text_mask_d_ys[gaps_y[i]], str(props_y['prominences'][i]))
+    # ax2.tick_params(top=True, labeltop=True, bottom=True, labelbottom=False,
+    #                 left=True, labelleft=False, right=True, labelright=True,
+    #                 which='minor')
     # ax1 = plt.subplot(2, 2, 4, title="early layout")
     # ax1.imshow(early_layout, aspect='auto')
     # plt.legend()
@@ -254,169 +268,177 @@ def get_marginals(num_col, slope_deskew,
     # because marginalia are very close to main,
     # then look at positive/negative peaks of derivative on left/right side,
     # to identify smaller plateaus of sufficient thickness:
-    if len(gaps_l) == 0 and allow_l:
-        logger.debug("marginalia: trying to find jumps instead of gaps on the left")
-        text_mask_d_ys2 = np.diff(text_mask_d_ys[:mid_point+1].astype(int))
+    def detect_step_point(side):
+        logger.debug("marginalia: trying to find jumps instead of gaps on the %s", side)
+        if side == 'left':
+            text_mask_d_ys2 = np.diff(text_mask_d_ys[:mid_point+1].astype(int))
+            offset = 0
+        else:
+            text_mask_d_ys2 = -np.diff(text_mask_d_ys[mid_point-1:].astype(int))
+            offset = mid_point
+        # ax2.hlines([0.04 * max_text_thickness], 0, width, colors='lightgreen')
+        # extend_ticks(ax2.yaxis, [0.04 * max_text_thickness], ['min2'])
+        # ax2.plot(np.arange(len(text_mask_d_ys2)) + offset, text_mask_d_ys2, label='derivative', color='g')
         jumps, _ = find_peaks(text_mask_d_ys2,
                               # constrain slope lower bound
                               height=0.04 * max_text_thickness,
                               # constrain the distance at least 2 characters at 12pt
                               distance=MIN_DIST_GAPS)
-        # ax2.plot(list(range(mid_point)), text_mask_d_ys2, label='derivative', color='g')
-        # ax2.scatter(jumps, text_mask_d_ys2[jumps], label='jumps', color='g')
-        # ax2.hlines([0.04 * max_text_thickness], 0, width,
-        #            label='min2', colors='lightgreen')
-        if num_col == 1:
-            jumps_l = jumps[jumps < mid_point]
+        if not len(jumps):
+            return None
+
+        # ax2.scatter(jumps + offset, text_mask_d_ys2[jumps], label='jumps', color='g')
+        jumps += offset
+        if side == 'left':
+            # ax2.vlines([mid_point_l, qrt_point_l], 0, height, colors='b')
+            # extend_ticks(ax2.xaxis, [mid_point_l, qrt_point_l], ['mid_l', 'qrt_l'])
+            jumps = jumps[(first_nonzero + MIN_DIST_GAPS < jumps) &
+                          (jumps < (mid_point_l if num_col == 1 else qrt_point_l))]
         else:
-            jumps_l = jumps[jumps < mid_point_l]
+            # ax2.vlines([mid_point_r, qrt_point_r], 0, height, colors='b')
+            # extend_ticks(ax2.xaxis, [mid_point_r, qrt_point_r], ['mid_r', 'qrt_r'])
+            jumps = jumps[(last_nonzero - MIN_DIST_GAPS > jumps) &
+                          (jumps > (mid_point_r if num_col == 1 else qrt_point_r))]
         # suppress these if there are horizontal separators spanning across
-        seps_cont_l, _ = cv2.findContours(seps_mask_d[:, :mid_point_l],
-                                          cv2.RETR_EXTERNAL,
-                                          cv2.CHAIN_APPROX_NONE)
-        seps_x_min_l = np.array([contour[:, 0, 0].min() + 15 for contour in seps_cont_l])
-        seps_x_max_l = np.array([contour[:, 0, 0].max() - 15 for contour in seps_cont_l])
-        jumps_l = jumps_l[~((seps_x_min_l[:, np.newaxis] <= jumps_l[np.newaxis]) &
-                            (seps_x_max_l[:, np.newaxis] > jumps_l[np.newaxis])).any(axis=0)]
-        # to discern between left marginalia and left indentation,
-        # analyse horizontal projection of (left half) of text mask:
-        # if there are subpeaks left of (=above) the main peaks (=paragraphs)
+        seps_cont, _ = cv2.findContours(seps_mask_d[:, :mid_point] if side == 'left' else
+                                        seps_mask_d[:, mid_point:],
+                                        cv2.RETR_EXTERNAL,
+                                        cv2.CHAIN_APPROX_NONE)
+        seps_x_min = np.array([contour[:, 0, 0].min() + 15
+                               for contour in seps_cont]) + offset
+        seps_x_max = np.array([contour[:, 0, 0].max() - 15
+                               for contour in seps_cont]) + offset
+        jumps = jumps[~((seps_x_min[:, np.newaxis] <= jumps[np.newaxis]) &
+                        (seps_x_max[:, np.newaxis] > jumps[np.newaxis])).any(axis=0)]
+        if not len(jumps):
+            return None
+
+        # to discern between left/right marginalia and left/right indentation,
+        # (i.e. indented first lines / unjustified final lines of a paragraph),
+        # analyse horizontal projection of (left/right half) of text mask:
+        # if there are subpeaks beside (above or below) the main peaks (=paragraphs)
         # and the average difference between them is approximately the jump point
         # then that jump point cannot be from genuine marginalia
-        text_mask_d_lx = text_mask_d[:, :qrt_point_l].sum(axis=1)
-        text_mask_d_lxs = gaussian_filter1d(text_mask_d_lx, 2)
-        text_mask_d_lxs2 = np.diff(text_mask_d_lxs.astype(int))
-        text_mask_d_lxs3 = np.diff(text_mask_d_lxs2.astype(int))
-        peaks_lx, props_lx = find_peaks(text_mask_d_lx,
-                                        distance=MIN_DIST_GAPS,
-                                        prominence=MIN_DIST_GAPS)
-        bases_lx = props_lx['left_bases']
-        proms_lx = text_mask_d_lx[peaks_lx] - text_mask_d_lx[bases_lx]
-        med_main_width_l = np.median(text_mask_d_lx[peaks_lx])
-        # ax3.plot(text_mask_d_lx, list(range(height)), label='unsmoothed', color='b')
-        # ax3.plot(text_mask_d_lxs, list(range(height)), label='smoothed', color='m')
-        # ax3.scatter(text_mask_d_lx[peaks_lx], peaks_lx, label='peaks_lx', color='m')
-        # for i in range(len(peaks_lx)):
-        #     ax3.text(text_mask_d_lx[peaks_lx[i]], peaks_lx[i], str(proms_lx[i]))
-        # ax3.vlines([med_main_width_l], 0, height, colors='m')
-        if np.isclose(med_main_width_l,
-                      qrt_point_l - first_nonzero,
-                      rtol=0.1):
-            flexpoints_lx, _ = find_peaks(np.abs(text_mask_d_lxs2 < 3))
-            flexpoints_lx -= 1
-            #ax3.scatter(text_mask_d_lx[flexpoints_lx], flexpoints_lx, label="flexpoints_lx", color='y')
-            subpeaks_lx = flexpoints_lx[
-                # no minima/saddles
-                (text_mask_d_lxs3[flexpoints_lx] < 0) &
-                # not near the main maxima
-                ~np.isclose(text_mask_d_lx[flexpoints_lx], med_main_width_l, rtol=0.05) &
-                # not too small
-                ~np.isclose(text_mask_d_lx[flexpoints_lx], 0, atol=0.3 * med_main_width_l)]
-            if len(subpeaks_lx) > 0.5 * len(peaks_lx):
-                med_sub_width_l = np.median(text_mask_d_lx[subpeaks_lx])
-                indent_l = np.isclose(jumps_l - first_nonzero,
-                                      med_main_width_l - med_sub_width_l,
-                                      rtol=0.1, atol=10)
-                logger.debug("%d out of %d step candidates for left margin are from indentation",
-                             np.count_nonzero(indent_l), len(jumps_l))
-                jumps_l = jumps_l[~indent_l]
-                # ax3.scatter(text_mask_d_lx[subpeaks_lx], subpeaks_lx, label="subpeaks_lx", color='y')
-                # ax3.vlines([med_sub_width_l], 0, height, colors='b')
-        # search from right (widest) to left
-        for jump in reversed(jumps_l):
-            if jump < first_nonzero + MIN_DIST_GAPS:
-                continue
-            # non-zero, non-max plateau
-            if (MIN_THICKNESS_STEP_FRACT_MAIN
-                < (np.mean(text_mask_d_ys[first_nonzero: jump]) / 
-                   np.mean(text_mask_d_ys[jump: mid_point])) <
-                MAX_THICKNESS_STEP_FRACT_MAIN):
-                point_l = jump
-                # ax2.vlines([jump], 0, height, label='jump', colors='y')
-                break
-            # TODO: try another criterion: deviation in average textline heights
-    if len(gaps_r) == 0 and allow_r:
-        logger.debug("marginalia: trying to find jumps instead of gaps on the right")
-        text_mask_d_ys2 = -np.diff(text_mask_d_ys[mid_point-1:].astype(int))
-        jumps, _ = find_peaks(text_mask_d_ys2,
-                              # constrain slope lower bound
-                              height=0.04 * max_text_thickness,
-                              # constrain the distance at least 2 characters at 12pt
-                              distance=MIN_DIST_GAPS)
-        # ax2.plot(np.arange(mid_point, width), text_mask_d_ys2, label='derivative', color='g')
-        # ax2.scatter(jumps + mid_point, text_mask_d_ys2[jumps], label='jumps', color='g')
-        # ax2.hlines([0.04 * max_text_thickness], 0, width,
-        #            label='min2', colors='lightgreen')
-        jumps += mid_point
-        if num_col == 1:
-            jumps_r = jumps[jumps > mid_point]
-        else:
-            jumps_r = jumps[jumps > mid_point_r]
-        # suppress these if there are horizontal separators spanning across
-        seps_cont_r, _ = cv2.findContours(seps_mask_d[:, mid_point_r:],
-                                          cv2.RETR_EXTERNAL,
-                                          cv2.CHAIN_APPROX_NONE)
-        seps_x_min_r = np.array([contour[:, 0, 0].min() + 15 + mid_point_r for contour in seps_cont_r])
-        seps_x_max_r = np.array([contour[:, 0, 0].max() - 15 + mid_point_r for contour in seps_cont_r])
-        jumps_r = jumps_r[~((seps_x_min_r[:, np.newaxis] <= jumps_r[np.newaxis]) &
-                            (seps_x_max_r[:, np.newaxis] > jumps_r[np.newaxis])).any(axis=0)]
-        # to discern between right marginalia and right indentation
-        # (i.e. unjustified final lines of a paragraph),
-        # analyse horizontal projection of (right half) of text mask:
-        # if there are subpeaks right of (=below) the main peaks (=paragraphs)
-        # and the average difference between them is approximately the jump point
-        # then that jump point cannot be from genuine marginalia
-        text_mask_d_rx = text_mask_d[:, qrt_point_r:].sum(axis=1)
-        text_mask_d_rxs = gaussian_filter1d(text_mask_d_rx, 2)
-        text_mask_d_rxs2 = np.diff(text_mask_d_rxs.astype(int))
-        text_mask_d_rxs3 = np.diff(text_mask_d_rxs2.astype(int))
-        peaks_rx, props_rx = find_peaks(text_mask_d_rx,
-                                        distance=MIN_DIST_GAPS,
-                                        prominence=MIN_DIST_GAPS)
-        bases_rx = props_rx['right_bases']
-        proms_rx = text_mask_d_rx[peaks_rx] - text_mask_d_rx[bases_rx]
-        med_main_width_r = np.median(text_mask_d_rx[peaks_rx])
-        # ax3.plot(text_mask_d_rx + qrt_point_r, list(range(height)), label='unsmoothed', color='b')
-        # ax3.plot(text_mask_d_rxs + qrt_point_r, list(range(height)), label='smoothed', color='m')
-        # ax3.scatter(text_mask_d_rx[peaks_rx] + qrt_point_r, peaks_rx, label='peaks_rx', color='m')
-        # for i in range(len(peaks_rx)):
-        #     ax3.text(text_mask_d_rx[peaks_rx[i]] + qrt_point_r, peaks_rx[i], str(proms_rx[i]))
-        # ax3.vlines([med_main_width_r + qrt_point_r], 0, height, colors='m')
-        if np.isclose(med_main_width_r,
+        text_mask_d_x = np.sum(text_mask_d[:, :qrt_point_l] if side == 'left' else
+                               text_mask_d[:, qrt_point_r:], axis=1)
+        text_mask_d_xs = gaussian_filter1d(text_mask_d_x, 2)
+        text_mask_d_xs2 = np.diff(text_mask_d_xs.astype(int))
+        text_mask_d_xs3 = np.diff(text_mask_d_xs2.astype(int))
+        peaks_x, props_x = find_peaks(text_mask_d_x,
+                                      distance=MIN_DIST_GAPS,
+                                      prominence=MIN_DIST_GAPS)
+        med_main_width = np.median(text_mask_d_x[peaks_x])
+        offset_x = 0 if side == 'left' else qrt_point_r
+        # ax3.plot(text_mask_d_x + offset_x, list(range(height)), label='unsmoothed', color='b')
+        # ax3.plot(text_mask_d_xs + offset_x, list(range(height)), label='smoothed', color='m')
+        # ax3.scatter(text_mask_d_x[peaks_x] + offset_x, peaks_x, label='peaks_x', color='m')
+        # ax3.vlines([med_main_width + offset_x], 0, height, colors='m')
+        if np.isclose(med_main_width,
+                      qrt_point_l - first_nonzero if side == 'left' else
                       last_nonzero - qrt_point_r,
                       rtol=0.1):
-            flexpoints_rx, _ = find_peaks(np.abs(text_mask_d_rxs2 < 3))
-            flexpoints_rx -= 1
-            #ax3.scatter(text_mask_d_rx[flexpoints_rx] + qrt_point_r, flexpoints_rx, label="flexpoints_rx", color='y')
-            subpeaks_rx = flexpoints_rx[
+            flexpoints_x, _ = find_peaks(np.abs(text_mask_d_xs2 < 3))
+            flexpoints_x -= 1
+            #ax3.scatter(text_mask_d_x[flexpoints_x] + offset_x, flexpoints_x, label="flexpoints_x", color='y')
+            subpeaks_x = flexpoints_x[
                 # no minima/saddles
-                (text_mask_d_rxs3[flexpoints_rx] < 0) &
+                (text_mask_d_xs3[flexpoints_x] < 0) &
                 # not near the main maxima
-                ~np.isclose(text_mask_d_rx[flexpoints_rx], med_main_width_r, rtol=0.05) &
+                ~np.isclose(text_mask_d_x[flexpoints_x], med_main_width, rtol=0.05) &
                 # not too small
-                ~np.isclose(text_mask_d_rx[flexpoints_rx], 0, atol=0.3 * med_main_width_r)]
-            if len(subpeaks_rx) > 0.5 * len(peaks_rx):
-                med_sub_width_r = np.median(text_mask_d_rx[subpeaks_rx])
-                indent_r = np.isclose(last_nonzero - jumps_r,
-                                      med_main_width_r - med_sub_width_r,
-                                      rtol=0.1, atol=10)
-                logger.debug("%d out of %d step candidates for right margin are from indentation",
-                             np.count_nonzero(indent_r), len(jumps_r))
-                jumps_r = jumps_r[~indent_r]
-                # ax3.scatter(text_mask_d_rx[subpeaks_rx] + qrt_point_r, subpeaks_rx, label="subpeaks_rx", color='y')
-                # ax3.vlines([med_sub_width_r + qrt_point_r], 0, height, colors='b')
-        # search from left (widest) to right
-        for jump in jumps_r:
-            if jump > last_nonzero - MIN_DIST_GAPS:
-                continue
+                ~np.isclose(text_mask_d_x[flexpoints_x], 0, atol=0.3 * med_main_width)]
+            if len(subpeaks_x) > 0.5 * len(peaks_x):
+                med_sub_width = np.median(text_mask_d_x[subpeaks_x])
+                indent = np.isclose(jumps - first_nonzero if side == 'left' else
+                                    last_nonzero - jumps,
+                                    med_main_width - med_sub_width,
+                                    rtol=0.1, atol=10)
+                logger.debug("%d out of %d step candidates for %s margin are from indentation",
+                             np.count_nonzero(indent), len(jumps), side)
+                jumps = jumps[~indent]
+                # ax3.scatter(text_mask_d_x[subpeaks_x] + offset_x, subpeaks_x, label="subpeaks_x", color='y')
+                # ax3.vlines([med_sub_width + offset_x], 0, height, colors='b')
+                if not len(jumps):
+                    return None
+
+        if side == 'left':
+            text_mask_d_ys2_iszero = np.append(np.diff(np.isclose(text_mask_d_ys2, 0, atol=8) * 1), -1)
+        else:
+            text_mask_d_ys2_iszero = np.insert(np.diff(np.isclose(text_mask_d_ys2, 0, atol=8) * 1), 0, 1)
+        text_mask_d_ys2_iszero_min = np.flatnonzero(text_mask_d_ys2_iszero > 0)
+        text_mask_d_ys2_iszero_max = np.flatnonzero(text_mask_d_ys2_iszero < 0)
+        if (not len(text_mask_d_ys2_iszero_min) or
+            not len(text_mask_d_ys2_iszero_max)):
+            return None
+
+        if (text_mask_d_ys2_iszero_min[0] >
+            text_mask_d_ys2_iszero_max[0]):
+            text_mask_d_ys2_iszero_max = text_mask_d_ys2_iszero_max[1:]
+        length = min(len(text_mask_d_ys2_iszero_min),
+                     len(text_mask_d_ys2_iszero_max))
+        if length <= 1:
+            return None
+
+        text_mask_d_ys_plateaus = np.stack((text_mask_d_ys2_iszero_min[:length],
+                                            text_mask_d_ys2_iszero_max[:length]),
+                                           axis=1)
+        text_mask_d_ys_plateaus += offset
+        indices = [0]
+        for i, pair in enumerate(pairwise(text_mask_d_ys_plateaus), start=1):
+            (prev_min, prev_max), (next_min, next_max) = pair
+            if np.isclose(np.mean(text_mask_d_ys[prev_min: prev_max]),
+                          np.mean(text_mask_d_ys[next_min: next_max]),
+                          rtol=0.2):
+                pass
+            else:
+                indices.append(i)
+        indices.append(length)
+        text_mask_d_ys_plateaus = np.array(
+            [(prev_min, next_max)
+             for previ, nexti in pairwise(indices)
+             if ((next_max := text_mask_d_ys_plateaus[previ: nexti, 1][-1]) -
+                 (prev_min := text_mask_d_ys_plateaus[previ: nexti, 0][0])) > 10])
+        text_mask_d_ys_plateaus = text_mask_d_ys_plateaus.T
+
+        if side == 'left':
+            # search from right (widest) to left
+            jumps = reversed(jumps)
+        else:
+            # search from left (widest) to right
+            pass
+        for jump in jumps:
             # non-zero, non-max plateau
-            if (MIN_THICKNESS_STEP_FRACT_MAIN
-                < (np.mean(text_mask_d_ys[jump: last_nonzero]) /
-                   np.mean(text_mask_d_ys[mid_point: jump])) <
-                MAX_THICKNESS_STEP_FRACT_MAIN):
-                point_r = jump
-                # ax2.vlines([jump], 0, height, label='jump', colors='y')
+            next_plateau = np.searchsorted(text_mask_d_ys_plateaus[0], jump)
+            prev_plateau = np.searchsorted(text_mask_d_ys_plateaus[1], jump) - 1
+            if next_plateau > text_mask_d_ys_plateaus.shape[1] - 1:
                 break
+            if prev_plateau < 0:
+                break
+            next_min = text_mask_d_ys_plateaus[0, next_plateau]
+            next_max = text_mask_d_ys_plateaus[1, next_plateau]
+            prev_min = text_mask_d_ys_plateaus[0, prev_plateau]
+            prev_max = text_mask_d_ys_plateaus[1, prev_plateau]
+            if side == 'left':
+                jump_fract_main = (np.mean(text_mask_d_ys[prev_min: prev_max]) /
+                                   np.mean(text_mask_d_ys[next_min: next_max]))
+            else:
+                jump_fract_main = (np.mean(text_mask_d_ys[next_min: next_max]) /
+                                   np.mean(text_mask_d_ys[prev_min: prev_max]))
+
+            if (MIN_THICKNESS_STEP_FRACT_MAIN < jump_fract_main < MAX_THICKNESS_STEP_FRACT_MAIN):
+                # ax2.vlines([jump], 0, height, colors='y')
+                # extend_ticks(ax2.xaxis, [jump], ['jump'])
+                # ax2.axvspan(prev_min, prev_max, color='lightyellow')
+                # ax2.axvspan(next_min, next_max, color='gold')
+                return jump
+            # TODO: try another criterion: deviation in average textline heights
+
+    if len(gaps_l) == 0 and allow_l:
+        if (step_l := detect_step_point("left")) is not None:
+            point_l = step_l
+    if len(gaps_r) == 0 and allow_r:
+        if (step_r := detect_step_point("right")) is not None:
+            point_r = step_r
     # ax3.legend()
     # ax2.legend()
     # plt.show()
