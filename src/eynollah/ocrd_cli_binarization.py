@@ -13,7 +13,7 @@ from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 
 from eynollah.model_zoo.model_zoo import EynollahModelZoo
 
-from .sbb_binarize import SbbBinarizer
+from .binarize import Binarizer
 from .utils.pil_cv2 import cv2pil
 
 
@@ -32,7 +32,7 @@ class SbbBinarizeProcessor(Processor):
         # resolve relative path via OCR-D ResourceManager
         assert isinstance(self.parameter, frozendict)
         model_zoo = EynollahModelZoo(basedir=self.parameter['model'])
-        self.binarizer = SbbBinarizer(model_zoo=model_zoo, logger=self.logger)
+        self.binarizer = Binarizer(model_zoo=model_zoo, logger=self.logger)
 
     def process_page_pcgts(self, *input_pcgts: OcrdPage | None, page_id: str | None = None) -> OcrdPageResult:
         """
