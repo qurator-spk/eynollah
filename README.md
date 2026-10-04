@@ -13,7 +13,8 @@
 
 ## Features
 * Document layout analysis with support for 10 segmentation classes: 
-  * background, [page border](https://ocr-d.de/en/gt-guidelines/trans/lyRand.html), [text region](https://ocr-d.de/en/gt-guidelines/trans/lytextregion.html#textregionen__textregion_), [text line](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_TextLineType.html), [header](https://ocr-d.de/en/gt-guidelines/trans/lyUeberschrift.html), [image](https://ocr-d.de/en/gt-guidelines/trans/lyBildbereiche.html), [separator](https://ocr-d.de/en/gt-guidelines/trans/lySeparatoren.html), [marginalia](https://ocr-d.de/en/gt-guidelines/trans/lyMarginalie.html), [initial](https://ocr-d.de/en/gt-guidelines/trans/lyInitiale.html), [table](https://ocr-d.de/en/gt-guidelines/trans/lyTabellen.html)
+  * background, [page border](https://ocr-d.de/en/gt-guidelines/trans/lyRand.html), [text region](https://ocr-d.de/en/gt-guidelines/trans/lytextregion.html#textregionen__textregion_), [text line](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_TextLineType.html), [header](https://ocr-d.de/en/gt-guidelines/trans/lyUeberschrift.html), [image](https://ocr-d.de/en/gt-guidelines/trans/lyBildbereiche.html), [separator](https://ocr-d.de/en/gt-guidelines/trans/lySeparatoren.html),
+  [marginalia](https://ocr-d.de/en/gt-guidelines/trans/lyMarginalie.html), [initial](https://ocr-d.de/en/gt-guidelines/trans/lyInitiale.html), [table](https://ocr-d.de/en/gt-guidelines/trans/lyTabellen.html)
 * Textline segmentation to bounding boxes or polygons (including for curved lines and vertical text)
 * Binarization
 * Text recognition
@@ -57,22 +58,21 @@ make install EXTRAS=OCR
 Torch (with transformers). Those two frameworks may also have conflicting CUDA dependencies. An 
 ONNX conversion for these models may be achieved soon.
 
-### Docker
+### Documentation
 
-For using Eynollah with Docker, see [`docker.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/docker.md).
+* For using Eynollah with Docker, see [`docker.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/docker.md).
+* For using Eynollah with OCR-D, see [`ocrd.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/ocrd.md).
+* For model documentation and model cards, see [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
+* For documentation on advanced use, see [`usage.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/usage.md).
 
 ## Models
 
-Pretrained models can be downloaded from [Zenodo](https://doi.org/10.5281/zenodo.17194823) or [Hugging Face](https://huggingface.co/SBB?search_models=eynollah).
+Pretrained models can be downloaded from [Zenodo](https://doi.org/10.5281/zenodo.17194823).
 
 For fast runtime inference, download the ONNX models distributed as `models_inference_...zip`. 
 
 For finetuning training, download the original (Tensorflow / Torch) models distributed as `models_training...zip` 
 and install the `[training]` extra.
-
-For model documentation and model cards, see [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
-
-## Training
 
 To train your own model with Eynollah, see [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md) and use the tools in the [`train`](https://github.com/qurator-spk/eynollah/tree/main/train) folder.
 
@@ -140,11 +140,9 @@ The default is to only perform layout detection of main regions
 The best output quality is achieved when RGB images are used as input
 rather than greyscale or binarized images.
 
-Additional documentation can be found in [`usage.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/usage.md).
-
 ### Binarization
 
-Performs document image binarization (thresholding). 
+Perform document image binarization. 
 
 The command-line interface for binarization can be called like this:
 
@@ -202,8 +200,9 @@ The following options can be used to further configure the ocr processing:
 
 Reading order can be detected either during layout analysis,
 or in a separate step, using a machine learning based model.
-This requires a PAGE-XML input file containing document layout 
-analysis information.
+
+In this case, a PAGE-XML file containing document layout 
+analysis information is required as input.
 
 The command-line interface for machine learning based reading 
 order detection can be called like this:
@@ -214,10 +213,6 @@ eynollah [GENERIC_OPTIONS] machine-based-reading-order \
   -xml <xml file name> | -dx <directory containing xml files> \
   -o <output directory> 
 ```
-
-## Use as OCR-D processor
-
-See [`ocrd.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/ocrd.md).
 
 ## How to cite
 
