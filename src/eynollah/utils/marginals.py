@@ -242,12 +242,12 @@ def get_marginals(num_col, slope_deskew,
     else:
         point_l = 0
         #point_l = first_nonzero
-    if len(gaps_r) and len(gaps_l):
+    if len(gaps_r) and allow_r and len(gaps_l) and allow_l:
         if scores[best_l] < 0.1 * scores[best_r]:
             point_l = 0
             #point_l = first_nonzero
         if scores[best_r] < 0.1 * scores[best_l]:
-            point_r = 0
+            point_r = width - 1
             #point_r = last_nonzero
 
     # if there are no valid peaks (i.e. gaps) on either side,
