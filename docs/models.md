@@ -1,6 +1,6 @@
 # Models documentation
 
-This suite of 15 models presents a document layout analysis (DLA) system for historical documents implemented by 
+This suite of Eynollah models presents a document layout analysis (DLA) system for historical documents implemented by 
 pixel-wise segmentation using a combination of a ResNet50 encoder with various U-Net decoders. In addition, heuristic 
 methods are applied to detect marginals and to determine the reading order of text regions.
 
@@ -20,17 +20,15 @@ See the flowchart below for the different stages and how they interact:
 
 <img width="810" height="691" alt="eynollah_flowchart" src="https://github.com/user-attachments/assets/42dd55bc-7b85-4b46-9afe-15ff712607f0" />
 
-
-
 ## Models
 
 ### Image enhancement
 
 Model card: [Image Enhancement](https://huggingface.co/SBB/eynollah-enhancement)
 
-This model addresses image resolution, specifically targeting documents with suboptimal resolution. In instances where 
-the detection of document layout exhibits inadequate performance, the proposed enhancement aims to significantly improve 
-the quality and clarity of the images, thus facilitating enhanced visual interpretation and analysis.
+This model addresses image quality issues, specifically targeting documents with suboptimal resolution. In instances 
+where the detection of document layout analysis exhibits inadequate performance, the proposed enhancement aims to 
+improve the quality and clarity of the images, thus facilitating enhanced visual interpretation and analysis.
 
 ### Page extraction / border detection
 
@@ -43,19 +41,19 @@ model helps to crop to the page borders by using a pixel-wise segmentation metho
 
 Model card: [Column Classification](https://huggingface.co/SBB/eynollah-column-classifier)
 
-This model is a trained classifier that recognizes the number of columns in a document by use of a training set with 
-manual classification of all documents into six classes with either one, two, three, four, five, or six and more columns 
-respectively.
+This model is a classifier that is trained to recognize the number of columns in a document by use of a training set 
+derived through manual classification of documents into six classes with either one, two, three, four, five, or six and 
+more columns respectively.
 
 ### Binarization
 
 Model card: [Binarization](https://huggingface.co/SBB/eynollah-binarization)
 
-This model is designed to tackle the intricate task of document image binarization, which involves segmentation of the 
-image into white and black pixels. This process significantly contributes to the overall performance of the layout 
-models, particularly in scenarios where the documents are degraded or exhibit subpar quality. The robust binarization 
-capability of the model enables improved accuracy and reliability in subsequent layout analysis, thereby facilitating 
-enhanced document understanding and interpretation.
+This model is designed for document image binarization, which involves segmentation of the image into white and black 
+pixels. This process contributes to the overall performance of the layout models, particularly in scenarios where the 
+documents are degraded or exhibit subpar quality. The robust binarization capability of the model enables improved 
+accuracy and reliability in subsequent layout analysis steps, thereby facilitating enhanced document understanding and 
+interpretation.
 
 ### Main region detection
 
@@ -152,11 +150,15 @@ This model is used for the task of illustration detection only.
 
 Model card: [Reading Order Detection]()
 
-The model extracts the reading order of text regions from the layout by classifying pairwise relationships between them. A sorting algorithm then determines the overall reading sequence.
+The model extracts the reading order of text regions from the layout by classifying pairwise relationships between them. 
+A sorting algorithm then determines the overall reading sequence.
 
 ### OCR
 
-We have trained three OCR models: two CNN-RNN–based models and one transformer-based TrOCR model. The CNN-RNN models are generally faster and provide better results in most cases, though their performance decreases with heavily degraded images. The TrOCR model, on the other hand, is computationally expensive and slower during inference, but it can possibly produce better results on strongly degraded images.
+We have trained three OCR models: two CNN-RNN–based models and one transformer-based TrOCR model. The CNN-RNN models are 
+generally faster and provide better results in most cases, though their performance decreases with heavily degraded 
+images. The TrOCR model, on the other hand, is computationally expensive and slower during inference, but it can 
+possibly produce better results on strongly degraded images.
 
 #### CNN-RNN model: model_eynollah_ocr_cnnrnn_20250805
 
@@ -169,7 +171,8 @@ This model is trained on data where most of the samples are in Fraktur german sc
 
 #### CNN-RNN model: 	model_eynollah_ocr_cnnrnn_20250904 (Default)
 
-Compared to the model_eynollah_ocr_cnnrnn_20250805 model, this model is trained on a larger proportion of Antiqua data and achieves superior performance.
+Compared to the model_eynollah_ocr_cnnrnn_20250805 model, this model is trained on a larger proportion of Antiqua data 
+and achieves superior performance.
 
 |      Dataset    | Input    | CER     | WER     |
 |-----------------|:---------|:--------|:--------|
@@ -177,7 +180,6 @@ Compared to the model_eynollah_ocr_cnnrnn_20250805 model, this model is trained 
 | OCR-D-GT-VD-SBB | RGB      | 0.01471 | 0.05813 |
 | BLN600          | RGB      | 0.04409 | 0.08879 |
 | BLN600          | Enhanced | 0.03599 | 0.06244 |
-
 
 #### Transformer OCR model: model_eynollah_ocr_trocr_20250919
 
@@ -195,32 +197,36 @@ This transformer OCR model is trained on the same data as model_eynollah_ocr_tro
 |:---:|:---:|:---:|:---:|
 | Image | cnnrnn_20250805 | cnnrnn_20250904 | trocr_20250919 |
 
-
-
 | <img width="2000" src="https://github.com/user-attachments/assets/9bc13d48-2a92-45fc-88db-c07ffadba067"> | <img width="1000" src="https://github.com/user-attachments/assets/2b294aeb-1362-4d6e-b70f-8aeffd94c5e7"> | <img width="1000" src="https://github.com/user-attachments/assets/9911317e-632e-4e6a-8839-1fb7e783da11"> | <img width="1000" src="https://github.com/user-attachments/assets/2c5626d9-0d23-49d3-80f5-a95f629c9c76"> |
 |:---:|:---:|:---:|:---:|
 | Image | cnnrnn_20250805 | cnnrnn_20250904 | trocr_20250919 |
-
 
 | <img width="2000" src="https://github.com/user-attachments/assets/d54d8510-5c6a-4ab0-9ba7-f6ec4ad452c6"> | <img width="1000" src="https://github.com/user-attachments/assets/a418b25b-00dc-493a-b3a3-b325b9b0cb85"> | <img width="1000" src="https://github.com/user-attachments/assets/df6e2b9e-a821-4b4c-8868-0c765700c341"> | <img width="1000" src="https://github.com/user-attachments/assets/b90277f5-40f4-4c99-80a2-da400f7d3640"> |
 |:---:|:---:|:---:|:---:|
 | Image | cnnrnn_20250805 | cnnrnn_20250904 | trocr_20250919 |
 
-
 | <img width="2000" src="https://github.com/user-attachments/assets/7ec49211-099f-4c21-9e60-47bfdf21f1b6"> | <img width="1000" src="https://github.com/user-attachments/assets/00ef9785-8885-41b3-bf6e-21eab743df71"> | <img width="1000" src="https://github.com/user-attachments/assets/13eb9f62-4d5a-46dc-befc-b02eb4f31fc1"> | <img width="1000" src="https://github.com/user-attachments/assets/a5c078d1-6d15-4d12-9040-526d7063d459"> |
 |:---:|:---:|:---:|:---:|
 | Image | cnnrnn_20250805 | cnnrnn_20250904 | trocr_20250919 |
-
-
 
 ## Heuristic methods
 
 Additionally, some heuristic methods are employed to further improve the model predictions: 
 
-* After border detection, the largest contour is determined by a bounding box, and the image cropped to these coordinates.
-* Unlike the non-light version, where the image is scaled up to help the model better detect the background spaces between text regions, the light version uses down-scaled images. In this case, introducing an artificial class along the boundaries of text regions and text lines has helped to isolate and separate the text regions more effectively. 
-* A minimum area is defined for text regions in relation to the overall image dimensions, so that very small regions that are noise can be filtered out. 
-* In the non-light version, deskewing is applied at the text-region level (since regions may have different degrees of skew) to improve text-line segmentation results. In contrast, the light version performs deskewing only at the page level to enhance margin detection and heuristic reading-order estimation. 
-* After deskewing, a calculation of the pixel distribution on the X-axis allows the separation of textlines (foreground) and background pixels (only in non-light version).
+* After border detection, the largest contour is determined by a bounding box, and the image cropped to these 
+coordinates.
+* Unlike the non-light version, where the image is scaled up to help the model better detect the background spaces 
+between text regions, the light version uses down-scaled images. In this case, introducing an artificial class along the 
+boundaries of text regions and text lines has helped to isolate and separate the text regions more effectively. 
+* A minimum area is defined for text regions in relation to the overall image dimensions, so that very small regions 
+that are noise can be filtered out. 
+* In the non-light version, deskewing is applied at the text-region level (since regions may have different degrees of 
+skew) to improve text-line segmentation results. In contrast, the light version performs deskewing only at the page 
+level to enhance margin detection and heuristic reading-order estimation. 
+* After deskewing, a calculation of the pixel distribution on the X-axis allows the separation of textlines (foreground) 
+and background pixels (only in non-light version).
 * Finally, using the derived coordinates, bounding boxes are determined for each textline (only in non-light version).
-* As mentioned above, the reading order can be determined using a model; however, this approach is computationally expensive, time-consuming, and less accurate due to the limited amount of ground-truth data available for training. Therefore, our tool uses a heuristic reading-order detection method as the default. The heuristic approach relies on headers and separators to determine the reading order of text regions.
+* As mentioned above, the reading order can be determined using a model; however, this approach is computationally 
+expensive, time-consuming, and less accurate due to the limited amount of ground-truth data available for training. 
+Therefore, our tool uses a heuristic reading-order detection method as the default. The heuristic approach relies on 
+headers and separators to determine the reading order of text regions.

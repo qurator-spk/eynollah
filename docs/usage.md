@@ -9,7 +9,6 @@ eynollah \
   -o <output directory> \
   [LAYOUT_OPTIONS]
 ```
-
 ## Generic options
 Pass any of the following options:
 
@@ -89,12 +88,11 @@ uses the original (RGB) image despite any binarization that may have occurred in
 TODO
 
 ## Hints
-* The best output quality is produced when RGB images are used as input rather than greyscale or binarized images.
+* The best quality is produced when RGB images are used as input rather than greyscale or binarized images.
 * If none of the parameters is set to `true`, the tool will perform a layout detection of main regions (background, 
-text, images, separators and marginals). An advantage of this tool is that it tries to extract main text regions 
-separately as much as possible.
+text, images, separators and marginals).
 * If you set `-ae` (**a**llow image **e**nhancement) parameter to `true`, the tool will first check the ppi 
-(pixel-per-inch) of the image and when it is less than 300, the tool will resize it and only then image enhancement will 
+(pixel-per-inch) of the image and when less than 300, the tool will resize it and only then image enhancement will 
 occur. Image enhancement can also take place without this option, but by setting this option to `true`, the layout xml 
 data (e.g. coordinates) will be based on the resized and enhanced image instead of the original image.
 * For some documents, while the quality is good, their scale is very large, and the performance of tool decreases. In 
