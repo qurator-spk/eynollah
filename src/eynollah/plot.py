@@ -38,7 +38,7 @@ class EynollahPlotter:
     def save_plot_of_layout_main(self, text_regions_p, image_page, name=None):
         if self.dir_of_layout is not None:
             values = np.unique(text_regions_p[:, :])
-            # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
+            # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Separators' , 'Tables', 'Graphics']
             pixels=['Background' , 'Main text'  , 'Image' , 'Separator','Marginalia']
             values_indexes = [0, 1, 2, 3, 4]
             plt.figure(figsize=(40, 40))
@@ -55,7 +55,7 @@ class EynollahPlotter:
     def save_plot_of_layout_main_all(self, text_regions_p, image_page, name=None):
         if self.dir_of_all is not None:
             values = np.unique(text_regions_p[:, :])
-            # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
+            # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Separators' , 'Tables', 'Graphics']
             pixels=['Background' , 'Main text'  , 'Image' , 'Separator','Marginalia']
             values_indexes = [0, 1, 2, 3, 4]
             plt.figure(figsize=(80, 40))
@@ -75,7 +75,7 @@ class EynollahPlotter:
     def save_plot_of_layout(self, text_regions_p, image_page, name=None):
         if self.dir_of_layout is not None:
             values = np.unique(text_regions_p[:, :])
-            # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
+            # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Separators' , 'Tables', 'Graphics']
             pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator", "Tables"]
             values_indexes = [0, 1, 2, 8, 4, 5, 6, 10]
             plt.figure(figsize=(40, 40))
@@ -92,7 +92,7 @@ class EynollahPlotter:
     def save_plot_of_layout_all(self, text_regions_p, image_page, name=None):
         if self.dir_of_all is not None:
             values = np.unique(text_regions_p[:, :])
-            # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Seperators' , 'Tables', 'Graphics']
+            # pixels=['Background' , 'Main text' , 'Heading' , 'Marginalia' ,'Drop capitals' , 'Images' , 'Separators' , 'Tables', 'Graphics']
             pixels = ["Background", "Main text", "Header", "Marginalia", "Drop capital", "Image", "Separator", "Tables"]
             values_indexes = [0, 1, 2, 8, 4, 5, 6, 10]
             plt.figure(figsize=(80, 40))

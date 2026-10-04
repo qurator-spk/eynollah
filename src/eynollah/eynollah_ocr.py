@@ -140,10 +140,10 @@ class Eynollah_ocr(Eynollah):
                     cropped_lines.append(img_crop)
                     cropped_lines_meging_indexing.append(0)
                 else:
-                    splited_images, _ = return_textlines_split_if_needed(img_crop, None)
-                    if splited_images:
-                        cropped_lines.append(splited_images[0])
-                        cropped_lines.append(splited_images[1])
+                    split_images, _ = return_textlines_split_if_needed(img_crop, None)
+                    if split_images:
+                        cropped_lines.append(split_images[0])
+                        cropped_lines.append(split_images[1])
                         cropped_lines_meging_indexing.append(1)
                         cropped_lines_meging_indexing.append(-1)
                     else:
