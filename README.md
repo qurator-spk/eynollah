@@ -12,21 +12,21 @@
 ![](https://user-images.githubusercontent.com/952378/102350683-8a74db80-3fa5-11eb-8c7e-f743f7d6eae2.jpg)
 
 ## Features
-* Document layout analysis using pixelwise segmentation models with support for 10 segmentation classes: 
+* Document layout analysis with support for 10 segmentation classes: 
   * background, [page border](https://ocr-d.de/en/gt-guidelines/trans/lyRand.html), [text region](https://ocr-d.de/en/gt-guidelines/trans/lytextregion.html#textregionen__textregion_), [text line](https://ocr-d.de/en/gt-guidelines/pagexml/pagecontent_xsd_Complex_Type_pc_TextLineType.html), [header](https://ocr-d.de/en/gt-guidelines/trans/lyUeberschrift.html), [image](https://ocr-d.de/en/gt-guidelines/trans/lyBildbereiche.html), [separator](https://ocr-d.de/en/gt-guidelines/trans/lySeparatoren.html), [marginalia](https://ocr-d.de/en/gt-guidelines/trans/lyMarginalie.html), [initial](https://ocr-d.de/en/gt-guidelines/trans/lyInitiale.html), [table](https://ocr-d.de/en/gt-guidelines/trans/lyTabellen.html)
-* Textline segmentation to bounding boxes or polygons (contours) including for curved lines and vertical text
-* Document image binarization with pixelwise segmentation or hybrid CNN-Transformer models
-* Text recognition (OCR) with CNN-RNN or TrOCR models
-* Detection of reading order (left-to-right or right-to-left) using heuristics or trainable models
+* Textline segmentation to bounding boxes or polygons (including for curved lines and vertical text)
+* Binarization
+* Text recognition
+* Detection of reading order (left-to-right or right-to-left)
 * Output in [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML)
 * [OCR-D](https://github.com/qurator-spk/eynollah#use-as-ocr-d-processor) interface
 
-:warning: Development is focused on achieving the best quality of results for a wide variety of historical 
-documents using a combination of multiple deep learning models and heuristics; therefore processing can be slow.
+:warning: Development is focused on achieving the optimal quality for a wide variety of historical documents using a 
+combination of multiple deep learning models and heuristics; therefore processing can be slow.
 
 ## Installation
 
-Python `3.8-3.11` with ONNX Runtime on Linux are currently supported.
+Python `3.9-3.11` with ONNX Runtime on Linux are currently supported.
 
 For GPU support, Nvidia drivers supporting CUDA 12 must be installed.
 The runtime dependencies will pull in ONNX, TensorRT and CUDA runtime
@@ -45,8 +45,6 @@ git clone git@github.com:qurator-spk/eynollah.git
 cd eynollah; pip install -e .
 ```
 
-Alternatively, you can run `make install` or `make install-dev` for editable installation.
-
 To also install the dependencies for the OCR engines:
 
 ```
@@ -55,22 +53,13 @@ pip install "eynollah[OCR]"
 make install EXTRAS=OCR
 ```
 
-> **Note**: Requirements for OCR are more involved, 
-> as they may need Tensorflow (with tf-keras) and/or
-> Torch (with transformers). Those two frameworks may
-> also have conflicting CUDA dependencies. An ONNX
-> conversion for these models may be achieved soon.
-> :construction:
+:warning: Requirements for OCR are more involved, as they need Tensorflow (with tf-keras) and/or
+Torch (with transformers). Those two frameworks may also have conflicting CUDA dependencies. An 
+ONNX conversion for these models may be achieved soon.
 
 ### Docker
 
-Use
-
-```
-docker pull ghcr.io/qurator-spk/eynollah:latest
-```
-
-When using Eynollah with Docker, see [`docker.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/docker.md).
+For using Eynollah with Docker, see [`docker.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/docker.md).
 
 ## Models
 
@@ -78,8 +67,8 @@ Pretrained models can be downloaded from [Zenodo](https://doi.org/10.5281/zenodo
 
 For fast runtime inference, download the ONNX models distributed as `models_inference_...zip`. 
 
-For finetuning training, download the original (Tensorflow / Torch) models distributed as `models_training...zip`
-(and install the `[training]` extra).
+For finetuning training, download the original (Tensorflow / Torch) models distributed as `models_training...zip` 
+and install the `[training]` extra.
 
 For model documentation and model cards, see [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
 
@@ -96,8 +85,6 @@ Eynollah supports five use cases:
 4. [text recognition (OCR)](#ocr), and 
 5. [reading order detection](#reading-order-detection).
 
-Some example outputs can be found in [`examples.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/examples.md).
-
 The **generic options** shared by all subcommands are:
 ```sh
   -m <directory containing model files>
@@ -109,8 +96,7 @@ The **generic options** shared by all subcommands are:
 ### Layout Analysis
 
 Detects layout elements, i.e. regions of various types and text lines,
-and determines their reading order using either heuristic methods or a
-[pretrained model](https://github.com/qurator-spk/eynollah#machine-based-reading-order).
+and determines their reading order.
 
 The command-line interface for layout analysis can be called like this:
 
@@ -143,7 +129,7 @@ The following options can be used to further configure the processing:
 | `-ncu`            | upper limit of columns in document image                                           |
 | `-ncl`            | lower limit of columns in document image                                           |
 | `-slro`           | skip layout detection and reading order                                            |
-| `-romb`           | apply machine based reading order detection                                        |
+| `-romb`           | apply machine learning based reading order detection                               |
 | `-ipe`            | ignore page extraction                                                             |
 | `-j`              | number of CPU jobs to run parallel (useful with -di)                               |
 | `-H`              | when to halt when some jobs fail                                                   |
@@ -154,13 +140,11 @@ The default is to only perform layout detection of main regions
 The best output quality is achieved when RGB images are used as input
 rather than greyscale or binarized images.
 
-Additional documentation can be found in
-[`usage.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/usage.md).
+Additional documentation can be found in [`usage.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/usage.md).
 
 ### Binarization
 
-Performs document image binarization (thresholding)
-using pretrained pixelwise segmentation models. 
+Performs document image binarization (thresholding). 
 
 The command-line interface for binarization can be called like this:
 
@@ -173,7 +157,7 @@ eynollah [GENERIC_OPTIONS] binarization \
 
 ### Image Enhancement
 
-This enlarges and enhances images. Useful in case the scan quality is low.
+This enlarges and enhances images. Useful in cases where the scan quality is low.
 
 ```sh
 eynollah [GENERIC_OPTIONS] enhancement \
@@ -190,8 +174,8 @@ eynollah [GENERIC_OPTIONS] enhancement \
 
 ### OCR
 
-Performs text recognition using either a CNN-RNN model or a Transformer model.
-Needs a PAGE-XML input file.
+Perform text recognition using either a CNN-RNN model or a TrOCR model.
+Needs a PAGE-XML input file containing textline segmentation information.
 
 The command-line interface for OCR can be called like this:
 
@@ -210,16 +194,19 @@ The following options can be used to further configure the ocr processing:
 | `-dib`            | directory of binarized images (file type must be '.png'), prediction with both RGB and bin |
 | `-doit`           | directory for output images rendered with the predicted text                               |
 | `-nmtc`           | cropped textline images will not be masked with textline contour                           |
-| `-bs`             | ocr inference batch size. Default batch size is 2 for TrOCR and 8 for CNN-RNN models       |
-| `-min_conf`       | minimum OCR confidence value. OCR with textline conf lower than this will be ignored       |
+| `-bs`             | OCR inference batch size. Default batch size is 2 for TrOCR and 8 for CNN-RNN models       |
+| `-min_conf`       | minimum OCR confidence value. OCR with textline confidence lower than this will be ignored |
 
 
 ### Reading Order Detection
 
 Reading order can be detected either during layout analysis,
-or as a separate module, which requires a PAGE-XML input file.
+or in a separate step, using a machine learning based model.
+This requires a PAGE-XML input file containing document layout 
+analysis information.
 
-The command-line interface for machine based reading order can be called like this:
+The command-line interface for machine learning based reading 
+order detection can be called like this:
 
 ```sh
 eynollah [GENERIC_OPTIONS] machine-based-reading-order \
