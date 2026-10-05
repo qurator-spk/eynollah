@@ -9,7 +9,12 @@ import numpy as np
 from scipy.sparse.csgraph import minimum_spanning_tree
 from shapely.geometry import Polygon, LineString
 from shapely.geometry.polygon import orient
-from shapely import set_precision, affinity
+from shapely import (
+    set_precision,
+    affinity,
+    line_interpolate_point,
+    line_locate_point,
+)
 from shapely.ops import unary_union, nearest_points
 
 from .rotate import rotate_image
@@ -400,3 +405,10 @@ def bridge_polygons(poly1, poly2, strength=1):
     bridgep = orient(LineString(nearest).buffer(strength, resolution=1), -1)
     return bridgep
 
+def snap_polygon_point(poly, point):
+    return (
+        line_interpolate_point(
+            poly.exterior,
+            line_locate_point(
+                poly.exterior,
+                point)))

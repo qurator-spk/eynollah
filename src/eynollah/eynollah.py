@@ -119,6 +119,7 @@ class Eynollah:
         num_col_upper : int = 0,
         num_col_lower : int = 0,
         allow_marginalia : str = "both",
+        paragraphs_from_marginalia: bool = False,
         threshold_art_class_layout: float = 0.1,
         threshold_art_class_textline: float = 0.1,
         skip_layout_and_reading_order : bool = False,
@@ -145,6 +146,7 @@ class Eynollah:
         self.num_col_upper = int(num_col_upper)
         self.num_col_lower = int(num_col_lower)
         self.allow_marginalia = allow_marginalia
+        self.paragraphs_from_marginalia = paragraphs_from_marginalia
         self.threshold_art_class_layout = float(threshold_art_class_layout)
         self.threshold_art_class_textline = float(threshold_art_class_textline)
 
@@ -1064,6 +1066,7 @@ class Eynollah:
         get_marginals(*args,
                       allow_l=self.allow_marginalia in ('left', 'both'),
                       allow_r=self.allow_marginalia in ('right', 'both'),
+                      vcut_mains=self.paragraphs_from_marginalia,
                       logger=self.logger,
                       kernel=KERNEL)
 
