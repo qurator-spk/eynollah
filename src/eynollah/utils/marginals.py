@@ -54,6 +54,7 @@ def get_marginals(num_col, slope_deskew,
                   kernel=None,
                   logger=None,
                   label_text=1,
+                  label_imgs=2,
                   label_seps=3,
                   label_marg=4,
                   label_tabs=10,
@@ -114,7 +115,8 @@ def get_marginals(num_col, slope_deskew,
 
     text_mask = ((early_layout == label_text) |
                  (early_layout == label_tabs)).astype(np.uint8)
-    seps_mask = (early_layout == label_seps).astype(np.uint8)
+    seps_mask = ((early_layout == label_seps) |
+                 (early_layout == label_imgs)).astype(np.uint8)
     text_mask_d = rotate_image(text_mask, slope_deskew)
     seps_mask_d = rotate_image(seps_mask, slope_deskew)
     height, width = text_mask_d.shape
