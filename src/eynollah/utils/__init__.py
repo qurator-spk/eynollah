@@ -1146,7 +1146,7 @@ def find_number_of_columns_in_document(
         cy_splitters = np.append(cy_splitters, y_min_splitters_head)
         cy_splitters = np.append(cy_splitters, y_max_splitters_head)
 
-    regions_y = gaussian_filter1d(regions_without_separators.sum(axis=1), 10)
+    regions_y = gaussian_filter1d(regions_without_separators.sum(axis=1), 8)
     peaks_y, _ = find_peaks(regions_y.max() - regions_y, distance=20)
     for peak_y in peaks_y:
         if (regions_y[peak_y] > 0.02 * width # >2% in smoothed projection
