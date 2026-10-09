@@ -271,6 +271,7 @@ def get_marginals(num_col, slope_deskew,
     # then look at positive/negative peaks of derivative on left/right side,
     # to identify smaller plateaus of sufficient thickness:
     def detect_step_point(side):
+        min_text_thickness = max_text_thickness / 25.
         logger.debug("marginalia: trying to find jumps instead of gaps on the %s", side)
         if side == 'left':
             text_mask_d_ys2 = np.diff(text_mask_d_ys[:mid_point+1].astype(int))
@@ -283,11 +284,22 @@ def get_marginals(num_col, slope_deskew,
         # ax2.plot(np.arange(len(text_mask_d_ys2)) + offset, text_mask_d_ys2, label='derivative', color='g')
         jumps, _ = find_peaks(text_mask_d_ys2,
                               # constrain slope lower bound
-                              height=0.04 * max_text_thickness,
+                              height=min_text_thickness,
                               # constrain the distance at least 2 characters at 12pt
-                              distance=MIN_DIST_GAPS)
+                              #distance=MIN_DIST_GAPS)
+                              )
         if not len(jumps):
             return None
+        # combine follow-up peaks if smaller MIN_DIST_GAPS
+        combined = [jumps[0]]
+        for jump in jumps[1:]:
+            if (jump - combined[-1] < MIN_DIST_GAPS and
+                text_mask_d_ys2[(new := (combined[-1] + jump) // 2)] >=
+                min_text_thickness):
+                combined[-1] = new
+            else:
+                combined.append(jump)
+        jumps = np.array(combined)
 
         # ax2.scatter(jumps + offset, text_mask_d_ys2[jumps], label='jumps', color='g')
         jumps += offset
@@ -399,7 +411,7 @@ def get_marginals(num_col, slope_deskew,
             [(prev_min, next_max)
              for previ, nexti in pairwise(indices)
              if ((next_max := text_mask_d_ys_plateaus[previ: nexti, 1][-1]) -
-                 (prev_min := text_mask_d_ys_plateaus[previ: nexti, 0][0])) > 10])
+                 (prev_min := text_mask_d_ys_plateaus[previ: nexti, 0][0])) > 20])
         text_mask_d_ys_plateaus = text_mask_d_ys_plateaus.T
 
         if side == 'left':

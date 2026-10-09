@@ -78,7 +78,7 @@ from .utils.pil_cv2 import pil2cv
 from .plot import EynollahPlotter
 from .writer import EynollahXmlWriter
 
-MIN_AREA_REGION = 0.000001
+MIN_AREA_REGION = 1e-6
 SLOPE_THRESHOLD = 0.13
 RATIO_OF_TWO_MODEL_THRESHOLD = 95.50 #98.45:
 DPI_THRESHOLD = 298
@@ -581,7 +581,7 @@ class Eynollah:
             textline_confidence: np.ndarray,
             slope_deskew: float
     ):
-        textlines_cont = return_contours_of_class(textline_mask_tot, 1, 1e-5)
+        textlines_cont = return_contours_of_class(textline_mask_tot, 1, min_area=1e-5)
         textlines_conf = get_region_confidences(textlines_cont, textline_confidence)
         textlines_cx, textlines_cy = find_center_of_contours(textlines_cont)
         textlines_w_h = [cv2.boundingRect(polygon)[2:] for polygon in textlines_cont]
@@ -1784,7 +1784,7 @@ class Eynollah:
         tables_conf = get_region_confidences(tables_cont, regions_confidence)
         tables = [Region(cont, conf=conf)
                   for cont, conf in zip(tables_cont, tables_conf)]
-        images_cont = return_contours_of_class(text_regions_p, label_imgs_fl, 2e-4)
+        images_cont = return_contours_of_class(text_regions_p, label_imgs_fl, min_area=2e-4)
         images_conf = get_region_confidences(images_cont, regions_confidence)
         images = [Region(cont, conf=conf)
                   for cont, conf in zip(images_cont, images_conf)]
