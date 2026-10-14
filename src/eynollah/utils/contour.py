@@ -369,7 +369,7 @@ def join_polygons(polygons: Sequence[Polygon], scale=20) -> Polygon:
                          if poly.geom_type in ['MultiPolygon', 'GeometryCollection']
                          else [poly]
                          for poly in polygons])
-                if not poly.is_empty]
+                if poly.geom_type == 'Polygon' and not poly.is_empty and poly.area > 1e-9]
     npoly = len(polygons)
     if npoly == 1:
         return polygons[0]
