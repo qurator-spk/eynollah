@@ -569,20 +569,25 @@ def get_marginals(num_col, slope_deskew,
                     # don't ignore if intersection takes entire margin
                     or np.isclose(imaxx - iminx, point_l - first_nonzero, rtol=0.05)
             ):
-                for geom in split_polygon(poly, line_l3).geoms:
+                for geom in split_polygon(poly, line_l).geoms:
                     gminx, gminy, gmaxx, gmaxy = geom.bounds
                     gaspect = (gmaxy - gminy) / (gmaxx - gminx)
                     if not geom.within(marg_l3):
                         # main or right
                         continue
-                    if (gaspect > 4 and gaspect > 8 * aspect and
-                        not np.isclose(gmaxx - gminx, point_l - first_nonzero, rtol=0.05)):
+                    if (
+                            # ignore if part is almost vertical or tiny
+                            (gaspect > 4 and gaspect > 8 * aspect or
+                             geom.area < min_area_text * width * height)
+                            # don't ignore if part takes entire margin
+                            and not np.isclose(gmaxx - gminx, point_l - first_nonzero, rtol=0.05)
+                    ):
                         # most likely just a vertical scrap
                         continue
                     if PLOT_HCUT_MAINS:
                         plot_polygon(geom, color='blue')
                     marg_contours.append(polygon2contour(geom))
-                    poly = poly.difference(geom)
+                    poly = poly.difference(geom).buffer(-0.01)
             inter = poly.intersection(marg_r)
             iminx, iminy, imaxx, imaxy = inter.bounds
             iaspect = (imaxy - iminy) / (imaxx - iminx)
@@ -593,21 +598,27 @@ def get_marginals(num_col, slope_deskew,
                     # don't ignore if intersection takes entire margin
                     or np.isclose(imaxx - iminx, last_nonzero - point_r, rtol=0.05)
             ):
-                for geom in split_polygon(poly, line_r3).geoms:
+                for geom in split_polygon(poly, line_r).geoms:
                     gminx, gminy, gmaxx, gmaxy = geom.bounds
                     gaspect = (gmaxy - gminy) / (gmaxx - gminx)
                     if not geom.within(marg_r3):
                         # main or left
                         continue
-                    if (gaspect > 4 and gaspect > 8 * aspect and
-                        not np.isclose(gmaxx - gminx, last_nonzero - point_r, rtol=0.05)):
+                    if (
+                            # ignore if part is almost vertical or tiny
+                            (gaspect > 4 and gaspect > 8 * aspect or
+                             geom.area < min_area_text * width * height)
+                            # don't ignore if part takes entire margin
+                            and not np.isclose(gmaxx - gminx, last_nonzero - point_r, rtol=0.05)
+                    ):
                         # most likely just a vertical scrap
                         continue
                     if PLOT_HCUT_MAINS:
                         plot_polygon(geom, color='green')
                     marg_contours.append(polygon2contour(geom))
-                    poly = poly.difference(geom)
-            main_contours.append(polygon2contour(ensure_polygon(poly)))
+                    poly = poly.difference(geom).buffer(-0.01)
+            if vcut_mains:
+                main_contours.append(polygon2contour(ensure_polygon(poly)))
             if PLOT_HCUT_MAINS:
                 plot_polygon(poly, color='red')
         else:
