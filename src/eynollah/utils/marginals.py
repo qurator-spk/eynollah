@@ -200,7 +200,12 @@ def get_marginals(num_col, slope_deskew,
     mid_point_r = mid_point + (last_nonzero - mid_point) // 3
     qrt_point_l = mid_point - (mid_point - first_nonzero) // 2
     qrt_point_r = mid_point + (last_nonzero - mid_point) // 2
-    
+
+    min_area_text = 1e-5
+    seps_contours = return_contours_of_class(seps_mask_d, 1, min_area_text)
+    seps_x_min = np.array([cont[:, 0, 0].min() + 15 for cont in seps_contours])
+    seps_x_max = np.array([cont[:, 0, 0].max() - 15 for cont in seps_contours])
+
     # find minima (horizontal gaps)
     gaps_y, props_y = find_peaks(
         max_text_thickness - text_mask_d_ys,
@@ -243,6 +248,8 @@ def get_marginals(num_col, slope_deskew,
         ax2.scatter(gaps_y, text_mask_d_ys[gaps_y], label='gaps_y', color='m')
         for i in range(len(gaps_y)):
             ax2.text(gaps_y[i], text_mask_d_ys[gaps_y[i]], str(props_y['prominences'][i]))
+        for i in range(len(seps_contours)):
+            ax2.axvspan(seps_x_min[i], seps_x_max[i], color='lightgray')
         ax2.tick_params(top=True, labeltop=True, bottom=True, labelbottom=False,
                         left=True, labelleft=False, right=True, labelright=True,
                         which='minor')
@@ -255,6 +262,9 @@ def get_marginals(num_col, slope_deskew,
     scores[gaps_y] = props_y['prominences'] * props_y['peak_heights']
 
     gaps_y = gaps_y[(gaps_y > first_nonzero) & (gaps_y < last_nonzero)]
+    # suppress if there are horizontal separators spanning across
+    gaps_y = gaps_y[~((seps_x_min[:, np.newaxis] <= gaps_y[np.newaxis]) &
+                      (seps_x_max[:, np.newaxis] > gaps_y[np.newaxis])).any(axis=0)]
 
     if num_col == 1:
         gaps_r = gaps_y[gaps_y > mid_point]
@@ -337,14 +347,6 @@ def get_marginals(num_col, slope_deskew,
             jumps = jumps[(last_nonzero - MIN_DIST_GAPS > jumps) &
                           (jumps > (mid_point_r if num_col == 1 else qrt_point_r))]
         # suppress these if there are horizontal separators spanning across
-        seps_cont, _ = cv2.findContours(seps_mask_d[:, :mid_point] if side == 'left' else
-                                        seps_mask_d[:, mid_point:],
-                                        cv2.RETR_EXTERNAL,
-                                        cv2.CHAIN_APPROX_NONE)
-        seps_x_min = np.array([contour[:, 0, 0].min() + 15
-                               for contour in seps_cont]) + offset
-        seps_x_max = np.array([contour[:, 0, 0].max() - 15
-                               for contour in seps_cont]) + offset
         jumps = jumps[~((seps_x_min[:, np.newaxis] <= jumps[np.newaxis]) &
                         (seps_x_max[:, np.newaxis] > jumps[np.newaxis])).any(axis=0)]
         if not len(jumps):
@@ -535,7 +537,6 @@ def get_marginals(num_col, slope_deskew,
     line_r3 = line_r.offset_curve(-5)
 
     # re-assign (marg/main), cutting through existing contours if necessary
-    min_area_text = 0.00001
     text_contours = return_contours_of_class(early_layout, label_text, min_area_text)
     marg_contours = []
     main_contours = []
