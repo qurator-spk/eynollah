@@ -699,22 +699,22 @@ def get_marginals(num_col, slope_deskew,
         if not len(mains := np.flatnonzero(y2mains[y, :, 0] >= 0)):
             continue
         # get nearest main
-        mains = mains[np.argsort(y2mains[cy, mains, 0])]
-        main_min = np.searchsorted(y2mains[y, mains, 0], cx)
-        main_max = np.searchsorted(y2mains[y, mains, 1], cx)
-        if main_min == 0:
+        mains = mains[np.argsort(y2mains[y, mains, 0])]
+        if (main_min := np.searchsorted(y2mains[y, mains, 0], cx)) == 0:
             # marg is left of main
             main = mains[0]
-        elif main_max == len(mains):
+        elif (main_max := np.searchsorted(y2mains[y, mains, 1], cx)) == len(mains):
             # marg is right of main
             main = mains[-1]
+        elif main_min == main_max + 1:
+            main = mains[main_max]
         else:
             # should not happen: marginalia between main regions
             assert False, (
                 "marginalia between main regions",
                 cont,
-                main_contours_d[main_max - 1],
-                main_contours_d[main_min])
+                main_contours_d[mains[main_max - 1]],
+                main_contours_d[mains[main_min]])
         main_cont_d = main_contours_d[main]
         # ensure there are (horizontal) lines for the corresponding main
         if len(lines := np.flatnonzero(
