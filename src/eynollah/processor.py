@@ -1,11 +1,12 @@
+from __future__ import annotations
 from functools import cached_property
-from typing import Optional
+from PIL import Image
 from ocrd_models import OcrdPage
 from ocrd import OcrdPageResultImage, Processor, OcrdPageResult
 
 from eynollah.model_zoo.model_zoo import EynollahModelZoo
 
-from .eynollah import Eynollah, EynollahXmlWriter
+from .eynollah import Eynollah
 
 class EynollahProcessor(Processor):
     @cached_property
@@ -45,7 +46,7 @@ class EynollahProcessor(Processor):
         if hasattr(self, 'eynollah'):
             del self.eynollah
 
-    def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
+    def process_page_pcgts(self, *input_pcgts: OcrdPage | None, page_id: str | None = None) -> OcrdPageResult:
         """
         Performs cropping, region and line segmentation with Eynollah.
 
@@ -95,4 +96,9 @@ class EynollahProcessor(Processor):
                                  img_pil=page_image, pcgts=pcgts,
                                  # ocrd.Processor will handle OCRD_EXISTING_OUTPUT more flexibly
                                  overwrite=True)
+        if self.parameter['binarize'] and (img_alt := next(
+                (img for img in pcgts.Page.AlternativeImage
+                 if img.comments == "binarized"), None)):
+            result.images.append(OcrdPageResultImage(
+                Image.fromarray(img_alt.filename), '.IMG-BIN', img_alt))
         return result

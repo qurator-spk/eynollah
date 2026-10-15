@@ -83,7 +83,7 @@ smoke-test: tests/resources/2files/kant_aufklaerung_1784_0020.tif
 	eynollah -m $(CURDIR) layout -di $(<D) -o $(TMPDIR) 
 	test -s $(TMPDIR)/euler_rechenkunst01_1738_0025.xml
 	# mbreorder, directory mode (overwrite):
-	eynollah -m $(CURDIR) machine-based-reading-order -di $(<D) -o $(TMPDIR) 
+	eynollah -m $(CURDIR) reorder -mb -di $(<D) -o $(TMPDIR) 
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$(basename $(<F)).xml
 	fgrep -c -e RegionRefIndexed $(TMPDIR)/$(basename $(<F)).xml
 	# binarize:

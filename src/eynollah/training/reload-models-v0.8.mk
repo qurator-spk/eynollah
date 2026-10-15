@@ -22,6 +22,7 @@ CURRENT_MODELS += model_eynollah_ocr_cnnrnn_20250930
 CURRENT_MODELS += eynollah-binarization_20210425
 CURRENT_MODELS += eynollah-column-classifier_20210425
 CURRENT_MODELS += eynollah-enhancement_20210425
+CURRENT_MODELS += eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18
 
 # tf (SavedModel format) for training
 # onnx conversion for fast inference

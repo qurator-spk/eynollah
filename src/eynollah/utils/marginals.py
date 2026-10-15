@@ -1,185 +1,783 @@
+from logging import getLogger
+
 import numpy as np
 import cv2
+from shapely.geometry import Point, Polygon, LineString
+from shapely.affinity import rotate as rotate_polygon
+from shapely.ops import split as split_polygon
+# from shapely import concave_hull, union
 from scipy.signal import find_peaks
 from scipy.ndimage import gaussian_filter1d
-from .contour import find_center_of_contours, return_contours_of_interested_region
+
+from . import pairwise
+from .contour import (
+    contour2polygon,
+    polygon2contour,
+    return_contours_of_class,
+    ensure_polygon,
+    join_polygons,
+    bridge_polygons,
+    snap_polygon_point,
+    rotate_contours,
+)
 from .resize import resize_image
 from .rotate import rotate_image
 
-def get_marginals(num_col, slope_deskew, early_layout,
+from matplotlib import pyplot as plt
+from shapely.plotting import plot_polygon
+
+MIN_THICKNESS_MAINTEXT_PRCT_HEIGHT = 14
+"""minimum vertical extent of the text mask (in percent of image height)
+
+(pages with smaller share of text will not get marginalia)"""
+
+MIN_DIST_GAPS = 40 # 20
+"""minimum horizontal distance between neighbouring gaps to be candidates for margin points
+
+(Gaps in the text mask projection are primary candidates.)"""
+
+MAX_THICKNESS_GAPS_FRACT_MAIN = 17. # 20. # 30.
+"""maximum vertical height of gaps (relative to the maximum height) to be candidates for margin points
+
+(Gaps in the text mask projection are primary candidates.)"""
+
+MIN_THICKNESS_STEP_FRACT_MAIN = 0.05
+"""minimum vertical height of margin plateaus (relative to the main average) to be candidates for margin points
+
+(Steps in the text mask projection are fallback candidates.)"""
+
+MAX_THICKNESS_STEP_FRACT_MAIN = 0.5
+"""maximum vertical height of margin plateaus (relative to the main average) to be candidates for margin points
+
+(Steps in the text mask projection are fallback candidates.)"""
+
+
+PLOT_MASK_MORPH = False
+PLOT_TEXT_THICK = False
+PLOT_GAPS_STEPS = False
+PLOT_POLY_ROTAT = False
+PLOT_HCUT_MAINS = False
+PLOT_HCUT_LINES = False
+PLOT_VCUT_MAINS = False
+
+def get_marginals(num_col, slope_deskew,
+                  early_layout,
+                  textline_mask,
+                  allow_l=True,
+                  allow_r=True,
+                  vcut_mains=True,
                   kernel=None,
+                  logger=None,
                   label_text=1,
+                  label_imgs=2,
+                  label_seps=3,
                   label_marg=4,
                   label_tabs=10,
 ):
-    if kernel is None:
-        kernel = np.ones((5, 5), dtype=np.uint8)
-    kernel_hor = np.ones((1, 5), dtype=np.uint8)
+    """
+    Detect left and right margins, apply to given segmentation labelling.
+
+    Find horizontal gaps in the (deskewed) text mask (as minima in its
+    vertical projection curve).
+
+    If there are multiple candidates on one side, then pick the one
+    with highest prominence (drop towards neighbour) and deepest gap
+    (lowest minimum).
+
+    If there are no candidates on one side, then try finding steps
+    in the text mask (as jumps in its vertical projection curve).
+    Pick the steepest jumps that introduce a suitable plateau.
+    (But suppress jumps merely caused by left / right indentation.)
+
+    Constrain the ranges of left and right points depending on the
+    given number of columns:
+    1. for one-column pages, the left / right positions can be between
+       the first / last occurrance of text and the middle of both
+    2. for two-column pages, similarly, but also one third towards
+       the left / right from the middle.
+
+    (Even one-column pages are allowed to have marginalia on both sides.)
+
+    Use the retrieved points on the left and right side to define margins,
+    respectively. Rotate the margins and main masks back to the original
+    (skewed) text mask.
+
+    Then extract all contours in the text mask of the region segmentation
+    and of the line segmentation. For each contour, if it falls completely
+    within either margin, then mark it for marginalia. If it intersects
+    either margin, then split it: For each resulting section, if it falls
+    completely in the margin, then mark it. But ignore any parts which are
+    mostly vertical, when the contour itself was not (to counter imprecision
+    of the straight cut).
+
+    Finally, fill all marked contours and partial contours with the marginalia
+    label.
+
+    Also, for the text mask of the line segmentation, cut along the left / right
+    margin lines (by drawing a line with the background label), to ensure that
+    text lines will also be assigned separately.
+
+    Return without changes if
+    - there is not enough text (i.e. the maximum of the vertical projection
+      of the text mask is too small)
+    - there are no sufficient peaks
+    - there would be no remaining main text
+    """
+    if logger is None:
+        logger = getLogger(__package__)
+    kernel = np.ones((2, 2), dtype=np.uint8)
+    kernel_hor = np.ones((1, 2), dtype=np.uint8)
 
     text_mask = ((early_layout == label_text) |
                  (early_layout == label_tabs)).astype(np.uint8)
+    seps_mask = ((early_layout == label_seps) |
+                 (early_layout == label_imgs)).astype(np.uint8)
     text_mask_d = rotate_image(text_mask, slope_deskew)
-    main_mask_d = np.zeros_like(text_mask_d)
-    height, width = main_mask_d.shape
+    seps_mask_d = rotate_image(seps_mask, slope_deskew)
+    height, width = text_mask_d.shape
 
+    if PLOT_MASK_MORPH:
+        plt.figure("text mask")
+        plt.subplot(1, 3, 1, title="original text mask")
+        plt.imshow(text_mask_d)
     if height <= 1500:
-        pass
+        text_mask_de = text_mask_d
     elif 1500 < height <= 1800:
-        text_mask_d = resize_image(text_mask_d, int(height / 1.5), width)
-        text_mask_d = cv2.erode(text_mask_d, kernel, iterations=5)
+        text_mask_de = resize_image(text_mask_d, int(height / 1.5), width)
+        text_mask_de = cv2.erode(text_mask_de, kernel, iterations=3)
         # rs: and back to original size
-        text_mask_d = resize_image(text_mask_d, height, width)
+        text_mask_de = resize_image(text_mask_de, height, width)
     else:
-        text_mask_d = resize_image(text_mask_d, int(height / 1.8), width)
-        text_mask_d = cv2.erode(text_mask_d, kernel, iterations=7)
+        text_mask_de = resize_image(text_mask_d, int(height / 1.8), width)
+        text_mask_de = cv2.erode(text_mask_de, kernel, iterations=5)
         # rs: and back to original size
-        text_mask_d = resize_image(text_mask_d, height, width)
+        text_mask_de = resize_image(text_mask_de, height, width)
+    if PLOT_MASK_MORPH:
+        plt.subplot(1, 3, 2, title="eroded text mask")
+        plt.imshow(text_mask_d)
 
-    text_mask_d = cv2.erode(text_mask_d, kernel_hor, iterations=6)
-    text_mask_d_y = text_mask_d.sum(axis=0)
-    text_mask_d_y_eroded = text_mask_d.sum(axis=0)
+    text_mask_de = cv2.erode(text_mask_de, kernel_hor, iterations=4)
+    if PLOT_MASK_MORPH:
+        plt.subplot(1, 3, 3, title="horizontally eroded")
+        plt.imshow(text_mask_d)
+        plt.show()
+    text_mask_d_y = text_mask_de.sum(axis=0) # len = width
+    #text_mask_d_x = text_mask_de.sum(axis=1) # len = height
 
-    max_text_thickness_percent = 100. * text_mask_d_y.max() / height
-    min_text_thickness = max_text_thickness_percent / 100. * height / 20.
+    max_text_thickness = text_mask_d_y.max()
+    max_text_thickness_percent = 100. * max_text_thickness / height
+    min_text_thickness = max_text_thickness / MAX_THICKNESS_GAPS_FRACT_MAIN
 
-    # plt.figure()
-    # ax1 = plt.subplot(2, 2, 1, title="text_mask_d")
-    # ax1.imshow(text_mask_d, aspect='auto')
-    # ax2 = plt.subplot(2, 2, 3, title="text_mask_d_y", sharex=ax1)
-    # ax2.plot(list(range(width)), text_mask_d_y)
-    # ax2.hlines(int(0.14 * height), 0, width,
-    #            label='max_text_thickness=14%', colors='r')
-    # ax2.hlines([min_text_thickness], 0, width,
-    #            label='min_text_thickness', colors='g')
-    # ax2.scatter([np.argmax(text_mask_d_y)],
-    #             [text_mask_d_y.max()], color='r',
-    #             label='max = %d%%' % max_text_thickness_percent)
-    # ax1 = plt.subplot(2, 2, 4, title="early layout")
-    # ax1.imshow(early_layout, aspect='auto')
-    # plt.legend()
-    # plt.show()
-
-    if max_text_thickness_percent < 14:
+    if max_text_thickness_percent < MIN_THICKNESS_MAINTEXT_PRCT_HEIGHT:
+        if PLOT_TEXT_THICK:
+            plt.figure("not enough text")
+            ax1 = plt.subplot(2, 2, 1, title="text_mask_d")
+            ax1.imshow(text_mask_d, aspect='auto')
+            ax2 = plt.subplot(2, 2, 3, title="text_mask_d_y", sharex=ax1)
+            ax2.plot(list(range(width)), text_mask_d_y)
+            ax2.hlines(int(0.14 * height), 0, width,
+                       label='max_text_thickness=14%', colors='r')
+            ax2.hlines([min_text_thickness], 0, width,
+                       label='min_text_thickness', colors='g')
+            ax2.scatter([np.argmax(text_mask_d_y)],
+                        [text_mask_d_y.max()], color='r',
+                        label='max = %d%%' % max_text_thickness_percent)
+            ax2.legend()
+            ax1 = plt.subplot(2, 2, 4, title="early layout")
+            ax1.imshow(early_layout, aspect='auto')
+            plt.legend()
+            plt.show()
+        logger.debug("marginalia: insufficient max vertical thickness (%d%%)",
+                     max_text_thickness_percent)
         return
 
-    text_mask_d_y_rev = np.max(text_mask_d_y) - text_mask_d_y
-    region_sum_0 = gaussian_filter1d(text_mask_d_y, 1)
-    first_nonzero = region_sum_0.nonzero()[0][0] # outer left
-    last_nonzero = region_sum_0.nonzero()[0][-1] # outer right
-    mid_point = 0.5 * (last_nonzero + first_nonzero)
-    one_third_right = (last_nonzero - mid_point) / 3.0
-    one_third_left = (mid_point - first_nonzero) / 3.0
+    text_mask_d_ys = gaussian_filter1d(text_mask_d_y, 1)
+    #text_mask_d_xs = gaussian_filter1d(text_mask_d_x, 3)
+    first_nonzero = text_mask_d_ys.nonzero()[0][0] # outer left
+    last_nonzero = text_mask_d_ys.nonzero()[0][-1] # outer right
+    mid_point = (last_nonzero + first_nonzero) // 2
+    mid_point_l = mid_point - (mid_point - first_nonzero) // 3
+    mid_point_r = mid_point + (last_nonzero - mid_point) // 3
+    qrt_point_l = mid_point - (mid_point - first_nonzero) // 2
+    qrt_point_r = mid_point + (last_nonzero - mid_point) // 2
 
-    # rs: constrain the distance at least 2 characters at 12pt, retrieve height and prominence
-    peaks, props = find_peaks(text_mask_d_y_rev, height=0, prominence=0, distance=30)
-    peaks_orig = np.copy(peaks)
-    # rs: also calculate the product of prominence and height (for final selection)
-    scores = np.zeros(peaks.max() + 1)
-    scores[peaks] = props['prominences'] * props['peak_heights']
+    min_area_text = 1e-5
+    seps_contours = return_contours_of_class(seps_mask_d, 1, min_area_text)
+    seps_x_min = np.array([cont[:, 0, 0].min() + 15 for cont in seps_contours])
+    seps_x_max = np.array([cont[:, 0, 0].max() - 15 for cont in seps_contours])
 
-    peaks = peaks[(peaks > first_nonzero) & (peaks < last_nonzero)]
-    peaks = peaks[region_sum_0[peaks] < min_text_thickness]
+    # find minima (horizontal gaps)
+    gaps_y, props_y = find_peaks(
+        max_text_thickness - text_mask_d_ys,
+        # constrain thickness lower bound (min_text_thickness)
+        #height=0.5 * max_text_thickness,
+        height=max_text_thickness - min_text_thickness,
+        # constrain the prominence towards neighbours
+        prominence=0.5 * min_text_thickness,
+        # constrain the distance at least 2 characters at 12pt
+        distance=MIN_DIST_GAPS)
+
+    if PLOT_GAPS_STEPS:
+        def extend_ticks(axis, locations, labels, minor=True, **labelargs):
+            locs = list(axis.get_ticklocs(minor=minor))
+            labs = list(axis.get_ticklabels(minor=minor))
+            locs += locations
+            labs += labels
+            axis.set_ticks(locs, labels=labs, minor=minor, **labelargs)
+        plt.figure("gaps")
+        ax1 = plt.subplot(2, 2, 1, title="text_mask_d")
+        ax1.imshow(text_mask_d, aspect='auto')
+        ax3 = plt.subplot(2, 2, 2, title="text_mask_d_x", sharey=ax1)
+        ax2 = plt.subplot(2, 2, 3, title="text_mask_d_y", sharex=ax1)
+        ax2.plot(list(range(width)), text_mask_d_y, label='unsmoothed', color='b')
+        ax2.plot(list(range(width)), text_mask_d_ys, label='smoothed', color='m')
+        ax2.hlines(int(0.14 * height), 0, width, colors='r')
+        extend_ticks(ax2.yaxis, [int(0.14 * height)], ['max=14%%'])
+        ax2.hlines([min_text_thickness], 0, width, colors='m')
+        extend_ticks(ax2.yaxis, [min_text_thickness], ['min'])
+        ax2.vlines([first_nonzero, last_nonzero], 0, height, colors='r')
+        extend_ticks(ax2.xaxis, [first_nonzero, last_nonzero], ['first', 'last'])
+        ax2.vlines([mid_point_l, qrt_point_l], 0, height, colors='b')
+        ax2.vlines([mid_point_r, qrt_point_r], 0, height, colors='b')
+        extend_ticks(ax2.xaxis, [mid_point_l, qrt_point_l], ['mid_l', 'qrt_l'])
+        if num_col == 2:
+            ax2.vlines([mid_point], 0, height, label='mid_point', colors='r')
+        ax2.scatter([np.argmax(text_mask_d_y)],
+                    [text_mask_d_y.max()], color='r',
+                    label='max = %d%%' % max_text_thickness_percent)
+        ax2.scatter(gaps_y, text_mask_d_ys[gaps_y], label='gaps_y', color='m')
+        for i in range(len(gaps_y)):
+            ax2.text(gaps_y[i], text_mask_d_ys[gaps_y[i]], str(props_y['prominences'][i]))
+        for i in range(len(seps_contours)):
+            ax2.axvspan(seps_x_min[i], seps_x_max[i], color='lightgray')
+        ax2.tick_params(top=True, labeltop=True, bottom=True, labelbottom=False,
+                        left=True, labelleft=False, right=True, labelright=True,
+                        which='minor')
+        ax1 = plt.subplot(2, 2, 4, title="early layout")
+        ax1.imshow(early_layout, aspect='auto')
+        plt.legend()
+
+    # also calculate the product of prominence and height (for final selection)
+    scores = np.zeros(gaps_y.max(initial=width) + 1)
+    scores[gaps_y] = props_y['prominences'] * props_y['peak_heights']
+
+    gaps_y = gaps_y[(gaps_y > first_nonzero) & (gaps_y < last_nonzero)]
+    # suppress if there are horizontal separators spanning across
+    gaps_y = gaps_y[~((seps_x_min[:, np.newaxis] <= gaps_y[np.newaxis]) &
+                      (seps_x_max[:, np.newaxis] > gaps_y[np.newaxis])).any(axis=0)]
 
     if num_col == 1:
-        peaks_right = peaks[peaks > mid_point]
-        peaks_left = peaks[peaks < mid_point]
+        gaps_r = gaps_y[gaps_y > mid_point]
+        gaps_l = gaps_y[gaps_y < mid_point]
     elif num_col == 2:
-        peaks_right = peaks[peaks > mid_point + one_third_right]
-        peaks_left = peaks[peaks < mid_point - one_third_left]
+        gaps_r = gaps_y[gaps_y > mid_point_r]
+        gaps_l = gaps_y[gaps_y < mid_point_l]
     else:
         # should not happen, anyway
         return
 
-    if len(peaks_left) == 0:
-        if len(peaks_right) == 0:
-            # plt.figure()
-            # ax1 = plt.subplot(2, 1, 1, title='text_mask_d (deskewed text+sep mask)')
-            # ax1.imshow(text_mask_d, aspect='auto')
-            # ax1.vlines([first_nonzero], 0, height, label='first_nonzero', colors='r')
-            # ax1.vlines([last_nonzero], 0, height, label='last_nonzero', colors='r')
-            # ax1.vlines(peaks_left, 0, height, label='peaks_left', colors='orange')
-            # ax1.vlines(peaks_right, 0, height, label='peaks_right', colors='orange')
-            # ax2 = plt.subplot(2, 1, 2, title='text_mask_d_y (smoothed)', sharex=ax1)
-            # ax2.plot(list(range(width)), region_sum_0)
-            # ax2.hlines(min_text_thickness, 0, width, colors='g',
-            #            label='min_text_thickness=%d' % min_text_thickness)
-            # ax2.scatter(peaks_orig, region_sum_0[peaks_orig], label='peaks')
-            # plt.legend()
-            # plt.show()
-            return
-        point_right = peaks_right[np.argmax(scores[peaks_right])]
-        #point_left = first_nonzero
-        point_left = 0
-    elif len(peaks_right) == 0:
-        point_left = peaks_left[np.argmax(scores[peaks_left])]
-        #point_right = last_nonzero
-        point_right = width - 1
+    if len(gaps_r) and allow_r:
+        best_r = np.argmax(scores[gaps_r])
+        point_r = gaps_r[best_r]
     else:
-        best_left = np.argmax(scores[peaks_left])
-        best_right = np.argmax(scores[peaks_right])
-        point_left = peaks_left[best_left]
-        point_right = peaks_right[best_right]
-        if scores[best_left] < 0.1 * scores[best_right]:
-            point_left = 0
-            #point_left = first_nonzero
-        if scores[best_right] < 0.1 * scores[best_left]:
-            point_right = 0
-            #point_right = last_nonzero
+        point_r = width - 1
+        #point_r = last_nonzero
+    if len(gaps_l) and allow_l:
+        best_l = np.argmax(scores[gaps_l])
+        point_l = gaps_l[best_l]
+    else:
+        point_l = 0
+        #point_l = first_nonzero
+    if len(gaps_r) and allow_r and len(gaps_l) and allow_l:
+        if scores[best_l] < 0.1 * scores[best_r]:
+            point_l = 0
+            #point_l = first_nonzero
+        if scores[best_r] < 0.1 * scores[best_l]:
+            point_r = width - 1
+            #point_r = last_nonzero
 
-    main_mask_d[:, point_left: point_right] = 1
-    if not np.any(main_mask_d):
+    # if there are no valid peaks (i.e. gaps) on either side,
+    # because marginalia are very close to main,
+    # then look at positive/negative peaks of derivative on left/right side,
+    # to identify smaller plateaus of sufficient thickness:
+    def detect_step_point(side):
+        min_text_thickness = max_text_thickness / 25.
+        logger.debug("marginalia: trying to find jumps instead of gaps on the %s", side)
+        if side == 'left':
+            text_mask_d_ys2 = np.diff(text_mask_d_ys[:mid_point+1].astype(int))
+            offset = 0
+        else:
+            text_mask_d_ys2 = -np.diff(text_mask_d_ys[mid_point-1:].astype(int))
+            offset = mid_point
+        if PLOT_GAPS_STEPS:
+            ax2.hlines([min_text_thickness], 0, width, colors='lightgreen')
+            extend_ticks(ax2.yaxis, [min_text_thickness], ['min2'])
+            ax2.plot(np.arange(len(text_mask_d_ys2)) + offset, text_mask_d_ys2, label='derivative', color='g')
+        jumps, _ = find_peaks(text_mask_d_ys2,
+                              # constrain slope lower bound
+                              height=min_text_thickness,
+                              # constrain the distance at least 2 characters at 12pt
+                              #distance=MIN_DIST_GAPS)
+                              )
+        if not len(jumps):
+            return None
+        # combine follow-up peaks if smaller MIN_DIST_GAPS
+        combined = [jumps[0]]
+        for jump in jumps[1:]:
+            if (jump - combined[-1] < MIN_DIST_GAPS and
+                text_mask_d_ys2[(new := (combined[-1] + jump) // 2)] >=
+                min_text_thickness):
+                combined[-1] = new
+            else:
+                combined.append(jump)
+        jumps = np.array(combined)
+
+        # ax2.scatter(jumps + offset, text_mask_d_ys2[jumps], label='jumps', color='g')
+        jumps += offset
+        if side == 'left':
+            if PLOT_GAPS_STEPS:
+                ax2.vlines([mid_point_l, qrt_point_l], 0, height, colors='b')
+                extend_ticks(ax2.xaxis, [mid_point_l, qrt_point_l], ['mid_l', 'qrt_l'])
+            jumps = jumps[(first_nonzero + MIN_DIST_GAPS < jumps) &
+                          (jumps < (mid_point_l if num_col == 1 else qrt_point_l))]
+        else:
+            if PLOT_GAPS_STEPS:
+                ax2.vlines([mid_point_r, qrt_point_r], 0, height, colors='b')
+                extend_ticks(ax2.xaxis, [mid_point_r, qrt_point_r], ['mid_r', 'qrt_r'])
+            jumps = jumps[(last_nonzero - MIN_DIST_GAPS > jumps) &
+                          (jumps > (mid_point_r if num_col == 1 else qrt_point_r))]
+        # suppress these if there are horizontal separators spanning across
+        jumps = jumps[~((seps_x_min[:, np.newaxis] <= jumps[np.newaxis]) &
+                        (seps_x_max[:, np.newaxis] > jumps[np.newaxis])).any(axis=0)]
+        if not len(jumps):
+            return None
+
+        # to discern between left/right marginalia and left/right indentation,
+        # (i.e. indented first lines / unjustified final lines of a paragraph),
+        # analyse horizontal projection of (left/right half) of text mask:
+        # if there are subpeaks beside (above or below) the main peaks (=paragraphs)
+        # and the average difference between them is approximately the jump point
+        # then that jump point cannot be from genuine marginalia
+        text_mask_d_x = np.sum(text_mask_d[:, :qrt_point_l] if side == 'left' else
+                               text_mask_d[:, qrt_point_r:], axis=1)
+        text_mask_d_xs = gaussian_filter1d(text_mask_d_x, 2)
+        text_mask_d_xs2 = np.diff(text_mask_d_xs.astype(int))
+        text_mask_d_xs3 = np.diff(text_mask_d_xs2.astype(int))
+        peaks_x, props_x = find_peaks(text_mask_d_x,
+                                      distance=MIN_DIST_GAPS,
+                                      prominence=MIN_DIST_GAPS)
+        med_main_width = np.median(text_mask_d_x[peaks_x])
+        offset_x = 0 if side == 'left' else qrt_point_r
+        if PLOT_GAPS_STEPS:
+            ax3.plot(text_mask_d_x + offset_x, list(range(height)), label='unsmoothed', color='b')
+            ax3.plot(text_mask_d_xs + offset_x, list(range(height)), label='smoothed', color='m')
+            ax3.scatter(text_mask_d_x[peaks_x] + offset_x, peaks_x, label='peaks_x', color='m')
+            ax3.vlines([med_main_width + offset_x], 0, height, colors='m')
+        if np.isclose(med_main_width,
+                      qrt_point_l - first_nonzero if side == 'left' else
+                      last_nonzero - qrt_point_r,
+                      rtol=0.1):
+            flexpoints_x, _ = find_peaks(np.abs(text_mask_d_xs2 < 3))
+            flexpoints_x -= 1
+            #ax3.scatter(text_mask_d_x[flexpoints_x] + offset_x, flexpoints_x, label="flexpoints_x", color='y')
+            subpeaks_x = flexpoints_x[
+                # no minima/saddles
+                (text_mask_d_xs3[flexpoints_x] < 0) &
+                # not near the main maxima
+                ~np.isclose(text_mask_d_x[flexpoints_x], med_main_width, rtol=0.05) &
+                # not too small
+                ~np.isclose(text_mask_d_x[flexpoints_x], 0, atol=0.3 * med_main_width)]
+            if len(subpeaks_x) > 0.5 * len(peaks_x):
+                med_sub_width = np.median(text_mask_d_x[subpeaks_x])
+                indent = np.isclose(jumps - first_nonzero if side == 'left' else
+                                    last_nonzero - jumps,
+                                    med_main_width - med_sub_width,
+                                    rtol=0.1, atol=10)
+                logger.debug("%d out of %d step candidates for %s margin are from indentation",
+                             np.count_nonzero(indent), len(jumps), side)
+                jumps = jumps[~indent]
+                if PLOT_GAPS_STEPS:
+                    ax3.scatter(text_mask_d_x[subpeaks_x] + offset_x, subpeaks_x, label="subpeaks_x", color='y')
+                    ax3.vlines([med_sub_width + offset_x], 0, height, colors='b')
+                if not len(jumps):
+                    return None
+
+        if side == 'left':
+            text_mask_d_ys2_iszero = np.append(np.diff(np.isclose(text_mask_d_ys2, 0, atol=8) * 1), -1)
+        else:
+            text_mask_d_ys2_iszero = np.insert(np.diff(np.isclose(text_mask_d_ys2, 0, atol=8) * 1), 0, 1)
+        text_mask_d_ys2_iszero_min = np.flatnonzero(text_mask_d_ys2_iszero > 0)
+        text_mask_d_ys2_iszero_max = np.flatnonzero(text_mask_d_ys2_iszero < 0)
+        if (not len(text_mask_d_ys2_iszero_min) or
+            not len(text_mask_d_ys2_iszero_max)):
+            return None
+
+        if (text_mask_d_ys2_iszero_min[0] >
+            text_mask_d_ys2_iszero_max[0]):
+            text_mask_d_ys2_iszero_max = text_mask_d_ys2_iszero_max[1:]
+        length = min(len(text_mask_d_ys2_iszero_min),
+                     len(text_mask_d_ys2_iszero_max))
+        if length <= 1:
+            return None
+
+        text_mask_d_ys_plateaus = np.stack((text_mask_d_ys2_iszero_min[:length],
+                                            text_mask_d_ys2_iszero_max[:length]),
+                                           axis=1)
+        text_mask_d_ys_plateaus += offset
+        indices = [0]
+        for i, pair in enumerate(pairwise(text_mask_d_ys_plateaus), start=1):
+            (prev_min, prev_max), (next_min, next_max) = pair
+            if np.isclose(np.mean(text_mask_d_ys[prev_min: prev_max]),
+                          np.mean(text_mask_d_ys[next_min: next_max]),
+                          rtol=0.2):
+                pass
+            else:
+                indices.append(i)
+        indices.append(length)
+        text_mask_d_ys_plateaus = np.array(
+            [(prev_min, next_max)
+             for previ, nexti in pairwise(indices)
+             if ((next_max := text_mask_d_ys_plateaus[previ: nexti, 1][-1]) -
+                 (prev_min := text_mask_d_ys_plateaus[previ: nexti, 0][0])) > 20])
+        text_mask_d_ys_plateaus = text_mask_d_ys_plateaus.T
+
+        if side == 'left':
+            # search from right (widest) to left
+            jumps = reversed(jumps)
+        else:
+            # search from left (widest) to right
+            pass
+        for jump in jumps:
+            # non-zero, non-max plateau
+            next_plateau = np.searchsorted(text_mask_d_ys_plateaus[0], jump)
+            prev_plateau = np.searchsorted(text_mask_d_ys_plateaus[1], jump) - 1
+            if next_plateau > text_mask_d_ys_plateaus.shape[1] - 1:
+                break
+            if prev_plateau < 0:
+                break
+            next_min = text_mask_d_ys_plateaus[0, next_plateau]
+            next_max = text_mask_d_ys_plateaus[1, next_plateau]
+            prev_min = text_mask_d_ys_plateaus[0, prev_plateau]
+            prev_max = text_mask_d_ys_plateaus[1, prev_plateau]
+            if side == 'left':
+                jump_fract_main = (np.mean(text_mask_d_ys[prev_min: prev_max]) /
+                                   np.mean(text_mask_d_ys[next_min: next_max]))
+            else:
+                jump_fract_main = (np.mean(text_mask_d_ys[next_min: next_max]) /
+                                   np.mean(text_mask_d_ys[prev_min: prev_max]))
+
+            if (MIN_THICKNESS_STEP_FRACT_MAIN < jump_fract_main < MAX_THICKNESS_STEP_FRACT_MAIN):
+                if PLOT_GAPS_STEPS:
+                    ax2.vlines([jump], 0, height, colors='y')
+                    extend_ticks(ax2.xaxis, [jump], ['jump'])
+                    ax2.axvspan(prev_min, prev_max, color='lightyellow')
+                    ax2.axvspan(next_min, next_max, color='gold')
+                return jump
+            # TODO: try another criterion: deviation in average textline heights
+
+    if len(gaps_l) == 0 and allow_l:
+        if (step_l := detect_step_point("left")) is not None:
+            point_l = step_l
+    if len(gaps_r) == 0 and allow_r:
+        if (step_r := detect_step_point("right")) is not None:
+            point_r = step_r
+    if PLOT_GAPS_STEPS:
+        ax3.legend()
+        ax2.legend()
+        plt.show()
+
+    # if PLOT_GAPS_STEPS:
+    #     plt.figure("final points")
+    #     ax1 = plt.subplot(2, 2, 1)
+    #     ax1.title.set_text('text_mask_d (deskewed text+table mask)')
+    #     ax1.imshow(text_mask_d)
+    #     ax1.vlines([point_l], 0, height, label='point_l', colors='r')
+    #     ax1.vlines([point_r], 0, height, label='point_r', colors='r')
+    #     ax3 = plt.subplot(2, 2, 3, title='text_mask_d_y (projection for minima)', sharex=ax1)
+    #     ax3.plot(list(range(width)), text_mask_d_y)
+    #     ax3.set_aspect('auto')
+    #     ax3.vlines([point_l], 0, height, label='point_l', colors='r')
+    #     ax3.vlines([point_r], 0, height, label='point_r', colors='r')
+    #     ax4 = plt.subplot(2, 2, 4, title='early_layout (undeskewed labels)')
+    #     ax4.imshow(early_layout)
+    #     plt.legend()
+    #     plt.show()
+
+    if point_l == 0 and point_r == width - 1:
         return
 
-    # plt.figure()
-    # ax1 = plt.subplot(2, 2, 1)
-    # ax1.title.set_text('text_mask_d (deskewed text+table mask)')
-    # ax1.imshow(text_mask_d)
-    # ax1.vlines(peaks_left, 0, height, label='peaks_left', colors='b')
-    # ax1.vlines(peaks_right, 0, height, label='peaks_right', colors='b')
-    # ax1.vlines([first_nonzero], 0, height, label='first_nonzero', colors='g')
-    # ax1.vlines([last_nonzero], 0, height, label='last_nonzero', colors='g')
-    # ax1.vlines([point_left], 0, height, label='point_left', colors='r')
-    # ax1.vlines([point_right], 0, height, label='point_right', colors='r')
-    # ax2 = plt.subplot(2, 2, 2, title='main_mask_d (deskewed main mask)', sharey=ax1)
-    # ax2.imshow(main_mask_d)
-    # ax3 = plt.subplot(2, 2, 3, title='text_mask_d_y (projection for minima)', sharex=ax1)
-    # ax3.plot(list(range(width)), text_mask_d_y)
-    # ax3.set_aspect('auto')
-    # ax4 = plt.subplot(2, 2, 4, title='early_layout (undeskewed labels)')
-    # ax4.imshow(early_layout)
-    # plt.legend()
-    # plt.show()
+    line_l = LineString([(point_l, -0.4 * height), (point_l, 1.4 * height)])
+    line_r = LineString([(point_r, -0.4 * height), (point_r, 1.4 * height)])
+    # rotate back (into undeskewed/original shape as early_layout input):
+    line_l = rotate_polygon(line_l, slope_deskew, origin=(0.5 * width, 0.5 * height))
+    line_r = rotate_polygon(line_r, slope_deskew, origin=(0.5 * width, 0.5 * height))
+    main = Polygon([(0, 0), (0, height), (width, height), (width, 0)])
+    if point_l > 0:
+        page_l = split_polygon(main, line_l)
+        marg_l, main = page_l.geoms
+    else:
+        marg_l = Polygon()
+    if point_r < width - 1:
+        page_r = split_polygon(main, line_r)
+        main, marg_r = page_r.geoms
+    else:
+        marg_r = Polygon()
 
-    # rs: rotate back (into undeskewed/original shape as early_layout input):
-    main_mask = rotate_image(main_mask_d, -slope_deskew)
+    if PLOT_POLY_ROTAT:
+        plt.imshow(early_layout)
+        plot_polygon(marg_l, color='yellow')
+        plot_polygon(marg_r, color='red')
+        plot_polygon(main, color='magenta')
+        plt.show()
 
-    min_area_text = 0.00001
-    main_contour = return_contours_of_interested_region(main_mask, 1, min_area_text)[0]
-    text_contours = return_contours_of_interested_region(early_layout, label_text, min_area_text)
-    cx_text, cy_text = find_center_of_contours(text_contours)
+    main3 = main.buffer(3)
+    marg_l3 = marg_l.buffer(3)
+    marg_r3 = marg_r.buffer(3)
+    line_l3 = line_l.offset_curve(5)
+    line_r3 = line_r.offset_curve(-5)
 
+    # re-assign (marg/main), cutting through existing contours if necessary
+    text_contours = return_contours_of_class(early_layout, label_text, min_area_text)
     marg_contours = []
-    for i, contour in enumerate(text_contours):
-        if -1 == cv2.pointPolygonTest(main_contour,
-                                      (cx_text[i],
-                                       cy_text[i]),
-                                      False):
-            marg_contours.append(contour)
+    main_contours = []
+    for cont in text_contours:
+        if PLOT_HCUT_MAINS:
+            plt.imshow(early_layout)
+            plot_polygon(main, color='magenta')
+        poly = contour2polygon(cont)
+        if not poly.area:
+            continue # fixme: warn
+        minx, miny, maxx, maxy = poly.bounds
+        aspect = (maxy - miny) / (maxx - minx)
+        if poly.within(marg_l3) or poly.within(marg_r3):
+            marg_contours.append(cont)
+            if PLOT_HCUT_MAINS:
+                plot_polygon(poly, color='blue' if poly.within(marg_l3) else 'green')
+        elif poly.within(main3):
+            main_contours.append(cont)
+            if PLOT_HCUT_MAINS:
+                plot_polygon(poly, color='red')
+        elif poly.intersects(marg_l) or poly.intersects(marg_r):
+            # partial: split, but ignore marg parts overly vertical
+            inter = poly.intersection(marg_l)
+            iminx, iminy, imaxx, imaxy = inter.bounds
+            iaspect = (imaxy - iminy) / (imaxx - iminx)
+            if (
+                    # ignore if intersection is almost vertical or tiny
+                    not (iaspect > 4 and iaspect > 8 * aspect or
+                         inter.area < min_area_text * width * height)
+                    # don't ignore if intersection takes entire margin
+                    or np.isclose(imaxx - iminx, point_l - first_nonzero, rtol=0.05)
+            ):
+                for geom in split_polygon(poly, line_l).geoms:
+                    gminx, gminy, gmaxx, gmaxy = geom.bounds
+                    gaspect = (gmaxy - gminy) / (gmaxx - gminx)
+                    if not geom.within(marg_l3):
+                        # main or right
+                        continue
+                    if (
+                            # ignore if part is almost vertical or tiny
+                            (gaspect > 4 and gaspect > 8 * aspect or
+                             geom.area < min_area_text * width * height)
+                            # don't ignore if part takes entire margin
+                            and not np.isclose(gmaxx - gminx, point_l - first_nonzero, rtol=0.05)
+                    ):
+                        # most likely just a vertical scrap
+                        continue
+                    if PLOT_HCUT_MAINS:
+                        plot_polygon(geom, color='blue')
+                    marg_contours.append(polygon2contour(geom))
+                    poly = poly.difference(geom).buffer(-0.01)
+            inter = poly.intersection(marg_r)
+            iminx, iminy, imaxx, imaxy = inter.bounds
+            iaspect = (imaxy - iminy) / (imaxx - iminx)
+            if (
+                    # ignore if intersection is almost vertical or tiny
+                    not (iaspect > 4 and iaspect > 8 * aspect or
+                         inter.area < min_area_text * width * height)
+                    # don't ignore if intersection takes entire margin
+                    or np.isclose(imaxx - iminx, last_nonzero - point_r, rtol=0.05)
+            ):
+                for geom in split_polygon(poly, line_r).geoms:
+                    gminx, gminy, gmaxx, gmaxy = geom.bounds
+                    gaspect = (gmaxy - gminy) / (gmaxx - gminx)
+                    if not geom.within(marg_r3):
+                        # main or left
+                        continue
+                    if (
+                            # ignore if part is almost vertical or tiny
+                            (gaspect > 4 and gaspect > 8 * aspect or
+                             geom.area < min_area_text * width * height)
+                            # don't ignore if part takes entire margin
+                            and not np.isclose(gmaxx - gminx, last_nonzero - point_r, rtol=0.05)
+                    ):
+                        # most likely just a vertical scrap
+                        continue
+                    if PLOT_HCUT_MAINS:
+                        plot_polygon(geom, color='green')
+                    marg_contours.append(polygon2contour(geom))
+                    poly = poly.difference(geom).buffer(-0.01)
+            if vcut_mains:
+                main_contours.append(polygon2contour(ensure_polygon(poly)))
+            if PLOT_HCUT_MAINS:
+                plot_polygon(poly, color='red')
+        else:
+            if PLOT_HCUT_MAINS:
+                plot_polygon(main, color='magenta')
+                plot_polygon(poly, color='red')
+                plt.show()
+            assert False
+        if PLOT_HCUT_MAINS:
+            plt.show()
 
-    # early_layout_orig = np.copy(early_layout)
+    # write marginals to segmentation
     early_layout = cv2.fillPoly(early_layout, pts=marg_contours, color=label_marg)
 
-    # plt.figure()
-    # ax1 = plt.subplot(2, 2, 1, title='main_mask_d (deskewed main mask)')
-    # plt.imshow(main_mask_d)
-    # ax2 = plt.subplot(2, 2, 2, title='main_mask (undeskewed main mask)')
-    # plt.imshow(main_mask)
-    # ax3 = plt.subplot(2, 2, 3, title='early_layout (undeskewed labels original)')
-    # plt.imshow(early_layout_orig)
-    # ax4 = plt.subplot(2, 2, 4, title='early_layout (undeskewed labels split)')
-    # plt.imshow(early_layout)
-    # plt.show()
-
-    # if there was no main text, then relabel marginalia as main
+    # if no main text remains, then relabel all marginalia as main and exit
     if not np.any(early_layout == label_text):
         early_layout[early_layout == label_marg] = label_text
+        return
+
+    # also cut textlines
+    if PLOT_HCUT_LINES:
+        plt.subplot(1, 2, 1, title='textline mask')
+        plt.imshow(textline_mask)
+    line_l = np.stack(line_l.xy).astype(int)
+    line_r = np.stack(line_r.xy).astype(int)
+    textline_mask = cv2.line(textline_mask, line_l[:, 0], line_l[:, 1], 0, 1)
+    textline_mask = cv2.line(textline_mask, line_r[:, 0], line_r[:, 1], 0, 1)
+    if PLOT_HCUT_LINES:
+        plt.subplot(1, 2, 2, title='textline mask (split)')
+        plt.imshow(textline_mask)
+        plt.show()
+
+    # split main paragraphs, which align with marginals horizontally, between textlines
+    if not vcut_mains:
+        return
+    textline_mask_d = rotate_image(textline_mask, slope_deskew)
+    line_contours_d = return_contours_of_class(textline_mask_d, 1, min_area_text)
+    line_sizes_d = np.array([cv2.boundingRect(cont) for cont in line_contours_d])[:, 2:]
+    line_areas_d = np.multiply.reduce(line_sizes_d, axis=1)
+    line_aspects_d = np.divide.reduce(line_sizes_d, axis=1)
+    marg_contours_d = rotate_contours(marg_contours, slope_deskew, early_layout.shape)
+    main_contours_d = rotate_contours(main_contours, slope_deskew, early_layout.shape)
+    y2regions = np.ones((height, (len(main_contours_d) +
+                                  len(marg_contours_d)),
+                         2), dtype=int) * -1
+    for i, cont in enumerate(main_contours_d + marg_contours_d):
+        x, y, w, h = cv2.boundingRect(cont)
+        y2regions[y: y + h, i] = (x, x + w)
+    region2lines = np.ones((len(main_contours_d) +
+                            len(marg_contours_d),
+                            len(line_contours_d)), dtype=int) * -1
+    for i, cont in enumerate(line_contours_d):
+        x, y, w, h = cv2.boundingRect(cont)
+        cx = int(x + w // 2)
+        cy = int(y + h // 2)
+        if not len(regions := np.flatnonzero(np.all(y2regions[y: y + h - 1] >= 0, axis=(0, 2)))):
+            continue
+        # get main/marg enclosing cx
+        regions = regions[np.argsort(y2regions[cy, regions, 0])]
+        region_min = np.searchsorted(y2regions[cy, regions, 0], cx)
+        region_max = np.searchsorted(y2regions[cy, regions, 1], cx)
+        if region_max + 1 != region_min:
+            continue
+        region = regions[region_max]
+        region2lines[region, i] = cy
+    main2lines = region2lines[:len(main_contours_d)]
+    marg2lines = region2lines[len(main_contours_d):]
+    y2mains = y2regions[:, :len(main_contours_d)]
+    marg_main_cuts = []
+    for marg, cont in enumerate(marg_contours_d):
+        if not len(lines := np.flatnonzero(marg2lines[marg] >= 0)):
+            # this marg has no lines
+            continue
+        x, y, w, h = cv2.boundingRect(cont)
+        cx = int(x + w // 2)
+        # get all mains along (i.e. next to) marg
+        #if not len(mains := np.flatnonzero(np.all(y2mains[y: y + h] >= 0, axis=(0, 2)))):
+        if not len(mains := np.flatnonzero(y2mains[y, :, 0] >= 0)):
+            continue
+        # get nearest main
+        mains = mains[np.argsort(y2mains[y, mains, 0])]
+        if (main_min := np.searchsorted(y2mains[y, mains, 0], cx)) == 0:
+            # marg is left of main
+            main = mains[0]
+        elif (main_max := np.searchsorted(y2mains[y, mains, 1], cx)) == len(mains):
+            # marg is right of main
+            main = mains[-1]
+        elif main_min == main_max + 1:
+            main = mains[main_max]
+        else:
+            # should not happen: marginalia between main regions
+            assert False, (
+                "marginalia between main regions",
+                cont,
+                main_contours_d[mains[main_max - 1]],
+                main_contours_d[mains[main_min]])
+        main_cont_d = main_contours_d[main]
+        # ensure there are (horizontal) lines for the corresponding main
+        if len(lines := np.flatnonzero(
+                (main2lines[main] >= 0) &
+                (line_areas_d > 1e-3 * text_mask_d.size) &
+                (line_aspects_d > 3))) < 2:
+            # this main has too few lines to cut
+            continue
+        lines = lines[np.argsort(main2lines[main, lines])]
+        # ensure there are lines above as well as below
+        j = np.searchsorted(main2lines[main, lines], y)
+        if j == 0 or j >= len(lines):
+            continue
+        # cut main between lines j and j-1
+        x, _, w, _ = cv2.boundingRect(main_cont_d)
+        above_cont = line_contours_d[lines[j - 1]]
+        below_cont = line_contours_d[lines[j]]
+        above_wh = line_sizes_d[lines[j - 1]]
+        below_wh = line_sizes_d[lines[j]]
+        # ignore if width/height of these is too dissimilar
+        if not np.isclose(above_wh, below_wh, rtol=0.4).all():
+            continue
+        abovep = Polygon(above_cont[:, 0])
+        belowp = Polygon(below_cont[:, 0])
+        # # interp = (concave_hull(union(abovep, belowp), 0.9)
+        # #           .difference(concave_hull(abovep, 0.9))
+        # #           .difference(concave_hull(belowp, 0.9)))
+        # # plot_polygon(interp, color='red')
+        if PLOT_VCUT_MAINS:
+            abovep = rotate_polygon(abovep, slope_deskew, origin=(0.5 * width, 0.5 * height))
+            belowp = rotate_polygon(belowp, slope_deskew, origin=(0.5 * width, 0.5 * height))
+            plot_polygon(abovep, color='blue')
+            plot_polygon(belowp, color='green')
+        above_mask = cv2.fillPoly(np.zeros_like(textline_mask_d),
+                                  pts=[above_cont], color=1)
+        below_mask = cv2.fillPoly(np.zeros_like(textline_mask_d),
+                                  pts=[below_cont], color=1)
+        def between(above, below):
+            if above.any() and below.any():
+                return int(0.5 * (above.max() + below.min()))
+            if above.any():
+                return above.max() + 1
+            if below.any():
+                return below.min() - 1
+            return 0
+        inter_cont = np.array([(xi, yi) for xi in range(x, x + w)
+                               if (yi := between(above_mask[:, xi].nonzero()[0],
+                                                 below_mask[:, xi].nonzero()[0]))])
+        interp = LineString(inter_cont).buffer(1)
+        mainp = Polygon(main_cont_d[:, 0])
+        leftp = snap_polygon_point(mainp, Point(x, y))
+        rightp = snap_polygon_point(mainp, Point(x + w, y))
+        interp = join_polygons([bridge_polygons(interp, leftp),
+                                bridge_polygons(interp, rightp),
+                                interp])
+        # rotate back (into undeskewed/original shape as early_layout input):
+        interp = rotate_polygon(interp, slope_deskew, origin=(0.5 * width, 0.5 * height))
+        if PLOT_VCUT_MAINS:
+            plot_polygon(interp, color='red')
+        marg_main_cuts.append(polygon2contour(interp))
+    if PLOT_VCUT_MAINS:
+        plt.imshow(early_layout + 0.5 * textline_mask)
+        plt.show()
+    # apply cuts by drawing, intersecting with main, negating
+    early_layout *= 1 - (cv2.fillPoly(np.zeros_like(early_layout), pts=marg_main_cuts, color=1)
+                         * (early_layout == label_text))

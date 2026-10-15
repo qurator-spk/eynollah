@@ -2,10 +2,10 @@
 Image enhancer. The output can be written as same scale of input or in new predicted scale.
 """
 
+from __future__ import annotations
 import logging
+import time
 import os
-from typing import Optional
-from pathlib import Path
 
 import cv2
 
@@ -45,9 +45,11 @@ class Enhancer(Eynollah):
     def run_single(self,
                    img_filename: str,
                    img_pil=None,
-                   dir_out: Optional[str] = None,
+                   dir_out: str | None = None,
                    overwrite: bool = False,
     ) -> None:
+        t0 = time.time()
+        self.logger.info(img_filename)
 
         image = self.cache_images(image_filename=img_filename, image_pil=img_pil)
         output_filename = os.path.join(dir_out or "", image['name'] + '.png')
@@ -67,17 +69,19 @@ class Enhancer(Eynollah):
 
         cv2.imwrite(output_filename, img_res)
         self.logger.info("output filename: '%s'", output_filename)
+        self.logger.info("Job done in %.1fs", time.time() - t0)
         
     def run(self,
             overwrite: bool = False,
-            image_filename: Optional[str] = None,
-            dir_in: Optional[str] = None,
-            dir_out: Optional[str] = None,
+            image_filename: str | None = None,
+            dir_in: str | None = None,
+            dir_out: str | None = None,
     ):
         """
         Enlarge and enhance the scanned images
         """
         if dir_in:
+            t0_tot = time.time()
             ls_imgs = [os.path.join(dir_in, image_filename)
                        for image_filename in filter(is_image_filename,
                                                     os.listdir(dir_in))]
@@ -87,8 +91,8 @@ class Enhancer(Eynollah):
             raise ValueError("run requires either a single image filename or a directory")
 
         for img_filename in ls_imgs:
-            self.logger.info(img_filename)
-
             self.run_single(img_filename,
                             dir_out=dir_out,
                             overwrite=overwrite)
+        if dir_in:
+            self.logger.info("All jobs done in %.1fs", time.time() - t0_tot)

@@ -139,6 +139,19 @@ import click
     help="upper limit of columns in document image; 0 means autodetected from model",
 )
 @click.option(
+    "--allow_marginalia",
+    "-marg",
+    default="both",
+    type=click.Choice(['off', 'left', 'right', 'both']),
+    help="for 1- and 2-column pages, whether to enable marginalia detection",
+)
+@click.option(
+    "--paragraphs_from_marginalia",
+    "-m2p",
+    is_flag=True,
+    help="whether to split main paragraphs near detected marginalia regions.",
+)
+@click.option(
     "--threshold_art_class_layout",
     "-tharl",
     default=0.1,
@@ -196,6 +209,8 @@ def layout_cli(
     reading_order_machine_based,
     num_col_upper,
     num_col_lower,
+    allow_marginalia,
+    paragraphs_from_marginalia,
     threshold_art_class_textline,
     threshold_art_class_layout,
     skip_layout_and_reading_order,
@@ -231,6 +246,8 @@ def layout_cli(
         reading_order_machine_based=reading_order_machine_based,
         num_col_upper=num_col_upper,
         num_col_lower=num_col_lower,
+        allow_marginalia=allow_marginalia,
+        paragraphs_from_marginalia=paragraphs_from_marginalia,
         skip_layout_and_reading_order=skip_layout_and_reading_order,
         threshold_art_class_textline=threshold_art_class_textline,
         threshold_art_class_layout=threshold_art_class_layout,

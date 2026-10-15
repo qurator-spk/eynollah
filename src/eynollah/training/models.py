@@ -105,7 +105,142 @@ class CTCDecoder(Layer):
         #     result.append(tf.gather(output, tf.where(output > 0)))
         # outputs = tf.stack(result)
         return outputs, probs
-    
+
+class Deskewer(Layer):
+    # @tf.function(reduce_retracing=True,
+    #              jit_compile=False, # (ImageProjectiveTransformV3 not supported by XLA)
+    #              input_signature=[tf.TensorSpec([1, None, None],
+    #                                             dtype=tf.uint8),
+    #                               tf.TensorSpec([1, None],
+    #                                             dtype=tf.float32)])
+    def call(self, image, angles, sigma):
+        image_shape = tf.shape(image) # (1, H, W)
+        angle_shape = tf.shape(angles) # (1, N)
+        tf.debugging.assert_equal(
+            image_shape[0], 1, message='batch dimension must be 1 for deskewing')
+        # prepare rotations
+        H = image_shape[1]
+        W = image_shape[2]
+        N = angle_shape[1]
+        images = image[:, :, :, tf.newaxis] # (1, H, W, 1)
+        # enlarge canvas
+        images = tf.image.pad_to_bounding_box(
+            images, H // 2, W // 2, H * 2, W * 2)
+        image = tf.squeeze(images, [0, 3]) # (H, W)
+        images = tf.cast(images, tf.float16)
+        output_shape = tf.convert_to_tensor([H * 2, W * 2], tf.int32)
+        # get rid of batch dimension
+        angles = angles[0] # (N)
+        sigma = sigma[0] # ()
+        H = tf.cast(2 * H, tf.float32)
+        W = tf.cast(2 * W, tf.float32)
+        cx = 0.5 * W
+        cy = 0.5 * H
+        cos = tf.cos(angles)
+        sin = tf.sin(angles)
+        tx = - cos * cx + sin * cy + cx
+        ty = - sin * cx - cos * cy + cy
+        zx = 0.0 * sin
+        zy = 0.0 * sin
+        transforms = tf.transpose(
+            [cos, -sin, tx,
+             sin, cos, ty,
+             zx, zy], perm=(1, 0)) # (N, 8)
+        # loop over angles, so the rotation does not consume to much VRAM
+        # rotate and sum in integer, only then convert to float
+        # (because this is faster and float is only needed when smoothing)
+        variances = tf.TensorArray(tf.float32, size=N)
+        for i in tf.range(N):
+            transform = transforms[i: i + 1] # (1, 8)
+            rotated = tf.raw_ops.ImageProjectiveTransformV3(
+                    images=images,
+                    transforms=transform,
+                    output_shape=output_shape,
+                    interpolation='BILINEAR',
+                    fill_value=0.0,
+                ) # (1, H, W, 1)
+            rotated = tf.squeeze(rotated, [0, 3]) # (H, W)
+            #rotated = tf.cast(rotated, tf.int32) # already float16
+            col_signal = tf.reduce_sum(rotated, axis=0) # (W)
+            row_signal = tf.reduce_sum(rotated, axis=1) # (H)
+            col_signal = tf.cast(col_signal, tf.float32)
+            row_signal = tf.cast(row_signal, tf.float32)
+            col_signal = gaussian_filter1d(col_signal, sigma)
+            row_signal = gaussian_filter1d(row_signal, sigma)
+            col_var = tf.math.reduce_std(col_signal) # ()
+            row_var = tf.math.reduce_std(row_signal) # ()
+            variances = variances.write(i, (col_var, row_var))
+        variances = variances.stack()
+        col_vars, row_vars = tf.unstack(variances, axis=1)
+        col_arg = tf.math.argmax(col_vars)
+        row_arg = tf.math.argmax(row_vars)
+        col_var = tf.gather(col_vars, col_arg)
+        row_var = tf.gather(row_vars, row_arg)
+        image = tf.cast(image, tf.int32)
+        col_signal0 = tf.reduce_sum(image, axis=0) # (W)
+        row_signal0 = tf.reduce_sum(image, axis=1) # (H)
+        col_signal0 = tf.cast(col_signal0, tf.float32)
+        row_signal0 = tf.cast(row_signal0, tf.float32)
+        col_signal0 = gaussian_filter1d(col_signal0, sigma)
+        row_signal0 = gaussian_filter1d(row_signal0, sigma)
+        col_var0 = tf.math.reduce_std(col_signal0)
+        row_var0 = tf.math.reduce_std(row_signal0)
+        # place in separate result tensors for int and float
+        res_vars = tf.stack([tf.stack([col_var0, col_var]),
+                             tf.stack([row_var0, row_var])]) # (2, 2)
+        res_args = tf.stack([col_arg, row_arg]) # (2)
+        # add back batch dim
+        return (res_vars[tf.newaxis], res_args[tf.newaxis])
+
+def deskewer():
+    """
+    runs a single-layer model for (de)rotation and analysis of a single image and a list of angles to try
+
+    (uses Deskewer layer, so batch dimension must be 1)
+
+    returns a tuple of:
+    - variance of original image in column direction
+    - variance of the derotated image in column direction
+    - index of the best angle in column direction
+    - variance of original image in row direction
+    - variance of the derotated image in row direction
+    - index of the best angle in row direction
+    """
+    image = Input(batch_shape=(1, None, None), dtype='uint8')
+    angles = Input(batch_shape=(1, None,))
+    sigma = Input(batch_shape=(1,))
+    rotated = Deskewer()(image, angles, sigma)
+    model = Model((image, angles, sigma), rotated)
+    model.jit_compile = False # (ImageProjectiveTransformV3 not supported by XLA)
+    return model
+
+def gaussian_kernel(size: int, sigma: float):
+    """Generate a Gaussian kernel for smoothing."""
+    window = tf.range(-(size // 2), (size // 2) + 1, dtype=tf.float32)
+    kernel = tf.exp(-tf.square(window) / (2 * sigma * sigma))
+    kernel = kernel / tf.reduce_sum(kernel)
+    return kernel[..., tf.newaxis, tf.newaxis] # (K, 1, 1)
+
+@tf.function(reduce_retracing=True,
+             input_signature=[tf.TensorSpec([None],
+                                            dtype=tf.float32),
+                              tf.TensorSpec([], dtype=tf.float32)])
+def gaussian_filter1d(signal, sigma: float):
+    """Smooth a 1-dim signal by a Gaussian kernel of std dev sigma"""
+    kernel = gaussian_kernel(6 * int(sigma), sigma)
+    signal = tf.cast(signal, tf.float32) # (L)
+    signal = signal[tf.newaxis, ..., tf.newaxis] # (1, L, 1)
+    signal = tf.nn.conv1d(signal, kernel, stride=1, padding="VALID") # (1, L, 1)
+    return tf.squeeze(signal, [0, 2]) # (L)
+
+def gaussian_filter2d(signals, sigma: float):
+    """Smooth a sequence of 1-dim signals by a Gaussian kernel of std dev sigma"""
+    kernel = gaussian_kernel(6 * int(sigma), sigma)
+    signals = tf.cast(signals, tf.float32) # (N, L)
+    signals = tf.expand_dims(signals, 2) # (N, L, 1)
+    signals = tf.nn.conv1d(signals, kernel, stride=1, padding="VALID") # (N, L, 1)
+    return tf.squeeze(signals, [2]) # (N, L)
+
 def mlp(x, hidden_units, dropout_rate):
     for units in hidden_units:
         x = Dense(units, activation=tf.nn.gelu)(x)

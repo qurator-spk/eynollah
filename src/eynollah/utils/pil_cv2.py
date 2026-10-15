@@ -10,6 +10,9 @@ def cv2pil(img):
     return Image.fromarray(np.array(cvtColor(img, COLOR_BGR2RGB)))
 
 def pil2cv(img):
+    if img.mode.endswith(('a', 'A')):
+        # remove transparency (RGBA, LA, PA, and pre-multiplied variants)
+        img = img.convert(img.mode[:-1])
     # from ocrd/workspace.py
     color_conversion = COLOR_GRAY2BGR if img.mode in ('1', 'L') else  COLOR_RGB2BGR
     pil_as_np_array = np.array(img).astype('uint8') if img.mode == '1' else np.array(img)

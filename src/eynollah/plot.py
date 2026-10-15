@@ -1,10 +1,11 @@
+from __future__ import annotations
+import os.path
 try:
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
 except ImportError:
     plt = mpatches = None
 import numpy as np
-import os.path
 import cv2
 from scipy.ndimage import gaussian_filter1d
 
@@ -21,11 +22,11 @@ class EynollahPlotter:
         self,
         *,
         dir_out,
-        dir_of_all,
-        dir_save_page,
-        dir_of_deskewed,
-        dir_of_layout,
-        dir_of_cropped_images,
+        dir_of_all: str | None = None,
+        dir_save_page: str | None = None,
+        dir_of_deskewed: str | None = None,
+        dir_of_layout: str | None = None,
+        dir_of_cropped_images: str | None = None,
     ):
         self.dir_out = dir_out
         self.dir_of_all = dir_of_all
@@ -44,7 +45,9 @@ class EynollahPlotter:
             plt.rcParams["font.size"] = "40"
             im = plt.imshow(text_regions_p[:, :])
             colors = [im.cmap(im.norm(value)) for value in values]
-            patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
+            patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]],
+                                      label=f"{pixels[int(np.where(values_indexes == i)[0][0])]}")
+                       for i in values]
             plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=40)
             plt.savefig(os.path.join(self.dir_of_layout,
                                      (name or "page") + "_layout_main.png"))
@@ -62,7 +65,9 @@ class EynollahPlotter:
             plt.subplot(1, 2, 2)
             im = plt.imshow(text_regions_p[:, :])
             colors = [im.cmap(im.norm(value)) for value in values]
-            patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
+            patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]],
+                                      label=f"{pixels[int(np.where(values_indexes == i)[0][0])]}")
+                       for i in values]
             plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
             plt.savefig(os.path.join(self.dir_of_all,
                                      (name or "page") + "_layout_main_and_page.png"))
@@ -77,7 +82,9 @@ class EynollahPlotter:
             plt.rcParams["font.size"] = "40"
             im = plt.imshow(text_regions_p[:, :])
             colors = [im.cmap(im.norm(value)) for value in values]
-            patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
+            patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]],
+                                      label=f"{pixels[int(np.where(values_indexes == i)[0][0])]}")
+                       for i in values]
             plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=40)
             plt.savefig(os.path.join(self.dir_of_layout,
                                      (name or "page") + "_layout.png"))
@@ -95,7 +102,9 @@ class EynollahPlotter:
             plt.subplot(1, 2, 2)
             im = plt.imshow(text_regions_p[:, :])
             colors = [im.cmap(im.norm(value)) for value in values]
-            patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
+            patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]],
+                                      label=f"{pixels[int(np.where(values_indexes == i)[0][0])]}")
+                       for i in values]
             plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
             plt.savefig(os.path.join(self.dir_of_all,
                                      (name or "page") + "_layout_and_page.png"))
@@ -112,7 +121,9 @@ class EynollahPlotter:
             plt.subplot(1, 2, 2)
             im = plt.imshow(textline_mask_tot_ea[:, :])
             colors = [im.cmap(im.norm(value)) for value in values]
-            patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]], label="{l}".format(l=pixels[int(np.where(values_indexes == i)[0][0])])) for i in values]
+            patches = [mpatches.Patch(color=colors[np.where(values == i)[0][0]],
+                                      label=f"{pixels[int(np.where(values_indexes == i)[0][0])]}")
+                       for i in values]
             plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, fontsize=60)
             plt.savefig(os.path.join(self.dir_of_all,
                                      (name or "page") + "_textline_and_page.png"))
@@ -138,17 +149,18 @@ class EynollahPlotter:
         cv2.imwrite(os.path.join(self.dir_out,
                                  (name or "page") + "_enhanced.png"), img_res)
         
-    def save_plot_of_textline_density(self, img_patch_org, name=None):
+    def save_plot_of_textline_density(self, img_patch_org, axis=1, name=None):
         if self.dir_of_all is not None:
             plt.figure(figsize=(80,40))
             plt.rcParams['font.size']='50'
             plt.subplot(1,2,1)
             plt.imshow(img_patch_org)
             plt.subplot(1,2,2)
-            plt.plot(gaussian_filter1d(img_patch_org.sum(axis=1), 3),np.array(range(len(gaussian_filter1d(img_patch_org.sum(axis=1), 3)))),linewidth=8)
+            z = gaussian_filter1d(img_patch_org.sum(axis=axis), 3)
+            plt.plot(z, np.arange(len(z)), linewidth=8)
             plt.xlabel('Density of textline prediction in direction of X axis',fontsize=60)
             plt.ylabel('Height',fontsize=60)
-            plt.yticks([0,len(gaussian_filter1d(img_patch_org.sum(axis=1), 3))])
+            plt.yticks([0, len(z)])
             plt.gca().invert_yaxis()
             plt.savefig(os.path.join(self.dir_of_all,
                                      (name or "page") + '_density_of_textline.png'))
@@ -160,7 +172,10 @@ class EynollahPlotter:
             plt.plot(angels,np.array(var_res),'-o',markersize=25,linewidth=4)
             plt.xlabel('angle',fontsize=50)
             plt.ylabel('variance of sum of rotated textline in direction of x axis',fontsize=50)
-            plt.plot(angels[np.argmax(var_res)],var_res[np.argmax(np.array(var_res))]  ,'*',markersize=50,label='Angle of deskewing=' +str("{:.2f}".format(angels[np.argmax(var_res)]))+r'$\degree$')
+            plt.plot(angels[np.argmax(var_res)],
+                     var_res[np.argmax(np.array(var_res))],
+                     '*', markersize=50, label='Angle of deskewing=' + str(
+                         f"{angels[np.argmax(var_res)]:.2f}")+r'$\degree$')
             plt.legend(loc='best')
             plt.savefig(os.path.join(self.dir_of_all,
                                      (name or "page") + '_rotation_angle.png'))
@@ -172,6 +187,8 @@ class EynollahPlotter:
                 x, y, w, h = cv2.boundingRect(cont_ind)
                 box = [x, y, w, h]
                 image, _ = crop_image_inside_box(box, image_page)
+                if not image.size:
+                    continue
                 image = resize_image(image,
                                      int(image.shape[0] / scale_y),
                                      int(image.shape[1] / scale_x))

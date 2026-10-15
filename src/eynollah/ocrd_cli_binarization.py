@@ -1,5 +1,5 @@
+from __future__ import annotations
 from functools import cached_property
-from typing import Optional
 
 from PIL import Image
 from frozendict import frozendict
@@ -34,7 +34,7 @@ class SbbBinarizeProcessor(Processor):
         model_zoo = EynollahModelZoo(basedir=self.parameter['model'])
         self.binarizer = SbbBinarizer(model_zoo=model_zoo, logger=self.logger)
 
-    def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
+    def process_page_pcgts(self, *input_pcgts: OcrdPage | None, page_id: str | None = None) -> OcrdPageResult:
         """
         Binarize images with sbb_binarization (based on selectional auto-encoders).
 

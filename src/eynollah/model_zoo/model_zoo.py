@@ -1,10 +1,10 @@
+from __future__ import annotations
 import os
 import json
 import logging
 from copy import deepcopy
 from pathlib import Path
 from fnmatch import fnmatchcase
-from typing import Dict, List, Optional, Tuple, Type, Union
 
 from tabulate import tabulate
 
@@ -19,12 +19,14 @@ MODEL_VRAM_LIMITS = {
     "enhancement": 980, # due to bs 3
     "col_classifier": 210,
     "page": 618,
+    "deskewing": 350,
     "textline": 1880, # 954 for bs 1
     "region_1_2": 1580,
     "region_fl_np": 1756,
     "table": 1818,
     "reading_order": 632,
     "ocr": 2600, # 850 for bs 8
+    "extract_images": 954,
 }
 
 class EynollahModelZoo:
@@ -38,7 +40,7 @@ class EynollahModelZoo:
     def __init__(
         self,
         basedir: str,
-        model_overrides: Optional[List[Tuple[str, str, str]]] = None,
+        model_overrides: list[tuple[str, str, str]] | None = None,
     ) -> None:
         self.model_basedir = Path(basedir).resolve()
         self.logger = logging.getLogger('eynollah.model_zoo')
@@ -48,7 +50,7 @@ class EynollahModelZoo:
         self._overrides = []
         if model_overrides:
             self.override_models(*model_overrides)
-        self._loaded: Dict[str, Union[Predictor, AnyModel]] = {}
+        self._loaded: dict[str, Predictor] = {}
 
     @property
     def model_overrides(self):
@@ -56,7 +58,7 @@ class EynollahModelZoo:
 
     def override_models(
         self,
-        *model_overrides: Tuple[str, str, str],
+        *model_overrides: tuple[str, str, str],
     ):
         """
         Override the default model versions
@@ -77,8 +79,6 @@ class EynollahModelZoo:
         Translate model_{type,variant} tuple into an absolute (or relative) Path
         """
         spec = self.specs.get(model_category, model_variant)
-        if spec.category in ('characters', 'num_to_char'):
-            return self.model_path('ocr') / spec.filename
         if not Path(spec.filename).is_absolute() and absolute:
             model_path = Path(self.model_basedir).joinpath(spec.filename)
         else:
@@ -94,9 +94,9 @@ class EynollahModelZoo:
 
     def load_models(
         self,
-        *all_load_args: Union[str, Tuple[str], Tuple[str, str], Tuple[str, str, str]],
+        *all_load_args: str | tuple[str] | tuple[str, str] | tuple[str, str, str],
         device: str = '',
-    ) -> Dict:
+    ) -> dict:
         """
         Load all models by calling load_model and return a dictionary mapping model_category to loaded model
         """
@@ -122,6 +122,11 @@ class EynollahModelZoo:
             # elif model_category.endswith('_patched'):
             #     model_category = model_category[:-8]
             #     load_kwargs["patched"] = True
+            if (model_category == 'deskewing' and
+                not self.model_path('deskewing').exists()):
+                self.logger.warning("found no deskewing model, ignoring")
+                ret['deskewing'] = None
+                continue
 
             model = Predictor(self.logger, self)
             model.load_model(model_category, **load_kwargs)
@@ -134,7 +139,7 @@ class EynollahModelZoo:
             self,
             model_category: str,
             model_variant: str = '',
-            model_path_override: Optional[str] = None,
+            model_path_override: str | None = None,
             # patched: bool = False,
             # resized: bool = False,
             device: str = '',
@@ -162,7 +167,7 @@ class EynollahModelZoo:
         model._name = model_category
         return model
 
-    def get(self, model_category: str) -> Union[Predictor, AnyModel]:
+    def get(self, model_category: str) -> Predictor:
         if model_category not in self._loaded:
             raise ValueError(f'Model "{model_category}" not previously loaded with "load_model(..)"')
         return self._loaded[model_category]
@@ -245,7 +250,7 @@ class EynollahModelZoo:
             self.logger.warning("no GPU device available")
         return device0
 
-    def _load_keras_model(self, model_category, model_path, device=''):
+    def _load_keras_model(self, model_category, model_path, device='') -> AnyModel:
         os.environ['TF_USE_LEGACY_KERAS'] = '1' # avoid Keras 3 after TF 2.15
         from ocrd_utils import tf_disable_interactive_logs
         tf_disable_interactive_logs()
@@ -279,7 +284,7 @@ class EynollahModelZoo:
 
         return model
 
-    def _load_serving_model(self, model_category, model_path, device=''):
+    def _load_serving_model(self, model_category, model_path, device='') -> AnyModel:
         from ocrd_utils import tf_disable_interactive_logs
         tf_disable_interactive_logs()
         import tensorflow as tf
@@ -303,7 +308,7 @@ class EynollahModelZoo:
 
         return model
 
-    def _load_onnx_model(self, model_category, model_path, device=''):
+    def _load_onnx_model(self, model_category, model_path, device='') -> AnyModel:
         import onnxruntime as ort
         import numpy as np
         from ocrd_utils import config
@@ -497,7 +502,7 @@ class EynollahModelZoo:
         """
         Ensure that a loaded models is not referenced by ``self._loaded`` anymore
         """
-        if hasattr(self, '_loaded') and getattr(self, '_loaded'):
+        if hasattr(self, '_loaded') and self._loaded:
             for needle in list(self._loaded.keys()):
                 if isinstance(self._loaded[needle], Predictor):
                     self._loaded[needle].shutdown()
