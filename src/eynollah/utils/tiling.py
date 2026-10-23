@@ -6,7 +6,6 @@ import numpy as np
 
 from . import seg_mask_label
 from .resize import resize_image
-from .rankseg import rankseg_rma
 from ..predictor import Predictor
 
 def do_prediction(
@@ -42,8 +41,7 @@ def do_prediction(
         if is_enhancement:
             seg = np.round(label_p_pred * 255).astype(np.uint8)
         else:
-            #seg = np.argmax(label_p_pred, axis=2).astype(np.uint8)
-            seg = rankseg_rma(label_p_pred.T[np.newaxis], pruning_prob=0.1)[0].T.astype(np.uint8)
+            seg = np.argmax(label_p_pred, axis=2).astype(np.uint8)
 
         if thresholding_for_artificial_class:
             seg_mask_label(
@@ -167,8 +165,7 @@ def do_prediction(
     if is_enhancement:
         seg = np.round(prediction * 255).astype(np.uint8)
     else:
-        #seg = np.argmax(prediction, axis=2).astype(np.uint8)
-        seg = rankseg_rma(prediction.T[np.newaxis], pruning_prob=0.1)[0].T.astype(np.uint8)
+        seg = np.argmax(prediction, axis=2).astype(np.uint8)
     if thresholding_for_some_classes:
         seg_mask_label(
             seg, prediction[:, :, 4] > 0.03,
@@ -222,8 +219,7 @@ def do_prediction_new_concept(
         img = resize_image(img, img_height_model, img_width_model)
 
         label_p_pred = model.predict(img[np.newaxis], verbose=0)[0]
-        #seg = np.argmax(label_p_pred, axis=2).astype(np.uint8)
-        seg = rankseg_rma(label_p_pred.T[np.newaxis], pruning_prob=0.1)[0].T.astype(np.uint8)
+        seg = np.argmax(label_p_pred, axis=2).astype(np.uint8)
 
         prediction = resize_image(seg, img_h_page, img_w_page)
 
@@ -352,8 +348,7 @@ def do_prediction_new_concept(
                 img_patch[:] = 0
 
     # decode
-    #seg = np.argmax(prediction, axis=2).astype(np.uint8)
-    seg = rankseg_rma(prediction.T[np.newaxis], pruning_prob=0.1)[0].T.astype(np.uint8)
+    seg = np.argmax(prediction, axis=2).astype(np.uint8)
     conf = prediction[tuple(np.indices(seg.shape)) + (seg,)]
     if thresholding_for_artificial_class:
         seg_art = prediction[:, :, artificial_class] >= threshold_art_class
