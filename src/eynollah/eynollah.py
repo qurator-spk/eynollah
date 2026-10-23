@@ -1075,52 +1075,24 @@ class Eynollah:
             text_regions_p,
             num_col_classifier,
             label_text=1,
-            label_imgs=2,
-            label_imgs_fl=5,
-            label_imgs_fl_model=4,
-            label_seps=3,
-            label_seps_fl=6,
-            label_seps_fl_model=5,
-            label_marg=4,
-            label_marg_fl=8,
             label_drop_fl=4,
             label_drop_fl_model=3,
-            label_tabs=10,
     ):
         self.logger.debug('enter get_full_layout')
         t_full0 = time.time()
 
-        # segment labels used by models/arrays:
-        # class | early | old full (and decoded here) | new full (just predicted) | comment
-        # ---
-        # para | 1 |  1 | 1 |
-        # head | - |  2 | 2 | used in split_textregion_main_vs_head() afterwards
-        # drop | - |  4 | 3 | assigned from full model below
-        # img  | 2 |  5 | 4 | mapped below
-        # sep  | 3 |  6 | 5 | mapped + assigned from full model below
-        # marg | 4 |  8 | - | rule-based in run_marginals() from early text
-        # tab  | - | 10 | - | dedicated model, optional
-        text_regions_p[text_regions_p == label_imgs] = label_imgs_fl
-        text_regions_p[text_regions_p == label_seps] = label_seps_fl
-        text_regions_p[text_regions_p == label_marg] = label_marg_fl
+        regions_fully, regionsfl_confidence = self.extract_text_regions_new(
+            image_page,
+            False, cols=num_col_classifier)
 
-        if self.full_layout:
-            regions_fully, regionsfl_confidence = self.extract_text_regions_new(
-                image_page,
-                False, cols=num_col_classifier)
+        drops = regions_fully == label_drop_fl_model
+        regions_fully[drops] = label_text
+        # rs: why erode to text here, when fill_bb... will mask out text (only allowing img/drop/bg)?
+        drops = cv2.erode(drops.astype(np.uint8), KERNEL, iterations=1) == 1
+        regions_fully[drops] = label_drop_fl_model
+        drops = fill_bb_of_drop_capitals(regions_fully, text_regions_p)
+        text_regions_p[drops] = label_drop_fl
 
-            drops = regions_fully == label_drop_fl_model
-            regions_fully[drops] = label_text
-            # rs: why erode to text here, when fill_bb... will mask out text (only allowing img/drop/bg)?
-            drops = cv2.erode(drops.astype(np.uint8), KERNEL, iterations=1) == 1
-            regions_fully[drops] = label_drop_fl_model
-            drops = fill_bb_of_drop_capitals(regions_fully, text_regions_p)
-            text_regions_p[drops] = label_drop_fl
-        else:
-            regions_fully = None,
-            regionsfl_confidence = None
-
-        # no need to return text_regions_p (inplace editing)
         self.logger.debug('exit get_full_layout')
         return regions_fully, regionsfl_confidence
 
@@ -1596,6 +1568,26 @@ class Eynollah:
                    img_pil=None,
                    pcgts=None,
     ) -> None:
+        # segment labels used by region models/arrays:
+        # class | early | old full | new full | comment
+        # ---
+        # para | 1 |  1 | 1 |
+        # head | - |  2 | 2 | get_full_layout() + split_textregion_main_vs_head()
+        # drop | - |  4 | 3 | assigned in get_full_layout()
+        # img  | 2 |  5 | 4 | 
+        # sep  | 3 |  6 | 5 | 
+        # marg | 4 |  8 | - | rule-based in run_marginals() from early text
+        # tab  | - | 10 | - | dedicated model, optional
+        #
+        # Note: early-layout labels are used until after run_marginals(),
+        #       then early2full mapping is applied; so after that (old)
+        #       full-layout labels are used
+        #       (regardless whether self.full_layout is in effect);
+        #       the new full-layout labels of the model are mapped back to
+        #       the old full-layout labels in get_full_layout()
+        #       likewise, within do_prediction*(), for some models the
+        #       artificial boundary class gets decoded and removed
+        #       (textline and table: 2, region_1_2: 4)
         label_text = 1
         label_imgs = 2
         label_imgs_fl = 5
@@ -1605,6 +1597,10 @@ class Eynollah:
         label_marg_fl = 8
         label_drop_fl = 4
         label_tabs = 10
+        early2full = np.arange(100, dtype=np.uint8)
+        early2full[label_imgs] = label_imgs_fl
+        early2full[label_seps] = label_seps_fl
+        early2full[label_marg] = label_marg_fl
 
         t0 = time.time()
         self.logger.info(img_filename)
@@ -1757,10 +1753,13 @@ class Eynollah:
             self.plotter.save_plot_of_layout_main_all(text_regions_p, image_page, image['name'])
             self.plotter.save_plot_of_layout_main(text_regions_p, image_page, image['name'])
 
-        regions_fully, regionsfl_confidence = \
-            self.get_full_layout(image_page, text_regions_p, num_col_classifier)
+        # map labels from early to full classification
+        text_regions_p = early2full[text_regions_p]
 
         if self.full_layout:
+            regions_fully, regionsfl_confidence = \
+                self.get_full_layout(image_page, text_regions_p, num_col_classifier)
+
             drop_caps_cont = return_contours_of_class(text_regions_p, label_drop_fl, min_area=1e-4)
             drop_caps_conf = get_region_confidences(drop_caps_cont, regionsfl_confidence)
             drop_caps = [Region(cont, conf=conf)
@@ -1774,8 +1773,8 @@ class Eynollah:
         else:
             drop_caps = []
             t6 = time.time()
-        self.logger.info("Step 3/5: Contour extraction")
 
+        self.logger.info("Step 3/5: Contour extraction")
         min_area_mar = 1e-5
         marginal_mask = (text_regions_p == label_marg_fl).astype(np.uint8)
         marginal_mask = cv2.dilate(marginal_mask, KERNEL, iterations=2)

@@ -540,7 +540,8 @@ def fill_bb_of_drop_capitals(
         full_prediction, early_prediction,
         label_bg=0,
         label_text=1,
-        label_imgs=5,
+        label_imgs_fl=5,
+        label_marg_fl=8,
         label_drop_fl_model=3,
         label_imgs_fl_model=4):
     """
@@ -551,7 +552,8 @@ def fill_bb_of_drop_capitals(
     drop_mask = (full_prediction == label_drop_fl_model).astype(np.uint8)
     drop_cont = return_contours_of_class(drop_mask, 1, 1e-5)
     text_mask = ((early_prediction == label_text) |
-                 (early_prediction == label_imgs))
+                 # (early_prediction == label_marg_fl) |
+                 (early_prediction == label_imgs_fl))
     _, text_segs, text_bbox, _ = cv2.connectedComponentsWithStats(early_prediction * text_mask)
 
     for contour in drop_cont:
