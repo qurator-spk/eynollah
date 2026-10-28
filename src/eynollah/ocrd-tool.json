@@ -198,8 +198,8 @@
         }
       ]
     },
-    "ocrd-sbb-binarize": {
-      "executable": "ocrd-sbb-binarize",
+    "ocrd-eynollah-binarize": {
+      "executable": "ocrd-eynollah-binarize",
       "description": "Pixelwise binarization with selectional auto-encoders in Keras",
       "categories": ["Image preprocessing"],
       "steps": ["preprocessing/optimization/binarization"],

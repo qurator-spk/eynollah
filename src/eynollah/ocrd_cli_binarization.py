@@ -17,13 +17,13 @@ from .binarize import Binarizer
 from .utils.pil_cv2 import cv2pil
 
 
-class SbbBinarizeProcessor(Processor):
+class BinarizeProcessor(Processor):
     # already employs GPU (without singleton process atm)
     max_workers = 1
 
     @cached_property
     def executable(self):
-        return 'ocrd-sbb-binarize'
+        return 'ocrd-eynollah-binarize'
 
     def setup(self):
         """
@@ -106,4 +106,4 @@ class SbbBinarizeProcessor(Processor):
 @command()
 @ocrd_cli_options
 def main(*args, **kwargs):
-    return ocrd_cli_wrap_processor(SbbBinarizeProcessor, *args, **kwargs)
+    return ocrd_cli_wrap_processor(BinarizeProcessor, *args, **kwargs)

@@ -289,7 +289,7 @@ Added:
     - `allow_enhancement`
     - `textline_light`
     - `right_to_left`
- * OCR-D: :fire: integrate ocrd-sbb-binarize
+ * OCR-D: :fire: integrate ocrd-eynollah-binarize
  * add detection confidence in `TextRegion/Coords/@conf`
    (but only in light version and not for marginalia)
 

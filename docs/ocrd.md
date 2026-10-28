@@ -23,4 +23,4 @@ In general, it makes more sense to add other workflow steps **after** Eynollah.
 
 There is also an OCR-D processor for binarization:
 
-    ocrd-sbb-binarize -I OCR-D-IMG -O OCR-D-BIN -P models default-2021-03-09
+    ocrd-eynollah-binarize -I OCR-D-IMG -O OCR-D-BIN -P models default-2021-03-09

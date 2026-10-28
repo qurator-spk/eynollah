@@ -24,7 +24,7 @@ Either use standalone CLI (2) or OCR-D CLI (3):
 (follow self-help, cf. readme and https://ocr-d.de/en/spec/cli)
 
     docker run --rm -v $vol_models -v $PWD:/data ocrd/eynollah ocrd-eynollah-segment -h
-    docker run --rm -v $vol_models -v $PWD:/data ocrd/eynollah ocrd-sbb-binarize -h
+    docker run --rm -v $vol_models -v $PWD:/data ocrd/eynollah ocrd-eynollah-binarize -h
 
 Alternatively, just "log in" to the container once and use the commands there:
 
