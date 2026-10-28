@@ -1255,7 +1255,7 @@ class Eynollah:
 
         img_header_and_sep = np.zeros_like(text_regions_p)
         for contour in contours_heading_text:
-            # rs: why (max:max+12) instad of (min:max)?
+            # rs: why (max:max+12) instead of (min:max)?
             #     what about actual seps?
             img_header_and_sep[contour[:, 0, 1].max(): contour[:, 0, 1].max() + 12,
                                contour[:, 0, 0].min(): contour[:, 0, 0].max()] = 1
