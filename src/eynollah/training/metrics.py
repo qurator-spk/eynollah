@@ -51,8 +51,8 @@ def focal_loss(gamma=2., alpha=4., epsilon=EPS):
     return focal_loss_fixed
 
 
-def weighted_categorical_crossentropy(weights=None):
-    """ weighted_categorical_cross-entropy
+def weighted_categorical_cross_entropy(weights=None):
+    """ weighted_categorical_cross_entropy
 
         Args:
             * weights<ktensor|nparray|list>: cross-entropy weights

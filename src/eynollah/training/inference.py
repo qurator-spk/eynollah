@@ -32,7 +32,7 @@ from ..patch_encoder import (
 )
 from .metrics import (
     soft_dice_loss,
-    weighted_categorical_crossentropy,
+    weighted_categorical_cross_entropy,
 )
 from.utils import scale_padd_image_for_ocr
 from ..utils.utils_ocr import decode_batch_predictions

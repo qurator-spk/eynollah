@@ -26,7 +26,7 @@ from matplotlib import pyplot as plt # for plot_confusion_matrix
 
 from .metrics import (
     soft_dice_loss,
-    weighted_categorical_crossentropy,
+    weighted_categorical_cross_entropy,
     get as get_metric,
     metrics_superposition,
     ConfusionMatrix,
@@ -488,9 +488,9 @@ def run(_config,
             if is_loss_soft_dice:
                 loss = soft_dice_loss
             elif weighted_loss:
-                loss = weighted_categorical_crossentropy(weights)
+                loss = weighted_categorical_cross_entropy(weights)
             else:
-                loss = get_metric('categorical_crossentropy')
+                loss = get_metric('categorical_cross_entropy')
             if add_ncc_loss:
                 loss = metrics_superposition(loss, connected_components_loss(n_classes - 1),
                                              weights=[1 - add_ncc_loss, add_ncc_loss])
@@ -782,7 +782,7 @@ def run(_config,
                 model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
                 _log.info("reloaded weights from %s", dir_of_start_model)
 
-        model.compile(loss='categorical_crossentropy',
+        model.compile(loss='categorical_cross_entropy',
                       optimizer=Adam(learning_rate=0.001), # rs: why not learning_rate?
                       metrics=['accuracy', F1Score(average='macro', name='f1')])
 
@@ -829,7 +829,7 @@ def run(_config,
                 _log.info("reloaded weights from %s", dir_of_start_model)
 
         #f1score_tot = [0]
-        model.compile(loss="binary_crossentropy",
+        model.compile(loss="binary_cross_entropy",
                       #optimizer=SGD(learning_rate=0.01, momentum=0.9),
                       optimizer=Adam(learning_rate=0.0001), # rs: why not learning_rate?
                       metrics=['accuracy'])

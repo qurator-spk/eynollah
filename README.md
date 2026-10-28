@@ -19,7 +19,7 @@
 * Text recognition
 * Detection of reading order (left-to-right or right-to-left)
 * Output in [PAGE-XML](https://github.com/PRImA-Research-Lab/PAGE-XML)
-* [OCR-D](https://github.com/qurator-spk/eynollah#use-as-ocr-d-processor) interface
+* [OCR-D](https://github.com/qurator-spk/eynollah/tree/main/docs/ocrd.md) interface
 
 :warning: Development is focused on achieving the optimal quality for a wide variety of historical documents using a 
 combination of multiple deep learning models and heuristics; therefore processing can be slow.
@@ -50,17 +50,17 @@ To also install the dependencies for the OCR engines:
 pip install "eynollah[OCR]"
 ```
 
-:warning: Requirements for OCR are more involved, as they need Tensorflow (with tf-keras) and/or
-Torch (with transformers). Those two frameworks may also have conflicting CUDA dependencies. An 
-ONNX conversion for these models may be achieved soon.
+:warning: Requirements for OCR are more involved, as they need Tensorflow (with `tf-keras`) and/or
+Torch (with `transformers`), which may also have conflicting CUDA dependencies. 
+An ONNX conversion for these models may be achieved soon.
 
 ## Models
 Pretrained models can be downloaded from [Zenodo](https://doi.org/10.5281/zenodo.17194823). 
 For model documentation and model cards, see [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
 
 Two model variants are provided:
-- For faster runtime inference, download the ONNX models distributed as `models_inference_...zip`
-- For finetuning and training, download the original (Tensorflow / Torch) models distributed as `models_training...zip` 
+- For faster runtime inference, download the ONNX model variants distributed as `models_inference_...zip`
+- For finetuning and training, download the original (Tensorflow / Torch) models distributed as `models_training...zip`
 
 To train your own model with Eynollah, see [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md).
 
@@ -177,7 +177,7 @@ The following options can be used to further configure the processing:
 
 ### Reading Order Detection
 Detect reading order using a machine learning based model.
-Needs a PAGE-XML input file containing textline segmentation.
+Needs a PAGE-XML input file containing textline segmentation information.
 
 The command-line interface for machine learning based reading 
 order detection can be called like this:
@@ -193,7 +193,9 @@ eynollah [GENERIC_OPTIONS] machine-based-reading-order \
 Additional documentation:
 * For using Eynollah with Docker, see [`docker.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/docker.md).
 * For using Eynollah with OCR-D, see [`ocrd.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/ocrd.md).
-* For advanced usage, see [`usage.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/usage.md).
+* For advanced use, see [`use.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/use.md).
+* For model documentation and model cards, see [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
+* For model training or fine-tuning, see [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md).
 
 ## How to cite
 ```bibtex
