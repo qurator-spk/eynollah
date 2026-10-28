@@ -66,31 +66,10 @@ Here are the differences in segment types detected:
 
 (Note: No marginals are detected for pages with 3 columns or more.)
 
-## Use as OCR-D processor
-Eynollah ships with a CLI interface to be used as [OCR-D](https://ocr-d.de) processor that is described in 
-[`ocrd-tool.json`](https://github.com/qurator-spk/eynollah/tree/main/src/eynollah/ocrd-tool.json). 
-
-The source image file group with (preferably) RGB images should be used as input for Eynollah like this:
-
-```
-ocrd-eynollah-segment -I OCR-D-IMG -O SEG-LINE -P full_layout true
-```
-    
-Any image referenced by `@imageFilename` in PAGE-XML is passed on directly to Eynollah as a processor, so that e.g.
-
-```
-ocrd-eynollah-segment -I OCR-D-IMG-BIN -O SEG-LINE -P full_layout true
-```
-    
-uses the original (RGB) image despite any binarization that may have occurred in previous OCR-D processing steps.
-
-## Use with Docker
-TODO
-
 ## Hints
 * The best quality is produced when RGB images are used as input rather than greyscale or binarized images.
-* If none of the parameters is set to `true`, the tool will perform a layout detection of main regions (background, 
-text, images, separators and marginals).
+* The default is to only perform layout detection of main regions (background, text, images, separators and marginals).
+* To enable detection of drop capitals (initials) and headings, set `-fl` (**f**ull **l**ayout) to `true`.
 * If you set `-ae` (**a**llow image **e**nhancement) parameter to `true`, the tool will first check the ppi 
 (pixel-per-inch) of the image and when less than 300, the tool will resize it and only then image enhancement will 
 occur. Image enhancement can also take place without this option, but by setting this option to `true`, the layout xml 
@@ -98,8 +77,6 @@ data (e.g. coordinates) will be based on the resized and enhanced image instead 
 * For some documents, while the quality is good, their scale is very large, and the performance of tool decreases. In 
 such cases you can set `-as` (**a**llow **s**caling) to `true`. With this option enabled, the tool will try to rescale 
 the image and only then the layout detection process will begin.
-* If you care about drop capitals (initials) and headings, you can set `-fl` (**f**ull **l**ayout) to `true`. With this 
-setting, the tool can currently distinguish 7 document layout classes/elements.
 * In cases where the document includes curved headers or curved lines, rectangular bounding boxes for textlines will not 
 be a great option. In such cases it is strongly recommended setting the flag `-cl` (**c**urved **l**ines) to `true` to 
 find contours of curved lines instead of rectangular bounding boxes. Be advised that enabling this option increases the 

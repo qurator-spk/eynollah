@@ -1,22 +1,15 @@
 # Models documentation
+The suite of Eynollah models presents a document layout analysis system 
+for historical documents.
 
-This suite of Eynollah models presents a document layout analysis (DLA) system for historical documents implemented by 
-pixel-wise segmentation using a combination of a ResNet50 encoder with various U-Net decoders. In addition, heuristic 
-methods are applied to detect marginals and to determine the reading order of text regions.
+Two Arabic/Persian terms form the name of the model suite: عين الله, 
+which can be transcribed as "ain'allah" or "eynollah"; it translates 
+into English as "God's Eye" -- it sees (nearly) everything on the 
+document image. 
 
-The detection and classification of multiple classes of layout elements such as headings, images, tables etc. as part of
-DLA is required in order to extract and process them in subsequent steps. Altogether, the combination of image 
-detection, classification and segmentation on the wide variety that can be found in over 400 years of printed cultural 
-heritage makes this a very challenging task. Deep learning models are complemented with heuristics for the detection of 
-text lines, marginals, and reading order. Furthermore, an optional image enhancement step was added in case of documents 
-that either have insufficient pixel density and/or require scaling. Also, a column classifier for the analysis of 
-multi-column documents was added. With these additions, DLA performance was improved, and a high accuracy in the 
-prediction of the reading order is accomplished.
-
-Two Arabic/Persian terms form the name of the model suite: عين الله, which can be transcribed as "ain'allah" or 
-"eynollah"; it translates into English as "God's Eye" -- it sees (nearly) everything on the document image. 
-
-See the flowchart below for the different stages and how they interact:
+Eynollah implements a pipeline combining various deep learning models 
+together with heuristics. 
+See the flowchart below for the Eynollah pipeline:
 
 <img width="810" height="691" alt="eynollah_flowchart" src="https://github.com/user-attachments/assets/42dd55bc-7b85-4b46-9afe-15ff712607f0" />
 
@@ -25,81 +18,70 @@ See the flowchart below for the different stages and how they interact:
 ### Image enhancement
 
 Model card: [Image Enhancement](https://huggingface.co/SBB/eynollah-enhancement)
-
-This model addresses image quality issues, specifically targeting documents with suboptimal resolution. In instances 
-where the detection of document layout analysis exhibits inadequate performance, the proposed enhancement aims to 
-improve the quality and clarity of the images, thus facilitating enhanced visual interpretation and analysis.
+ 
+This model aims to enhance input image quality by scaling, 
+specifically targeting documents with low image resolution.
 
 ### Page extraction / border detection
 
 Model card: [Page Extraction/Border Detection](https://huggingface.co/SBB/eynollah-page-extraction)
 
-A problem that can negatively affect OCR are black margins around a page caused by document scanning. A deep learning 
-model helps to crop to the page borders by using a pixel-wise segmentation method.
+This model detects page borders, as e.g. black margins around a page due to 
+scanning can negatively affect quality.
 
 ### Column classification
 
 Model card: [Column Classification](https://huggingface.co/SBB/eynollah-column-classifier)
 
-This model is a classifier that is trained to recognize the number of columns in a document by use of a training set 
-derived through manual classification of documents into six classes with either one, two, three, four, five, or six and 
-more columns respectively.
+This model detects the number of columns in a document image.
 
 ### Binarization
 
 Model card: [Binarization](https://huggingface.co/SBB/eynollah-binarization)
 
-This model is designed for document image binarization, which involves segmentation of the image into white and black 
-pixels. This process contributes to the overall performance of the layout models, particularly in scenarios where the 
-documents are degraded or exhibit subpar quality. The robust binarization capability of the model enables improved 
-accuracy and reliability in subsequent layout analysis steps, thereby facilitating enhanced document understanding and 
-interpretation.
+This model performs document image binarization, i.e. the segmentation of the 
+input image into white and black pixels.
 
 ### Main region detection
 
 Model card: [Main Region Detection](https://huggingface.co/SBB/eynollah-main-regions)
 
-This model has employed a different set of labels, including an artificial class specifically designed to encompass the 
-text regions. The inclusion of this artificial class facilitates easier isolation of text regions by the model. This 
-approach grants the advantage of training the model using downscaled images, which in turn leads to faster predictions 
-during the inference phase. By incorporating this methodology, improved efficiency is achieved without compromising the 
-model's ability to accurately identify and classify text regions within documents.
+This model detects the main layout regions, i.e. background, text regions, 
+text lines, images, separators and marginals.
 
 ### Main region detection (with scaling augmentation)
 
 Model card: [Main Region Detection (with scaling augmentation)](https://huggingface.co/SBB/eynollah-main-regions-aug-scaling)
 
-Utilizing scaling augmentation, this model leverages the capability to effectively segment elements of extremely high or 
-low scales within documents. By harnessing this technique, the tool gains a significant advantage in accurately 
-categorizing and isolating such elements, thereby enhancing its overall performance and enabling precise analysis of 
+This model utilizes scaling augmentation to segment elements of very high 
+or low scale within documents, which helps in isolating such elements in 
 documents with varying scale characteristics.
 
 ### Main region detection (with rotation augmentation)
 
 Model card: [Main Region Detection (with rotation augmentation)](https://huggingface.co/SBB/eynollah-main-regions-aug-rotation)
 
-This model takes advantage of rotation augmentation. This helps the tool to segment the vertical text regions in a 
-robust way.
+This model takes advantage of rotation augmentation to segment vertical text 
+regions in a robust way.
 
 ### Main region detection (ensembled)
 
 Model card: [Main Region Detection (ensembled)](https://huggingface.co/SBB/eynollah-main-regions-ensembled)
 
-The robustness of this model is attained through an ensembling technique that combines the weights from various epochs. 
-By employing this approach, the model achieves a high level of resilience and stability, effectively leveraging the 
-strengths of multiple epochs to enhance its overall performance and deliver consistent and reliable results.
+This model is an ensemble of the weights from various epochs to achieve a high 
+level of robustness and overall performance.
 
 ### Full region detection (1,2-column documents)
 
 Model card: [Full Region Detection (1,2-column documents)](https://huggingface.co/SBB/eynollah-full-regions-1column)
 
-This model deals with documents comprising one and two columns.
+This model detects headers and drop capitals in documents with one or two columns.
 
 ### Full region detection (3,n-column documents)
 
 Model card: [Full Region Detection (3,n-column documents)](https://huggingface.co/SBB/eynollah-full-regions-3pluscolumn)
 
-This model is responsible for detecting headers and drop capitals in documents with three or more columns.
+This model detects headers and drop capitals in documents with three or more columns.
 
 ### Textline detection
 
