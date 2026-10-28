@@ -52,12 +52,12 @@ def focal_loss(gamma=2., alpha=4., epsilon=EPS):
 
 
 def weighted_categorical_crossentropy(weights=None):
-    """ weighted_categorical_crossentropy
+    """ weighted_categorical_cross-entropy
 
         Args:
-            * weights<ktensor|nparray|list>: crossentropy weights
+            * weights<ktensor|nparray|list>: cross-entropy weights
         Returns:
-            * weighted categorical crossentropy function
+            * weighted categorical cross-entropy function
     """
 
     def loss(y_true, y_pred):

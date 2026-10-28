@@ -389,7 +389,7 @@ def do_brightening(img, factor):
     return opencv_img
 
 
-def bluring(img_in, kind):
+def blurring(img_in, kind):
     if kind == 'gauss':
         img_blur = cv2.GaussianBlur(img_in, (5, 5), 0)
     elif kind == "median":
@@ -860,7 +860,7 @@ def preprocess_img(img,
                     yield cv2.flip(img, f_i), cv2.flip(lab, f_i)
             if blur_aug:
                 for blur_i in blur_k:
-                    yield bluring(img, blur_i), lab
+                    yield blurring(img, blur_i), lab
             if brightening:
                 for factor in brightness:
                     yield do_brightening(img, factor), lab
@@ -984,7 +984,7 @@ def preprocess_img(img,
                                            input_width)
             if blur_aug:
                 for blur_i in blur_k:
-                    yield from get_patches(bluring(img, blur_i),
+                    yield from get_patches(blurring(img, blur_i),
                                            lab,
                                            input_height,
                                            input_width)
@@ -1040,7 +1040,7 @@ def preprocess_img(img,
             if scaling_blurring:
                 for sc_ind in scales:
                     for blur_i in blur_k:
-                        img_blur = bluring(img, blur_i),
+                        img_blur = blurring(img, blur_i),
                         yield from get_patches_num_scale_new(img_blur,
                                                              lab,
                                                              input_height,
@@ -1165,7 +1165,7 @@ def preprocess_img_ocr(
             yield yield_encoder(scale_image(img_rot), lab)
     if blur_aug:
         for blur_type in blur_k:
-            img_blur = bluring(img, blur_type)
+            img_blur = blurring(img, blur_type)
             yield yield_encoder(scale_image(img_blur), lab)
     if degrading:
         for deg_scale_ind in degrade_scales:
