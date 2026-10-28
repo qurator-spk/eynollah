@@ -28,10 +28,10 @@ from . import (
 )
 
 
-def separate_lines(mask, contour_text_interest, thetha, x_help, y_help):
+def separate_lines(mask, contour_text_interest, theta, x_help, y_help):
     h, w = mask.shape[:2]
     center = (w // 2, h // 2)
-    M = cv2.getRotationMatrix2D(center, -thetha, 1.0)
+    M = cv2.getRotationMatrix2D(center, -theta, 1.0)
     x_d = M[0, 2]
     y_d = M[1, 2]
     rotation_matrix = M[:2, :2]

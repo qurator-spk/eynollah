@@ -492,16 +492,16 @@ def rotate_max_area_single_image(image, rotated, angle):
     return rotated[y1:y2, x1:x2]
 
 # TODO: Use one of the utils/rotate.py functions for this
-def rotation_not_90_func(img, label, thetha):
-    rotated = imutils.rotate(img, thetha)
-    rotated_label = imutils.rotate(label, thetha)
-    return rotate_max_area(img, rotated, rotated_label, thetha)
+def rotation_not_90_func(img, label, theta):
+    rotated = imutils.rotate(img, theta)
+    rotated_label = imutils.rotate(label, theta)
+    return rotate_max_area(img, rotated, rotated_label, theta)
 
 
 # TODO: Use one of the utils/rotate.py functions for this
-def rotation_not_90_func_single_image(img, thetha):
-    rotated = imutils.rotate(img, thetha)
-    return rotate_max_area_single_image(img, rotated, thetha)
+def rotation_not_90_func_single_image(img, theta):
+    rotated = imutils.rotate(img, theta)
+    return rotate_max_area_single_image(img, rotated, theta)
 
 
 def color_images(seg, n_classes):
@@ -553,7 +553,7 @@ def IoU(Yi, y_predi):
     #print("Mean IoU: {:4.3f}".format(mIoU))
     return mIoU
 
-def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, n_batch, height, width, n_classes, thetha, augmentation=False):
+def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, n_batch, height, width, n_classes, theta, augmentation=False):
     all_labels_files = os.listdir(classes_file_dir)
     ret_x= np.zeros((n_batch, height, width, 3))#.astype(np.int16)
     ret_y= np.zeros((n_batch, n_classes)).astype(np.int16)
@@ -578,8 +578,8 @@ def generate_arrays_from_folder_reading_order(classes_file_dir, modal_dir, n_bat
                 batchcount = 0
                 
             if augmentation:
-                for thetha_i in thetha:
-                    img_rot = rotation_not_90_func_single_image(img, thetha_i)
+                for theta_i in theta:
+                    img_rot = rotation_not_90_func_single_image(img, theta_i)
                     
                     img_rot = resize_image(img_rot, height, width)
                     
@@ -846,7 +846,7 @@ def preprocess_img(img,
                    shuffle_indexes=None,
                    rotation=False,
                    rotation_not_90=False,
-                   thetha=None,
+                   theta=None,
                    patches=False,
                    list_all_possible_background_images=None,
                    list_all_possible_foreground_rgbs=None,
@@ -874,8 +874,8 @@ def preprocess_img(img,
                 for degrade_scale_ind in degrade_scales:
                     yield do_degrading(img, degrade_scale_ind), lab
             if rotation_not_90:
-                for thetha_i in thetha:
-                    yield rotation_not_90_func(img, lab, thetha_i)
+                for theta_i in theta:
+                    yield rotation_not_90_func(img, lab, theta_i)
             if channels_shuffling:
                 for shuffle_index in shuffle_indexes:
                     yield return_shuffled_channels(img, shuffle_index), lab
@@ -924,9 +924,9 @@ def preprocess_img(img,
                                        input_height,
                                        input_width)
             if rotation_not_90:
-                for thetha_i in thetha:
+                for theta_i in theta:
                     img_max_rotated, label_max_rotated = \
-                        rotation_not_90_func(img, lab, thetha_i)
+                        rotation_not_90_func(img, lab, theta_i)
                     yield from get_patches(img_max_rotated,
                                            label_max_rotated,
                                            input_height,
@@ -1075,10 +1075,10 @@ def preprocess_img_ocr(
         input_width=None,
         augmentation=False,
         color_padding_rotation=None,
-        thetha_padd=None,
+        theta_padd=None,
         padd_colors=None,
         rotation_not_90=None,
-        thetha=None,
+        theta=None,
         padding_white=None,
         white_padds=None,
         degrading=False,
@@ -1154,14 +1154,14 @@ def preprocess_img_ocr(
         return
 
     if color_padding_rotation:
-        for thetha_ind in thetha_padd:
+        for theta_ind in theta_padd:
             for padd_col in padd_colors:
                 img_pad = do_padding_for_ocr(img, 1.2, padd_col)
-                img_rot = rotation_not_90_func_single_image(img_pad, thetha_ind)
+                img_rot = rotation_not_90_func_single_image(img_pad, theta_ind)
                 yield yield_encoder(scale_image(img_rot), lab)
     if rotation_not_90:
-        for thetha_ind in thetha:
-            img_rot = rotation_not_90_func_single_image(img, thetha_ind)
+        for theta_ind in theta:
+            img_rot = rotation_not_90_func_single_image(img, theta_ind)
             yield yield_encoder(scale_image(img_rot), lab)
     if blur_aug:
         for blur_type in blur_k:

@@ -455,8 +455,8 @@ classification and machine-based reading order, as you can see in their example 
 * `dir_img_bin`: With `binarization`, use this directory to read precomputed binarized images instead of ad-hoc Otsu.  
    (Base names should correspond to the files in `dir_train/images`.)
 * `rotation`: If `true`, 90° rotation will be applied on images.
-* `rotation_not_90`: If `true`, random rotation (other than 90°) will be applied on image. Requires `thetha` parameter.
-* `thetha`: List of rotation angles (in degrees).
+* `rotation_not_90`: If `true`, random rotation (other than 90°) will be applied on image. Requires `theta` parameter.
+* `theta`: List of rotation angles (in degrees).
 
 In case of segmentation and enhancement the train and evaluation data should be organised as follows.
 
@@ -552,7 +552,7 @@ An example config json file for binarization can be like this:
     "brightness" : [1.3, 1.5, 1.7, 2],
     "degrade_scales" : [0.2, 0.4],
     "flip_index" : [0, 1, -1],
-    "thetha" : [10, -10],
+    "theta" : [10, -10],
     "continue_training": false,
     "index_start" : 0,
     "dir_of_start_model" : " ",
@@ -597,7 +597,7 @@ An example config json file for binarization can be like this:
     "brightness" : [1.3, 1.5, 1.7, 2],
     "degrade_scales" : [0.2, 0.4],
     "flip_index" : [0, 1, -1],
-    "thetha" : [10, -10],
+    "theta" : [10, -10],
     "continue_training": false,
     "index_start" : 0,
     "dir_of_start_model" : " ",
@@ -642,7 +642,7 @@ An example config json file for binarization can be like this:
     "brightness" : [1.3, 1.5, 1.7, 2],
     "degrade_scales" : [0.2, 0.4],
     "flip_index" : [0, 1, -1],
-    "thetha" : [10, -10],
+    "theta" : [10, -10],
     "continue_training": false,
     "index_start" : 0,
     "dir_of_start_model" : " ",
@@ -690,7 +690,7 @@ image.
     "brightness" : [1.3, 1.5, 1.7, 2],
     "degrade_scales" : [0.2, 0.4],
     "flip_index" : [0, 1, -1],
-    "thetha" : [10, -10],
+    "theta" : [10, -10],
     "continue_training": false,
     "index_start" : 0,
     "dir_of_start_model" : " ",
@@ -748,7 +748,7 @@ An example config json file for layout segmentation with 5 classes (including ba
     "brightness" : [1.3, 1.5, 1.7, 2],
     "degrade_scales" : [0.2, 0.4],
     "flip_index" : [0, 1, -1],
-    "thetha" : [10, -10],
+    "theta" : [10, -10],
     "continue_training": false,
     "index_start" : 0,
     "dir_of_start_model" : " ",

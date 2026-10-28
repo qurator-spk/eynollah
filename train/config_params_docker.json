@@ -40,7 +40,7 @@
     "degrade_scales" : [0.2, 0.4],
     "flip_index" : [0, 1, -1],
     "shuffle_indexes" : [ [0,2,1], [1,2,0], [1,0,2] , [2,1,0]],
-    "thetha" : [5, -5],
+    "theta" : [5, -5],
     "number_of_backgrounds_per_image": 2,
     "continue_training": false,
     "index_start" : 0,

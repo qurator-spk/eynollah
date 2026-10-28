@@ -326,9 +326,9 @@ def config_params():
         if channels_shuffling:
             shuffle_indexes = None # List of channels to switch between.
         rotation = False # Whether images will be rotated by 90 degrees.
-        rotation_not_90 = False # Whether images will be rotated arbitrarily (skewed). Requires "thetha" setting.
+        rotation_not_90 = False # Whether images will be rotated arbitrarily (skewed). Requires "theta" setting.
         if rotation_not_90:
-            thetha = None  # List of rotation angles in degrees.
+            theta = None  # List of rotation angles in degrees.
         if task == 'cnn-rnn-ocr':
             white_noise_strap = False # Whether white noise will be applied on some straps on the textline image.
             textline_skewing = False # Whether textline images will be skewed for augmentation.
@@ -341,9 +341,9 @@ def config_params():
             pepper_aug = False # Whether pepper noise will be added to textline images.
             if pepper_aug or binarization and pepper_bin_aug:
                 pepper_indexes = None # List of pepper noise factors, e.g. [0.01, 0.005].
-            color_padding_rotation = False # Whether images will be rotated with color padding. Requires "thetha_padd" setting.
+            color_padding_rotation = False # Whether images will be rotated with color padding. Requires "theta_padd" setting.
             if color_padding_rotation:
-                thetha_padd = None # List of angles (in degrees) used for rotation alongside padding.
+                theta_padd = None # List of angles (in degrees) used for rotation alongside padding.
     dir_train = None  # Directory of training dataset with subdirectories having the names "images" and "labels".
     dir_eval = None  # Directory of validation dataset with subdirectories having the names "images" and "labels".
     dir_output = None  # Directory where the augmented training data and the model checkpoints will be saved.
@@ -377,7 +377,7 @@ def run(_config,
         # dependent config keys need a default,
         # otherwise yields sacred.utils.ConfigAddedError
         ## if rotation_not_90
-        thetha=None,
+        theta=None,
         is_loss_soft_dice=False,
         weighted_loss=False,
         add_ncc_loss=None,
@@ -400,7 +400,7 @@ def run(_config,
         ## if task=cnn-rnn-ocr
         characters_txt_file: Optional[str]=None,
         color_padding_rotation=False,
-        thetha_padd=None,
+        theta_padd=None,
         bin_deg=False,
         image_inversion=False,
         white_noise_strap=False,
@@ -839,7 +839,7 @@ def run(_config,
 
         classes = os.listdir(dir_flow_train_labels)
         if augmentation:
-            num_rows = len(classes)*(len(thetha) + 1)
+            num_rows = len(classes)*(len(theta) + 1)
         else:
             num_rows = len(classes)
         #ls_test = os.listdir(dir_flow_train_labels)
@@ -852,7 +852,7 @@ def run(_config,
         trainXY = generate_arrays_from_folder_reading_order(
             dir_flow_train_labels, dir_flow_train_imgs,
             n_batch, input_height, input_width, n_classes,
-            thetha, augmentation)
+            theta, augmentation)
 
         history = model.fit(trainXY,
                             steps_per_epoch=num_rows / n_batch,
