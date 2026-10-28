@@ -38,7 +38,7 @@
     "pepper_aug": true,
     "pepper_bin_aug": true,
     "image_inversion": true,
-    "scaling_bluring" : false,
+    "scaling_blurring" : false,
     "scaling_binarization" : false,
     "scaling_flip" : false,
     "rotation": false,

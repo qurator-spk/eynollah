@@ -824,7 +824,7 @@ def preprocess_img(img,
                    padding_white=False,
                    padding_black=False,
                    scaling=False,
-                   scaling_bluring=False,
+                   scaling_blurring=False,
                    scaling_brightness=False,
                    scaling_binarization=False,
                    scaling_flip=False,
@@ -1037,7 +1037,7 @@ def preprocess_img(img,
                                                              input_height,
                                                              input_width,
                                                              scaler=sc_ind)
-            if scaling_bluring:
+            if scaling_blurring:
                 for sc_ind in scales:
                     for blur_i in blur_k:
                         img_blur = bluring(img, blur_i),

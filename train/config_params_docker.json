@@ -21,7 +21,7 @@
     "degrading": true,
     "brightening": true,
     "binarization" : false,
-    "scaling_bluring" : false,
+    "scaling_blurring" : false,
     "scaling_binarization" : false,
     "scaling_flip" : false,
     "rotation": false,

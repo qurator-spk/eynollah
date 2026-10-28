@@ -444,7 +444,7 @@ classification and machine-based reading order, as you can see in their example 
 * `blur_k`: Method of blurring (`gauss`, `median` or `blur`).
 * `scaling`: If `true`, scaling will be applied on image. Requires `scales` parameter.
 * `scales`: List of scale factors for scaling.
-* `scaling_bluring`: If `true`, combination of scaling and blurring will be applied on image.
+* `scaling_blurring`: If `true`, combination of scaling and blurring will be applied on image.
 * `scaling_binarization`: If `true`, combination of scaling and binarization will be applied on image.
 * `scaling_flip`: If `true`, combination of scaling and flip will be applied on image.
 * `degrading`: If `true`, degrading will be applied to the image. Requires `degrade_scales` parameter.
@@ -534,7 +534,7 @@ An example config json file for binarization can be like this:
     "degrading": false,
     "brightening": false,
     "binarization" : false,
-    "scaling_bluring" : false,
+    "scaling_blurring" : false,
     "scaling_binarization" : false,
     "scaling_flip" : false,
     "rotation": false,
@@ -587,7 +587,7 @@ An example config json file for binarization can be like this:
     "degrading": false,
     "brightening": false,
     "binarization" : false,
-    "scaling_bluring" : false,
+    "scaling_blurring" : false,
     "scaling_binarization" : false,
     "scaling_flip" : false,
     "rotation": false,
@@ -632,7 +632,7 @@ An example config json file for binarization can be like this:
     "degrading": false,
     "brightening": false,
     "binarization" : false,
-    "scaling_bluring" : false,
+    "scaling_blurring" : false,
     "scaling_binarization" : false,
     "scaling_flip" : false,
     "rotation": false,
@@ -680,7 +680,7 @@ image.
     "degrading": false,
     "brightening": false,
     "binarization" : false,
-    "scaling_bluring" : false,
+    "scaling_blurring" : false,
     "scaling_binarization" : false,
     "scaling_flip" : false,
     "rotation": false,
@@ -730,7 +730,7 @@ An example config json file for layout segmentation with 5 classes (including ba
     "degrading": false,
     "brightening": false,
     "binarization" : false,
-    "scaling_bluring" : false,
+    "scaling_blurring" : false,
     "scaling_binarization" : false,
     "scaling_flip" : false,
     "rotation": false,

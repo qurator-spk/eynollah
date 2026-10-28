@@ -286,11 +286,11 @@ def config_params():
             padd_colors = None # List of padding colors, but only "white" or "black" or both.
         padding_black = False # If true, black padding will be applied to the image.
         scaling = False  # Whether images will be scaled up or down. Requires "scales" setting.
-        scaling_bluring = False  # Whether a combination of scaling and blurring will be applied to the image.
+        scaling_blurring = False  # Whether a combination of scaling and blurring will be applied to the image.
         scaling_binarization = False  # Whether a combination of scaling and binarization will be applied to the image.
         scaling_brightness = False  # Whether a combination of scaling and brightening will be applied to the image.
         scaling_flip = False  # Whether a combination of scaling and flipping will be applied to the image.
-        if scaling or scaling_brightness or scaling_bluring or scaling_binarization or scaling_flip:
+        if scaling or scaling_brightness or scaling_blurring or scaling_binarization or scaling_flip:
             scales = None  # Scale patches for augmentation.
         if flip_aug or scaling_flip:
             flip_index = None  # List of codes (as in cv2.flip) for flip augmentation.

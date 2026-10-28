@@ -693,7 +693,7 @@ def small_textlines_to_parent_adherence2(
                 for idx_small in indexes_small:
                     large_poly = large_poly.union(textlines_small_poly[idx_small])
                 if large_poly.geom_type == 'GeometryCollection':
-                    # hetergeneous: filter lines and points
+                    # heterogeneous: filter lines and points
                     large_poly = ops.unary_union([geom for geom in large_poly.geoms
                                                   if geom.area > 0])
                 if large_poly.geom_type == 'MultiPolygon':
