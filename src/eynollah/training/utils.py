@@ -49,7 +49,7 @@ def add_salt_and_pepper_noise(img, salt_prob, pepper_prob):
     Add salt-and-pepper noise to an image.
     
     Parameters:
-        img ndarray
+        img: ndarray
             Input image.
         salt_prob: float
             Probability of salt noise.
@@ -420,8 +420,8 @@ def elastic_transform(image, alpha, sigma, seedj, random_state=None):
     x, y, z = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]), np.arange(shape[2]))
     indices = np.reshape(y + dy, (-1, 1)), np.reshape(x + dx, (-1, 1)), np.reshape(z, (-1, 1))
 
-    distored_image = map_coordinates(image, indices, order=1, mode='reflect')
-    return distored_image.reshape(image.shape)
+    distorted_image = map_coordinates(image, indices, order=1, mode='reflect')
+    return distorted_image.reshape(image.shape)
 
 
 # TODO: Use one of the utils/rotate.py functions for this

@@ -79,6 +79,7 @@ def image_categorical_cross_entropy(y_true, y_pred, weights=None):
     :param y_true: tensor of shape (batch_size, height, width) representing the ground truth.
     :param y_pred: tensor of shape (batch_size, height, width) representing the prediction.
     :return: The mean cross-entropy on softmaxxed tensors.
+    :weights: cross-entropy weights
     """
 
     labels_floats = tf.cast(y_true, tf.float32)

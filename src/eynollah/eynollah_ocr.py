@@ -453,7 +453,15 @@ class Eynollah_ocr(Eynollah):
 
         Args:
 
+            overwrite: overwrite existing file
+            dir_in: input directory
             dir_in_bin (str): Prediction with RGB and binarized images for selected pages, should not be the default
+            image_filename: input image filename
+            dir_xmls: directory of PAGE-XML input files containing textline segmentation information
+            dir_out_image_text: directory for output images with text rendered
+            dir_out: output directory
+            num_jobs: number of jobs to run in parallel
+            halt_fail: number of failed runs before aborting
         """
         if dir_in:
             t0_tot = time.time()
