@@ -20,6 +20,7 @@ class EynollahCliCtx:
 
 
 @click.group()
+@click.version_option(package_name="eynollah")
 @click.option(
     "--model-basedir",
     "-m",
