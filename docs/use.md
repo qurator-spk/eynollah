@@ -85,3 +85,7 @@ processing time of the tool.
 a directory path to store the extracted images.
 * To extract only images from a document, set the parameter `-eoi` (**e**xtract **o**nly **i**mages). Choosing this 
 option disables any other processing. To save the cropped images add `-ep` and `-si`.
+
+## Quickstart
+For a runnable example via e.g. Google Colab, see the notebook 
+[eynollah_layout.ipynb](https://github.com/qurator-spk/eynollah/blob/main/docs/eynollah_layout.ipynb).
