@@ -89,12 +89,13 @@ To train your own model with Eynollah, see [`train.md`](https://github.com/qurat
 
 ## Usage
 
-Eynollah supports five use cases: 
+Eynollah supports six use cases:
 1. [layout analysis (segmentation)](#layout-analysis), 
 2. [binarization](#binarization), 
 3. [image enhancement](#image-enhancement), 
-4. [text recognition (OCR)](#ocr), and 
-5. [reading order detection](#reading-order-detection).
+4. [text recognition (OCR)](#ocr),
+5. [reading order detection](#reading-order-detection), and
+6. [column classification](#column-classification).
 
 Some example outputs can be found in [`examples.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/examples.md).
 
@@ -105,6 +106,25 @@ The **generic options** shared by all subcommands are:
   -D <device specifier>
   -l <log level>
 ```
+
+### Column Classification
+
+Use `eynollah column-classifier` to run only page extraction and column
+classification. It accepts individual image files and directories, which it
+scans recursively. It uses the `page` and `col_classifier` models from the
+normal Eynollah model directory and writes one JSON object per image:
+
+```sh
+eynollah -m /path/to/models column-classifier --output columns.jsonl images/
+```
+
+Each line contains `image`, `columns` (1 through 6, where 6 means six or
+more), and `confidence` (the winning model score, not a calibrated probability).
+Unreadable images produce an `image` and `error` record; processing continues
+and the command exits with status 1 if any images failed. Without `--output`,
+JSON Lines are written to stdout. `--batch-size` and `--workers` control model
+batching and parallel image reading. Start with the defaults and measure memory
+use before increasing the batch size.
 
 ### Layout Analysis
 

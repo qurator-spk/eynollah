@@ -504,5 +504,6 @@ class EynollahModelZoo:
         """
         if hasattr(self, '_loaded') and self._loaded:
             for needle in list(self._loaded.keys()):
-                if isinstance(self._loaded[needle], Predictor):
-                    self._loaded[needle].shutdown()
+                model = self._loaded.pop(needle)
+                if isinstance(model, Predictor):
+                    model.shutdown()

@@ -1,5 +1,6 @@
 from .cli import main
 from .cli_binarize import binarize_cli
+from .cli_column_classifier import column_classifier_cli
 from .cli_enhance import enhance_cli
 from .cli_extract_page import extract_page_cli
 from .cli_extract_images import extract_images_cli
@@ -9,6 +10,7 @@ from .cli_ocr import ocr_cli
 from .cli_readingorder import readingorder_cli
 
 main.add_command(binarize_cli, 'binarization')
+main.add_command(column_classifier_cli, 'column-classifier')
 main.add_command(enhance_cli, 'enhancement')
 main.add_command(layout_cli, 'layout')
 main.add_command(readingorder_cli, 'reorder')

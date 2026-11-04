@@ -38,6 +38,7 @@ except ImportError:
     plt = None # type: ignore
 
 from .model_zoo import EynollahModelZoo
+from .column_classifier import crop_pages, prepare_classifier_input
 from .utils.contour import (
     find_center_of_contours,
     find_new_features_of_contours,
@@ -322,14 +323,9 @@ class Eynollah:
         elif (not self.num_col_upper and not self.num_col_lower or
               self.num_col_upper != self.num_col_lower):
             if self.input_binary:
-                img_in = page_img
+                img_in = prepare_classifier_input(page_img, page_coord, binary=True)
             else:
-                img_1ch = self.imread(image, grayscale=True)
-                img_1ch = img_1ch[page_coord[0]: page_coord[1],
-                                  page_coord[2]: page_coord[3]]
-                img_in = np.repeat(img_1ch[:, :, np.newaxis], 3, axis=2)
-            img_in = img_in / 255.0
-            img_in = cv2.resize(img_in, (448, 448), interpolation=cv2.INTER_NEAREST).astype(np.float16)
+                img_in = prepare_classifier_input(page_img, page_coord, self.imread(image, grayscale=True))
 
             label_p_pred = self.model_zoo.get("col_classifier").predict(img_in[np.newaxis], verbose=0)[0]
             num_col = np.argmax(label_p_pred) + 1
@@ -395,14 +391,9 @@ class Eynollah:
         elif (not self.num_col_upper and not self.num_col_lower or
               self.num_col_upper != self.num_col_lower):
             if self.input_binary:
-                img_in = page_img
+                img_in = prepare_classifier_input(page_img, page_coord, binary=True)
             else:
-                img_1ch = self.imread(image, grayscale=True)
-                img_1ch = img_1ch[page_coord[0]: page_coord[1],
-                                  page_coord[2]: page_coord[3]]
-                img_in = np.repeat(img_1ch[:, :, np.newaxis], 3, axis=2)
-            img_in = img_in / 255.0
-            img_in = cv2.resize(img_in, (448, 448), interpolation=cv2.INTER_NEAREST).astype(np.float16)
+                img_in = prepare_classifier_input(page_img, page_coord, self.imread(image, grayscale=True))
 
             label_p_pred = self.model_zoo.get("col_classifier").predict(img_in[np.newaxis], verbose=0)[0]
             num_col = np.argmax(label_p_pred) + 1
@@ -466,22 +457,11 @@ class Eynollah:
     def early_page_for_num_of_column_classification(self, img):
         if not self.ignore_page_extraction:
             self.logger.debug("enter early_page_for_num_of_column_classification")
-            img2 = cv2.GaussianBlur(img, (5, 5), 0)
-            prediction = do_prediction(img2, self.model_zoo.get("page"),
-                                       patches=False,
-                                       logger=self.logger)
-            prediction = cv2.dilate(prediction, KERNEL, iterations=3)
-            contours, _ = cv2.findContours(prediction, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            if len(contours):
-                areas = np.array(list(map(cv2.contourArea, contours)))
-                cnt = contours[np.argmax(areas)]
-                box = cv2.boundingRect(cnt)
-            else:
-                box = [0, 0, img.shape[1], img.shape[0]]
+            cropped_page, page_coord = crop_pages([img], self.model_zoo.get("page"))[0]
             self.logger.debug("exit early_page_for_num_of_column_classification")
         else:
-            box = [0, 0, img.shape[1], img.shape[0]]
-        cropped_page, page_coord = crop_image_inside_box(box, img)
+            cropped_page, page_coord = crop_image_inside_box(
+                (0, 0, img.shape[1], img.shape[0]), img)
         return cropped_page, page_coord
 
     def extract_text_regions_new(self, img, patches, cols):
