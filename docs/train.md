@@ -1,228 +1,169 @@
-# Prerequisites
+# Training Eynollah Models
 
-## 1. Install Eynollah with training dependencies
+This guide describes how to prepare training datasets, train and fine-tune models, evaluate training results, and deploy custom models with [Eynollah](https://github.com/qurator-spk/eynollah).
 
-Clone the repository and install eynollah along with the dependencies necessary for training:
+Eynollah provides a collection of deep learning models for document image processing, including document layout analysis, textline detection, binarization, image enhancement, reading order detection, and optical character recognition (OCR).
 
-```sh
-git clone https://github.com/qurator-spk/eynollah
+Model training is managed through the `eynollah-training` command-line interface. Depending on the task, the training workflow uses either TensorFlow/Keras or PyTorch-based models.
+
+## 1. Overview
+
+### 1.1 Supported training tasks
+
+The training framework covers the following tasks:
+
+| Task | Description | Typical training data |
+|---|---|---|
+| Layout segmentation | Detection and classification of document regions | Document images and pixel-wise labels |
+| Text-line segmentation | Detection of text lines | Document images and text-line labels |
+| Page extraction | Detection of page boundaries and print space | Document images and page-boundary labels |
+| Binarization | Separation of foreground and background pixels | Document images and binary labels |
+| Image enhancement | Restoration of degraded or low-resolution images | Degraded and reference image pairs |
+| Image classification | Classification of document images | Images organized by class |
+| Reading-order detection | Prediction of reading-order relationships | PAGE-XML annotations with reading order |
+| OCR | Recognition of text from document images | Text-line images and transcription data |
+
+The availability and maturity of individual training workflows depend on the model architecture and software version. In particular, TrOCR training integration was introduced in v0.9.0 and was still described as untested in that release.
+
+### 1.2 General training workflow
+
+Training a model generally involves the following steps:
+
+1. Select the task and model architecture.
+2. Prepare training and validation datasets.
+3. Generate pixel-wise labels or other task-specific ground truth, if necessary.
+4. Configure the training parameters.
+5. Initialize a model, optionally using pretrained weights.
+6. Train the model and monitor its performance.
+7. Evaluate the resulting checkpoints.
+8. Select and, where appropriate, ensemble model weights.
+9. Convert the model into a supported inference format.
+10. Test and integrate the model into Eynollah.
+
+### 1.3 Training models versus inference models
+
+An important distinction is that the model used during training is not necessarily the model format used during inference.
+
+Eynollah distributes separate training and inference model packages.
+
+- **Training models:** Original framework models and weights used for training or fine-tuning.
+- **Inference models:** Optimized models used for prediction, including ONNX models.
+
+Since v0.9.0, ONNX/TensorRT is the default inference backend for the relevant model types. Consequently, a trained model may need to be converted before deployment.
+
+See [Models documentation](models.md) for information about available pretrained models and their intended applications.
+
+## 2. Installation and requirements
+
+### 2.1 Install Eynollah
+
+Clone the repository and install Eynollah with its training dependencies:
+
+```bash
+git clone https://github.com/qurator-spk/eynollah.git
 cd eynollah
 pip install '.[training]'
 ```
 
-## 2. Pretrained encoder
+For development installations, consult the repository installation instructions.
 
-Download our pretrained weights and add them to a `train/pretrained_model` folder: 
+### 2.2 Install and obtain pretrained models
 
-```sh
-cd train
-wget -O pretrained_model.tar.gz https://zenodo.org/records/17243320/files/pretrained_model_v0_5_1.tar.gz?download=1
-tar xf pretrained_model.tar.gz
+Pretrained weights can be used to initialize a model before fine-tuning.
+
+Download the appropriate training model package from the official [Eynollah model distribution](https://zenodo.org/records/17727267).
+
+Use the training model package rather than the ONNX inference package when you intend to continue training or fine-tune a model.
+
+The model documentation describes the available models, their architectures, and their intended applications.
+
+### 2.3 Check the training interface
+
+The `eynollah-training` command provides the main interface for training-related operations.
+
+To inspect the available commands and their arguments, use:
+
+```bash
+eynollah-training --help
 ```
 
-## 3. Example data
+For command-specific options, use the corresponding `--help` option.
 
-### Binarization
-A small sample of training data for binarization experiment can be found on [Zenodo](https://zenodo.org/records/17243320/files/training_data_sample_binarization_v0_5_1.tar.gz?download=1),
-which contains `images` and `labels` folders.
+## 3. Preparing training datasets
 
-## 4. Helpful tools
+Training and validation datasets must be prepared separately. Their organization depends on the task.
 
-* [`pagexml2img`](https://github.com/qurator-spk/page2img)
-> Tool to extract 2-D or 3-D RGB images from PAGE-XML data. In the former case, the output will be 1 2-D image array which each class has filled with a pixel value. In the case of a 3-D RGB image, 
-each class will be defined with an RGB value and beside images, a text file of classes will also be produced.
-* [`cocoSegmentationToPng`](https://github.com/nightrome/cocostuffapi/blob/17acf33aef3c6cc2d6aca46dcf084266c2778cf0/PythonAPI/pycocotools/cocostuffhelper.py#L130)
-> Convert COCO GT or results for a single image to a segmentation map and write it to disk.
-* [`ocrd-segment-extract-pages`](https://github.com/OCR-D/ocrd_segment/blob/master/ocrd_segment/extract_pages.py)
-> Extract region classes and their colours in mask (pseg) images. Allows the color map as free dict parameter, and comes with a default that mimics PageViewer's coloring for quick debugging; it also warns when regions do overlap.
+### 3.1 General directory structure
 
-# Training documentation
+For image segmentation and enhancement tasks, the expected input structure is:
 
-This document aims to assist users in preparing training datasets, training models, and
-performing inference with trained models.  We cover various use cases including
-pixel-wise segmentation, image classification, image enhancement, and
-machine-based reading order detection. For each use case, we provide guidance
-on how to generate the corresponding training dataset.
-
-The following three tasks can all be accomplished using the code in the
-[`train`](https://github.com/qurator-spk/eynollah/tree/main/train) directory:
-
-* [Generate training dataset](#generate-training-dataset)
-* [Train a model](#train-a-model)
-* [Inference with the trained model](#inference-with-the-trained-model)
-
-## Training, evaluation and output 
-
-The train and evaluation folders should contain subfolders of `images` and `labels`.
-
-The output folder should be an empty folder where the output model will be written to.
-
-## Generate training dataset
-
-The script `generate_gt_for_training.py` is used for generating training datasets. As the results of the following
-command demonstrates, the dataset generator provides several subcommands:
-
-```sh
-eynollah-training generate-gt --help
+```text
+dataset/
+├── train/
+│   ├── images/
+│   └── labels/
+└── eval/
+    ├── images/
+    └── labels/
 ```
 
-The three most important subcommands are:
+The image and label files must correspond to each other. Their dimensions, naming conventions, and annotation formats must be consistent with the selected training task.
 
-* image-enhancement
-* machine-based-reading-order
-* pagexml2label
+For classification, use one subdirectory per class instead:
 
-### image-enhancement
-
-Generating a training dataset for image enhancement is quite straightforward. All that is needed is a set of
-high-resolution images. The training dataset can then be generated using the following command:
-
-```sh
-eynollah-training image-enhancement \
-  -dis "dir of high resolution images" \
-  -dois "dir where degraded images will be written" \
-  -dols "dir where the corresponding high resolution image will be written as label" \
-  -scs "degrading scales json file"
+```text
+dataset/
+├── train/
+│   ├── class_1/
+│   └── class_2/
+└── eval/
+    ├── class_1/
+    └── class_2/
 ```
 
-The scales JSON file is a dictionary with a key named `scales` and values representing scales smaller than 1. Images are
-downscaled based on these scales and then upscaled again to their original size. This process causes the images to lose
-resolution at different scales. The degraded images are used as input images, and the original high-resolution images
-serve as labels. The enhancement model can be trained with this generated dataset. The scales JSON file looks like this:
+### 3.2 PAGE-XML as ground truth
 
-```yaml
-{
-    "scales": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9]
-}
-```
+PAGE-XML is an important source of ground-truth annotations for Eynollah.
 
-### machine-based-reading-order
+Depending on the task, PAGE-XML annotations can be converted into pixel-wise segmentation maps or used to generate training examples for reading-order detection.
 
-For machine-based reading order, we aim to determine the reading priority between two sets of text regions. The model's
-input is a three-channel image: the first and last channels contain information about each of the two text regions,
-while the middle channel encodes prominent layout elements necessary for reading order, such as separators and headers.
-To generate the training dataset, our script requires a PAGE XML file that specifies the image layout with the correct
-reading order.
+Before generating labels, check that:
 
-For output images, it is necessary to specify the width and height. Additionally, a minimum text region size can be set
-to filter out regions smaller than this minimum size. This minimum size is defined as the ratio of the text region area
-to the image area, with a default value of zero. To run the dataset generator, use the following command:
+- PAGE-XML files reference the correct source images.
+- Coordinates correspond to the original image dimensions.
+- Region and text-line annotations are sufficiently complete.
+- Region types and reading-order information are consistent.
+- Training and validation datasets do not contain duplicate pages.
 
-```shell
-eynollah-training generate-gt machine-based-reading-order \
-  -dx "dir of GT xml files" \
-  -domi "dir where output images will be written" \
-"" -docl "dir where the labels will be written" \
-  -ih "height" \
-  -iw "width" \
-  -min "min area ratio"
-```
+### 3.3 Generating pixel-wise labels
 
-### pagexml2label
+The `pagexml2label` functionality generates PNG labels from PAGE-XML files.
 
-`pagexml2label` is designed to generate labels from PAGE XML GT files for various pixel-wise segmentation use cases,
-including:
-- `printspace` (i.e. page frame),
-- `layout` (i.e. regions),
-- `textline`,
-- `word`, and
-- `glyph`.
+Example:
 
-To train a pixel-wise segmentation model, we require images along with their corresponding labels. Our training script
-expects a PNG image where each pixel corresponds to a label, represented by an integer. The background is always labeled
-as zero, while other elements are assigned different integers. For instance, if we have ground truth data with four
-elements including the background, the classes would be labeled as 0, 1, 2, and 3 respectively.
-
-In binary segmentation scenarios such as textline or page extraction, the background is encoded as 0, and the desired
-element is automatically encoded as 1 in the PNG label.
-
-To specify the desired use case and the elements to be extracted in the PNG labels, a custom JSON file can be passed.
-For example, in the case of textline detection, the JSON contents could be this:
-
-```yaml
-{
-"use_case": "textline"
-}
-```
-
-In the case of layout segmentation, the config JSON file might look like this:
-
-```yaml
-{
-"use_case": "layout",
-"textregions": {"rest_as_paragraph": 1, "drop-capital": 1, "header": 2, "heading": 2, "marginalia": 3},
-"imageregion": 4,
-"separatorregion": 5,
-"graphicregions": {"rest_as_decoration": 6, "stamp": 7}
-}
-```
-
-The same example if `PrintSpace` (or `Border`) should be represented as a unique class:
-
-```yaml
-{
-"use_case": "layout",
-"textregions": {"rest_as_paragraph": 1, "drop-capital": 1, "header": 2, "heading": 2, "marginalia": 3},
-"imageregion": 4,
-"separatorregion": 5,
-"graphicregions": {"rest_as_decoration": 6, "stamp": 7}
-"printspace_as_class_in_layout": 8
-}
-```
-
-In the `layout` use-case, it is beneficial to first understand the structure of the PAGE XML file and its elements.
-For a given page image, the visible segments are annotated in XML with their polygon coordinates and types.
-On the region level, available segment types include `TextRegion`, `SeparatorRegion`, `ImageRegion`, `GraphicRegion`,
-`NoiseRegion` and `TableRegion`.
-
-Moreover, text regions and graphic regions in particular are subdivided via `@type`:
-- The allowed subtypes for text regions are `paragraph`, `heading`, `marginalia`, `drop-capital`, `header`, `footnote`,
-`footnote-continued`, `signature-mark`, `page-number` and `catch-word`. 
-- The known subtypes for graphic regions are `handwritten-annotation`, `decoration`, `stamp` and `signature`.
-
-These types and subtypes must be mapped to classes for the segmentation model. However, sometimes these fine-grained
-distinctions are not useful or the existing annotations are not very usable (too scarce or too unreliable). 
-In that case, instead of these subtypes with a specific mapping, they can be pooled together by using the two special
-types:
-- `rest_as_paragraph` (mapping missing TextRegion subtypes and `paragraph`)
-- `rest_as_decoration` (mapping missing GraphicRegion subtypes and `decoration`)
-
-(That way, users can extract all known types from the labels and be confident that no subtypes are overlooked.)
-
-In the custom JSON example shown above, `header` and `heading` are extracted as the same class, 
-while `marginalia` is modelled as a different class. All other text region types, including `drop-capital`,
-are grouped into the same class. For graphic regions, `stamp` has its own class, while all other types
-are classified together. `ImageRegion` and `SeparatorRegion` will also be represented with a class label in the
-training data. However, other regions like `NoiseRegion` or `TableRegion` will not be included in the PNG files,
-even if they were present in the PAGE XML.
-
-The tool expects various command-line options:
-
-```sh
+```bash
 eynollah-training generate-gt pagexml2label \
-  -dx "dir of input PAGE XML files" \
-  -do "dir of output label PNG files" \
-  -cfg "custom config JSON file" \
-  -to "output type (2d or 3d)"
+    -dx /path/to/pagexml \
+    -do /path/to/labels \
+    -cfg config.json \
+    -to 2d
 ```
 
-As output type, use
-- `2d` for training,
-- `3d` to just visualise the labels.
+Use `2d` for training labels and `3d` for visualizing the generated annotations.
 
-We have also defined an artificial class that can be added to (rendered around) the boundary
-of text region types or text lines in order to make separation of neighbouring segments more
-reliable. The key is called `artificial_class_on_boundary`, and it takes a list of text region
-types to be applied to.
+The configuration file determines which PAGE-XML elements are included and how they are mapped to segmentation classes.
 
-Our example JSON config file could then look like this:
+#### Layout segmentation
 
-```yaml
+For layout analysis, the configuration maps PAGE-XML region types to integer class labels.
+
+Example:
+
+```json
 {
     "use_case": "layout",
     "textregions": {
-        "paragraph": 1,
-        "drop-capital": 1,
+        "rest_as_paragraph": 1,
         "header": 2,
         "heading": 2,
         "marginalia": 3
@@ -231,574 +172,295 @@ Our example JSON config file could then look like this:
     "separatorregion": 5,
     "graphicregions": {
         "rest_as_decoration": 6
+    }
+}
+```
+
+The background is represented by class `0`. The other classes are assigned consecutive integer values.
+
+The special mapping `rest_as_paragraph` groups otherwise unspecified text-region types with paragraph regions. Similarly, `rest_as_decoration` groups otherwise unspecified graphic-region types with decorations.
+
+#### Artificial boundary classes
+
+Artificial classes can be used to improve the separation of neighboring regions or text lines.
+
+For example:
+
+```json
+{
+    "use_case": "layout",
+    "textregions": {
+        "paragraph": 1,
+        "header": 2,
+        "heading": 2,
+        "marginalia": 3
     },
-    "artificial_class_on_boundary": ["paragraph", "header", "heading", "marginalia"],
-    "artificial_class_label": 7
+    "imageregion": 4,
+    "separatorregion": 5,
+    "artificial_class_on_boundary": [
+        "paragraph",
+        "header",
+        "heading",
+        "marginalia"
+    ],
+    "artificial_class_label": 6
 }
 ```
 
-This implies that the artificial class label (denoted by 7) will be present in the generated PNG files
-and will only be added around segments labeled `paragraph`, `header`, `heading` or `marginalia`. (This
-class will be handled specially during decoding at inference, and not show up in final results.)
+The artificial class is used internally during segmentation and is handled specially during inference.
 
-For `printspace`, `textline`, `word`, and `glyph` segmentation use-cases, there is no `artificial_class_on_boundary` key,
-but `artificial_class_label` is available. If specified in the config file, then its value should be set at 2, because
-these elements represent binary classification problems (with background represented as 0, and segments as 1, respectively).
+#### Page extraction and print-space segmentation
 
-For example, the JSON config for textline detection could look as follows:
+For page extraction, the model must consider the complete page image. The corresponding training configuration should therefore use `patches: false`.
 
-```yaml
-{
-    "use_case": "textline",
-    "artificial_class_label": 2
-}
+When cropping training images to the print space, the source images and labels must be cropped consistently.
+
+Consult the `pagexml2label` command help for the options controlling print-space extraction and handling of missing annotations.
+
+### 3.4 Machine-based reading-order dataset
+
+Reading-order training uses PAGE-XML files containing the correct reading order.
+
+The dataset generator creates examples from relationships between text regions. Its inputs include the PAGE-XML files and the dimensions of the generated training images.
+
+Use:
+
+```bash
+eynollah-training generate-gt machine-based-reading-order --help
 ```
 
-If the coordinates of `PrintSpace` (or `Border`) are present in the PAGE XML ground truth files,
-and one wishes to crop images to only cover the print space bounding box, this can be achieved
-by passing the `-ps` option. Note that in this scenario, the directory of the original images
-must also be provided, to ensure that the images are cropped in sync with the labels. The command
-line would then resemble this:
+The generated training and evaluation datasets must contain corresponding images and labels.
 
-```sh
-eynollah-training generate-gt pagexml2label \
-  -dx "dir of input PAGE XML files" \
-  -do "dir of output label PNG files" \
-  -cfg "custom config JSON file" \
-  -to "output type (2d or 3d)" \
-  -ps \
-  -di "dir of input original images" \
-  -doi "dir of output cropped images"
+### 3.5 Image-enhancement dataset
+
+Image-enhancement training uses pairs of degraded and reference images.
+
+A dataset can be generated from high-resolution source images by applying different degradation scales.
+
+The original high-resolution images serve as labels, while the degraded images are used as inputs.
+
+Use:
+
+```bash
+eynollah-training generate-gt image-enhancement --help
 ```
 
-Also, note that it can be detrimental to layout training if there are visible segments which
-the annotation does not account for (and thus the model must learn to ignore). So if the images
-are not cropped, the `-ps` _should_ be used. If a PAGE XML file is missing `PrintSpace` (or `Border`)
-annotations, use `-mps` to either `skip` these or `project` (i.e. crop from existing segments).
+### 3.6 OCR training data
 
-## Train a model
+OCR training requires text-line images and their corresponding transcriptions.
 
-### classification
+The training data preparation process depends on the OCR architecture:
 
-For the image classification use-case, we have not provided a ground truth generator, as it is unnecessary.
-All we require is a training directory with subdirectories, each containing images of its respective classes. We need
-separate directories for training and evaluation, and the class names (subdirectories) must be consistent across both
-directories. Additionally, the class names should be specified in the config JSON file, as shown in the following
-example. If, for instance, we aim to classify "apple" and "orange," with a total of 2 classes, the
-`classification_classes_name` key in the config file should appear as follows:
+- CNN-RNN models use the Keras-based training implementation.
+- TrOCR uses the corresponding Transformer-based implementation.
 
-```yaml
-{
-    "backbone_type" : "nontransformer",
-    "task": "classification",
-    "n_classes" : 2,
-    "n_epochs" : 10,
-    "input_height" : 448,
-    "input_width" : 448,
-    "weight_decay" : 1e-6,
-    "n_batch" : 4,
-    "learning_rate": 1e-4,
-    "f1_threshold_classification": 0.8,
-    "pretraining" : true,
-    "classification_classes_name" : {"0":"apple",  "1":"orange"},
-    "dir_train": "./train",
-    "dir_eval": "./eval",
-    "dir_output": "./output"
-}
+Consult the OCR training implementation and model-specific configuration examples for the required data format.
+
+## 4. Configuring models
+
+Training parameters are defined in configuration files.
+
+The parameters depend on the task and model architecture. Common configuration categories include:
+
+| Category | Examples |
+|---|---|
+| Task | Segmentation, binarization, enhancement, classification, reading order |
+| Architecture | CNN-based or Transformer-based backbone |
+| Input | Image height, width and number of classes |
+| Optimization | Learning rate, batch size and weight decay |
+| Training | Number of epochs and checkpoint settings |
+| Initialization | Pretrained weights and starting checkpoint |
+| Augmentation | Scaling, rotation, flipping, blurring and degradation |
+| Loss | Weighted loss and soft Dice options |
+| Data | Training and evaluation directories |
+| Output | Checkpoints, logs and intermediate data |
+
+### 4.1 Model architectures
+
+For segmentation, binarization and enhancement, the training framework supports CNN-based and Transformer-based architectures.
+
+The configuration parameter `backbone_type` determines the architecture:
+
+- `nontransformer`: CNN-based architecture.
+- `transformer`: CNN and Transformer-based architecture.
+
+Transformer-specific parameters include the number of patches, patch dimensions, projection dimensions, attention heads and Transformer layers.
+
+### 4.2 Data augmentation
+
+Augmentation can improve model robustness when the training data contains sufficient variation.
+
+Available augmentation options include:
+
+- Image flipping.
+- Scaling.
+- Blurring.
+- Brightness modification.
+- Image degradation.
+- Binarization.
+- Rotation.
+
+The selected transformations should reflect realistic variations in the target document collection.
+
+### 4.3 Loss functions
+
+Loss-function configuration depends on the task.
+
+The segmentation framework includes weighted categorical cross-entropy and soft Dice-related options. These settings should be configured according to the class distribution and segmentation objective.
+
+Since v0.8.0, connected-component-based loss calculation has also been introduced to improve training.
+
+## 5. Training models
+
+### 5.1 General training procedure
+
+Once the training and evaluation datasets have been prepared and the configuration file has been created, start training using:
+
+```bash
+eynollah-training train with config.json
 ```
 
-Then `dir_train` should be like this:
+The training output directory stores model checkpoints, training logs and, where applicable, preprocessed training data.
 
-```
-.
-└── train             # train directory
-   ├── apple          # directory of images for apple class
-   └── orange         # directory of images for orange class
-```
+### 5.2 Fine-tuning pretrained models
 
-And `dir_eval` analogously:
+Fine-tuning allows an existing model to be adapted to a new document collection.
 
-```
-.
-└── eval              # evaluation directory
-   ├── apple          # directory of images for apple class
-   └── orange         # directory of images for orange class
+The training configuration must identify the appropriate starting model and enable continuation of training where supported.
 
-```
+Check the model architecture and configuration compatibility before loading pretrained weights.
 
-The classification model can be trained using the following command line:
+### 5.3 Segmentation and image-processing models
 
-```sh
-eynollah-training train with config_classification.json
-```
+The segmentation training workflow covers:
 
-As evident in the example JSON file above, for classification, we utilize a "f1_threshold_classification" parameter.
-This parameter is employed to gather all models with an evaluation f1 score surpassing this threshold. Subsequently,
-an ensemble of these model weights is executed, and a model is saved in the output directory as "model_ens_avg".
-Additionally, the weight of the best model based on the evaluation f1 score is saved as "model_best".
+- Layout segmentation.
+- Text-line segmentation.
+- Page extraction.
+- Binarization.
+- Image enhancement.
 
-### reading order
-An example config json file for machine based reading order should be like this:
+These tasks share several configuration parameters but differ in label structure, number of classes, image dimensions and augmentation requirements.
 
-```yaml
-{
-    "backbone_type" : "nontransformer",
-    "task": "reading_order",
-    "n_classes" : 1,
-    "n_epochs" : 5,
-    "input_height" : 672,
-    "input_width" : 448,
-    "weight_decay" : 1e-6,
-    "n_batch" : 4,
-    "learning_rate": 1e-4,
-    "pretraining" : true,
-    "dir_train": "./train",
-    "dir_eval": "./eval",
-    "dir_output": "./output"
-}
-```
+### 5.4 Classification and reading-order models
 
-The "dir_train" should be like this:
+Classification datasets are organized by class directories.
 
-```
-.
-└── train             # train directory
-   ├── images          # directory of images
-   └── labels         # directory of labels
-```
+Reading-order models use generated image and label pairs derived from PAGE-XML annotations.
 
-And the "dir_eval" the same structure as train directory:
+These tasks have configuration requirements that differ from pixel-wise segmentation. Therefore, task-specific configuration examples should be maintained separately.
 
-```
-.
-└── eval             # evaluation directory
-   ├── images          # directory of images
-   └── labels         # directory of labels
-```
+### 5.5 OCR models
 
-The reading-order model can be trained like the classification case command line.
+CNN-RNN OCR training and TrOCR training are separate workflows.
 
-### Segmentation (Textline, Binarization, Page extraction and layout) and enhancement
+They differ in architecture, data handling, optimization and inference conversion.
 
-#### Parameter configuration for segmentation or enhancement use cases
+The CNN-RNN implementation is based on Keras and uses CTC-based recognition. TrOCR is based on a Transformer architecture.
 
-The following parameter configuration can be applied to all segmentation use cases and enhancements. The augmentation,
-its sub-parameters, and continued training are defined only for segmentation use cases and enhancements, not for
-classification and machine-based reading order, as you can see in their example config files.
+TrOCR training support was introduced in v0.9.0 and should be considered experimental until the implementation and its end-to-end workflow have been validated.
 
-* `task`: The task parameter must be one of the following values:
-  - `binarization`,
-  - `enhancement`,
-  - `segmentation`,
-  - `classification`,
-  - `reading_order`.
-* `backbone_type`: For the tasks `segmentation` (such as text line, and region layout detection),
-  `binarization` and `enhancement`, we offer two backbone options:
-  - `nontransformer` (only a CNN ResNet-50).
-  - `transformer` (first apply a CNN, followed by a transformer)
-* `transformer_cnn_first`: Whether to apply the CNN first (followed by the transformer) when using `transformer` backbone.
-* `transformer_num_patches_xy`: Number of patches for vision transformer in x and y direction respectively.
-* `transformer_patchsize_x`: Patch size of vision transformer patches in x direction.
-* `transformer_patchsize_y`: Patch size of vision transformer patches in y direction.
-* `transformer_projection_dim`: Transformer projection dimension. Default value is 64.
-* `transformer_mlp_head_units`: Transformer Multilayer Perceptron (MLP) head units. Default value is [128, 64].
-* `transformer_layers`: transformer layers. Default value is 8.
-* `transformer_num_heads`: Transformer number of heads. Default value is 4.
-* `patches`: Whether to break up (tile) input images into smaller patches (input size of the model).
-  If `false`, the model will see the image once (resized to the input size of the model).  
-  Should be set to `false` for cases like page extraction.
-* `n_batch`: Number of batches at each iteration.
-* `n_classes`: Number of classes. In the case of binary classification this should be 2. In the case of reading_order it
-  should set to 1. And for the case of layout detection just the unique number of classes should be given.
-* `n_epochs`: Number of epochs (iterations over the data) to train.
-* `input_height`: the image height for the model's input.
-* `input_width`: the image width for the model's input.
-* `weight_decay`: Weight decay of l2 regularization of model layers.
-* `weighted_loss`: If `true`, this means that you want to apply weighted categorical cross entropy as loss function.  
-   (Mutually exclusive with `is_loss_soft_dice`, and only applies for `segmentation` and `binarization` tasks.)
-* `pretraining`: Set to `true` to (download and) initialise pretrained weights of ResNet50 encoder.
-* `dir_train`: Path to directory of raw training data (as extracted via `pagexml2labels`, i.e. with subdirectories
-  `images` and `labels` for input images and output labels).  
-   (These are not prepared for training the model, yet. Upon first run, the raw data will be transformed to suitable size
-    needed for the model, and written in `dir_output` under `train` and `eval` subdirectories. See `data_is_provided`.)
-* `dir_eval`: Ditto for raw evaluation data.
-* `dir_output`: Directory to write model checkpoints, logs (for Tensorboard) and precomputed images to.
-* `data_is_provided`: If you have already trained at least one complete epoch (using the same data settings) before,
-  you can set  this to `true` to avoid computing the resized / patched / augmented image files again.  
-  Be sure that there are subdirectories `train` and `eval` data are in `dir_output` (each with subdirectories `images`
-  and `labels`, respectively).
-* `continue_training`: If `true`, continue training a model checkpoint from a previous run.  
-  This requires providing the directory of the model checkpoint to load via `dir_of_start_model`
-  and setting `index_start` counter for naming new checkpoints.
-  For example if you have already trained for 3 epochs, then your last index is 2, so if you want
-  to continue with `model_04`, `model_05` etc., set `index_start=3`.
-* `index_start`: Starting index for saving models in the case that `continue_training` is `true`.  
-   (Existing checkpoints above this will be overwritten.)
-* `dir_of_start_model`: Directory containing existing model checkpoint to initialise model weights from when `continue_training=true`.  
-   (Can be an epoch-interval checkpoint, or batch-interval checkpoint from `save_interval`.)
-* `augmentation`: If you want to apply any kind of augmentation this parameter should first set to `true`.  
-   The remaining settings pertain to that...
-* `flip_aug`: If `true`, different types of flipping over the image arrays. Requires `flip_index` parameter.
-* `flip_index`: List of flip codes (as in `cv2.flip`, i.e. 0 for vertical, positive for horizontal shift, negative for vertical and horizontal shift).
-* `blur_aug`: If `true`, different types of blurring will be applied on image. Requires `blur_k` parameter.
-* `blur_k`: Method of blurring (`gauss`, `median` or `blur`).
-* `scaling`: If `true`, scaling will be applied on image. Requires `scales` parameter.
-* `scales`: List of scale factors for scaling.
-* `scaling_blurring`: If `true`, combination of scaling and blurring will be applied on image.
-* `scaling_binarization`: If `true`, combination of scaling and binarization will be applied on image.
-* `scaling_flip`: If `true`, combination of scaling and flip will be applied on image.
-* `degrading`: If `true`, degrading will be applied to the image. Requires `degrade_scales` parameter.
-* `degrade_scales`: List of intensity factors for degrading.
-* `brightening`: If `true`, brightening will be applied to the image. Requires `brightness` parameter.
-* `brightness`: List of intensity factors for brightening.
-* `binarization`: If `true`, Otsu thresholding will be applied to augment the input data with binarized images.
-* `dir_img_bin`: With `binarization`, use this directory to read precomputed binarized images instead of ad-hoc Otsu.  
-   (Base names should correspond to the files in `dir_train/images`.)
-* `rotation`: If `true`, 90° rotation will be applied on images.
-* `rotation_not_90`: If `true`, random rotation (other than 90°) will be applied on image. Requires `theta` parameter.
-* `theta`: List of rotation angles (in degrees).
+## 6. Monitoring and evaluating training
 
-In case of segmentation and enhancement the train and evaluation data should be organised as follows.
+### 6.1 Checkpoints
 
-The "dir_train" directory should be like this:
+Training generates model checkpoints at defined intervals.
 
-```
-.
-└── train             # train directory
-   ├── images          # directory of images
-   └── labels         # directory of labels
+Checkpoints should be evaluated on the validation dataset rather than selected solely on training loss.
+
+Retain the best-performing checkpoint and, where supported, compare it with the ensemble model.
+
+### 6.2 TensorBoard
+
+Since v0.8.0, training integrates with TensorBoard.
+
+TensorBoard provides access to training progress, plots and intermediate evaluation visualizations.
+
+The training output directory contains the relevant log data.
+
+### 6.3 Evaluation metrics
+
+Evaluation should use metrics appropriate to the task:
+
+- Segmentation: Intersection over Union (IoU) and related pixel-wise metrics.
+- Classification: F1 score and classification accuracy.
+- OCR: Recognition accuracy and error rates.
+- Reading order: Correctness of predicted reading-order relationships.
+- Image enhancement: Image-quality measures and visual assessment.
+
+For segmentation and binarization, the standalone inference interface supports comparison against ground-truth labels where applicable.
+
+## 7. Model conversion and export
+
+A trained model may need conversion before it can be used with the optimized Eynollah inference pipeline.
+
+Since v0.9.0, model conversion is provided through:
+
+```bash
+eynollah-training convert --help
 ```
 
-And the "dir_eval" the same structure as train directory:
+The conversion functionality supports several formats, including:
 
-```
-.
-└── eval             # evaluation directory
-   ├── images          # directory of images
-   └── labels         # directory of labels
-```
+- Keras HDF5.
+- Native Keras format.
+- TensorFlow SavedModel.
+- TensorFlow Serving export.
+- ONNX.
 
-After configuring the JSON file for segmentation or enhancement,
-training can be initiated by running the following command line,
-similar to classification and reading-order model training:
+Conversion requirements depend on the model architecture and supported operations.
 
-```sh
-eynollah-training train with config_classification.json
-```
+Always test the converted model against the original training model to ensure that its predictions remain consistent.
 
-#### Binarization
+## 8. Using trained models
 
-### Ground truth format
+### 8.1 Standalone inference
 
-Labels for each pixel are identified by a number. So if you have a 
-binary case, ``n_classes`` should be set to ``2`` and labels should 
-be ``0`` and ``1`` for each class and pixel.
+The training interface also provides standalone inference functionality.
 
-In the case of multiclass, just set ``n_classes`` to the number of classes 
-you have and the try to produce the labels by pixels set from ``0 , 1 ,2 .., n_classes-1``.
-The labels format should be png. 
-Our labels are 3 channel png images but only information of first channel is used. 
-If you have an image label with height and width of 10, for a binary case the first channel should look like this:
-    
-    Label: [ [1, 0, 0, 1, 1, 0, 0, 1, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             ...,
-             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] ] 
-    
- This means that you have an image by `10*10*3` and `pixel[0,0]` belongs
- to class `1` and `pixel[0,1]` belongs to class `0`.
- 
- A small sample of training data for binarization experiment can be found here, [Training data sample](https://qurator-data.de/~vahid.rezanezhad/binarization_training_data_sample/), which contains images and labels folders.
-    
+Inspect the available options using:
 
-An example config json file for binarization can be like this:
-
-```yaml
-{
-    "backbone_type" : "transformer",
-    "task": "binarization",
-    "n_classes" : 2,
-    "n_epochs" : 4,
-    "input_height" : 224,
-    "input_width" : 672,
-    "weight_decay" : 1e-6,
-    "n_batch" : 1,
-    "learning_rate": 1e-4,
-    "patches" : true,
-    "pretraining" : true,
-    "augmentation" : true,
-    "flip_aug" : false,
-    "blur_aug" : false,
-    "scaling" : true,
-    "degrading": false,
-    "brightening": false,
-    "binarization" : false,
-    "scaling_blurring" : false,
-    "scaling_binarization" : false,
-    "scaling_flip" : false,
-    "rotation": false,
-    "rotation_not_90": false,
-    "transformer_num_patches_xy": [7, 7],
-    "transformer_patchsize_x": 3,
-    "transformer_patchsize_y": 1,
-    "transformer_projection_dim": 192,
-    "transformer_mlp_head_units": [128, 64],
-    "transformer_layers": 8,
-    "transformer_num_heads": 4,
-    "transformer_cnn_first": true,
-    "blur_k" : ["blur","guass","median"],
-    "scales" : [0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.4],
-    "brightness" : [1.3, 1.5, 1.7, 2],
-    "degrade_scales" : [0.2, 0.4],
-    "flip_index" : [0, 1, -1],
-    "theta" : [10, -10],
-    "continue_training": false,
-    "index_start" : 0,
-    "dir_of_start_model" : " ",
-    "weighted_loss": false,
-    "is_loss_soft_dice": false,
-    "data_is_provided": false,
-    "dir_train": "./train",
-    "dir_eval": "./eval",
-    "dir_output": "./output"
-}
+```bash
+eynollah-training inference --help
 ```
 
-#### Textline
+The inference process depends on the task. For example, classification takes an image as input, whereas reading-order inference requires PAGE-XML containing the document layout.
 
-```yaml
-{
-    "backbone_type" : "nontransformer",
-    "task": "segmentation",
-    "n_classes" : 2,
-    "n_epochs" : 4,
-    "input_height" : 448,
-    "input_width" : 224,
-    "weight_decay" : 1e-6,
-    "n_batch" : 1,
-    "learning_rate": 1e-4,
-    "patches" : true,
-    "pretraining" : true,
-    "augmentation" : true,
-    "flip_aug" : false,
-    "blur_aug" : false,
-    "scaling" : true,
-    "degrading": false,
-    "brightening": false,
-    "binarization" : false,
-    "scaling_blurring" : false,
-    "scaling_binarization" : false,
-    "scaling_flip" : false,
-    "rotation": false,
-    "rotation_not_90": false,
-    "blur_k" : ["blur","guass","median"],
-    "scales" : [0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.4],
-    "brightness" : [1.3, 1.5, 1.7, 2],
-    "degrade_scales" : [0.2, 0.4],
-    "flip_index" : [0, 1, -1],
-    "theta" : [10, -10],
-    "continue_training": false,
-    "index_start" : 0,
-    "dir_of_start_model" : " ",
-    "weighted_loss": false,
-    "is_loss_soft_dice": false,
-    "data_is_provided": false,
-    "dir_train": "./train",
-    "dir_eval": "./eval",
-    "dir_output": "./output"
-}
-```
+### 8.2 Integration into Eynollah
 
-#### Enhancement
+Trained models can be used in the main Eynollah application.
 
-```yaml
-{
-    "backbone_type" : "nontransformer",
-    "task": "enhancement",
-    "n_classes" : 3,
-    "n_epochs" : 4,
-    "input_height" : 448,
-    "input_width" : 224,
-    "weight_decay" : 1e-6,
-    "n_batch" : 4,
-    "learning_rate": 1e-4,
-    "patches" : true,
-    "pretraining" : true,
-    "augmentation" : true,
-    "flip_aug" : false,
-    "blur_aug" : false,
-    "scaling" : true,
-    "degrading": false,
-    "brightening": false,
-    "binarization" : false,
-    "scaling_blurring" : false,
-    "scaling_binarization" : false,
-    "scaling_flip" : false,
-    "rotation": false,
-    "rotation_not_90": false,
-    "blur_k" : ["blur","guass","median"],
-    "scales" : [0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.4],
-    "brightness" : [1.3, 1.5, 1.7, 2],
-    "degrade_scales" : [0.2, 0.4],
-    "flip_index" : [0, 1, -1],
-    "theta" : [10, -10],
-    "continue_training": false,
-    "index_start" : 0,
-    "dir_of_start_model" : " ",
-    "weighted_loss": false,
-    "is_loss_soft_dice": false,
-    "data_is_provided": false,
-    "dir_train": "./train",
-    "dir_eval": "./eval",
-    "dir_output": "./output"
-}
-```
+Since v0.8.0, individual models can be overridden, allowing a custom model to replace a corresponding model in the distributed model collection.
 
-It's important to mention that the value of n_classes for enhancement should be 3, as the model's output is a 3-channel
-image.
+Consult the main [Models documentation](models.md) and the CLI help for the correct model categories and override syntax.
 
-#### Page extraction
+### 8.3 Model validation
 
-```yaml
-{
-    "backbone_type" : "nontransformer",
-    "task": "segmentation",
-    "n_classes" : 2,
-    "n_epochs" : 4,
-    "input_height" : 448,
-    "input_width" : 224,
-    "weight_decay" : 1e-6,
-    "n_batch" : 1,
-    "learning_rate": 1e-4,
-    "patches" : false,
-    "pretraining" : true,
-    "augmentation" : false,
-    "flip_aug" : false,
-    "blur_aug" : false,
-    "scaling" : true,
-    "degrading": false,
-    "brightening": false,
-    "binarization" : false,
-    "scaling_blurring" : false,
-    "scaling_binarization" : false,
-    "scaling_flip" : false,
-    "rotation": false,
-    "rotation_not_90": false,
-    "blur_k" : ["blur","guass","median"],
-    "scales" : [0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.4],
-    "brightness" : [1.3, 1.5, 1.7, 2],
-    "degrade_scales" : [0.2, 0.4],
-    "flip_index" : [0, 1, -1],
-    "theta" : [10, -10],
-    "continue_training": false,
-    "index_start" : 0,
-    "dir_of_start_model" : " ",
-    "weighted_loss": false,
-    "is_loss_soft_dice": false,
-    "data_is_provided": false,
-    "dir_train": "./train",
-    "dir_eval": "./eval",
-    "dir_output": "./output"
-}
-```
+Before deploying a custom model:
 
-For page segmentation (or print space or border segmentation), the model needs to view the input image in its
-entirety,hence the patches parameter should be set to false.
+1. Test it on images not used during training.
+2. Compare its results with the original model.
+3. Inspect PAGE-XML output where applicable.
+4. Check prediction quality across different document types.
+5. Verify inference performance and resource requirements.
 
-#### layout segmentation
+## 9. Troubleshooting and best practices
 
-An example config json file for layout segmentation with 5 classes (including background) can be like this:
+- Keep training and validation datasets separate.
+- Verify image-label correspondence before training.
+- Inspect generated segmentation labels visually.
+- Avoid inconsistent PAGE-XML annotations.
+- Select image dimensions and patch sizes appropriate to the task.
+- Monitor validation performance to identify overfitting.
+- Use pretrained models when appropriate.
+- Preserve the original training checkpoints.
+- Validate converted inference models independently.
+- Consult command-specific help because CLI options can change between releases.
 
-```yaml
-{
-    "backbone_type" : "transformer",
-    "task": "segmentation",
-    "n_classes" : 5,
-    "n_epochs" : 4,
-    "input_height" : 448,
-    "input_width" : 224,
-    "weight_decay" : 1e-6,
-    "n_batch" : 1,
-    "learning_rate": 1e-4,
-    "patches" : true,
-    "pretraining" : true,
-    "augmentation" : true,
-    "flip_aug" : false,
-    "blur_aug" : false,
-    "scaling" : true,
-    "degrading": false,
-    "brightening": false,
-    "binarization" : false,
-    "scaling_blurring" : false,
-    "scaling_binarization" : false,
-    "scaling_flip" : false,
-    "rotation": false,
-    "rotation_not_90": false,
-    "transformer_num_patches_xy": [7, 14],
-    "transformer_patchsize_x": 1,
-    "transformer_patchsize_y": 1,
-    "transformer_projection_dim": 64,
-    "transformer_mlp_head_units": [128, 64],
-    "transformer_layers": 8,
-    "transformer_num_heads": 4,
-    "transformer_cnn_first": true,
-    "blur_k" : ["blur","guass","median"],
-    "scales" : [0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.4],
-    "brightness" : [1.3, 1.5, 1.7, 2],
-    "degrade_scales" : [0.2, 0.4],
-    "flip_index" : [0, 1, -1],
-    "theta" : [10, -10],
-    "continue_training": false,
-    "index_start" : 0,
-    "dir_of_start_model" : " ",
-    "weighted_loss": false,
-    "is_loss_soft_dice": false,
-    "data_is_provided": false,
-    "dir_train": "./train",
-    "dir_eval": "./eval",
-    "dir_output": "./output"
-}
-```
-## Inference with the trained model
+## 10. Further documentation
 
-### classification
-
-For conducting inference with a trained model, you simply need to execute the following command line, specifying the
-directory of the model and the image on which to perform inference:
-
-```sh
-eynollah-training inference -m "model dir" -i "image"
-```
-
-This will straightforwardly return the class of the image.
-
-### machine based reading order
-
-To infer the reading order using a reading order model, we need a PAGE XML file containing layout information but
-without the reading order. We simply need to provide the model directory, the XML file, and the output directory. The
-new XML file with the added reading order will be written to the output directory with the same name. We need to run:
-
-```sh
-eynollah-training inference \
-  -m "model dir" \
-  -xml "page xml file" \
-  -o "output dir to write new xml with reading order"
-```
-
-### Segmentation (Textline, Binarization, Page extraction and layout) and enhancement
-
-For conducting inference with a trained model for segmentation and enhancement you need to run the following command line:
-
-```sh
-eynollah-training inference \
-  -m "model dir" \
-  -i "image" \
-  -p \
-  -s "output image"
-```
-
-Note that in the case of page extraction the -p flag is not needed.
-
-For segmentation or binarization tasks, if a ground truth (GT) label is available, the IoU evaluation metric can be
-calculated for the output. To do this, you need to provide the GT label using the argument -gt.
+- [Eynollah repository](https://github.com/qurator-spk/eynollah)
+- [Models documentation](models.md)
+- [Changelog](../CHANGELOG.md)
+- [Pretrained model distribution](https://zenodo.org/records/17727267)
+- [Eynollah model collection on Hugging Face](https://huggingface.co/SBB)
