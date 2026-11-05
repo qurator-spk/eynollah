@@ -196,6 +196,8 @@ Additional documentation:
 * For advanced use, see [`use.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/use.md).
 * For model documentation and model cards, see [`models.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/models.md).
 * For model training or fine-tuning, see [`train.md`](https://github.com/qurator-spk/eynollah/tree/main/docs/train.md).
+* For a runnable example to use with e.g. Google Colab, see 
+[eynollah_layout.ipynb](https://github.com/qurator-spk/eynollah/blob/main/docs/eynollah_layout.ipynb).
 
 ## How to cite
 ```bibtex

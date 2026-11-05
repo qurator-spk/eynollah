@@ -12,16 +12,16 @@ Model training is managed through the `eynollah-training` command-line interface
 
 The training framework covers the following tasks:
 
-| Task | Description | Typical training data |
-|---|---|---|
-| Layout segmentation | Detection and classification of document regions | Document images and pixel-wise labels |
-| Text-line segmentation | Detection of text lines | Document images and text-line labels |
-| Page extraction | Detection of page boundaries and print space | Document images and page-boundary labels |
-| Binarization | Separation of foreground and background pixels | Document images and binary labels |
-| Image enhancement | Restoration of degraded or low-resolution images | Degraded and reference image pairs |
-| Image classification | Classification of document images | Images organized by class |
-| Reading-order detection | Prediction of reading-order relationships | PAGE-XML annotations with reading order |
-| OCR | Recognition of text from document images | Text-line images and transcription data |
+| Task                    | Description                                      | Typical training data                    |
+|-------------------------|--------------------------------------------------|------------------------------------------|
+| Layout segmentation     | Detection and classification of document regions | Document images and pixel-wise labels    |
+| Text-line segmentation  | Detection of text lines                          | Document images and text-line labels     |
+| Page extraction         | Detection of page boundaries and print space     | Document images and page-boundary labels |
+| Binarization            | Separation of foreground and background pixels   | Document images and binary labels        |
+| Image enhancement       | Restoration of degraded or low-resolution images | Degraded and reference image pairs       |
+| Image classification    | Classification of document images                | Images organized by class                |
+| Reading-order detection | Prediction of reading-order relationships        | PAGE-XML annotations with reading order  |
+| OCR                     | Recognition of text from document images         | Text-line images and transcription data  |
 
 The availability and maturity of individual training workflows depend on the model architecture and software version. In particular, TrOCR training integration was introduced in v0.9.0 and was still described as untested in that release.
 
@@ -262,18 +262,18 @@ Training parameters are defined in configuration files.
 
 The parameters depend on the task and model architecture. Common configuration categories include:
 
-| Category | Examples |
-|---|---|
-| Task | Segmentation, binarization, enhancement, classification, reading order |
-| Architecture | CNN-based or Transformer-based backbone |
-| Input | Image height, width and number of classes |
-| Optimization | Learning rate, batch size and weight decay |
-| Training | Number of epochs and checkpoint settings |
-| Initialization | Pretrained weights and starting checkpoint |
-| Augmentation | Scaling, rotation, flipping, blurring and degradation |
-| Loss | Weighted loss and soft Dice options |
-| Data | Training and evaluation directories |
-| Output | Checkpoints, logs and intermediate data |
+| Category       | Examples                                                               |
+|----------------|------------------------------------------------------------------------|
+| Task           | Segmentation, binarization, enhancement, classification, reading order |
+| Architecture   | CNN-based or Transformer-based backbone                                |
+| Input          | Image height, width and number of classes                              |
+| Optimization   | Learning rate, batch size and weight decay                             |
+| Training       | Number of epochs and checkpoint settings                               |
+| Initialization | Pretrained weights and starting checkpoint                             |
+| Augmentation   | Scaling, rotation, flipping, blurring and degradation                  |
+| Loss           | Weighted loss and soft Dice options                                    |
+| Data           | Training and evaluation directories                                    |
+| Output         | Checkpoints, logs and intermediate data                                |
 
 ### 4.1 Model architectures
 

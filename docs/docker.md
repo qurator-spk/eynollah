@@ -86,7 +86,7 @@ docker run --rm ghcr.io/qurator-spk/eynollah:latest \
 
 The default working directory inside the container is `/data`.
 
-For more information about the available commands, see the [Eynollah usage documentation](usage.md).
+For more information about the available commands, see the [Eynollah usage documentation](use.md).
 
 ## 4. Model and resource management
 
@@ -480,15 +480,15 @@ Docker images and pretrained models should be selected consistently.
 
 In particular:
 
-| Version | Relevant Docker considerations |
-|---|---|
-| v0.5.0 | Existing standalone and OCR-D workflows |
-| v0.6.0 | Dedicated training CLI introduced; inference remains separate |
-| v0.7.0 | Model zoo introduced |
-| v0.8.0 | Model overrides and improved GPU configuration |
-| v0.9.0 | ONNX/TensorRT inference becomes the default; Docker image changes to `ocrd/core-cuda-onnx`; OCR dependencies excluded |
-| v0.9.1 | Requires OCR-D core 3.13.2 or later |
-| v0.9.2 | Docker workflow remains based on the v0.9 ONNX image |
+| Version | Relevant Docker considerations                                                                                        |
+|---------|-----------------------------------------------------------------------------------------------------------------------|
+| v0.5.0  | Existing standalone and OCR-D workflows                                                                               |
+| v0.6.0  | Dedicated training CLI introduced; inference remains separate                                                         |
+| v0.7.0  | Model zoo introduced                                                                                                  |
+| v0.8.0  | Model overrides and improved GPU configuration                                                                        |
+| v0.9.0  | ONNX/TensorRT inference becomes the default; Docker image changes to `ocrd/core-cuda-onnx`; OCR dependencies excluded |
+| v0.9.1  | Requires OCR-D core 3.13.2 or later                                                                                   |
+| v0.9.2  | Docker workflow remains based on the v0.9 ONNX image                                                                  |
 
 For reproducible processing, use a release-specific Docker image and the corresponding inference model package.
 
