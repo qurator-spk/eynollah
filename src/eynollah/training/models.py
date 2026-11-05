@@ -190,7 +190,7 @@ class Deskewer(Layer):
                              tf.stack([row_var0, row_var])]) # (2, 2)
         res_args = tf.stack([col_arg, row_arg]) # (2)
         # add back batch dim
-        return (res_vars[tf.newaxis], res_args[tf.newaxis])
+        return res_vars[tf.newaxis], res_args[tf.newaxis]
 
 def deskewer():
     """

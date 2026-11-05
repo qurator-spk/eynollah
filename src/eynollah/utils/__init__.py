@@ -471,8 +471,7 @@ def find_num_col(
                 # print(forest[np.argmin(z[forest]) ] )
                 if not isNaN(forest[np.argmin(z[forest])]):
                     peaks_neg_true.append(forest[np.argmin(z[forest])])
-                forest = []
-                forest.append(peaks_neg_fin[i + 1])
+                forest = [peaks_neg_fin[i + 1]]
         if i == (len(peaks_neg_fin) - 1):
             # print(print(forest[np.argmin(z[forest]) ] ))
             if not isNaN(forest[np.argmin(z[forest])]):
@@ -958,8 +957,7 @@ def combine_hor_lines(
     return img_p_in, special_separators
 
 def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
-    peaks_neg_tot = []
-    peaks_neg_tot.append(first_point)
+    peaks_neg_tot = [first_point]
     for ii in range(len(peaks_neg_fin)):
         peaks_neg_tot.append(peaks_neg_fin[ii])
     peaks_neg_tot.append(last_point)
