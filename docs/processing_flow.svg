@@ -1,0 +1,168 @@
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="790" viewBox="0 0 1200 790"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Eynollah processing flow</title>
+  <desc id="desc">
+    Processing of a document image through page extraction, column
+    classification, image enhancement and binarization, layout analysis,
+    text-line detection, geometry and reading order, and PAGE XML output.
+    OCR is a separate optional downstream stage.
+  </desc>
+
+  <defs>
+    <style>
+      text {
+        font-family: Arial, Helvetica, sans-serif;
+        fill: #243247;
+      }
+      .heading { font-size: 25px; font-weight: 700; }
+      .label { font-size: 17px; font-weight: 600; }
+      .small { font-size: 14px; }
+      .node {
+        fill: #f4f7fb;
+        stroke: #526b89;
+        stroke-width: 2;
+        rx: 12;
+      }
+      .optional {
+        fill: #fff8e8;
+        stroke: #bd8b35;
+        stroke-width: 2;
+        stroke-dasharray: 7 5;
+        rx: 12;
+      }
+      .output {
+        fill: #eaf5ee;
+        stroke: #43845b;
+        stroke-width: 2;
+        rx: 12;
+      }
+      .arrow {
+        fill: none;
+        stroke: #526b89;
+        stroke-width: 2.5;
+        marker-end: url(#arrowhead);
+      }
+      .optional-arrow {
+        fill: none;
+        stroke: #bd8b35;
+        stroke-width: 2;
+        stroke-dasharray: 6 5;
+        marker-end: url(#optional-arrowhead);
+      }
+    </style>
+
+    <marker id="arrowhead" markerWidth="10" markerHeight="8"
+            refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#526b89"/>
+    </marker>
+    <marker id="optional-arrowhead" markerWidth="10" markerHeight="8"
+            refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#bd8b35"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="790" fill="#ffffff"/>
+
+  <text x="600" y="43" text-anchor="middle" class="heading">
+    Eynollah document processing flow
+  </text>
+
+  <!-- Main pipeline -->
+  <rect x="425" y="75" width="350" height="58" class="node"/>
+  <text x="600" y="110" text-anchor="middle" class="label">
+    Input document image
+  </text>
+
+  <path d="M600 133 V165" class="arrow"/>
+
+  <rect x="425" y="165" width="350" height="58" class="node"/>
+  <text x="600" y="200" text-anchor="middle" class="label">
+    Page extraction and cropping
+  </text>
+
+  <path d="M600 223 V255" class="arrow"/>
+
+  <rect x="425" y="255" width="350" height="58" class="node"/>
+  <text x="600" y="290" text-anchor="middle" class="label">
+    Column classification
+  </text>
+
+  <path d="M600 313 V345" class="arrow"/>
+
+  <rect x="425" y="345" width="350" height="68" class="node"/>
+  <text x="600" y="373" text-anchor="middle" class="label">
+    Image preparation
+  </text>
+  <text x="600" y="394" text-anchor="middle" class="small">
+    Resolution estimation · enhancement · binarization
+  </text>
+
+  <path d="M600 413 V445" class="arrow"/>
+
+  <rect x="425" y="445" width="350" height="58" class="node"/>
+  <text x="600" y="480" text-anchor="middle" class="label">
+    Main-region detection
+  </text>
+
+  <!-- Optional full-region branch -->
+  <path d="M775 474 H875" class="optional-arrow"/>
+  <rect x="875" y="435" width="270" height="78" class="optional"/>
+  <text x="1010" y="464" text-anchor="middle" class="label">
+    Optional full-region
+  </text>
+  <text x="1010" y="487" text-anchor="middle" class="small">
+    detection
+  </text>
+  <text x="1010" y="505" text-anchor="middle" class="small">
+    Headings · initials
+  </text>
+
+  <path d="M600 503 V545" class="arrow"/>
+
+  <rect x="425" y="545" width="350" height="58" class="node"/>
+  <text x="600" y="580" text-anchor="middle" class="label">
+    Text-line detection
+  </text>
+
+  <path d="M600 603 V635" class="arrow"/>
+
+  <rect x="425" y="635" width="350" height="58" class="node"/>
+  <text x="600" y="670" text-anchor="middle" class="label">
+    Geometry and reading order
+  </text>
+
+  <path d="M600 693 V725" class="arrow"/>
+
+  <rect x="425" y="725" width="350" height="48" class="output"/>
+  <text x="600" y="755" text-anchor="middle" class="label">
+    PAGE-XML output
+  </text>
+
+  <!-- Heuristic processing note -->
+  <rect x="35" y="445" width="300" height="125" class="optional"/>
+  <text x="185" y="476" text-anchor="middle" class="label">
+    Additional processing
+  </text>
+  <text x="185" y="504" text-anchor="middle" class="small">
+    Marginalia and region heuristics
+  </text>
+  <text x="185" y="528" text-anchor="middle" class="small">
+    Tables and image regions
+  </text>
+  <text x="185" y="552" text-anchor="middle" class="small">
+    Reading-order alternatives
+  </text>
+  <path d="M335 508 H390 V474 H425" class="optional-arrow"/>
+
+  <!-- OCR downstream -->
+  <path d="M775 749 H840" class="optional-arrow"/>
+  <rect x="840" y="715" width="305" height="65" class="optional"/>
+  <text x="992" y="742" text-anchor="middle" class="label">
+    Optional OCR
+  </text>
+  <text x="992" y="765" text-anchor="middle" class="small">
+    CNN-RNN or TrOCR
+  </text>
+</svg>
