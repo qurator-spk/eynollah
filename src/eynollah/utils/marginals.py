@@ -427,18 +427,21 @@ def get_marginals(num_col, slope_deskew,
         indices = [0]
         for i, pair in enumerate(pairwise(text_mask_d_ys_plateaus), start=1):
             (prev_min, prev_max), (next_min, next_max) = pair
-            if np.isclose(np.mean(text_mask_d_ys[prev_min: prev_max]),
-                          np.mean(text_mask_d_ys[next_min: next_max]),
-                          rtol=0.2):
-                pass
-            else:
+            prev_mean = np.mean(text_mask_d_ys[prev_min: prev_max])
+            next_mean = np.mean(text_mask_d_ys[next_min: next_max])
+            if not np.isclose(prev_mean, next_mean, rtol=0.22):
                 indices.append(i)
         indices.append(length)
         text_mask_d_ys_plateaus = np.array(
             [(prev_min, next_max)
              for previ, nexti in pairwise(indices)
              if ((next_max := text_mask_d_ys_plateaus[previ: nexti, 1][-1]) -
-                 (prev_min := text_mask_d_ys_plateaus[previ: nexti, 0][0])) > 20])
+                 (prev_min := text_mask_d_ys_plateaus[previ: nexti, 0][0])) >
+             # minimum plateau width
+             MIN_DIST_GAPS])
+        if PLOT_GAPS_STEPS:
+            for prev_min, next_max in text_mask_d_ys_plateaus:
+                ax2.hlines([np.mean(text_mask_d_ys[prev_min: next_max])], prev_min, next_max, colors='lightblue')
         text_mask_d_ys_plateaus = text_mask_d_ys_plateaus.T
 
         if side == 'left':
@@ -459,6 +462,8 @@ def get_marginals(num_col, slope_deskew,
             next_max = text_mask_d_ys_plateaus[1, next_plateau]
             prev_min = text_mask_d_ys_plateaus[0, prev_plateau]
             prev_max = text_mask_d_ys_plateaus[1, prev_plateau]
+            if next_min - prev_max > MIN_DIST_GAPS:
+                continue # too wide (i.e. step is not directly surrounded by plateaus)
             if side == 'left':
                 jump_fract_main = (np.mean(text_mask_d_ys[prev_min: prev_max]) /
                                    np.mean(text_mask_d_ys[next_min: next_max]))
