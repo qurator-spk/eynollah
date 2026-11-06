@@ -27,7 +27,7 @@ The individual models are combined with heuristics to derive the final result.
 
 The general processing workflow is illustrated below:
 
-![Eynollah processing flow](processing-flow.svg)
+![Eynollah processing flow](processing_flow.svg)
 
 The exact sequence and selection of models depend on the processing options and document characteristics.
 
