@@ -471,8 +471,7 @@ def find_num_col(
                 # print(forest[np.argmin(z[forest]) ] )
                 if not isNaN(forest[np.argmin(z[forest])]):
                     peaks_neg_true.append(forest[np.argmin(z[forest])])
-                forest = []
-                forest.append(peaks_neg_fin[i + 1])
+                forest = [peaks_neg_fin[i + 1]]
         if i == (len(peaks_neg_fin) - 1):
             # print(print(forest[np.argmin(z[forest]) ] ))
             if not isNaN(forest[np.argmin(z[forest])]):
@@ -695,7 +694,7 @@ def small_textlines_to_parent_adherence2(
                 for idx_small in indexes_small:
                     large_poly = large_poly.union(textlines_small_poly[idx_small])
                 if large_poly.geom_type == 'GeometryCollection':
-                    # hetergeneous: filter lines and points
+                    # heterogeneous: filter lines and points
                     large_poly = ops.unary_union([geom for geom in large_poly.geoms
                                                   if geom.area > 0])
                 if large_poly.geom_type == 'MultiPolygon':
@@ -731,7 +730,7 @@ def order_of_regions(
       * contours_lmar: the left marginalia region contours to be sorted
       * contours_rmar: the right marginalia region contours to be sorted
       * contours_tabs: the table region contours to be sorted
-      * contours_igms: the image region contours to be sorted
+      * contours_imgs: the image region contours to be sorted
 
     Keyword Args:
       * r2l: whether contours within groups should be ordered
@@ -955,8 +954,7 @@ def combine_hor_lines(
     return img_p_in, special_separators
 
 def return_points_with_boundies(peaks_neg_fin, first_point, last_point):
-    peaks_neg_tot = []
-    peaks_neg_tot.append(first_point)
+    peaks_neg_tot = [first_point]
     for ii in range(len(peaks_neg_fin)):
         peaks_neg_tot.append(peaks_neg_fin[ii])
     peaks_neg_tot.append(last_point)
@@ -1180,7 +1178,7 @@ def return_boxes_of_images_by_order_of_reading_new(
              (needed to find per-part columns and to combine separators if possible)
        * sep_mask: binary separator region mask
              (needed to elongate separators if possible)
-       * matrix_of_seps: type and coordinates of horizontal and vertical separators,
+       * matrix_of_seps_ch: type and coordinates of horizontal and vertical separators,
              as well as headings
        * num_col_classifier: predicted number of columns for the entire page
        * erosion_hurts: whether region masks have already been eroded

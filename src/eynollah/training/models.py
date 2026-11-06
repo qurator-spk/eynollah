@@ -146,7 +146,7 @@ class Deskewer(Layer):
             [cos, -sin, tx,
              sin, cos, ty,
              zx, zy], perm=(1, 0)) # (N, 8)
-        # loop over angles, so the rotation does not consume to much VRAM
+        # loop over angles, so the rotation does not consume too much VRAM
         # rotate and sum in integer, only then convert to float
         # (because this is faster and float is only needed when smoothing)
         variances = tf.TensorArray(tf.float32, size=N)
@@ -190,7 +190,7 @@ class Deskewer(Layer):
                              tf.stack([row_var0, row_var])]) # (2, 2)
         res_args = tf.stack([col_arg, row_arg]) # (2)
         # add back batch dim
-        return (res_vars[tf.newaxis], res_args[tf.newaxis])
+        return res_vars[tf.newaxis], res_args[tf.newaxis]
 
 def deskewer():
     """
@@ -255,8 +255,8 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
     """The identity block is the block that has no conv layer at shortcut.
     # Arguments
         input_tensor: input tensor
-        kernel_size: defualt 3, the kernel size of middle conv layer at main path
-        filters: list of integers, the filterss of 3 conv layer at main path
+        kernel_size: default 3, the kernel size of middle conv layer at main path
+        filters: list of integers, the filters of 3 conv layer at main path
         stage: integer, current stage label, used for generating layer names
         block: 'a','b'..., current block label, used for generating layer names
     # Returns
@@ -293,8 +293,8 @@ def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2))
     """conv_block is the block that has a conv layer at shortcut
     # Arguments
         input_tensor: input tensor
-        kernel_size: defualt 3, the kernel size of middle conv layer at main path
-        filters: list of integers, the filterss of 3 conv layer at main path
+        kernel_size: default 3, the kernel size of middle conv layer at main path
+        filters: list of integers, the filters of 3 conv layer at main path
         stage: integer, current stage label, used for generating layer names
         block: 'a','b'..., current block label, used for generating layer names
     # Returns

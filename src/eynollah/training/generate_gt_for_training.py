@@ -63,7 +63,7 @@ def main():
 @click.option(
     "--config",
     "-cfg",
-    help="config file of prefered layout or use case.",
+    help="config file of preferred layout or use case.",
     type=click.Path(exists=True, dir_okay=False),
 )
 
@@ -461,9 +461,9 @@ def visualize_textline_segmentation(xml_file, dir_xml, dir_out, dir_imgs):
             img_file_name_with_format = find_format_of_given_filename_in_dir(dir_imgs, f_name)
             img = cv2.imread(os.path.join(dir_imgs, img_file_name_with_format))
                 
-            co_tetxlines, y_len, x_len = get_textline_contours_for_visualization(xml_file)
+            co_textlines, y_len, x_len = get_textline_contours_for_visualization(xml_file)
             
-            added_image = visualize_image_from_contours(co_tetxlines, img)
+            added_image = visualize_image_from_contours(co_textlines, img)
             
             cv2.imwrite(os.path.join(dir_out, f_name+'.png'), added_image)
         except:
@@ -577,7 +577,7 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
             f_name = Path(ind_xml).stem
         print(f_name, 'f_name')
             
-        co_tetxlines, y_len, x_len, ocr_texts = get_textline_contours_and_ocr_text(xml_file)
+        co_textlines, y_len, x_len, ocr_texts = get_textline_contours_and_ocr_text(xml_file)
     
         total_bb_coordinates = []
         
@@ -586,7 +586,7 @@ def visualize_ocr_text(xml_file, dir_xml, dir_out):
         
         
         
-        for index, cnt in enumerate(co_tetxlines):
+        for index, cnt in enumerate(co_textlines):
             x,y,w,h = cv2.boundingRect(cnt)
             #total_bb_coordinates.append([x,y,w,h])
             

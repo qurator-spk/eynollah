@@ -113,7 +113,7 @@ class Eynollah_ocr(Eynollah):
         total_bb_coordinates = []
         cropped_lines = []
         cropped_lines_region_indexer = []
-        cropped_lines_meging_indexing = []
+        cropped_lines_merging_indexing = []
 
         for n_region, region in enumerate(page_tree.getroot().iter('{%s}TextRegion' % page_ns)):
             for n_line, line in enumerate(region.iter('{%s}TextLine' % page_ns)):
@@ -138,17 +138,17 @@ class Eynollah_ocr(Eynollah):
 
                 if h > 0.1 * w:
                     cropped_lines.append(img_crop)
-                    cropped_lines_meging_indexing.append(0)
+                    cropped_lines_merging_indexing.append(0)
                 else:
-                    splited_images, _ = return_textlines_split_if_needed(img_crop, None)
-                    if splited_images:
-                        cropped_lines.append(splited_images[0])
-                        cropped_lines.append(splited_images[1])
-                        cropped_lines_meging_indexing.append(1)
-                        cropped_lines_meging_indexing.append(-1)
+                    split_images, _ = return_textlines_split_if_needed(img_crop, None)
+                    if split_images:
+                        cropped_lines.append(split_images[0])
+                        cropped_lines.append(split_images[1])
+                        cropped_lines_merging_indexing.append(1)
+                        cropped_lines_merging_indexing.append(-1)
                     else:
                         cropped_lines.append(img_crop)
-                        cropped_lines_meging_indexing.append(0)
+                        cropped_lines_merging_indexing.append(0)
 
         extracted_texts = []
         extracted_confs = []
@@ -162,15 +162,15 @@ class Eynollah_ocr(Eynollah):
         gc.collect()
 
         extracted_texts_merged = [extracted_texts[ind]
-                                  if cropped_lines_meging_indexing[ind] == 0
+                                  if cropped_lines_merging_indexing[ind] == 0
                                   else extracted_texts[ind] + " " + extracted_texts[ind + 1]
-                                  for ind in range(len(cropped_lines_meging_indexing))
-                                  if cropped_lines_meging_indexing[ind] >= 0]
+                                  for ind in range(len(cropped_lines_merging_indexing))
+                                  if cropped_lines_merging_indexing[ind] >= 0]
         extracted_confs_merged = [extracted_confs[ind]
-                                  if cropped_lines_meging_indexing[ind] == 0
+                                  if cropped_lines_merging_indexing[ind] == 0
                                   else 0.5 * (extracted_confs[ind] + extracted_confs[ind + 1])
-                                  for ind in range(len(cropped_lines_meging_indexing))
-                                  if cropped_lines_meging_indexing[ind] >= 0]
+                                  for ind in range(len(cropped_lines_merging_indexing))
+                                  if cropped_lines_merging_indexing[ind] >= 0]
 
         return EynollahOcrResult(
             extracted_texts_merged=extracted_texts_merged,
@@ -195,7 +195,7 @@ class Eynollah_ocr(Eynollah):
         cropped_lines_bin = []
         cropped_lines_ver_index = []
         cropped_lines_region_indexer = []
-        cropped_lines_meging_indexing = []
+        cropped_lines_merging_indexing = []
 
         img_rgb = img # cosmetic
         if img_bin is None:
@@ -276,8 +276,8 @@ class Eynollah_ocr(Eynollah):
                     else:
                         cropped_lines_ver_index.append(0)
                         cropped_lines_ver_index.append(0)
-                    cropped_lines_meging_indexing.append(1)
-                    cropped_lines_meging_indexing.append(-1)
+                    cropped_lines_merging_indexing.append(1)
+                    cropped_lines_merging_indexing.append(-1)
                 else:
                     cropped_lines_rgb.append(img_crop_rgb)
                     cropped_lines_bin.append(img_crop_bin)
@@ -285,7 +285,7 @@ class Eynollah_ocr(Eynollah):
                         cropped_lines_ver_index.append(1)
                     else:
                         cropped_lines_ver_index.append(0)
-                    cropped_lines_meging_indexing.append(0)
+                    cropped_lines_merging_indexing.append(0)
 
         cropped_lines_rgb = [preprocess_and_resize_image_for_ocrcnn_model(img, image_height, image_width)
                              for img in cropped_lines_rgb]
@@ -333,15 +333,15 @@ class Eynollah_ocr(Eynollah):
         gc.collect()
         
         extracted_texts_merged = [extracted_texts[ind]
-                                  if cropped_lines_meging_indexing[ind] == 0
+                                  if cropped_lines_merging_indexing[ind] == 0
                                   else extracted_texts[ind] + " " + extracted_texts[ind + 1]
-                                  for ind in range(len(cropped_lines_meging_indexing))
-                                  if cropped_lines_meging_indexing[ind] >= 0]
+                                  for ind in range(len(cropped_lines_merging_indexing))
+                                  if cropped_lines_merging_indexing[ind] >= 0]
         extracted_confs_merged = [extracted_confs[ind]
-                                  if cropped_lines_meging_indexing[ind] == 0
+                                  if cropped_lines_merging_indexing[ind] == 0
                                   else 0.5 * (extracted_confs[ind] + extracted_confs[ind + 1])
-                                  for ind in range(len(cropped_lines_meging_indexing))
-                                  if cropped_lines_meging_indexing[ind] >= 0]
+                                  for ind in range(len(cropped_lines_merging_indexing))
+                                  if cropped_lines_merging_indexing[ind] >= 0]
 
         return EynollahOcrResult(
             extracted_texts_merged=extracted_texts_merged,
@@ -453,7 +453,15 @@ class Eynollah_ocr(Eynollah):
 
         Args:
 
+            overwrite: overwrite existing file
+            dir_in: input directory
             dir_in_bin (str): Prediction with RGB and binarized images for selected pages, should not be the default
+            image_filename: input image filename
+            dir_xmls: directory of PAGE-XML input files containing textline segmentation information
+            dir_out_image_text: directory for output images with text rendered
+            dir_out: output directory
+            num_jobs: number of jobs to run in parallel
+            halt_fail: number of failed runs before aborting
         """
         if dir_in:
             t0_tot = time.time()

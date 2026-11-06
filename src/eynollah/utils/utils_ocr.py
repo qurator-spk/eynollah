@@ -206,15 +206,15 @@ def get_contours_and_bounding_boxes(mask):
     
     return x, y, w, h
 
-def return_splitting_point_of_image(image_to_spliited):
-    width = np.shape(image_to_spliited)[1]
-    height = np.shape(image_to_spliited)[0]
+def return_splitting_point_of_image(image_to_split):
+    width = np.shape(image_to_split)[1]
+    height = np.shape(image_to_split)[0]
     common_window = int(0.03*width)
 
     width1 = int ( common_window)
     width2 = int ( width - common_window )
 
-    img_sum = np.sum(image_to_spliited[:,:,0], axis=0)
+    img_sum = np.sum(image_to_split[:,:,0], axis=0)
     sum_smoothed = gaussian_filter1d(img_sum, 1)
 
     peaks_real, _ = find_peaks(sum_smoothed, height=0)

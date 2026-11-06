@@ -7,12 +7,9 @@ DOCKER_TAG ?= ocrd/eynollah
 DOCKER ?= docker
 WGET = wget -O
 
-#SEG_MODEL := https://qurator-data.de/eynollah/2021-04-25/models_eynollah.tar.gz
-#SEG_MODEL := https://qurator-data.de/eynollah/2022-04-05/models_eynollah_renamed.tar.gz
-# SEG_MODEL := https://qurator-data.de/eynollah/2022-04-05/models_eynollah.tar.gz
-#SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz
-#SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz
-#SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1
+# SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.0/models_eynollah.tar.gz
+# SEG_MODEL := https://github.com/qurator-spk/eynollah/releases/download/v0.3.1/models_eynollah.tar.gz
+# SEG_MODEL := https://zenodo.org/records/17194824/files/models_layout_v0_5_0.tar.gz?download=1
 # EYNOLLAH_MODELS_URL := https://zenodo.org/records/21362927/files/models_inference_all_v0_9_0.zip
 EYNOLLAH_MODELS_URL := https://zenodo.org/records/21381102/files/models_inference_all_v0_9_1.zip
 EYNOLLAH_MODELS_ZIP = $(notdir $(EYNOLLAH_MODELS_URL))
@@ -106,8 +103,8 @@ ocrd-test: tests/resources/2files/kant_aufklaerung_1784_0020.tif
 	result=$$(ocrd workspace -d $(TMPDIR) find -G OCR-D-SEG); \
 	fgrep -q http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 $(TMPDIR)/$$result && \
 	fgrep -c -e TextRegion -e ImageRegion -e SeparatorRegion $(TMPDIR)/$$result
-	ocrd-sbb-binarize -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-BIN -P model $(CURDIR)
-	ocrd-sbb-binarize -w $(TMPDIR) -I OCR-D-SEG -O OCR-D-SEG-BIN -P model $(CURDIR)  -P operation_level region
+	ocrd-eynollah-binarize -w $(TMPDIR) -I OCR-D-IMG -O OCR-D-BIN -P model $(CURDIR)
+	ocrd-eynollah-binarize -w $(TMPDIR) -I OCR-D-SEG -O OCR-D-SEG-BIN -P model $(CURDIR)  -P operation_level region
 	$(RM) -r $(TMPDIR)
 
 # Run unit tests

@@ -39,10 +39,10 @@ from ..utils import is_image_filename
     required=True,
 )
 @click.option(
-    "--dataset_abbrevation",
+    "--dataset_abbreviation",
     "-ds_pref",
     'pref_of_dataset',
-    help="in the case of extracting textline and text from a xml GT file user can add an abbrevation of dataset name to generated dataset",
+    help="in the case of extracting textline and text from a xml GT file user can add an abbreviation of dataset name to generated dataset",
 )
 @click.option(
     "--do_not_mask_with_textline_contour",
@@ -126,9 +126,9 @@ def linegt_cli(
                             if img_crop.shape[0] == 0 or img_crop.shape[1] == 0:
                                 continue
                         if child_textlines.tag.endswith("TextEquiv"):
-                            for cheild_text in child_textlines:
-                                if cheild_text.tag.endswith("Unicode"):
-                                    textline_text = cheild_text.text
+                            for child_text in child_textlines:
+                                if child_text.tag.endswith("Unicode"):
+                                    textline_text = child_text.text
                                     if textline_text:
                                         base_name = os.path.join(
                                             dir_out, file_name + '_line_' + str(indexer_textlines)
