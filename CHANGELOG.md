@@ -5,6 +5,90 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+🎯 for accuracy improvements
+💪 for stability and robustness
+🏃 for efficiency
+:fire: for user attention advised
+
+### Fixed:
+
+ - 💪 avoid zero division during confidence calculations
+ - 🎯 textline ordering (horizontal vs. vertical)
+ - 🎯 edge case: excentric textlines
+ - 🎯 region angle estimation: numeric range
+ - 🎯 prediction tiling: avoid self-overlapping windows
+ - 🎯 early layout segment boundaries: ensure instances are still separated after dilation
+ - 🎯 cropping: apply upper page bounds to seplines, too
+ - 💪 edge cases in RO column detector
+ - 💪 stability in polygon handling
+ 
+### Added:
+
+ - CLI subcommand `eynollah extract-page` for cropping (w/ optional deskewing)
+ - CLI flag `eynollah --version` to get the currently installed version
+ - test coverage for tiling
+
+### Removed:
+
+ - :fire: Python 3.8 support
+
+### Changed:
+
+ - refactored further:
+   * move `do_prediction*` to `utils.tiling`
+   * retrieve external contours directly (instead of filtering from contour tree)
+   * avoid unnecessary calculations
+   * remove unused functions
+   * reduce code duplication
+   * make code more readable
+   * update type hinting
+   * make work with linter
+ - made **page deskewing** faster, more robust and precise:
+   * 🏃 avoid unnecessary floating-point precision for rotations
+   * 🏃 also downsize 3-6 column pages (for speed)
+   * introduce a confidence measure
+   * 🎯💪 stay on 0° if minimum confidence unmet
+   * 🎯 for multi-column pages, use column signal if better than row signal (as either can be occluded in the layout)
+   * 🎯🏃 use local maximum optimization instead of slow/imprecise grid search
+ - region angle estimation: 
+   * 🎯💪 improved accuracy and robustness
+ - layout model for early regions:
+   * 🎯 increase tile size for 3-6 column pages (i.e. fewer tiles w/ less myopia :mag:)
+ - layout model decoding:
+   * 🎯🏃 deskew text contours directly instead of finding deskewed contours and matching them to original contours
+   * 🎯 ignore separators from full layout model
+   * 🎯 ignore too small drop-capitals from full model consistently
+   * :fire: open holes (i.e. cut into interiors) of separator polygons, allowing for flat segmentation of frames etc.
+   * increase minimum area for text, table and drop-capital regions
+   * reduce minimum area for textlines
+ - rewrote **marginalia** detection to make faster and more accurate:
+   * avoid resizing arrays
+   * forbid points spanned by separators or images
+   * 1st stage (gap detection): constrain gap prominence, too
+   * 2nd stage (step detection, i.e. jump+plateau) for marginals close to main
+   * contour stage (main/marg assignment): precise polygon (re)construction, also splitting partial overlaps
+   * final stage (textline mask) for splitting textlines
+   * :fire: add CLI option `--allow_marginalia both|left|right|off` (with `both` still default for 1-2 column pages)
+   * optionally (`--paragraphs_from_marginalia`): also cut adjacent main regions between closest textline pair (creating paragraphs preceding/following marginalia) 
+ - improve **reading order**: 
+   * avoid eroding off small regions
+   * also split pages at horizontal gaps (allowing distinctly columned parts)
+   * dont' split pages around image regions (cutting them in half)
+   * don't suppress crossings of horizontal w/ vertical separators
+   * column detection: fix dtype to prevent underflow
+   * improve rules for cutting through cross-column regions
+   * replace within-column ordering by simpler, faster, more robust algorithm (which also enforces the `right2left` setting)
+   * :fire: order marginalia along with main paragraphs (instead of left→main→right)
+   * :fire: represent left vs right marginalia by `@custom="layout {sub_type:margi_left;}"` (or `margi_right`)
+   * :fire: order tables and images along with text regions, too
+ - :fire: Subcommand `eynollah machine-based-reading-order` renamed as `eynollah reorder`
+ - :fire: Training configuration (config.json keys) typos renamed:
+   * `thetha` → `theta`
+   * `thetha_pad` → `theta_pad`
+   * `scaling_bluring` → `scaling_blurring`
+ - :fire: OCR-D processor `ocrd-sbb-binarize` is now called `ocrd-eynollah-binarize` (with an alias so downstream tasks can be updated)
+
+
 ## [0.9.2] - 2026-07-28
 
 Fixed:
@@ -441,6 +525,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.10.0]: ../../compare/v0.10.0...v0.9.2
 [0.9.2]: ../../compare/v0.9.2...v0.9.1
 [0.9.1]: ../../compare/v0.9.1...v0.9.0
 [0.9.0]: ../../compare/v0.9.0...v0.8.0
