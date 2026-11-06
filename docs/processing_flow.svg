@@ -1,168 +1,326 @@
 
 <svg xmlns="http://www.w3.org/2000/svg"
-     width="1200" height="790" viewBox="0 0 1200 790"
+     width="1440" height="1180" viewBox="0 0 1440 1180"
      role="img" aria-labelledby="title desc">
-  <title id="title">Eynollah processing flow</title>
+  <title id="title">Eynollah document processing flow</title>
   <desc id="desc">
-    Processing of a document image through page extraction, column
-    classification, image enhancement and binarization, layout analysis,
-    text-line detection, geometry and reading order, and PAGE XML output.
-    OCR is a separate optional downstream stage.
+    Detailed flow from input image through page extraction, column
+    classification, image preparation, layout-region detection,
+    text-line segmentation, deskewing, geometry reconstruction,
+    reading-order assignment and PAGE-XML generation. Optional
+    processing and downstream OCR are shown separately.
   </desc>
 
   <defs>
     <style>
       text {
         font-family: Arial, Helvetica, sans-serif;
-        fill: #243247;
+        fill: #263548;
       }
-      .heading { font-size: 25px; font-weight: 700; }
-      .label { font-size: 17px; font-weight: 600; }
-      .small { font-size: 14px; }
-      .node {
-        fill: #f4f7fb;
-        stroke: #526b89;
+      .title {
+        font-size: 27px;
+        font-weight: 700;
+      }
+      .section {
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .step {
+        font-size: 17px;
+        font-weight: 700;
+      }
+      .detail {
+        font-size: 14px;
+      }
+      .note {
+        font-size: 13px;
+        fill: #536579;
+      }
+      .main {
+        fill: #f2f6fb;
+        stroke: #58728e;
         stroke-width: 2;
-        rx: 12;
+      }
+      .process {
+        fill: #eaf1f8;
+        stroke: #58728e;
+        stroke-width: 2;
       }
       .optional {
-        fill: #fff8e8;
-        stroke: #bd8b35;
+        fill: #fff8e9;
+        stroke: #b68a3b;
         stroke-width: 2;
         stroke-dasharray: 7 5;
-        rx: 12;
       }
       .output {
-        fill: #eaf5ee;
+        fill: #eaf5ed;
         stroke: #43845b;
         stroke-width: 2;
-        rx: 12;
+      }
+      .boundary {
+        fill: #fafbfd;
+        stroke: #c5cfda;
+        stroke-width: 1.5;
+        stroke-dasharray: 5 5;
       }
       .arrow {
         fill: none;
-        stroke: #526b89;
+        stroke: #58728e;
         stroke-width: 2.5;
-        marker-end: url(#arrowhead);
+        marker-end: url(#arrow);
       }
       .optional-arrow {
         fill: none;
-        stroke: #bd8b35;
-        stroke-width: 2;
+        stroke: #b68a3b;
+        stroke-width: 2.2;
         stroke-dasharray: 6 5;
-        marker-end: url(#optional-arrowhead);
+        marker-end: url(#optional-arrow);
+      }
+      .join {
+        fill: none;
+        stroke: #58728e;
+        stroke-width: 2.2;
       }
     </style>
 
-    <marker id="arrowhead" markerWidth="10" markerHeight="8"
+    <marker id="arrow" markerWidth="10" markerHeight="8"
             refX="9" refY="4" orient="auto">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#526b89"/>
+      <path d="M0 0 L10 4 L0 8 Z" fill="#58728e"/>
     </marker>
-    <marker id="optional-arrowhead" markerWidth="10" markerHeight="8"
+    <marker id="optional-arrow" markerWidth="10" markerHeight="8"
             refX="9" refY="4" orient="auto">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#bd8b35"/>
+      <path d="M0 0 L10 4 L0 8 Z" fill="#b68a3b"/>
     </marker>
   </defs>
 
-  <rect width="1200" height="790" fill="#ffffff"/>
+  <rect width="1440" height="1180" fill="#ffffff"/>
 
-  <text x="600" y="43" text-anchor="middle" class="heading">
-    Eynollah document processing flow
+  <text x="720" y="42" text-anchor="middle" class="title">
+    Eynollah processing flow
+  </text>
+  <text x="720" y="69" text-anchor="middle" class="note">
+    From document image to structured PAGE-XML
   </text>
 
-  <!-- Main pipeline -->
-  <rect x="425" y="75" width="350" height="58" class="node"/>
-  <text x="600" y="110" text-anchor="middle" class="label">
-    Input document image
+  <!-- Main pipeline boundary -->
+  <rect x="365" y="95" width="710" height="1000"
+        rx="18" class="boundary"/>
+  <text x="390" y="125" class="section">
+    Main processing pipeline
   </text>
 
-  <path d="M600 133 V165" class="arrow"/>
-
-  <rect x="425" y="165" width="350" height="58" class="node"/>
-  <text x="600" y="200" text-anchor="middle" class="label">
-    Page extraction and cropping
+  <!-- 1: Input -->
+  <rect x="535" y="145" width="370" height="62"
+        rx="12" class="main"/>
+  <text x="720" y="171" text-anchor="middle" class="step">
+    1. Input document image
+  </text>
+  <text x="720" y="192" text-anchor="middle" class="detail">
+    Scanned page or document image
   </text>
 
-  <path d="M600 223 V255" class="arrow"/>
+  <path d="M720 207 V235" class="arrow"/>
 
-  <rect x="425" y="255" width="350" height="58" class="node"/>
-  <text x="600" y="290" text-anchor="middle" class="label">
-    Column classification
+  <!-- 2: Page extraction -->
+  <rect x="535" y="235" width="370" height="82"
+        rx="12" class="process"/>
+  <text x="720" y="262" text-anchor="middle" class="step">
+    2. Page extraction
+  </text>
+  <text x="720" y="284" text-anchor="middle" class="detail">
+    Detect page boundaries and crop the page
+  </text>
+  <text x="720" y="304" text-anchor="middle" class="detail">
+    Correct skewed or irregular page contours
   </text>
 
-  <path d="M600 313 V345" class="arrow"/>
+  <path d="M720 317 V345" class="arrow"/>
 
-  <rect x="425" y="345" width="350" height="68" class="node"/>
-  <text x="600" y="373" text-anchor="middle" class="label">
-    Image preparation
+  <!-- 3: Column classification -->
+  <rect x="535" y="345" width="370" height="82"
+        rx="12" class="process"/>
+  <text x="720" y="372" text-anchor="middle" class="step">
+    3. Column classification
   </text>
-  <text x="600" y="394" text-anchor="middle" class="small">
-    Resolution estimation · enhancement · binarization
+  <text x="720" y="394" text-anchor="middle" class="detail">
+    Estimate the page's column structure
   </text>
-
-  <path d="M600 413 V445" class="arrow"/>
-
-  <rect x="425" y="445" width="350" height="58" class="node"/>
-  <text x="600" y="480" text-anchor="middle" class="label">
-    Main-region detection
+  <text x="720" y="414" text-anchor="middle" class="detail">
+    Classify as 1, 2, 3, 4, 5 or 6+ columns
   </text>
 
-  <!-- Optional full-region branch -->
-  <path d="M775 474 H875" class="optional-arrow"/>
-  <rect x="875" y="435" width="270" height="78" class="optional"/>
-  <text x="1010" y="464" text-anchor="middle" class="label">
-    Optional full-region
+  <path d="M720 427 V455" class="arrow"/>
+
+  <!-- 4: Image preparation -->
+  <rect x="535" y="455" width="370" height="110"
+        rx="12" class="process"/>
+  <text x="720" y="482" text-anchor="middle" class="step">
+    4. Image preparation
   </text>
-  <text x="1010" y="487" text-anchor="middle" class="small">
-    detection
+  <text x="720" y="505" text-anchor="middle" class="detail">
+    Estimate image resolution / PPI
   </text>
-  <text x="1010" y="505" text-anchor="middle" class="small">
-    Headings · initials
+  <text x="720" y="526" text-anchor="middle" class="detail">
+    Enhance or rescale low-resolution images
+  </text>
+  <text x="720" y="547" text-anchor="middle" class="detail">
+    Generate binarized input when required
   </text>
 
-  <path d="M600 503 V545" class="arrow"/>
+  <!-- Resolution note -->
+  <rect x="65" y="463" width="265" height="92"
+        rx="12" class="optional"/>
+  <text x="197" y="490" text-anchor="middle" class="step">
+    Conditional preparation
+  </text>
+  <text x="197" y="514" text-anchor="middle" class="detail">
+    Enhancement and rescaling
+  </text>
+  <text x="197" y="535" text-anchor="middle" class="detail">
+    depend on image characteristics
+  </text>
+  <path d="M330 510 H535" class="optional-arrow"/>
 
-  <rect x="425" y="545" width="350" height="58" class="node"/>
-  <text x="600" y="580" text-anchor="middle" class="label">
-    Text-line detection
+  <path d="M720 565 V595" class="arrow"/>
+
+  <!-- 5: Main region detection -->
+  <rect x="535" y="595" width="370" height="92"
+        rx="12" class="process"/>
+  <text x="720" y="623" text-anchor="middle" class="step">
+    5. Main-region detection
+  </text>
+  <text x="720" y="646" text-anchor="middle" class="detail">
+    Segment text regions and other major areas
+  </text>
+  <text x="720" y="668" text-anchor="middle" class="detail">
+    Use layout models suited to page structure
   </text>
 
-  <path d="M600 603 V635" class="arrow"/>
+  <!-- Region detection details -->
+  <rect x="1110" y="585" width="280" height="112"
+        rx="12" class="optional"/>
+  <text x="1250" y="612" text-anchor="middle" class="step">
+    Optional full-region detection
+  </text>
+  <text x="1250" y="636" text-anchor="middle" class="detail">
+    Detect headings and initials
+  </text>
+  <text x="1250" y="658" text-anchor="middle" class="detail">
+    Select 1–2 or 3+ column model
+  </text>
+  <text x="1250" y="680" text-anchor="middle" class="note">
+    Additional layout detail
+  </text>
+  <path d="M905 640 H1110" class="optional-arrow"/>
 
-  <rect x="425" y="635" width="350" height="58" class="node"/>
-  <text x="600" y="670" text-anchor="middle" class="label">
-    Geometry and reading order
+  <path d="M720 687 V717" class="arrow"/>
+
+  <!-- 6: Heuristics -->
+  <rect x="535" y="717" width="370" height="92"
+        rx="12" class="process"/>
+  <text x="720" y="745" text-anchor="middle" class="step">
+    6. Region and marginalia processing
+  </text>
+  <text x="720" y="768" text-anchor="middle" class="detail">
+    Apply layout heuristics to region boundaries
+  </text>
+  <text x="720" y="790" text-anchor="middle" class="detail">
+    Handle marginalia and other special regions
   </text>
 
-  <path d="M600 693 V725" class="arrow"/>
+  <!-- Heuristics note -->
+  <rect x="65" y="710" width="265" height="110"
+        rx="12" class="optional"/>
+  <text x="197" y="738" text-anchor="middle" class="step">
+    Other layout classes
+  </text>
+  <text x="197" y="762" text-anchor="middle" class="detail">
+    Tables, illustrations, separators,
+  </text>
+  <text x="197" y="784" text-anchor="middle" class="detail">
+    initials and marginalia
+  </text>
+  <path d="M330 765 H535" class="optional-arrow"/>
 
-  <rect x="425" y="725" width="350" height="48" class="output"/>
-  <text x="600" y="755" text-anchor="middle" class="label">
-    PAGE-XML output
+  <path d="M720 809 V839" class="arrow"/>
+
+  <!-- 7: Text line detection -->
+  <rect x="535" y="839" width="370" height="92"
+        rx="12" class="process"/>
+  <text x="720" y="867" text-anchor="middle" class="step">
+    7. Text-line detection
+  </text>
+  <text x="720" y="890" text-anchor="middle" class="detail">
+    Segment text regions into individual lines
+  </text>
+  <text x="720" y="912" text-anchor="middle" class="detail">
+    Use standard or light text-line model
   </text>
 
-  <!-- Heuristic processing note -->
-  <rect x="35" y="445" width="300" height="125" class="optional"/>
-  <text x="185" y="476" text-anchor="middle" class="label">
-    Additional processing
-  </text>
-  <text x="185" y="504" text-anchor="middle" class="small">
-    Marginalia and region heuristics
-  </text>
-  <text x="185" y="528" text-anchor="middle" class="small">
-    Tables and image regions
-  </text>
-  <text x="185" y="552" text-anchor="middle" class="small">
-    Reading-order alternatives
-  </text>
-  <path d="M335 508 H390 V474 H425" class="optional-arrow"/>
+  <path d="M720 931 V961" class="arrow"/>
 
-  <!-- OCR downstream -->
-  <path d="M775 749 H840" class="optional-arrow"/>
-  <rect x="840" y="715" width="305" height="65" class="optional"/>
-  <text x="992" y="742" text-anchor="middle" class="label">
+  <!-- 8: Deskew -->
+  <rect x="535" y="961" width="370" height="82"
+        rx="12" class="process"/>
+  <text x="720" y="988" text-anchor="middle" class="step">
+    8. Line and region geometry
+  </text>
+  <text x="720" y="1010" text-anchor="middle" class="detail">
+    Deskew text lines or regions as needed
+  </text>
+  <text x="720" y="1030" text-anchor="middle" class="detail">
+    Handle curved and vertical text lines
+  </text>
+
+  <path d="M720 1043 V1065" class="arrow"/>
+
+  <!-- 9: Reading order and PAGE -->
+  <rect x="535" y="1065" width="370" height="75"
+        rx="12" class="output"/>
+  <text x="720" y="1092" text-anchor="middle" class="step">
+    9. Reading order and PAGE-XML
+  </text>
+  <text x="720" y="1115" text-anchor="middle" class="detail">
+    Determine reading sequence and serialize regions
+  </text>
+  <text x="720" y="1133" text-anchor="middle" class="detail">
+    Output coordinates, structure and metadata
+  </text>
+
+  <!-- OCR downstream lane -->
+  <rect x="1110" y="875" width="280" height="190"
+        rx="14" class="boundary"/>
+  <text x="1250" y="904" text-anchor="middle" class="section">
+    Downstream task
+  </text>
+  <rect x="1140" y="925" width="220" height="105"
+        rx="12" class="optional"/>
+  <text x="1250" y="953" text-anchor="middle" class="step">
     Optional OCR
   </text>
-  <text x="992" y="765" text-anchor="middle" class="small">
+  <text x="1250" y="977" text-anchor="middle" class="detail">
+    Recognize text from line images
+  </text>
+  <text x="1250" y="999" text-anchor="middle" class="detail">
     CNN-RNN or TrOCR
   </text>
+  <text x="1250" y="1020" text-anchor="middle" class="note">
+    Text content added to PAGE-XML
+  </text>
+  <path d="M905 1100 H1010 V978 H1140"
+        class="optional-arrow"/>
+
+  <!-- Legend -->
+  <rect x="65" y="900" width="265" height="145"
+        rx="12" class="boundary"/>
+  <text x="90" y="930" class="step">Legend</text>
+  <rect x="90" y="950" width="30" height="18"
+        rx="4" class="process"/>
+  <text x="132" y="965" class="detail">Main processing step</text>
+  <rect x="90" y="980" width="30" height="18"
+        rx="4" class="optional"/>
+  <text x="132" y="995" class="detail">Optional / conditional step</text>
+  <rect x="90" y="1010" width="30" height="18"
+        rx="4" class="output"/>
+  <text x="132" y="1025" class="detail">Output</text>
 </svg>
