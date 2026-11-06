@@ -22,7 +22,10 @@ from sacred import Experiment
 
 import numpy as np
 import cv2
-from matplotlib import pyplot as plt # for plot_confusion_matrix
+try:
+    from matplotlib import pyplot as plt # for plot_confusion_matrix
+except ImportError:
+    plt = None
 
 from .metrics import (
     soft_dice_loss,
@@ -214,6 +217,8 @@ class TensorBoardPlotter(TensorBoard):
         val_matrix = logs.pop('val_confusion_matrix', None)
         super()._log_epoch_metrics(epoch, logs)
         # now plot confusion_matrix
+        if plt is None:
+            return
         with tf.summary.record_if(True):
             if train_matrix is not None:
                 train_image = plot_confusion_matrix(train_matrix)

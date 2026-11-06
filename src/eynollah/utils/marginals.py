@@ -23,8 +23,11 @@ from .contour import (
 from .resize import resize_image
 from .rotate import rotate_image
 
-from matplotlib import pyplot as plt
-from shapely.plotting import plot_polygon
+try:
+    from matplotlib import pyplot as plt
+    from shapely.plotting import plot_polygon
+except ImportError:
+    plt = plot_polygon = None
 
 MIN_THICKNESS_MAINTEXT_PRCT_HEIGHT = 14
 """minimum vertical extent of the text mask (in percent of image height)
