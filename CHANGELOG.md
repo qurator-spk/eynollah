@@ -3,12 +3,14 @@ Change Log
 
 Versioned according to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
-
 🎯 for accuracy improvements
 💪 for stability and robustness
 🏃 for efficiency
 :fire: for user attention advised
+
+## Unreleased
+
+## [0.10.0] - 2026-11-06
 
 ### Fixed:
 
