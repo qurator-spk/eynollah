@@ -1,0 +1,88 @@
+import click
+
+@click.command(context_settings=dict(
+    help_option_names=['-h', '--help'],
+    show_default=True))
+@click.option(
+    "--image",
+    "-i",
+    help="input image filename",
+    type=click.Path(exists=True, dir_okay=False),
+)
+
+@click.option(
+    "--out",
+    "-o",
+    help="directory for output PAGE-XML files",
+    type=click.Path(exists=True, file_okay=False),
+    required=True,
+)
+@click.option(
+    "--overwrite",
+    "-O",
+    help="overwrite (instead of skipping) if output xml exists",
+    is_flag=True,
+)
+@click.option(
+    "--dir_in",
+    "-di",
+    help="directory of input images (instead of --image)",
+    type=click.Path(exists=True, file_okay=False),
+)
+@click.option(
+    "--input_binary",
+    "-ib",
+    is_flag=True,
+    help="In general, eynollah uses RGB as input, but if the input document is very dark, very bright or for any other reason you can turn on internal binarization here. When set, eynollah will binarize the RGB input document first.",
+)
+@click.option(
+    "--num_col_upper",
+    "-ncu",
+    default=0,
+    type=click.IntRange(min=0),
+    help="lower limit of columns in document image; 0 means autodetected from model",
+)
+@click.option(
+    "--num_col_lower",
+    "-ncl",
+    default=0,
+    type=click.IntRange(min=0),
+    help="upper limit of columns in document image; 0 means autodetected from model",
+)
+@click.option(
+    "--enable_deskewing",
+    "-ed",
+    is_flag=True,
+    help="Also run textline detection and deskewing on the page.",
+)
+@click.pass_context
+def extract_page_cli(
+    ctx,
+    image,
+    out,
+    overwrite,
+    dir_in,
+    input_binary,
+    num_col_upper,
+    num_col_lower,
+    enable_deskewing,
+):
+    """
+    Detect image regions only
+    """
+    assert bool(image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
+
+    from ..extract_page import EynollahPageExtractor
+    extractor = EynollahPageExtractor(
+        model_zoo=ctx.obj.model_zoo,
+        input_binary=input_binary,
+        num_col_upper=num_col_upper,
+        num_col_lower=num_col_lower,
+        enable_deskewing=enable_deskewing,
+    )
+    extractor.run(overwrite=overwrite,
+                 image_filename=image,
+                 dir_in=dir_in,
+                 dir_out=out,
+    )
+

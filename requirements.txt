@@ -1,5 +1,5 @@
 # ocrd includes opencv, numpy, shapely, click
-ocrd >= 3.3.0
+ocrd >= 3.13.2
 onnxruntime-gpu[cuda,cudnn] # w/ .onnx models
 tensorrt_cu12 < 11 # 11 incompatible with CUDA libs from onnxruntime-gpu[cuda,cudnn]
 scikit-learn >= 0.23.2

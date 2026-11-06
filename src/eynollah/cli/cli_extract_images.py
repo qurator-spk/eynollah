@@ -82,7 +82,7 @@ def extract_images_cli(
     ignore_page_extraction,
 ):
     """
-    Detect Layout (with optional image enhancement and reading order detection)
+    Detect image regions only
     """
     assert enable_plotting or not save_images, "Plotting with -si also requires -ep"
     assert not enable_plotting  or save_images, "Plotting with -ep also requires -si"

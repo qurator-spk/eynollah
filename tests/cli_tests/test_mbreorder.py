@@ -1,21 +1,30 @@
+import pytest
 from ocrd_modelfactory import page_from_file
 from ocrd_models.constants import NAMESPACES as NS
 
+@pytest.mark.parametrize(
+    "options",
+    [
+            [], # defaults
+            ["--model_based"],
+    ], ids=str)
 def test_run_eynollah_mbreorder_filename(
     tmp_path,
     resources_dir,
     run_eynollah_ok_and_check_logs,
+    options,
 ):
     infile = resources_dir / '2files/kant_aufklaerung_1784_0020.xml'
     outfile = tmp_path /'kant_aufklaerung_1784_0020.xml'
     run_eynollah_ok_and_check_logs(
-        'machine-based-reading-order',
+        'reorder',
         [
             '-i', str(infile),
+            '-dim', str(resources_dir / '2files'),
             '-o', str(outfile.parent),
-        ],
+        ] + options,
         [
-            # FIXME: mbreorder has no logging!
+            str(infile)
         ]
     )
     assert outfile.exists()
@@ -34,13 +43,15 @@ def test_run_eynollah_mbreorder_directory(
 ):
     outdir = tmp_path
     run_eynollah_ok_and_check_logs(
-        'machine-based-reading-order',
+        'reorder',
         [
             '-di', str(resources_dir / '2files'),
+            '-dim', str(resources_dir / '2files'),
             '-o', str(outdir),
         ],
         [
-            # FIXME: mbreorder has no logging!
+            'Job done in',
+            'All jobs done in',
         ]
     )
     assert len(list(outdir.iterdir())) == 2

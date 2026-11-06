@@ -58,6 +58,14 @@ DEFAULT_MODEL_SPECS = EynollahModelSpecSet([
     ),
 
     EynollahModelSpec(
+        category="deskewing",
+        variant='',
+        filename="models_eynollah/deskewer",
+        dist_url=dist_url(),
+        type='Keras',
+    ),
+
+    EynollahModelSpec(
         category="region",
         variant='',
         filename="models_eynollah/eynollah-main-regions-ensembled_20210425",

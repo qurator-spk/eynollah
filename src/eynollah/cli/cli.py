@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import sys
@@ -16,7 +17,7 @@ class EynollahCliCtx:
     """
     model_zoo: EynollahModelZoo
     device: str = ''
-    log_level : Union[str, None] = 'INFO'
+    log_level : str | None = 'INFO'
 
 
 @click.group()

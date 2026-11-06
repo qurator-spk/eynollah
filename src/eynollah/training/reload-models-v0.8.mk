@@ -22,6 +22,7 @@ CURRENT_MODELS += model_eynollah_ocr_cnnrnn_20250930
 CURRENT_MODELS += eynollah-binarization_20210425
 CURRENT_MODELS += eynollah-column-classifier_20210425
 CURRENT_MODELS += eynollah-enhancement_20210425
+CURRENT_MODELS += eynollah-main-regions_20231127_672_org_ens_11_13_16_17_18
 
 # tf (SavedModel format) for training
 # onnx conversion for fast inference
@@ -34,7 +35,7 @@ hdf5: $(CURRENT_MODELS:%=$(MODELS_DST)/%.h5)
 onnx: $(CURRENT_MODELS:%=$(MODELS_DST)/%.onnx)
 
 # distinguish tf from tf-serving: target pattern is the same,
-# so check if either is current goal, otherwise assumg tf
+# so check if either is current goal, otherwise assume tf
 $(MODELS_DST)/%: FORMAT = $(or $(filter tf-serving,$(MAKECMDGOALS)), tf)
 $(MODELS_DST)/%: $(MODELS_SRC)/%
 	$(if $(and $(filter tf-serving,$(FORMAT)),$(findstring _ocr,$@)),$(warning skipping $@: OCR CTC decoder fails in TF-Serving) : )\

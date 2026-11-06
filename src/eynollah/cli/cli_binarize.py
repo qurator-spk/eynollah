@@ -43,11 +43,11 @@ def binarize_cli(
         overwrite,
 ):
     """
-    Binarize images with a ML model
+    Binarize images with a deep learning model:
     """
-    from ..sbb_binarize import SbbBinarizer
+    from ..binarize import Binarizer
     assert bool(input_image) != bool(dir_in), "Either -i (single input) or -di (directory) must be provided, but not both."
-    binarizer = SbbBinarizer(model_zoo=ctx.obj.model_zoo,
+    binarizer = Binarizer(model_zoo=ctx.obj.model_zoo,
                              device=ctx.obj.device)
     binarizer.run(
         image_filename=input_image,

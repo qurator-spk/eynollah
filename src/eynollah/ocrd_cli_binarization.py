@@ -1,5 +1,5 @@
+from __future__ import annotations
 from functools import cached_property
-from typing import Optional
 
 from PIL import Image
 from frozendict import frozendict
@@ -13,17 +13,17 @@ from ocrd.decorators import ocrd_cli_options, ocrd_cli_wrap_processor
 
 from eynollah.model_zoo.model_zoo import EynollahModelZoo
 
-from .sbb_binarize import SbbBinarizer
+from .binarize import Binarizer
 from .utils.pil_cv2 import cv2pil
 
 
-class SbbBinarizeProcessor(Processor):
+class BinarizeProcessor(Processor):
     # already employs GPU (without singleton process atm)
     max_workers = 1
 
     @cached_property
     def executable(self):
-        return 'ocrd-sbb-binarize'
+        return 'ocrd-eynollah-binarize'
 
     def setup(self):
         """
@@ -32,9 +32,9 @@ class SbbBinarizeProcessor(Processor):
         # resolve relative path via OCR-D ResourceManager
         assert isinstance(self.parameter, frozendict)
         model_zoo = EynollahModelZoo(basedir=self.parameter['model'])
-        self.binarizer = SbbBinarizer(model_zoo=model_zoo, logger=self.logger)
+        self.binarizer = Binarizer(model_zoo=model_zoo, logger=self.logger)
 
-    def process_page_pcgts(self, *input_pcgts: Optional[OcrdPage], page_id: Optional[str] = None) -> OcrdPageResult:
+    def process_page_pcgts(self, *input_pcgts: OcrdPage | None, page_id: str | None = None) -> OcrdPageResult:
         """
         Binarize images with sbb_binarization (based on selectional auto-encoders).
 
@@ -106,4 +106,4 @@ class SbbBinarizeProcessor(Processor):
 @command()
 @ocrd_cli_options
 def main(*args, **kwargs):
-    return ocrd_cli_wrap_processor(SbbBinarizeProcessor, *args, **kwargs)
+    return ocrd_cli_wrap_processor(BinarizeProcessor, *args, **kwargs)

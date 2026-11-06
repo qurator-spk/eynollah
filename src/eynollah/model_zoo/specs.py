@@ -1,9 +1,9 @@
+from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, List, Set, Tuple
 
 
 @dataclass
-class EynollahModelSpec():
+class EynollahModelSpec:
     """
     Describing a single model abstractly.
     """
@@ -16,25 +16,26 @@ class EynollahModelSpec():
     variant: str = ''
     help: str = ''
 
-class EynollahModelSpecSet():
+class EynollahModelSpecSet:
     """
     List of all used models for eynollah.
     """
-    specs: List[EynollahModelSpec]
+    specs: list[EynollahModelSpec]
 
-    def __init__(self, specs: List[EynollahModelSpec]) -> None:
+    def __init__(self, specs: list[EynollahModelSpec]) -> None:
         self.specs = sorted(specs, key=lambda x: x.category + '0' + x.variant)
-        self.categories: Set[str] = set([spec.category for spec in self.specs])
-        self.variants: Dict[str, Set[str]] = {
-            spec.category: set([x.variant for x in self.specs if x.category == spec.category])
+        self.categories: set[str] = {spec.category for spec in self.specs}
+        self.variants: dict[str, set[str]] = {
+            spec.category: {x.variant for x in self.specs
+                            if x.category == spec.category}
             for spec in self.specs
         }
-        self._index_category_variant: Dict[Tuple[str, str], EynollahModelSpec] = {
+        self._index_category_variant: dict[tuple[str, str], EynollahModelSpec] = {
             (spec.category, spec.variant): spec
             for spec in self.specs
         }
 
-    def asdict(self) -> Dict[str, Dict[str, str]]:
+    def asdict(self) -> dict[str, dict[str, str]]:
         return {
             spec.category: {
                 spec.variant: spec.filename
