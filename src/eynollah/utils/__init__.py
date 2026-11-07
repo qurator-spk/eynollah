@@ -804,7 +804,7 @@ def order_of_regions(
                 # there is no k (=i or any contour already in that group)
                 # horizontally in j's vicinity (overlapping more than 10% of their width):
                 not any(max(0, min(x_max[j], x_max[k]) - max(x_min[j], x_min[k])) >
-                        min(x_max[j] - x_min[j], x_max[k] - x_min[k]) * 0.1
+                        max(x_max[j] - x_min[j], x_max[k] - x_min[k]) * 0.1
                         for k in groups[-1])
                 ):
             groups[-1].append(j)
