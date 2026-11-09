@@ -23,7 +23,7 @@ jobs:
         sudo rm -rf "/usr/local/share/boost"
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
         df -h
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # - name: Lint with ruff
     #   uses: astral-sh/ruff-action@v3
@@ -31,7 +31,7 @@ jobs:
     #     src: "./src"
 
     - name: Try to restore models_eynollah
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       id: all_model_cache
       with:
         path: models_eynollah
@@ -43,14 +43,14 @@ jobs:
         make models
         ls -la models_eynollah
 
-    - uses: actions/cache/save@v4
+    - uses: actions/cache/save@v6
       if: steps.all_model_cache.outputs.cache-hit != 'true'
       with:
         path: models_eynollah
         key: models_eynollah-${{ hashFiles('src/eynollah/model_zoo/default_specs.py') }}
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -81,7 +81,7 @@ jobs:
         coverage xml
 
     - name: Store coverage results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
           name: coverage-report_${{ matrix.python-version }}
           path: |
@@ -91,7 +91,7 @@ jobs:
             coverage.json
 
     - name: Upload coverage results
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v7
       with:
         files: coverage.xml
         fail_ci_if_error: false
