@@ -1085,11 +1085,6 @@ class Eynollah:
             image_page,
             False, cols=num_col_classifier)
 
-        drops = regions_fully == label_drop_fl_model
-        regions_fully[drops] = label_text
-        # rs: why erode to text here, when fill_bb... will mask out text (only allowing img/drop/bg)?
-        drops = cv2.erode(drops.astype(np.uint8), KERNEL, iterations=1) == 1
-        regions_fully[drops] = label_drop_fl_model
         drops = fill_bb_of_drop_capitals(regions_fully, text_regions_p)
         text_regions_p[drops] = label_drop_fl
 
@@ -1760,7 +1755,7 @@ class Eynollah:
             regions_fully, regionsfl_confidence = \
                 self.get_full_layout(image_page, text_regions_p, num_col_classifier)
 
-            drop_caps_cont = return_contours_of_class(text_regions_p, label_drop_fl, min_area=1e-4)
+            drop_caps_cont = return_contours_of_class(text_regions_p, label_drop_fl, min_area=5e-4)
             drop_caps_conf = get_region_confidences(drop_caps_cont, regionsfl_confidence)
             drop_caps = [Region(cont, conf=conf)
                          for cont, conf in zip(drop_caps_cont, drop_caps_conf)]

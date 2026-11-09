@@ -1,7 +1,6 @@
 from __future__ import annotations
 from collections.abc import Iterable
 from logging import getLogger
-import time
 import math
 from dataclasses import dataclass, field
 from itertools import islice, compress
@@ -548,41 +547,77 @@ def fill_bb_of_drop_capitals(
     and early layout model (after post-processing), re-assign regions which
     are (large enough and) majority classified as drop-capital to that label.
     """
-    drop_mask = (full_prediction == label_drop_fl_model).astype(np.uint8)
-    drop_cont = return_contours_of_class(drop_mask, 1, 1e-5)
-    text_mask = ((early_prediction == label_text) |
-                 # (early_prediction == label_marg_fl) |
-                 (early_prediction == label_imgs_fl))
-    _, text_segs, text_bbox, _ = cv2.connectedComponentsWithStats(early_prediction * text_mask)
+    drop_cont = return_contours_of_class(full_prediction, label_drop_fl_model, 5e-4)
+    text_mask = np.isin(early_prediction,
+                        (label_text,
+                         # label_marg_fl,
+                         label_imgs_fl))
+    _, text_segs = cv2.connectedComponents(early_prediction * text_mask)
+    # re-separate imgs from text labels
+    factor = label_imgs_fl + 1
+    text_segs = (text_segs * factor) + (early_prediction * text_mask) % factor
+    text_stat = [None]
+    for label in np.unique(text_segs)[1:]:
+        mask0 = text_segs == label
+        bbox0 = cv2.boundingRect(np.array(mask0.nonzero()).T)
+        area0 = np.count_nonzero(mask0)
+        label0 = label % factor
+        text_stat.append((bbox0, area0, mask0, label0))
 
+    # extend segments to full bbox (if mostly drop-capital in FL and text/img in EL)
+    # or to FL drop|imgs|bg mask (otherwise)
     for contour in drop_cont:
-        area_drop = cv2.contourArea(contour)
+        area = cv2.contourArea(contour)
         x, y, w, h = cv2.boundingRect(contour)
         box = slice(y, y + h), slice(x, x + w)
         area_box = w * h
-        area_text_in_early_layout = np.sum(text_mask[box] == label_text)
+        area_text_in_early_layout = np.count_nonzero(text_mask[box])
 
-        if (area_drop > 0.6 * area_box and
+        if (area > 0.6 * area_box and
             area_text_in_early_layout >= 0.3 * area_box):
             mask = np.ones((h, w), dtype=bool)
         else:
-            mask = ((full_prediction[box] == label_drop_fl_model) |
-                    (full_prediction[box] == label_imgs_fl_model) |
-                    (full_prediction[box] == label_bg))
+            mask = np.isin(full_prediction[box],
+                           (label_drop_fl_model,
+                            label_imgs_fl_model,
+                            label_bg))
+        # plt.subplot(1, 2, 1, title="full prediction before")
+        # plt.imshow(full_prediction)
+        # plt.gca().add_patch(mpatches.Polygon(contour[:, 0], closed=False, fill=False, color='red'))
         full_prediction[box][mask] = label_drop_fl_model
 
-        # also try to enlarge to corresponding labels in early_prediction
-        for label in range(1, len(text_bbox)):
-            x0, y0, w0, h0, area0 = text_bbox[label]
+        # try to extend to corresponding labels in EL, too
+        # plt.subplot(1, 2, 2, title="full prediction after")
+        for bbox0, area0, mask0, label0 in text_stat[1:]:
+            y0, x0, h0, w0 = bbox0
             x1 = max(0, x0 - x)
             y1 = max(0, y0 - y)
             w1 = min(w0, w - x1) if x0 >= x else min(w, w0 - x + x0)
             h1 = min(h0, h - y1) if y0 >= y else min(h, h0 - y + y0)
             if w1 < 0 or h1 < 0:
                 continue
-            area1 = np.count_nonzero(mask[y1: y1 + h1, x1: x1 + w1])
-            if area1 and area1 >= 0.8 * area0:
-                full_prediction[text_segs == label] = label_drop_fl_model
+            area1 = np.count_nonzero(mask * mask0[box])
+            if area1 < 0.5 * area:
+                continue
+            # EL label and drop-cap segment do intersect meaningfully
+            mask2 = np.isin(full_prediction,
+                            (label_drop_fl_model,
+                             label_imgs_fl_model,
+                             label_bg)) * mask0
+            area2 = np.count_nonzero(mask2)
+            # plt.gca().add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='blue'))
+            if area1 >= 0.8 * area0 or (area1 > 0.5 * area0 and
+                                        area2 > 0.8 * area0):
+                # mask or extended mask has large recall w.r.t. CC
+                full_prediction[mask2] = label_drop_fl_model
+                break
+            elif area1 < 0.2 * area0 and label0 == label_imgs_fl:
+                # mask has tiny recall w.r.t. CC and CC is for image region
+                full_prediction[box][mask] = label_imgs_fl_model
+                # plt.gca().add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='red'))
+                break
+        # plt.imshow(full_prediction)
+        # plt.show()
 
     return full_prediction == label_drop_fl_model
 
