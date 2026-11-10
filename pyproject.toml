@@ -41,6 +41,8 @@ classifiers = [
 eynollah = "eynollah.cli:main"
 eynollah-training = "eynollah.training.cli:main"
 ocrd-eynollah-segment = "eynollah.ocrd_cli:main"
+ocrd-eynollah-binarize = "eynollah.ocrd_cli_binarization:main"
+# NB: Renamed in v0.10.0, retaining alias to keep OCR-D workflows running
 ocrd-sbb-binarize = "eynollah.ocrd_cli_binarization:main"
 
 [project.urls]

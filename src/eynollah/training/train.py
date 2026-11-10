@@ -29,7 +29,7 @@ except ImportError:
 
 from .metrics import (
     soft_dice_loss,
-    weighted_categorical_crossentropy,
+    weighted_categorical_cross_entropy,
     get as get_metric,
     metrics_superposition,
     ConfusionMatrix,
@@ -273,10 +273,10 @@ def config_params():
     learning_rate = 1e-4  # Set the learning rate.
     if task in ["segmentation", "binarization"]:
         is_loss_soft_dice = False  # Use soft dice as loss function. When set to true, "weighted_loss" must be false.
-        weighted_loss = False  # Use weighted categorical cross entropy as loss fucntion. When set to true, "is_loss_soft_dice" must be false.
+        weighted_loss = False  # Use weighted categorical cross entropy as loss function. When set to true, "is_loss_soft_dice" must be false.
         add_ncc_loss = 0 # Add regression loss for number of connected components. When non-zero, use this as weight for the nCC term.
     elif task == "classification":
-        f1_threshold_classification = None # This threshold is used to consider models with an evaluation f1 scores bigger than it. The selected model weights undergo a weights ensembling. And avreage ensembled model will be written to output.
+        f1_threshold_classification = None # This threshold is used to consider models with an evaluation f1 scores bigger than it. The selected model weights undergo a weights ensembling. And average ensembled model will be written to output.
         classification_classes_name = None # Dictionary of classification classes names.
     patches = False  # Divides input image into smaller patches (input size of the model) when set to true. For the model to see the full image, like page extraction, set this to false.
     augmentation = False  # To apply any kind of augmentation, this parameter must be set to true.
@@ -291,11 +291,11 @@ def config_params():
             padd_colors = None # List of padding colors, but only "white" or "black" or both.
         padding_black = False # If true, black padding will be applied to the image.
         scaling = False  # Whether images will be scaled up or down. Requires "scales" setting.
-        scaling_bluring = False  # Whether a combination of scaling and blurring will be applied to the image.
+        scaling_blurring = False  # Whether a combination of scaling and blurring will be applied to the image.
         scaling_binarization = False  # Whether a combination of scaling and binarization will be applied to the image.
         scaling_brightness = False  # Whether a combination of scaling and brightening will be applied to the image.
         scaling_flip = False  # Whether a combination of scaling and flipping will be applied to the image.
-        if scaling or scaling_brightness or scaling_bluring or scaling_binarization or scaling_flip:
+        if scaling or scaling_brightness or scaling_blurring or scaling_binarization or scaling_flip:
             scales = None  # Scale patches for augmentation.
         if flip_aug or scaling_flip:
             flip_index = None  # List of codes (as in cv2.flip) for flip augmentation.
@@ -331,9 +331,9 @@ def config_params():
         if channels_shuffling:
             shuffle_indexes = None # List of channels to switch between.
         rotation = False # Whether images will be rotated by 90 degrees.
-        rotation_not_90 = False # Whether images will be rotated arbitrarily (skewed). Requires "thetha" setting.
+        rotation_not_90 = False # Whether images will be rotated arbitrarily (skewed). Requires "theta" setting.
         if rotation_not_90:
-            thetha = None  # List of rotation angles in degrees.
+            theta = None  # List of rotation angles in degrees.
         if task == 'cnn-rnn-ocr':
             white_noise_strap = False # Whether white noise will be applied on some straps on the textline image.
             textline_skewing = False # Whether textline images will be skewed for augmentation.
@@ -346,9 +346,9 @@ def config_params():
             pepper_aug = False # Whether pepper noise will be added to textline images.
             if pepper_aug or binarization and pepper_bin_aug:
                 pepper_indexes = None # List of pepper noise factors, e.g. [0.01, 0.005].
-            color_padding_rotation = False # Whether images will be rotated with color padding. Requires "thetha_padd" setting.
+            color_padding_rotation = False # Whether images will be rotated with color padding. Requires "theta_padd" setting.
             if color_padding_rotation:
-                thetha_padd = None # List of angles (in degrees) used for rotation alongside padding.
+                theta_padd = None # List of angles (in degrees) used for rotation alongside padding.
     dir_train = None  # Directory of training dataset with subdirectories having the names "images" and "labels".
     dir_eval = None  # Directory of validation dataset with subdirectories having the names "images" and "labels".
     dir_output = None  # Directory where the augmented training data and the model checkpoints will be saved.
@@ -382,7 +382,7 @@ def run(_config,
         # dependent config keys need a default,
         # otherwise yields sacred.utils.ConfigAddedError
         ## if rotation_not_90
-        thetha=None,
+        theta=None,
         is_loss_soft_dice=False,
         weighted_loss=False,
         add_ncc_loss=None,
@@ -405,7 +405,7 @@ def run(_config,
         ## if task=cnn-rnn-ocr
         characters_txt_file: Optional[str]=None,
         color_padding_rotation=False,
-        thetha_padd=None,
+        theta_padd=None,
         bin_deg=False,
         image_inversion=False,
         white_noise_strap=False,
@@ -493,9 +493,9 @@ def run(_config,
             if is_loss_soft_dice:
                 loss = soft_dice_loss
             elif weighted_loss:
-                loss = weighted_categorical_crossentropy(weights)
+                loss = weighted_categorical_cross_entropy(weights)
             else:
-                loss = get_metric('categorical_crossentropy')
+                loss = get_metric('categorical_cross_entropy')
             if add_ncc_loss:
                 loss = metrics_superposition(loss, connected_components_loss(n_classes - 1),
                                              weights=[1 - add_ncc_loss, add_ncc_loss])
@@ -787,7 +787,7 @@ def run(_config,
                 model.load_weights(dir_of_start_model).assert_existing_objects_matched().expect_partial()
                 _log.info("reloaded weights from %s", dir_of_start_model)
 
-        model.compile(loss='categorical_crossentropy',
+        model.compile(loss='categorical_cross_entropy',
                       optimizer=Adam(learning_rate=0.001), # rs: why not learning_rate?
                       metrics=['accuracy', F1Score(average='macro', name='f1')])
 
@@ -834,7 +834,7 @@ def run(_config,
                 _log.info("reloaded weights from %s", dir_of_start_model)
 
         #f1score_tot = [0]
-        model.compile(loss="binary_crossentropy",
+        model.compile(loss="binary_cross_entropy",
                       #optimizer=SGD(learning_rate=0.01, momentum=0.9),
                       optimizer=Adam(learning_rate=0.0001), # rs: why not learning_rate?
                       metrics=['accuracy'])
@@ -844,7 +844,7 @@ def run(_config,
 
         classes = os.listdir(dir_flow_train_labels)
         if augmentation:
-            num_rows = len(classes)*(len(thetha) + 1)
+            num_rows = len(classes)*(len(theta) + 1)
         else:
             num_rows = len(classes)
         #ls_test = os.listdir(dir_flow_train_labels)
@@ -857,7 +857,7 @@ def run(_config,
         trainXY = generate_arrays_from_folder_reading_order(
             dir_flow_train_labels, dir_flow_train_imgs,
             n_batch, input_height, input_width, n_classes,
-            thetha, augmentation)
+            theta, augmentation)
 
         history = model.fit(trainXY,
                             steps_per_epoch=num_rows / n_batch,
