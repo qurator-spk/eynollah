@@ -23,8 +23,11 @@ from .contour import (
 from .resize import resize_image
 from .rotate import rotate_image
 
-from matplotlib import pyplot as plt
-from shapely.plotting import plot_polygon
+try:
+    from matplotlib import pyplot as plt
+    from shapely.plotting import plot_polygon
+except ImportError:
+    plt = plot_polygon = None
 
 MIN_THICKNESS_MAINTEXT_PRCT_HEIGHT = 14
 """minimum vertical extent of the text mask (in percent of image height)
@@ -92,7 +95,7 @@ def get_marginals(num_col, slope_deskew,
     Constrain the ranges of left and right points depending on the
     given number of columns:
     1. for one-column pages, the left / right positions can be between
-       the first / last occurrance of text and the middle of both
+       the first / last occurrence of text and the middle of both
     2. for two-column pages, similarly, but also one third towards
        the left / right from the middle.
 
@@ -427,18 +430,21 @@ def get_marginals(num_col, slope_deskew,
         indices = [0]
         for i, pair in enumerate(pairwise(text_mask_d_ys_plateaus), start=1):
             (prev_min, prev_max), (next_min, next_max) = pair
-            if np.isclose(np.mean(text_mask_d_ys[prev_min: prev_max]),
-                          np.mean(text_mask_d_ys[next_min: next_max]),
-                          rtol=0.2):
-                pass
-            else:
+            prev_mean = np.mean(text_mask_d_ys[prev_min: prev_max])
+            next_mean = np.mean(text_mask_d_ys[next_min: next_max])
+            if not np.isclose(prev_mean, next_mean, rtol=0.22):
                 indices.append(i)
         indices.append(length)
         text_mask_d_ys_plateaus = np.array(
             [(prev_min, next_max)
              for previ, nexti in pairwise(indices)
              if ((next_max := text_mask_d_ys_plateaus[previ: nexti, 1][-1]) -
-                 (prev_min := text_mask_d_ys_plateaus[previ: nexti, 0][0])) > 20])
+                 (prev_min := text_mask_d_ys_plateaus[previ: nexti, 0][0])) >
+             # minimum plateau width
+             MIN_DIST_GAPS])
+        if PLOT_GAPS_STEPS:
+            for prev_min, next_max in text_mask_d_ys_plateaus:
+                ax2.hlines([np.mean(text_mask_d_ys[prev_min: next_max])], prev_min, next_max, colors='lightblue')
         text_mask_d_ys_plateaus = text_mask_d_ys_plateaus.T
 
         if side == 'left':
@@ -459,6 +465,8 @@ def get_marginals(num_col, slope_deskew,
             next_max = text_mask_d_ys_plateaus[1, next_plateau]
             prev_min = text_mask_d_ys_plateaus[0, prev_plateau]
             prev_max = text_mask_d_ys_plateaus[1, prev_plateau]
+            if next_min - prev_max > MIN_DIST_GAPS:
+                continue # too wide (i.e. step is not directly surrounded by plateaus)
             if side == 'left':
                 jump_fract_main = (np.mean(text_mask_d_ys[prev_min: prev_max]) /
                                    np.mean(text_mask_d_ys[next_min: next_max]))

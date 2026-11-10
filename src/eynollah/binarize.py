@@ -1,5 +1,12 @@
 """
 Tool to load model and binarize a given image.
+
+    A hybrid CNN-Transformer model for Historical Document Image Binarization.
+    Vahid Rezanezhad, Konstantin Baierer, Clemens Neudecker. 2023.
+    In Proceedings of the 7th International Workshop on Historical Document Imaging and Processing (HIP'23).
+    Association for Computing Machinery, New York, NY, USA, 79–84.
+    https://doi.org/10.1145/3604951.3605508
+
 """
 
 # pyright: reportIndexIssue=false
@@ -21,7 +28,7 @@ from .utils.resize import resize_image
 from .utils.tiling import do_prediction
 from .utils import is_image_filename
 
-class SbbBinarizer(Eynollah):
+class Binarizer(Eynollah):
 
     def __init__(
             self,

@@ -433,7 +433,7 @@ class EynollahModelZoo:
 
     def _load_trocr_model(self, model_path, device: str = "") -> AnyModel:
         """
-        Load OCR model
+        Load TrOCR model
         """
         from transformers import VisionEncoderDecoderModel, TrOCRProcessor
         import numpy as np
