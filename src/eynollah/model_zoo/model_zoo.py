@@ -17,7 +17,7 @@ from .types import AnyModel, T
 MODEL_VRAM_LIMITS = {
     "binarization": 868, # due to bs 5
     "enhancement": 980, # due to bs 3
-    "col_classifier": 210,
+    "col_classifier": 512,
     "page": 618,
     "deskewing": 350,
     "textline": 1880, # 954 for bs 1
