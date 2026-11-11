@@ -43,7 +43,7 @@ help:
 
 # END-EVAL
 
-# Download and extract models to $(PWD)/models_layout_v0_6_0
+# Download and extract models to $(PWD)/models_eynollah
 models: $(EYNOLLAH_MODELS_DIR)
 
 # do not download these files if we already have the directories
