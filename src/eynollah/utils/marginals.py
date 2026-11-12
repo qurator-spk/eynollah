@@ -208,6 +208,9 @@ def get_marginals(num_col, slope_deskew,
     seps_contours = return_contours_of_class(seps_mask_d, 1, min_area_text)
     seps_x_min = np.array([cont[:, 0, 0].min() + 15 for cont in seps_contours])
     seps_x_max = np.array([cont[:, 0, 0].max() - 15 for cont in seps_contours])
+    tiny = seps_x_min > seps_x_max
+    seps_x_min = seps_x_min[~tiny]
+    seps_x_max = seps_x_max[~tiny]
 
     # find minima (horizontal gaps)
     gaps_y, props_y = find_peaks(
@@ -251,7 +254,7 @@ def get_marginals(num_col, slope_deskew,
         ax2.scatter(gaps_y, text_mask_d_ys[gaps_y], label='gaps_y', color='m')
         for i in range(len(gaps_y)):
             ax2.text(gaps_y[i], text_mask_d_ys[gaps_y[i]], str(props_y['prominences'][i]))
-        for i in range(len(seps_contours)):
+        for i in range(len(seps_x_min)):
             ax2.axvspan(seps_x_min[i], seps_x_max[i], color='lightgray')
         ax2.tick_params(top=True, labeltop=True, bottom=True, labelbottom=False,
                         left=True, labelleft=False, right=True, labelright=True,
@@ -467,12 +470,22 @@ def get_marginals(num_col, slope_deskew,
             prev_max = text_mask_d_ys_plateaus[1, prev_plateau]
             if next_min - prev_max > MIN_DIST_GAPS:
                 continue # too wide (i.e. step is not directly surrounded by plateaus)
+            prev_y = np.mean(text_mask_d_ys[prev_min: prev_max])
+            next_y = np.mean(text_mask_d_ys[next_min: next_max])
             if side == 'left':
-                jump_fract_main = (np.mean(text_mask_d_ys[prev_min: prev_max]) /
-                                   np.mean(text_mask_d_ys[next_min: next_max]))
+                jump_fract_main = prev_y / next_y
+                # if step also has a little gap (i.e. negative peak after left plateau)
+                # then prefer that level to get stronger signal
+                if (jump_fract_main >= MAX_THICKNESS_STEP_FRACT_MAIN and
+                    (prev_y0 := np.min(text_mask_d_ys[prev_max: jump])) < prev_y):
+                    jump_fract_main = prev_y0 / next_y
             else:
-                jump_fract_main = (np.mean(text_mask_d_ys[next_min: next_max]) /
-                                   np.mean(text_mask_d_ys[prev_min: prev_max]))
+                jump_fract_main = next_y / prev_y
+                # if step also has a little gap (i.e. negative peak before right plateau)
+                # then prefer that level to get stronger signal
+                if (jump_fract_main >= MAX_THICKNESS_STEP_FRACT_MAIN and
+                    (next_y0 := np.min(text_mask_d_ys[jump: next_min])) < next_y):
+                    jump_fract_main = next_y0 / prev_y
 
             if (MIN_THICKNESS_STEP_FRACT_MAIN < jump_fract_main < MAX_THICKNESS_STEP_FRACT_MAIN):
                 if PLOT_GAPS_STEPS:
