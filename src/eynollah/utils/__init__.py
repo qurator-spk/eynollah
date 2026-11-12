@@ -8,14 +8,14 @@ from itertools import islice, compress
 try:
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
+    from matplotlib import cm
 except ImportError:
-    plt = mpatches = None
+    plt = mpatches = cm = None
 import numpy as np
 from shapely import geometry, prepared, ops
 import cv2
 from scipy.signal import find_peaks
-from scipy.ndimage import gaussian_filter1d
-from skimage import morphology
+from scipy.ndimage import gaussian_filter1d, gaussian_filter
 
 from .is_nan import isNaN
 from .contour import (contour2polygon,
@@ -1639,52 +1639,194 @@ def ensure_array(obj: Iterable) -> np.ndarray:
         return np.fromiter(obj, object)
     return obj
 
-def seg_mask_label(segmap:np.ndarray,
-                   mask:np.ndarray,
-                   only:bool=False,
-                   label:int=2,
-                   skeletonize:bool=False,
-                   dilate:int=0,
-                   keep:int=0,
+def seg_mask_label(segmap: np.ndarray,
+                   conf: np.ndarray,
+                   only: bool = False,
+                   label: int = 2,
+                   boundary: bool = False,
+                   dilate: int = 0,
+                   keep: int = 0,
 ) -> None:
     """
-    overwrite an existing segmentation map from a binary mask with a given label
+    overwrite an existing segmentation map for a given label and per-class probability map
+
+    (apply adaptive thresholding for that label independent of argmax predictions)
 
     Args:
         segmap: integer array of existing segmentation labels ([H, W] or [B, H, W] shape)
-        mask: boolean array for specific label
+        conf: float array of confidence for specific label
     Keyword Args:
         label: the class label to be written
         only: whether to suppress the `label` outside `mask`
-        skeletonize: whether to transform the mask to its skeleton
+        boundary: whether to use the thresholding mask to find new boundaries between segments
         dilate: whether to also apply dilatation after this (convolution with square kernel of given size)
-        keep: if nonzero, a clas label to be kept untouched
+        keep: if nonzero, a predicted class label to be kept untouched
 
     Use this to enforce specific confidence thresholds or rules after segmentation.
     """
-    if not mask.any():
-        return
     # plt.subplot(2, 2, 1, title="segmap orig")
     # plt.imshow(segmap)
-    # plt.subplot(2, 2, 2, title="mask")
-    # plt.imshow(mask)
+    # plt.subplot(2, 2, 2, title="conf")
+    # plt.imshow(conf)
     if keep:
         keepmask = segmap == keep
     if only:
-        segmap[segmap == label] = 0
-    if skeletonize:
-        if mask.ndim == 3:
-            mask = np.stack(morphology.skeletonize(m) for m in mask)
+        #segmap[segmap == label] = 1 if skeletonize else 0
+        if boundary:
+            segmap[:] = expand_labels(segmap, bg=label)
         else:
-            mask = morphology.skeletonize(mask)
+            segmap[segmap == label] = 0
+    if boundary:
+        # segment+label text regions by artificial boundary fg...
+        # (only applies to text regions / class label 1)
+        text = segmap == 1
+        # use (smoothed) local adaptive threshold instead of fixed parameter:
+        confs = gaussian_filter(conf, 2.0) #5.0
+        threshold = threshold_niblack(confs, window_size=51, k=0.02)
+        ##threshold *= 1.2
+        mask = (confs > threshold)
+        # plt.imshow(np.stack([conf, 0.2*mask, 0.2*mask], axis=2))
+        if not mask.any():
+            return
+        # remove boundary fg from text mask, label connected components
+        _, labels, stats, _ = cv2.connectedComponentsWithStats(
+            (text & ~mask).astype(np.uint8), connectivity=4)
+        # filter tiny segments
+        tiny = np.flatnonzero(stats[:, -1] < 1e-4 * mask.size)
+        labels[np.isin(labels, tiny)] = 0
+        # expand segment labels into boundary fg
+        labels = expand_labels(labels) * text
+        # find new boundaries where labels meet
+        mask = find_boundaries(labels)
+        # plt.subplot(2,2,3, title="art boundary labelling")
+        # cmap = cm.rainbow
+        # cmap.set_bad(color='black')
+        # cmap.set_under(color='red')
+        # cmap.set_over(color='white')
+        # plt.imshow(labels, vmin=0, cmap=cmap)
+        # dilate new boundaries so findContours will pick them up
         if dilate:
-            kernel = np.ones((dilate, dilate), np.uint8)
-            mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1) > 0
+            kernel = np.ones((3, 3), np.uint8)
+            mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=dilate) > 0
+    else:
+        # use adaptive threshold instead of fixed parameter
+        conf8 = (conf * 255).astype(np.uint8)
+        mask = conf8 > threshold_otsu(conf8)
+        if not mask.any():
+            return
+    # apply result
     segmap[mask] = label
-    # plt.subplot(2, 2, 3, title="segmap masked")
-    # plt.imshow(segmap)
     if keep:
         segmap[keepmask] = keep
     # plt.subplot(2, 2, 4, title="segmap final")
     # plt.imshow(segmap)
     # plt.show()
+
+SKEL_KERNELS = [
+    np.array([[-1, -1, -1], [0, 1, 0], [1, 1, 1]], dtype=int),
+    np.array([[0, -1, -1], [1, 1, -1], [0, 1, 0]], dtype=int),
+]
+for kernel in list(SKEL_KERNELS):
+    for k in range(1, 4):
+        SKEL_KERNELS.append(np.rot90(kernel, k))
+
+def skeletonize_boundary(img):
+    """implement skimage.morphology.skeletonize via OpenCV (faster and better)"""
+    img = img.copy()
+    while True:
+        last = img
+        mask = np.zeros_like(img)
+        for kernel in SKEL_KERNELS:
+            mask |= cv2.morphologyEx(img, cv2.MORPH_HITMISS, kernel)
+            img = img & (~mask)
+        if np.array_equal(img, last):
+            break
+    return img
+
+
+PRUNE_KERNELS = [
+    np.array([[-1, -1, -1], [-1, 1, -1], [-1, 0, 0]], dtype=int),
+    np.array([[-1, -1, -1], [-1, 1, -1], [0, 0, -1]], dtype=int),
+]
+for kernel in list(PRUNE_KERNELS):
+    for k in range(1, 4):
+        PRUNE_KERNELS.append(np.rot90(kernel, k))
+EP_KERNELS = [
+    np.array([[1, -1, -1], [-1, 1, -1], [-1, -1, -1]], dtype=int),
+    np.array([[-1, -1, -1], [1, 1, -1], [-1, -1, -1]], dtype=int),
+]
+for kernel in list(EP_KERNELS):
+    for k in range(1, 4):
+        EP_KERNELS.append(np.rot90(kernel, k))
+
+def prune_boundary(skel, iterations=1):
+    """remove small branches from a skeleton"""
+    pruned = skel.copy()
+    for _ in range(iterations):
+        last = pruned
+        mask = np.zeros_like(pruned)
+        for kernel in PRUNE_KERNELS:
+            mask |= cv2.morphologyEx(pruned, cv2.MORPH_HITMISS, kernel)
+        pruned = pruned & (~mask)
+        if np.array_equal(pruned, last):
+            break
+    # re-grow endpoints
+    mask = np.zeros_like(pruned)
+    for kernel in EP_KERNELS:
+        mask |= cv2.morphologyEx(pruned, cv2.MORPH_HITMISS, kernel)
+    kernel = np.ones((3, 3))
+    for _ in range(iterations):
+        last = mask
+        mask = cv2.dilate(mask, kernel) & skel
+        if np.array_equal(mask, last):
+            break
+    return pruned | mask
+
+def traverse_contours(contours, hierarchy):
+    """parse cv2.findContours results"""
+    def get_next(idx, level=0):
+        while 0 <= idx < len(contours):
+            next_idx, prev_idx, child_idx, parent_idx = hierarchy[0, idx].tolist()
+            yield contours[idx], level
+            if child_idx >= 0:
+                yield from get_next(child_idx, level + 1)
+            idx = next_idx
+    if len(contours):
+        yield from get_next(0)
+
+def expand_labels(labels, maxdist=None, bg=0):
+    """implement skimage.segmentation.expand_labels via OpenCV (faster)"""
+    if not labels.any():
+        return labels
+    where = np.isin(labels, bg)
+    distances, indexes = cv2.distanceTransformWithLabels(
+        where.astype(np.uint8),
+        cv2.DIST_L2,
+        cv2.DIST_MASK_PRECISE,
+        labelType=cv2.DIST_LABEL_PIXEL)
+    spread = labels[~where][indexes - 1]
+    if maxdist is None:
+        return spread
+    spread *= (distances < maxdist)
+    return spread
+
+CROSS_KERNEL = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=np.uint8)
+
+def find_boundaries(labels):
+    """implement skimage.segmentation.find_boundaries (mode=inner) via OpenCV (faster)"""
+    labels = labels.astype(np.uint8)
+    eroded = cv2.erode(labels, CROSS_KERNEL)
+    dilated = cv2.dilate(labels, CROSS_KERNEL)
+    boundaries = (eroded != dilated) & (eroded > 0) & (dilated > 0)
+    return boundaries & (labels > 0)
+
+def threshold_niblack(image, window_size=15, k=0.1):
+    """implement skimage.filter.threshold_niblack via OpenCV (faster)"""
+    m = cv2.blur(image, (window_size, window_size))
+    v = cv2.boxFilter(np.square(image), -1, (window_size, window_size)) - np.square(m)
+    s = cv2.sqrt(v)
+    return m - k * s
+
+def threshold_otsu(image):
+    """implement skimage.filter.threshold_otsu via OpenCV (faster)"""
+    return cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]
