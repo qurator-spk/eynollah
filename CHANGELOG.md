@@ -13,6 +13,9 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 Changed:
   - CI: Update GitHub action runners, #230
 
+Fixed:
+  - `order_of_regions` now correctly calculates `max`, not `min`, #229
+
 ## [0.10.0] - 2026-11-06
 
 ### Fixed:
