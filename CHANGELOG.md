@@ -10,6 +10,8 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.10.1] - 2026-11-13
+
 Changed:
   - CI: Update GitHub action runners, #230
 
@@ -533,6 +535,7 @@ Fixed:
 Initial release
 
 <!-- link-labels -->
+[0.10.1]: ../../compare/v0.10.1...v0.10.0
 [0.10.0]: ../../compare/v0.10.0...v0.9.2
 [0.9.2]: ../../compare/v0.9.2...v0.9.1
 [0.9.1]: ../../compare/v0.9.1...v0.9.0
