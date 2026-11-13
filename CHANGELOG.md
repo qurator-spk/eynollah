@@ -10,6 +10,9 @@ Versioned according to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Changed:
+  - CI: Update GitHub action runners, #230
+
 ## [0.10.0] - 2026-11-06
 
 ### Fixed:
