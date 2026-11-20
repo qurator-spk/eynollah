@@ -786,7 +786,7 @@ class Eynollah:
 
         # if num_col_classifier == 1 or num_col_classifier == 2:
         #     mask_texts_only = cv2.morphologyEx(mask_texts_only, cv2.MORPH_OPEN, KERNEL, iterations=1)
-        mask_texts_only = cv2.dilate(mask_texts_only, kernel=np.ones((2, 2), np.uint8), iterations=1)
+        #mask_texts_only = cv2.dilate(mask_texts_only, kernel=np.ones((2, 2), np.uint8), iterations=1)
 
         texts_only_cont = return_contours_of_class(mask_texts_only, 1, min_area=1e-4)
         seps_only_cont = return_contours_of_class(mask_seps_only, 1, min_area=1e-5, holes=True)
