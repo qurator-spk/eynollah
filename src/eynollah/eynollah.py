@@ -1761,8 +1761,8 @@ class Eynollah:
                          for cont, conf in zip(drop_caps_cont, drop_caps_conf)]
             drop_caps_mask = np.zeros_like(regions_without_separators)
             drop_caps_mask = cv2.fillPoly(drop_caps_mask, pts=drop_caps_cont, color=1)
-            regions_without_separators[drop_caps_mask] = 1 # also cover in reading-order
-            textline_mask_tot_ea[drop_caps_mask] = 0 # skip for textlines
+            regions_without_separators[drop_caps_mask == 1] = 1 # also cover in reading-order
+            textline_mask_tot_ea[drop_caps_mask == 1] = 0 # skip for textlines
             t6 = time.time()
             self.logger.info("Full layout took %.1fs", t6 - t5)
         else:
