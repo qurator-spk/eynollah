@@ -69,6 +69,7 @@ from .utils import (
     find_num_col,
     merge_drop_capitals,
     split_textregion_main_vs_head,
+    text_region_line_consistency,
     small_textlines_to_parent_adherence2,
     order_of_regions,
     find_number_of_columns_in_document,
@@ -798,6 +799,9 @@ class Eynollah:
         text_regions_p = cv2.fillPoly(text_regions_p, pts=texts_only_cont, color=label_text)
         text_regions_p = cv2.fillPoly(text_regions_p, pts=tabs_only_cont, color=label_tabs)
         text_regions_p[mask_art_only] = 0 # ensure instances are still separated
+
+        lines_cont = return_contours_of_class(textline_mask_tot_ea, 1, min_area=1e-5)
+        text_region_line_consistency(text_regions_p, texts_only_cont, lines_cont)
 
         # plt.figure("early layout regions")
         # plt.subplot(1, 2, 1, title="early regions")

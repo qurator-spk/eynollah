@@ -702,6 +702,92 @@ def split_textregion_main_vs_head(
             list(compress(textregions, ~main)),
     )
 
+def text_region_line_consistency(
+        text_regions_p: np.ndarray,
+        texts_cont: list[np.ndarray],
+        lines_cont: list[np.ndarray],
+) -> None:
+    """try to repair low-quality layout prediction by utilising region/line consistency
+
+    ensure that regions with only one line stretching to another region
+    get reconnected, and that regions with no lines get removed
+    """
+    # lines_bbox = np.array([cv2.boundingRect(cont) for cont in lines_cont])
+    lines_area = np.array([cv2.contourArea(cont) for cont in lines_cont])
+    # lines_cent = np.array(find_center_of_contours(lines_cont)).T
+    lines_comp = np.zeros(text_regions_p.shape, dtype=np.uint32)
+    nlines = 1 + len(lines_cont)
+    for i in range(1, nlines):
+        lines_comp = cv2.fillPoly(lines_comp, pts=[lines_cont[i - 1]], color=i)
+
+    # texts_bbox = np.array([cv2.boundingRect(cont) for cont in texts_cont])
+    texts_area = np.array([cv2.contourArea(cont) for cont in texts_cont])
+    # texts_cent = np.array(find_center_of_contours(texts_cont)).T
+    texts_comp = np.zeros(text_regions_p.shape, dtype=np.uint32)
+    ntexts = 1 + len(texts_cont)
+    for i in range(1, ntexts):
+        texts_comp = cv2.fillPoly(texts_comp, pts=[texts_cont[i - 1]], color=i)
+
+    # find correlations
+    both_comp = (nlines + 1) * texts_comp + lines_comp
+    # plt.imshow(both_comp)
+    # for i in range(1, nlines):
+    #     plt.gca().add_patch(mpatches.Rectangle(lines_bbox[i - 1, :2], *lines_bbox[i - 1, 2:4],
+    #                                            fill=False, linewidth=1, color='green'))
+    #     plt.text(*lines_cent[i - 1], "line %d" % i, c='green')
+    # for i in range(1, ntexts):
+    #     plt.gca().add_patch(mpatches.Rectangle(texts_bbox[i - 1, :2], *texts_bbox[i - 1, 2:4],
+    #                                            fill=False, linewidth=1, color='red'))
+    #     plt.text(*texts_cent[i - 1], "text %d" % i, c='red')
+    # plt.show()
+    both, both_count = np.unique(both_comp, return_counts=True)
+    corrs = np.array(np.divmod(both, nlines + 1)) # [2, N]
+
+    # sorting by area, remove or reconnect text regions
+    for text in sorted(range(1, ntexts),
+                       key=lambda i: texts_area[i - 1]):
+        lines = np.setdiff1d(corrs[1][corrs[0] == text], [0])
+        if len(lines) == 0:
+            where = texts_comp == text
+            text_regions_p[where] = 0
+            # plt.title("no-line region removed")
+            # plt.imshow(where)
+            # plt.gca().add_patch(mpatches.Rectangle(texts_bbox[text - 1, :2], *texts_bbox[text - 1, 2:4],
+            #                                        fill=False, linewidth=1, color='red'))
+            # plt.text(*texts_cent[text - 1], "text %d" % text, c='red')
+            # plt.show()
+            continue
+
+        # ignore fragments
+        count = both_count[np.isin(both, (nlines + 1) * text + lines)]
+        lines = lines[count > 0.2 * np.median(count)]
+
+        if len(lines) == 1:
+            line = lines[0]
+            texts = np.setdiff1d(corrs[0][corrs[1] == line], [0])
+            # # ignore fragments
+            # count = both_count[np.isin(both, (nlines + 1) * texts + line)]
+            # print("line fragment regions", text, line, count > 0.2 * np.median(count))
+            # texts = texts[count > 0.2 * np.median(count)]
+            if text not in texts:
+                continue
+            if len(texts) > 1:
+                # get bridge between them by line
+                bridge = (lines_comp == line) & ~np.isin(texts_comp, texts)
+                if np.count_nonzero(bridge) > texts_area[text - 1]:
+                    continue
+                text_regions_p[bridge] = 1
+                corrs[1][corrs[0] == text] = 0
+                # plt.title("single-line region bridged to same-line")
+                # plt.imshow(bridge)
+                # plt.gca().add_patch(mpatches.Rectangle(texts_bbox[text - 1, :2], *texts_bbox[text - 1, 2:4],
+                #                                        fill=False, linewidth=1, color='red'))
+                # plt.text(*texts_cent[text - 1], "text %d" % text, c='red')
+                # plt.gca().add_patch(mpatches.Rectangle(lines_bbox[line - 1, :2], *lines_bbox[line - 1, 2:4],
+                #                                        fill=False, linewidth=1, color='green'))
+                # plt.text(*lines_cent[line - 1], "line %d" % line, c='green')
+                # plt.show()
+
 def small_textlines_to_parent_adherence2(
         textregions: list[TextRegion],
         area_factor: float,
