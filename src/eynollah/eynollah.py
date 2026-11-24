@@ -67,7 +67,7 @@ from .utils import (
     crop_image_inside_box,
     box2slice,
     find_num_col,
-    fill_bb_of_drop_capitals,
+    merge_drop_capitals,
     split_textregion_main_vs_head,
     small_textlines_to_parent_adherence2,
     order_of_regions,
@@ -1085,7 +1085,7 @@ class Eynollah:
             image_page,
             False, cols=num_col_classifier)
 
-        drops = fill_bb_of_drop_capitals(regions_fully, text_regions_p)
+        drops = merge_drop_capitals(regions_fully, text_regions_p)
         text_regions_p[drops] = label_drop_fl
 
         self.logger.debug('exit get_full_layout')

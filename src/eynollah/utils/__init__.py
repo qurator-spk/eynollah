@@ -534,7 +534,7 @@ def find_num_col(
     #print(peaks_neg_true, "peaks_neg_true")
     return len(peaks_neg_true), peaks_neg_true
 
-def fill_bb_of_drop_capitals(
+def merge_drop_capitals(
         full_prediction, early_prediction,
         label_bg=0,
         label_text=1,
@@ -546,6 +546,15 @@ def fill_bb_of_drop_capitals(
     Given segmentation maps from full layout model (including drop-capital)
     and early layout model (after post-processing), re-assign regions which
     are (large enough and) majority classified as drop-capital to that label.
+
+    Find drop-capital contours and early prediction segments: For each contour
+    and overlapping segment, if recall is large, then extend drop-cap mask to
+    the complete segment. Else if recall is significant for pure drop-cap, but
+    large for drop-cap | image | background, then extend, too. Else if recall
+    is tiny but precision is large and the segment is an image region, then
+    reject the drop-cap. Otherwise analyse connected components remaining when
+    subtracting the drop-cap from the segment: if chunks have tiny recall but
+    large precision (or vice versa), then extend drop-cap mask to those chunks.
     """
     drop_cont = return_contours_of_class(full_prediction, label_drop_fl_model, 5e-4)
     text_mask = np.isin(early_prediction,
@@ -569,25 +578,18 @@ def fill_bb_of_drop_capitals(
     for contour in drop_cont:
         area = cv2.contourArea(contour)
         x, y, w, h = cv2.boundingRect(contour)
-        box = slice(y, y + h), slice(x, x + w)
-        area_box = w * h
-        area_text_in_early_layout = np.count_nonzero(text_mask[box])
 
-        if (area > 0.6 * area_box and
-            area_text_in_early_layout >= 0.3 * area_box):
-            mask = np.ones((h, w), dtype=bool)
-        else:
-            mask = np.isin(full_prediction[box],
-                           (label_drop_fl_model,
-                            label_imgs_fl_model,
-                            label_bg))
-        # plt.subplot(1, 2, 1, title="full prediction before")
-        # plt.imshow(full_prediction)
-        # plt.gca().add_patch(mpatches.Polygon(contour[:, 0], closed=False, fill=False, color='red'))
-        full_prediction[box][mask] = label_drop_fl_model
+        # ax1 = plt.subplot(1, 2, 1, title="full prediction before")
+        # ax1.imshow(full_prediction)
+        # ax1.add_patch(mpatches.Polygon(contour[:, 0], closed=False, fill=False, color='red'))
+
+        mask = np.zeros_like(full_prediction)
+        mask = cv2.fillPoly(mask, pts=[contour], color=1).astype(bool)
+        full_prediction[mask] = label_drop_fl_model
 
         # try to extend to corresponding labels in EL, too
-        # plt.subplot(1, 2, 2, title="full prediction after")
+        # ax2 = plt.subplot(1, 2, 2, title="full prediction after")
+        split0 = []
         for bbox0, area0, mask0, label0 in text_stat[1:]:
             y0, x0, h0, w0 = bbox0
             x1 = max(0, x0 - x)
@@ -596,27 +598,46 @@ def fill_bb_of_drop_capitals(
             h1 = min(h0, h - y1) if y0 >= y else min(h, h0 - y + y0)
             if w1 < 0 or h1 < 0:
                 continue
-            area1 = np.count_nonzero(mask * mask0[box])
-            if area1 < 0.5 * area:
+            area1 = np.count_nonzero(mask * mask0)
+            if not area1:
                 continue
-            # EL label and drop-cap segment do intersect meaningfully
+            # EL label and drop-cap segment do intersect
+            # ax2.add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='blue'))
+            if area1 > 0.8 * area0:
+                # mask has large recall w.r.t. CC
+                mask |= mask0
+                # ax2.add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='lightblue'))
+                continue
             mask2 = np.isin(full_prediction,
                             (label_drop_fl_model,
                              label_imgs_fl_model,
                              label_bg)) * mask0
             area2 = np.count_nonzero(mask2)
-            # plt.gca().add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='blue'))
-            if area1 >= 0.8 * area0 or (area1 > 0.5 * area0 and
-                                        area2 > 0.8 * area0):
-                # mask or extended mask has large recall w.r.t. CC
-                full_prediction[mask2] = label_drop_fl_model
+            if area1 > 0.35 * area0 and area2 > 0.75 * area0:
+                # extended mask has large recall w.r.t. CC
+                mask |= mask0
+                # ax2.add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='blue'))
+                continue
+            if area1 > 0.5 * area and area1 < 0.2 * area0 and label0 == label_imgs_fl:
+                # mask has tiny recall but large precision w.r.t. CC and CC is for image region
+                full_prediction[mask] = label_imgs_fl_model
+                mask[:] = False
+                # ax2.add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='red'))
                 break
-            elif area1 < 0.2 * area0 and label0 == label_imgs_fl:
-                # mask has tiny recall w.r.t. CC and CC is for image region
-                full_prediction[box][mask] = label_imgs_fl_model
-                # plt.gca().add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='red'))
-                break
-        # plt.imshow(full_prediction)
+            split0.append(mask0)
+        for mask0 in split0:
+            area = np.count_nonzero(mask)
+            area0 = np.count_nonzero(mask0)
+            ncomps, comps = cv2.connectedComponents((mask0 & ~mask).astype(np.uint8))
+            for i in range(1, ncomps):
+                maski = comps == i
+                areai = np.count_nonzero(maski)
+                if areai < 0.1 * area0 and areai < 0.7 * area:
+                    mask += maski
+                elif areai < 0.7 * area0 and areai < 0.1 * area:
+                    mask += maski
+        full_prediction[mask] = label_drop_fl_model
+        # ax2.imshow(full_prediction)
         # plt.show()
 
     return full_prediction == label_drop_fl_model
