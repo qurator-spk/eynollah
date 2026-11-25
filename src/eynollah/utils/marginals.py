@@ -526,23 +526,35 @@ def get_marginals(num_col, slope_deskew,
 
     if point_l == 0 and point_r == width - 1:
         return
+    point_L = max(0, point_l - 3)
+    point_R = min(width - 1, point_r + 3)
 
     line_l = LineString([(point_l, -0.4 * height), (point_l, 1.4 * height)])
     line_r = LineString([(point_r, -0.4 * height), (point_r, 1.4 * height)])
+    line_L = LineString([(point_L, -0.4 * height), (point_L, 1.4 * height)])
+    line_R = LineString([(point_R, -0.4 * height), (point_R, 1.4 * height)])
     # rotate back (into undeskewed/original shape as early_layout input):
     line_l = rotate_polygon(line_l, slope_deskew, origin=(0.5 * width, 0.5 * height))
     line_r = rotate_polygon(line_r, slope_deskew, origin=(0.5 * width, 0.5 * height))
+    line_L = rotate_polygon(line_L, slope_deskew, origin=(0.5 * width, 0.5 * height))
+    line_R = rotate_polygon(line_R, slope_deskew, origin=(0.5 * width, 0.5 * height))
     main = Polygon([(0, 0), (0, height), (width, height), (width, 0)])
     if point_l > 0:
         page_l = split_polygon(main, line_l)
+        page_L = split_polygon(main, line_L)
         marg_l, main = page_l.geoms
+        marg_L, _ = page_L.geoms
     else:
         marg_l = Polygon()
+        marg_L = Polygon()
     if point_r < width - 1:
         page_r = split_polygon(main, line_r)
+        page_R = split_polygon(main, line_R)
         main, marg_r = page_r.geoms
+        _, marg_R = page_R.geoms
     else:
         marg_r = Polygon()
+        marg_R = Polygon()
 
     if PLOT_POLY_ROTAT:
         plt.imshow(early_layout)
@@ -554,8 +566,6 @@ def get_marginals(num_col, slope_deskew,
     main3 = main.buffer(3)
     marg_l3 = marg_l.buffer(3)
     marg_r3 = marg_r.buffer(3)
-    line_l3 = line_l.offset_curve(5)
-    line_r3 = line_r.offset_curve(-5)
 
     # re-assign (marg/main), cutting through existing contours if necessary
     text_contours = return_contours_of_class(early_layout, label_text, min_area_text)
@@ -580,9 +590,19 @@ def get_marginals(num_col, slope_deskew,
                 plot_polygon(poly, color='red')
         elif poly.intersects(marg_l) or poly.intersects(marg_r):
             # partial: split, but ignore marg parts overly vertical
-            inter = poly.intersection(marg_l)
-            iminx, iminy, imaxx, imaxy = inter.bounds
-            iaspect = (imaxy - iminy) / (imaxx - iminx)
+            def intersect(marg):
+                inter = poly.intersection(marg)
+                iminx, iminy, imaxx, imaxy = inter.bounds
+                iaspect = (imaxy - iminy) / (imaxx - iminx)
+                return inter, iminx, iminy, imaxx, imaxy, iaspect
+            try_l = intersect(marg_l)
+            try_L = intersect(marg_L)
+            if try_L[-1] < 0.8 * try_l[-1]:
+                inter, iminx, iminy, imaxx, imaxy, iaspect = try_L
+                line = line_L
+            else:
+                inter, iminx, iminy, imaxx, imaxy, iaspect = try_l
+                line = line_l
             if (
                     # ignore if intersection is almost vertical or tiny
                     not (iaspect > 4 and iaspect > 8 * aspect or
@@ -590,7 +610,7 @@ def get_marginals(num_col, slope_deskew,
                     # don't ignore if intersection takes entire margin
                     or np.isclose(imaxx - iminx, point_l - first_nonzero, rtol=0.05)
             ):
-                for geom in split_polygon(poly, line_l).geoms:
+                for geom in split_polygon(poly, line).geoms:
                     gminx, gminy, gmaxx, gmaxy = geom.bounds
                     gaspect = (gmaxy - gminy) / (gmaxx - gminx)
                     if not geom.within(marg_l3):
@@ -609,9 +629,14 @@ def get_marginals(num_col, slope_deskew,
                         plot_polygon(geom, color='blue')
                     marg_contours.append(polygon2contour(geom))
                     poly = poly.difference(geom).buffer(-0.01)
-            inter = poly.intersection(marg_r)
-            iminx, iminy, imaxx, imaxy = inter.bounds
-            iaspect = (imaxy - iminy) / (imaxx - iminx)
+            try_r = intersect(marg_r)
+            try_R = intersect(marg_R)
+            if try_R[-1] < 0.8 * try_r[-1]:
+                inter, iminx, iminy, imaxx, imaxy, iaspect = try_R
+                line = line_R
+            else:
+                inter, iminx, iminy, imaxx, imaxy, iaspect = try_r
+                line = line_r
             if (
                     # ignore if intersection is almost vertical or tiny
                     not (iaspect > 4 and iaspect > 8 * aspect or
@@ -619,7 +644,7 @@ def get_marginals(num_col, slope_deskew,
                     # don't ignore if intersection takes entire margin
                     or np.isclose(imaxx - iminx, last_nonzero - point_r, rtol=0.05)
             ):
-                for geom in split_polygon(poly, line_r).geoms:
+                for geom in split_polygon(poly, line).geoms:
                     gminx, gminy, gmaxx, gmaxy = geom.bounds
                     gaspect = (gmaxy - gminy) / (gmaxx - gminx)
                     if not geom.within(marg_r3):

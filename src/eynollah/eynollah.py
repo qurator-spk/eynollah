@@ -1772,7 +1772,6 @@ class Eynollah:
         self.logger.info("Step 3/5: Contour extraction")
         min_area_mar = 1e-5
         marginal_mask = (text_regions_p == label_marg_fl).astype(np.uint8)
-        marginal_mask = cv2.dilate(marginal_mask, KERNEL, iterations=2)
         marginals_cont = return_contours_of_class(marginal_mask, 1, min_area_mar)
         marginals_conf = get_region_confidences(marginals_cont, regions_confidence)
         marginals = [Region(cont, conf=conf)
