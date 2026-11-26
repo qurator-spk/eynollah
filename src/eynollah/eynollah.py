@@ -23,7 +23,7 @@ import sys
 
 import os
 import time
-from itertools import compress
+from itertools import compress, chain
 from collections import namedtuple
 from pathlib import Path
 import multiprocessing as mp
@@ -461,6 +461,7 @@ class Eynollah:
                 page_cropped = img[box2slice(box)]
                 page_mask = np.zeros((h, w), dtype=np.uint8)
                 page_mask = cv2.fillPoly(page_mask, pts=[page_cont - [x, y]], color=1)
+            self.logger.debug("Cropped page is %dx%d", page_cropped.shape[1], page_cropped.shape[0])
             self.logger.debug("exit extract_page")
         return page_cont, page_cropped, page_mask
 
@@ -698,14 +699,14 @@ class Eynollah:
         return result, conf_textline
 
     def get_early_layout(
-            self, img,
-            num_col_classifier,
+            self, img: np.ndarray,
+            num_col_classifier: int,
             label_text=1,
             label_imgs=2,
             label_seps=3,
             label_art=4,
             label_tabs=10,
-    ):
+    ) -> tuple:
         self.logger.debug("enter get_early_layout")
         t_in = time.time()
         erosion_hurts = False
@@ -735,7 +736,7 @@ class Eynollah:
 
         if self.skip_layout_and_reading_order:
             self.logger.debug("exit get_early_layout")
-            return erosion_hurts, None, None, None, None, textline_mask_tot_ea, None, None
+            return textline_mask_tot_ea, confidence_textline
 
         #print("inside 2 ", time.time()-t_in)
         if num_col_classifier < 3:
@@ -1564,6 +1565,7 @@ class Eynollah:
                    img_filename: str,
                    dir_out: str | None = None,
                    overwrite: bool = False,
+                   rot90: bool = False,
                    img_pil=None,
                    pcgts=None,
     ) -> None:
@@ -1611,6 +1613,11 @@ class Eynollah:
             image_width=image['img'].shape[1],
             image_height=image['img'].shape[0],
             pcgts=pcgts)
+        if rot90:
+            for key in image:
+                if key.startswith('img'):
+                    image[key] = np.rot90(image[key]) # or k=3?
+            writer.rot90 = True
 
         if os.path.exists(writer.output_filename):
             if overwrite:
@@ -1634,19 +1641,29 @@ class Eynollah:
         t1 = time.time()
         page_cont, image_page, mask_page = self.extract_page(image)
         page = Region(page_cont)
-        if not self.ignore_page_extraction:
-            self.logger.debug("Cropped page is %dx%d", image_page.shape[1], image_page.shape[0])
-            self.logger.info("Cropping took %.1fs", time.time() - t1)
+        self.logger.info("Cropping took %.1fs", time.time() - t1)
         if self.plotter:
             self.plotter.save_page_image(image_page, image['name'])
+
+        if not image_page.size:
+            self.logger.info("Cropped to zero - generating empty PAGE-XML")
+            pcgts = writer.build_pagexml(
+                page=page,
+                img_bin=self.imread(image, binary=True) if self.input_binary else None,
+                num_col=num_col_classifier,
+            )
+            if writer.pcgts is None:
+                writer.write_pagexml(pcgts)
+            self.logger.info("Job done in %.1fs", time.time() - t0)
+            return
 
         # Basic Processing Mode
         if self.skip_layout_and_reading_order:
             self.logger.info("Step 2/5: Basic Processing Mode")
             self.logger.info("Skipping layout analysis and reading order detection")
 
-            _, _, _, _, _, textline_mask_tot_ea, _, textline_confidence = \
-                self.get_early_layout(image_page, num_col_classifier)
+            (textline_mask_tot_ea,
+             textline_confidence) = self.get_early_layout(image_page, num_col_classifier)
 
             textline_mask_tot_ea *= mask_page
             textline_confidence *= mask_page
@@ -1689,24 +1706,15 @@ class Eynollah:
          text_regions_p,
          textline_mask_tot_ea,
          regions_confidence,
-         textline_confidence) = self.get_early_layout(image['img_res'], num_col_classifier)
+         textline_confidence) = self.get_early_layout(image['img_res'], # image_page
+                                                      num_col_classifier)
         t2 = time.time()
         self.logger.info("Early layout took %.1fs", t2 - t1)
         if self.plotter:
             self.plotter.save_plot_of_textlines(textline_mask_tot_ea, image['img_res'], image['name'])
 
-        slope_deskew = self.run_deskew(textline_mask_tot_ea, num_col_classifier)
-        page.skew = slope_deskew
-        if self.plotter:
-            self.plotter.save_deskewed_image(slope_deskew, image['img'], image['name'])
-        t3 = time.time()
-        self.logger.info("Deskewing took %.1fs", t3 - t2)
-
         # FIXME: post-hoc cropping (remove when models support it, and replace image['img_res'] with image_page)
         page_box = cv2.boundingRect(page.contour)
-        text_early_cont = [np.minimum([page_box[2:]],
-                                      cont - [page_box[:2]])
-                           for cont in text_early_cont]
         seplines_conf = get_region_confidences(seplines_cont, regions_confidence)
         seplines = [Region(np.minimum([page_box[2:]],
                                       cont - [page_box[:2]]),
@@ -1719,6 +1727,13 @@ class Eynollah:
         regions_confidence = regions_confidence[page_box] * mask_page
         textline_confidence = textline_confidence[page_box] * mask_page
 
+        slope_deskew = self.run_deskew(textline_mask_tot_ea, num_col_classifier)
+        page.skew = slope_deskew
+        if self.plotter:
+            self.plotter.save_deskewed_image(slope_deskew, image['img'], image['name'])
+        t3 = time.time()
+        self.logger.info("Deskewing took %.1fs", t3 - t2)
+
         num_col, num_col_classifier = \
             self.run_columns(text_regions_p,
                              slope_deskew,
@@ -1727,7 +1742,7 @@ class Eynollah:
                              erosion_hurts)
         t4 = time.time()
 
-        if not num_col and len(text_early_cont) == 0 or not image_page.size:
+        if not num_col and len(text_early_cont) == 0:
             self.logger.info("No columns detected - generating empty PAGE-XML")
 
             pcgts = writer.build_pagexml(
@@ -1826,6 +1841,24 @@ class Eynollah:
         textregions = self.filter_textregions_without_textlines(textregions)
         t8 = time.time()
         self.logger.info("Line contours took %.1fs", t8 - t7)
+
+        total_area = sum(region.area for region in chain(textregions, marginals))
+        rotated_area = sum(region.area * abs(region.skew) / 90.
+                           for region in chain(textregions, marginals))
+        self.logger.debug("rotated text area is %d%%", rotated_area / total_area * 100)
+        if total_area and 0.25 * total_area < rotated_area:
+            # area-weighted rate of >45° regions is more than 25%
+            # (we cannot use 50% here, because the textline model
+            #  is itself not 100% reliable at detecting vertical lines)
+            self.logger.warning("Detected likely ±90° rotation (%d%%), restarting '%s'",
+                                rotated_area / total_area * 100, image['name'])
+            self.run_single(img_filename,
+                            dir_out=dir_out,
+                            overwrite=overwrite,
+                            img_pil=img_pil,
+                            pcgts=pcgts,
+                            rot90=True)
+            return
 
         (marginals_left,
          marginals_right) = self.separate_marginals_and_order(

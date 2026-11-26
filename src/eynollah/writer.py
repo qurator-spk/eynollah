@@ -35,6 +35,7 @@ from .utils.contour import (
     bridge_polygons,
 )
 
+
 class EynollahXmlWriter:
 
     def __init__(
@@ -54,6 +55,7 @@ class EynollahXmlWriter:
         self.image_width = image_width
         self.scale_x = 1.0
         self.scale_y = 1.0
+        self.rot90 = False
 
     @property
     def image_filename_stem(self) -> str:
@@ -69,6 +71,9 @@ class EynollahXmlWriter:
         if offset is not None:
             poly = affinity.translate(poly, *offset)
         poly = affinity.scale(poly, xfact=1 / self.scale_x, yfact=1 / self.scale_y, origin=(0, 0))
+        if self.rot90:
+            # undo np.rot90 on input array to make consistent with original image
+            poly = affinity.translate(affinity.rotate(poly, 90, origin=(0, 0)), self.image_width, 0)
         poly = make_valid(ensure_polygon(clip_by_rect(poly, 0, 0, self.image_width, self.image_height)))
         return points_from_polygon(poly.exterior.coords[:-1])
 
@@ -115,17 +120,33 @@ class EynollahXmlWriter:
         seplines: list[Region] = [], # ruff: ignore[B006] (safe here)
     ):
         self.logger.debug('enter build_pagexml')
+        if self.rot90:
+            self.logger.info('images and coordinates were rotated by 90° during processing')
 
         # create the file structure
         pcgts = self.pcgts if self.pcgts else create_page_xml(
             self.image_filename, self.image_height, self.image_width)
         pcgts.Metadata.Comments = "num_col %d" % num_col
         if img_bin is not None:
+            if self.rot90:
+                img_bin = np.rot90(img_bin, k=-1)
             img_alt = AlternativeImageType(filename=img_bin, # will be replaced later
                                            comments="binarized")
             pcgts.Page.add_AlternativeImage(img_alt)
-        pcgts.Page.set_custom('layout {num_col:%d;} ' % num_col)
-        pcgts.Page.set_orientation(-page.skew)
+        custom = "num_col:%d; " % num_col
+        if self.rot90:
+            # rot90: page had mostly regions with mostly vertical textlines,
+            #        so input rotated CCW by 90° and re-run;
+            #        but we cannot on principle tell CW or CCW apart;
+            #        so this must be disambiguated by OCR afterwards
+            # (by trying to rotate a few lines by 180° before recognition,
+            #  and if this yields a consistent confidence boost, then
+            #  adding 180° to Page/@orientation, reversing ReadingOrder and
+            #  reversing order of lines within all regions before running
+            #  recognition fully; finally, regardless, removing this tag)
+            custom += 'maybe_upside_down: true; '
+        pcgts.Page.set_custom('layout {%s} ' % custom)
+        pcgts.Page.set_orientation(-page.skew - 90 * self.rot90)
         pcgts.Page.set_Border(BorderType(Coords=CoordsType(
             points=self.calculate_points(page.contour))))
         x, y, _, _ = cv2.boundingRect(page.contour)
@@ -139,8 +160,18 @@ class EynollahXmlWriter:
                 id=counter.next_region_id, type_='paragraph',
                 Coords=CoordsType(points=self.calculate_points(region.contour, offset, 6),
                                   conf=region.conf),
-                orientation=-region.skew
+                orientation=-region.skew - 90 * self.rot90
             )
+            if abs(region.skew) > 45:
+                # 45°: region had mostly vertical textlines,
+                #      but we cannot on principle tell CW or CCW apart;
+                #      so this must be disambiguated by OCR afterwards
+                # (by trying to rotate a few lines by 180° before recognition,
+                #  and if this yields a consistent confidence boost, then
+                #  adding 180° to Region/@orientation, reversing order of lines
+                #  within all regions before running recognition fully;
+                #  finally, regardless, removing this tag)
+                textregion.set_custom('layout {maybe_upside_down: true; }')
             self.serialize_lines_in_region(textregion, offset, counter, region.lines)
             pcgts.Page.add_TextRegion(textregion)
 
@@ -150,8 +181,10 @@ class EynollahXmlWriter:
                 id=counter.next_region_id, type_='heading',
                 Coords=CoordsType(points=self.calculate_points(region.contour, offset, 6),
                                   conf=region.conf),
-                orientation=-region.skew
+                orientation=-region.skew - 90 * self.rot90
             )
+            if abs(region.skew) > 45:
+                textregion.set_custom('layout {maybe_upside_down: true; }')
             self.serialize_lines_in_region(textregion, offset, counter, region.lines)
             pcgts.Page.add_TextRegion(textregion)
 
@@ -160,7 +193,7 @@ class EynollahXmlWriter:
                 id=counter.next_region_id, type_='drop-capital',
                 Coords=CoordsType(points=self.calculate_points(region.contour, offset, 6),
                                   conf=region.conf),
-                orientation=-region.skew
+                orientation=-region.skew - 90 * self.rot90
             )
             self.serialize_lines_in_region(textregion, offset, counter, [region])
             pcgts.Page.add_TextRegion(textregion)
@@ -170,9 +203,12 @@ class EynollahXmlWriter:
                 id=counter.next_region_id, type_='marginalia',
                 Coords=CoordsType(points=self.calculate_points(region.contour, offset, 6),
                                   conf=region.conf),
-                orientation=-region.skew
+                orientation=-region.skew - 90 * self.rot90
             )
-            textregion.set_custom('layout {sub_type:margi_left;} ')
+            custom = "sub_type:margi_left; "
+            if abs(region.skew) > 45:
+                custom += 'maybe_upside_down: true; '
+            textregion.set_custom('layout {%s} ' % custom)
             self.serialize_lines_in_region(textregion, offset, counter, region.lines)
             pcgts.Page.add_TextRegion(textregion)
 
@@ -181,9 +217,12 @@ class EynollahXmlWriter:
                 id=counter.next_region_id, type_='marginalia',
                 Coords=CoordsType(points=self.calculate_points(region.contour, offset, 6),
                                   conf=region.conf),
-                orientation=-region.skew
+                orientation=-region.skew - 90 * self.rot90
             )
-            textregion.set_custom('layout {sub_type:margi_right;} ')
+            custom = "sub_type:margi_right; "
+            if abs(region.skew) > 45:
+                custom += 'maybe_upside_down: true; '
+            textregion.set_custom('layout {%s} ' % custom)
             self.serialize_lines_in_region(textregion, offset, counter, region.lines)
             pcgts.Page.add_TextRegion(textregion)
 
@@ -192,6 +231,8 @@ class EynollahXmlWriter:
                 id=counter.next_region_id,
                 Coords=CoordsType(points=self.calculate_points(region.contour, offset, 6),
                                   conf=region.conf))
+            if self.rot90:
+                table.set_orientation(-90)
             pcgts.Page.add_TableRegion(table)
 
         for region in images:
@@ -199,6 +240,8 @@ class EynollahXmlWriter:
                 id=counter.next_region_id,
                 Coords=CoordsType(points=self.calculate_points(region.contour, offset, 2),
                                   conf=region.conf))
+            if self.rot90:
+                image.set_orientation(-90)
             pcgts.Page.add_ImageRegion(image)
 
         for region in seplines:
