@@ -632,9 +632,8 @@ def merge_drop_capitals(
             for i in range(1, ncomps):
                 maski = comps == i
                 areai = np.count_nonzero(maski)
-                if areai < 0.1 * area0 and areai < 0.7 * area:
-                    mask += maski
-                elif areai < 0.7 * area0 and areai < 0.1 * area:
+                if (areai < 0.1 * area0 and areai < 0.7 * area or
+                    areai < 0.7 * area0 and areai < 0.1 * area):
                     mask += maski
         full_prediction[mask] = label_drop_fl_model
         # ax2.imshow(full_prediction)

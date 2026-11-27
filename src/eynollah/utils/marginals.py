@@ -591,7 +591,7 @@ def get_marginals(num_col, slope_deskew,
         elif poly.intersects(marg_l) or poly.intersects(marg_r):
             # partial: split, but ignore marg parts overly vertical
             def intersect(marg):
-                inter = poly.intersection(marg)
+                inter = poly.intersection(marg) # ruff: ignore[B023] (safe here)
                 iminx, iminy, imaxx, imaxy = inter.bounds
                 iaspect = (imaxy - iminy) / (imaxx - iminx)
                 return inter, iminx, iminy, imaxx, imaxy, iaspect
