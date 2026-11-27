@@ -1566,9 +1566,10 @@ class Eynollah:
                    dir_out: str | None = None,
                    overwrite: bool = False,
                    rot90: bool = False,
+                   rot90_min_confidence: float = 0.,
                    img_pil=None,
                    pcgts=None,
-    ) -> None:
+    ) -> bool:
         # segment labels used by region models/arrays:
         # class | early | old full | new full | comment
         # ---
@@ -1624,7 +1625,7 @@ class Eynollah:
                 self.logger.warning("will overwrite existing output file '%s'", writer.output_filename)
             else:
                 self.logger.warning("will skip input for existing output file '%s'", writer.output_filename)
-                return
+                return False
 
         self.logger.info(f"Processing file: {writer.image_filename}")
         self.logger.info("Step 1/5: Image Enhancement")
@@ -1655,7 +1656,7 @@ class Eynollah:
             if writer.pcgts is None:
                 writer.write_pagexml(pcgts)
             self.logger.info("Job done in %.1fs", time.time() - t0)
-            return
+            return True
 
         # Basic Processing Mode
         if self.skip_layout_and_reading_order:
@@ -1694,7 +1695,7 @@ class Eynollah:
             if writer.pcgts is None:
                 writer.write_pagexml(pcgts)
             self.logger.info("Job done in %.1fs", time.time() - t0)
-            return
+            return True
 
         t1 = time.time()
         self.logger.info("Step 2/5: Layout Analysis")
@@ -1753,7 +1754,7 @@ class Eynollah:
             if writer.pcgts is None:
                 writer.write_pagexml(pcgts)
             self.logger.info("Job done in %.1fs", time.time() - t0)
-            return
+            return True
 
         if num_col_classifier in (1,2) and self.allow_marginalia != 'off':
             self.run_marginals(num_col_classifier, slope_deskew,
@@ -1845,20 +1846,48 @@ class Eynollah:
         total_area = sum(region.area for region in chain(textregions, marginals))
         rotated_area = sum(region.area * abs(region.skew) / 90.
                            for region in chain(textregions, marginals))
-        self.logger.debug("rotated text area is %d%%", rotated_area / total_area * 100)
-        if total_area and 0.25 * total_area < rotated_area:
+        confident_area = sum(region.area * region.conf
+                             for region in chain(textregions, marginals))
+        line_total_area = sum(line.area
+                              for line in chain.from_iterable(
+                                      region.lines
+                                      for region in chain(textregions, marginals)))
+        line_confident_area = sum(line.area * line.conf
+                                  for line in chain.from_iterable(
+                                          region.lines
+                                          for region in chain(textregions, marginals)))
+        reflection_rate = rotated_area / total_area
+        confidence_rate = confident_area / total_area
+        line_confidence_rate = line_confident_area / line_total_area
+        confidence_rate = np.sqrt(confidence_rate * line_confidence_rate)
+        self.logger.debug("text 90° likelihood is %d%%", reflection_rate * 100)
+        self.logger.debug("text confidence is %d%%", confidence_rate * 100)
+        if rot90 and confidence_rate < rot90_min_confidence:
+            # recursive call did not meet expected confidence boost,
+            # so continue with the original call
+            self.logger.warning("No confidence boost (%d%%) for ±90° rotation, continuing '%s'",
+                                confidence_rate * 100, image['name'])
+            return False
+        if total_area and reflection_rate > 0.25:
             # area-weighted rate of >45° regions is more than 25%
             # (we cannot use 50% here, because the textline model
             #  is itself not 100% reliable at detecting vertical lines)
             self.logger.warning("Detected likely ±90° rotation (%d%%), restarting '%s'",
-                                rotated_area / total_area * 100, image['name'])
-            self.run_single(img_filename,
-                            dir_out=dir_out,
-                            overwrite=overwrite,
-                            img_pil=img_pil,
-                            pcgts=pcgts,
-                            rot90=True)
-            return
+                                reflection_rate * 100, image['name'])
+            def attenuate(x, a=0.5):
+                return (np.exp(-a * x) - 1) / (np.exp(-a) - 1)
+            if self.run_single(img_filename,
+                               dir_out=dir_out,
+                               overwrite=overwrite,
+                               img_pil=img_pil,
+                               pcgts=pcgts,
+                               # re-run the page with images reflected,
+                               # but require getting a confidence boost
+                               rot90=True,
+                               rot90_min_confidence=attenuate(confidence_rate)):
+                # reflected images do indeed yield better result
+                # and have been written
+                return True
 
         (marginals_left,
          marginals_right) = self.separate_marginals_and_order(
@@ -1934,4 +1963,4 @@ class Eynollah:
         if writer.pcgts is None:
             writer.write_pagexml(pcgts)
         self.logger.info("Job done in %.1fs", time.time() - t0)
-        return
+        return True
