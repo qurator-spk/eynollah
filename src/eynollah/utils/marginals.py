@@ -208,6 +208,9 @@ def get_marginals(num_col, slope_deskew,
     seps_contours = return_contours_of_class(seps_mask_d, 1, min_area_text)
     seps_x_min = np.array([cont[:, 0, 0].min() + 15 for cont in seps_contours])
     seps_x_max = np.array([cont[:, 0, 0].max() - 15 for cont in seps_contours])
+    tiny = seps_x_min > seps_x_max
+    seps_x_min = seps_x_min[~tiny]
+    seps_x_max = seps_x_max[~tiny]
 
     # find minima (horizontal gaps)
     gaps_y, props_y = find_peaks(
@@ -251,7 +254,7 @@ def get_marginals(num_col, slope_deskew,
         ax2.scatter(gaps_y, text_mask_d_ys[gaps_y], label='gaps_y', color='m')
         for i in range(len(gaps_y)):
             ax2.text(gaps_y[i], text_mask_d_ys[gaps_y[i]], str(props_y['prominences'][i]))
-        for i in range(len(seps_contours)):
+        for i in range(len(seps_x_min)):
             ax2.axvspan(seps_x_min[i], seps_x_max[i], color='lightgray')
         ax2.tick_params(top=True, labeltop=True, bottom=True, labelbottom=False,
                         left=True, labelleft=False, right=True, labelright=True,
@@ -467,12 +470,22 @@ def get_marginals(num_col, slope_deskew,
             prev_max = text_mask_d_ys_plateaus[1, prev_plateau]
             if next_min - prev_max > MIN_DIST_GAPS:
                 continue # too wide (i.e. step is not directly surrounded by plateaus)
+            prev_y = np.mean(text_mask_d_ys[prev_min: prev_max])
+            next_y = np.mean(text_mask_d_ys[next_min: next_max])
             if side == 'left':
-                jump_fract_main = (np.mean(text_mask_d_ys[prev_min: prev_max]) /
-                                   np.mean(text_mask_d_ys[next_min: next_max]))
+                jump_fract_main = prev_y / next_y
+                # if step also has a little gap (i.e. negative peak after left plateau)
+                # then prefer that level to get stronger signal
+                if (jump_fract_main >= MAX_THICKNESS_STEP_FRACT_MAIN and
+                    (prev_y0 := np.min(text_mask_d_ys[prev_max: jump])) < prev_y):
+                    jump_fract_main = prev_y0 / next_y
             else:
-                jump_fract_main = (np.mean(text_mask_d_ys[next_min: next_max]) /
-                                   np.mean(text_mask_d_ys[prev_min: prev_max]))
+                jump_fract_main = next_y / prev_y
+                # if step also has a little gap (i.e. negative peak before right plateau)
+                # then prefer that level to get stronger signal
+                if (jump_fract_main >= MAX_THICKNESS_STEP_FRACT_MAIN and
+                    (next_y0 := np.min(text_mask_d_ys[jump: next_min])) < next_y):
+                    jump_fract_main = next_y0 / prev_y
 
             if (MIN_THICKNESS_STEP_FRACT_MAIN < jump_fract_main < MAX_THICKNESS_STEP_FRACT_MAIN):
                 if PLOT_GAPS_STEPS:
@@ -513,23 +526,35 @@ def get_marginals(num_col, slope_deskew,
 
     if point_l == 0 and point_r == width - 1:
         return
+    point_L = max(0, point_l - 3)
+    point_R = min(width - 1, point_r + 3)
 
     line_l = LineString([(point_l, -0.4 * height), (point_l, 1.4 * height)])
     line_r = LineString([(point_r, -0.4 * height), (point_r, 1.4 * height)])
+    line_L = LineString([(point_L, -0.4 * height), (point_L, 1.4 * height)])
+    line_R = LineString([(point_R, -0.4 * height), (point_R, 1.4 * height)])
     # rotate back (into undeskewed/original shape as early_layout input):
     line_l = rotate_polygon(line_l, slope_deskew, origin=(0.5 * width, 0.5 * height))
     line_r = rotate_polygon(line_r, slope_deskew, origin=(0.5 * width, 0.5 * height))
+    line_L = rotate_polygon(line_L, slope_deskew, origin=(0.5 * width, 0.5 * height))
+    line_R = rotate_polygon(line_R, slope_deskew, origin=(0.5 * width, 0.5 * height))
     main = Polygon([(0, 0), (0, height), (width, height), (width, 0)])
     if point_l > 0:
         page_l = split_polygon(main, line_l)
+        page_L = split_polygon(main, line_L)
         marg_l, main = page_l.geoms
+        marg_L, _ = page_L.geoms
     else:
         marg_l = Polygon()
+        marg_L = Polygon()
     if point_r < width - 1:
         page_r = split_polygon(main, line_r)
+        page_R = split_polygon(main, line_R)
         main, marg_r = page_r.geoms
+        _, marg_R = page_R.geoms
     else:
         marg_r = Polygon()
+        marg_R = Polygon()
 
     if PLOT_POLY_ROTAT:
         plt.imshow(early_layout)
@@ -541,8 +566,6 @@ def get_marginals(num_col, slope_deskew,
     main3 = main.buffer(3)
     marg_l3 = marg_l.buffer(3)
     marg_r3 = marg_r.buffer(3)
-    line_l3 = line_l.offset_curve(5)
-    line_r3 = line_r.offset_curve(-5)
 
     # re-assign (marg/main), cutting through existing contours if necessary
     text_contours = return_contours_of_class(early_layout, label_text, min_area_text)
@@ -567,9 +590,19 @@ def get_marginals(num_col, slope_deskew,
                 plot_polygon(poly, color='red')
         elif poly.intersects(marg_l) or poly.intersects(marg_r):
             # partial: split, but ignore marg parts overly vertical
-            inter = poly.intersection(marg_l)
-            iminx, iminy, imaxx, imaxy = inter.bounds
-            iaspect = (imaxy - iminy) / (imaxx - iminx)
+            def intersect(marg):
+                inter = poly.intersection(marg) # ruff: ignore[B023] (safe here)
+                iminx, iminy, imaxx, imaxy = inter.bounds
+                iaspect = (imaxy - iminy) / (imaxx - iminx)
+                return inter, iminx, iminy, imaxx, imaxy, iaspect
+            try_l = intersect(marg_l)
+            try_L = intersect(marg_L)
+            if try_L[-1] < 0.8 * try_l[-1]:
+                inter, iminx, iminy, imaxx, imaxy, iaspect = try_L
+                line = line_L
+            else:
+                inter, iminx, iminy, imaxx, imaxy, iaspect = try_l
+                line = line_l
             if (
                     # ignore if intersection is almost vertical or tiny
                     not (iaspect > 4 and iaspect > 8 * aspect or
@@ -577,7 +610,7 @@ def get_marginals(num_col, slope_deskew,
                     # don't ignore if intersection takes entire margin
                     or np.isclose(imaxx - iminx, point_l - first_nonzero, rtol=0.05)
             ):
-                for geom in split_polygon(poly, line_l).geoms:
+                for geom in split_polygon(poly, line).geoms:
                     gminx, gminy, gmaxx, gmaxy = geom.bounds
                     gaspect = (gmaxy - gminy) / (gmaxx - gminx)
                     if not geom.within(marg_l3):
@@ -596,9 +629,14 @@ def get_marginals(num_col, slope_deskew,
                         plot_polygon(geom, color='blue')
                     marg_contours.append(polygon2contour(geom))
                     poly = poly.difference(geom).buffer(-0.01)
-            inter = poly.intersection(marg_r)
-            iminx, iminy, imaxx, imaxy = inter.bounds
-            iaspect = (imaxy - iminy) / (imaxx - iminx)
+            try_r = intersect(marg_r)
+            try_R = intersect(marg_R)
+            if try_R[-1] < 0.8 * try_r[-1]:
+                inter, iminx, iminy, imaxx, imaxy, iaspect = try_R
+                line = line_R
+            else:
+                inter, iminx, iminy, imaxx, imaxy, iaspect = try_r
+                line = line_r
             if (
                     # ignore if intersection is almost vertical or tiny
                     not (iaspect > 4 and iaspect > 8 * aspect or
@@ -606,7 +644,7 @@ def get_marginals(num_col, slope_deskew,
                     # don't ignore if intersection takes entire margin
                     or np.isclose(imaxx - iminx, last_nonzero - point_r, rtol=0.05)
             ):
-                for geom in split_polygon(poly, line_r).geoms:
+                for geom in split_polygon(poly, line).geoms:
                     gminx, gminy, gmaxx, gmaxy = geom.bounds
                     gaspect = (gmaxy - gminy) / (gmaxx - gminx)
                     if not geom.within(marg_r3):

@@ -1,7 +1,6 @@
 from __future__ import annotations
 from collections.abc import Iterable
 from logging import getLogger
-import time
 import math
 from dataclasses import dataclass, field
 from itertools import islice, compress
@@ -9,14 +8,14 @@ from itertools import islice, compress
 try:
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
+    from matplotlib import cm
 except ImportError:
-    plt = mpatches = None
+    plt = mpatches = cm = None
 import numpy as np
 from shapely import geometry, prepared, ops
 import cv2
 from scipy.signal import find_peaks
-from scipy.ndimage import gaussian_filter1d
-from skimage import morphology
+from scipy.ndimage import gaussian_filter1d, gaussian_filter
 
 from .is_nan import isNaN
 from .contour import (contour2polygon,
@@ -535,7 +534,7 @@ def find_num_col(
     #print(peaks_neg_true, "peaks_neg_true")
     return len(peaks_neg_true), peaks_neg_true
 
-def fill_bb_of_drop_capitals(
+def merge_drop_capitals(
         full_prediction, early_prediction,
         label_bg=0,
         label_text=1,
@@ -547,42 +546,98 @@ def fill_bb_of_drop_capitals(
     Given segmentation maps from full layout model (including drop-capital)
     and early layout model (after post-processing), re-assign regions which
     are (large enough and) majority classified as drop-capital to that label.
+
+    Find drop-capital contours and early prediction segments: For each contour
+    and overlapping segment, if recall is large, then extend drop-cap mask to
+    the complete segment. Else if recall is significant for pure drop-cap, but
+    large for drop-cap | image | background, then extend, too. Else if recall
+    is tiny but precision is large and the segment is an image region, then
+    reject the drop-cap. Otherwise analyse connected components remaining when
+    subtracting the drop-cap from the segment: if chunks have tiny recall but
+    large precision (or vice versa), then extend drop-cap mask to those chunks.
     """
-    drop_mask = (full_prediction == label_drop_fl_model).astype(np.uint8)
-    drop_cont = return_contours_of_class(drop_mask, 1, 1e-5)
-    text_mask = ((early_prediction == label_text) |
-                 # (early_prediction == label_marg_fl) |
-                 (early_prediction == label_imgs_fl))
-    _, text_segs, text_bbox, _ = cv2.connectedComponentsWithStats(early_prediction * text_mask)
+    drop_cont = return_contours_of_class(full_prediction, label_drop_fl_model, 5e-4)
+    text_mask = np.isin(early_prediction,
+                        (label_text,
+                         # label_marg_fl,
+                         label_imgs_fl))
+    _, text_segs = cv2.connectedComponents(early_prediction * text_mask)
+    # re-separate imgs from text labels
+    factor = label_imgs_fl + 1
+    text_segs = (text_segs * factor) + (early_prediction * text_mask) % factor
+    text_stat = [None]
+    for label in np.unique(text_segs)[1:]:
+        mask0 = text_segs == label
+        bbox0 = cv2.boundingRect(np.array(mask0.nonzero()).T)
+        area0 = np.count_nonzero(mask0)
+        label0 = label % factor
+        text_stat.append((bbox0, area0, mask0, label0))
 
+    # extend segments to full bbox (if mostly drop-capital in FL and text/img in EL)
+    # or to FL drop|imgs|bg mask (otherwise)
     for contour in drop_cont:
-        area_drop = cv2.contourArea(contour)
+        area = cv2.contourArea(contour)
         x, y, w, h = cv2.boundingRect(contour)
-        box = slice(y, y + h), slice(x, x + w)
-        area_box = w * h
-        area_text_in_early_layout = np.sum(text_mask[box] == label_text)
 
-        if (area_drop > 0.6 * area_box and
-            area_text_in_early_layout >= 0.3 * area_box):
-            mask = np.ones((h, w), dtype=bool)
-        else:
-            mask = ((full_prediction[box] == label_drop_fl_model) |
-                    (full_prediction[box] == label_imgs_fl_model) |
-                    (full_prediction[box] == label_bg))
-        full_prediction[box][mask] = label_drop_fl_model
+        # ax1 = plt.subplot(1, 2, 1, title="full prediction before")
+        # ax1.imshow(full_prediction)
+        # ax1.add_patch(mpatches.Polygon(contour[:, 0], closed=False, fill=False, color='red'))
 
-        # also try to enlarge to corresponding labels in early_prediction
-        for label in range(1, len(text_bbox)):
-            x0, y0, w0, h0, area0 = text_bbox[label]
+        mask = np.zeros_like(full_prediction)
+        mask = cv2.fillPoly(mask, pts=[contour], color=1).astype(bool)
+        full_prediction[mask] = label_drop_fl_model
+
+        # try to extend to corresponding labels in EL, too
+        # ax2 = plt.subplot(1, 2, 2, title="full prediction after")
+        split0 = []
+        for bbox0, area0, mask0, label0 in text_stat[1:]:
+            y0, x0, h0, w0 = bbox0
             x1 = max(0, x0 - x)
             y1 = max(0, y0 - y)
             w1 = min(w0, w - x1) if x0 >= x else min(w, w0 - x + x0)
             h1 = min(h0, h - y1) if y0 >= y else min(h, h0 - y + y0)
             if w1 < 0 or h1 < 0:
                 continue
-            area1 = np.count_nonzero(mask[y1: y1 + h1, x1: x1 + w1])
-            if area1 and area1 >= 0.8 * area0:
-                full_prediction[text_segs == label] = label_drop_fl_model
+            area1 = np.count_nonzero(mask * mask0)
+            if not area1:
+                continue
+            # EL label and drop-cap segment do intersect
+            # ax2.add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='blue'))
+            if area1 > 0.8 * area0:
+                # mask has large recall w.r.t. CC
+                mask |= mask0
+                # ax2.add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='lightblue'))
+                continue
+            mask2 = np.isin(full_prediction,
+                            (label_drop_fl_model,
+                             label_imgs_fl_model,
+                             label_bg)) * mask0
+            area2 = np.count_nonzero(mask2)
+            if area1 > 0.35 * area0 and area2 > 0.75 * area0:
+                # extended mask has large recall w.r.t. CC
+                mask |= mask0
+                # ax2.add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='blue'))
+                continue
+            if area1 > 0.5 * area and area1 < 0.2 * area0 and label0 == label_imgs_fl:
+                # mask has tiny recall but large precision w.r.t. CC and CC is for image region
+                full_prediction[mask] = label_imgs_fl_model
+                mask[:] = False
+                # ax2.add_patch(mpatches.Rectangle((x0, y0), w0, h0, fill=False, linewidth=1, color='red'))
+                break
+            split0.append(mask0)
+        for mask0 in split0:
+            area = np.count_nonzero(mask)
+            area0 = np.count_nonzero(mask0)
+            ncomps, comps = cv2.connectedComponents((mask0 & ~mask).astype(np.uint8))
+            for i in range(1, ncomps):
+                maski = comps == i
+                areai = np.count_nonzero(maski)
+                if (areai < 0.1 * area0 and areai < 0.7 * area or
+                    areai < 0.7 * area0 and areai < 0.1 * area):
+                    mask += maski
+        full_prediction[mask] = label_drop_fl_model
+        # ax2.imshow(full_prediction)
+        # plt.show()
 
     return full_prediction == label_drop_fl_model
 
@@ -645,6 +700,92 @@ def split_textregion_main_vs_head(
             list(compress(textregions, main)),
             list(compress(textregions, ~main)),
     )
+
+def text_region_line_consistency(
+        text_regions_p: np.ndarray,
+        texts_cont: list[np.ndarray],
+        lines_cont: list[np.ndarray],
+) -> None:
+    """try to repair low-quality layout prediction by utilising region/line consistency
+
+    ensure that regions with only one line stretching to another region
+    get reconnected, and that regions with no lines get removed
+    """
+    # lines_bbox = np.array([cv2.boundingRect(cont) for cont in lines_cont])
+    lines_area = np.array([cv2.contourArea(cont) for cont in lines_cont])
+    # lines_cent = np.array(find_center_of_contours(lines_cont)).T
+    lines_comp = np.zeros(text_regions_p.shape, dtype=np.uint32)
+    nlines = 1 + len(lines_cont)
+    for i in range(1, nlines):
+        lines_comp = cv2.fillPoly(lines_comp, pts=[lines_cont[i - 1]], color=i)
+
+    # texts_bbox = np.array([cv2.boundingRect(cont) for cont in texts_cont])
+    texts_area = np.array([cv2.contourArea(cont) for cont in texts_cont])
+    # texts_cent = np.array(find_center_of_contours(texts_cont)).T
+    texts_comp = np.zeros(text_regions_p.shape, dtype=np.uint32)
+    ntexts = 1 + len(texts_cont)
+    for i in range(1, ntexts):
+        texts_comp = cv2.fillPoly(texts_comp, pts=[texts_cont[i - 1]], color=i)
+
+    # find correlations
+    both_comp = (nlines + 1) * texts_comp + lines_comp
+    # plt.imshow(both_comp)
+    # for i in range(1, nlines):
+    #     plt.gca().add_patch(mpatches.Rectangle(lines_bbox[i - 1, :2], *lines_bbox[i - 1, 2:4],
+    #                                            fill=False, linewidth=1, color='green'))
+    #     plt.text(*lines_cent[i - 1], "line %d" % i, c='green')
+    # for i in range(1, ntexts):
+    #     plt.gca().add_patch(mpatches.Rectangle(texts_bbox[i - 1, :2], *texts_bbox[i - 1, 2:4],
+    #                                            fill=False, linewidth=1, color='red'))
+    #     plt.text(*texts_cent[i - 1], "text %d" % i, c='red')
+    # plt.show()
+    both, both_count = np.unique(both_comp, return_counts=True)
+    corrs = np.array(np.divmod(both, nlines + 1)) # [2, N]
+
+    # sorting by area, remove or reconnect text regions
+    for text in sorted(range(1, ntexts),
+                       key=lambda i: texts_area[i - 1]):
+        lines = np.setdiff1d(corrs[1][corrs[0] == text], [0])
+        if len(lines) == 0:
+            where = texts_comp == text
+            text_regions_p[where] = 0
+            # plt.title("no-line region removed")
+            # plt.imshow(where)
+            # plt.gca().add_patch(mpatches.Rectangle(texts_bbox[text - 1, :2], *texts_bbox[text - 1, 2:4],
+            #                                        fill=False, linewidth=1, color='red'))
+            # plt.text(*texts_cent[text - 1], "text %d" % text, c='red')
+            # plt.show()
+            continue
+
+        # ignore fragments
+        count = both_count[np.isin(both, (nlines + 1) * text + lines)]
+        lines = lines[count > 0.2 * np.median(count)]
+
+        if len(lines) == 1:
+            line = lines[0]
+            texts = np.setdiff1d(corrs[0][corrs[1] == line], [0])
+            # # ignore fragments
+            # count = both_count[np.isin(both, (nlines + 1) * texts + line)]
+            # print("line fragment regions", text, line, count > 0.2 * np.median(count))
+            # texts = texts[count > 0.2 * np.median(count)]
+            if text not in texts:
+                continue
+            if len(texts) > 1:
+                # get bridge between them by line
+                bridge = (lines_comp == line) & ~np.isin(texts_comp, texts)
+                if np.count_nonzero(bridge) > texts_area[text - 1]:
+                    continue
+                text_regions_p[bridge] = 1
+                corrs[1][corrs[0] == text] = 0
+                # plt.title("single-line region bridged to same-line")
+                # plt.imshow(bridge)
+                # plt.gca().add_patch(mpatches.Rectangle(texts_bbox[text - 1, :2], *texts_bbox[text - 1, 2:4],
+                #                                        fill=False, linewidth=1, color='red'))
+                # plt.text(*texts_cent[text - 1], "text %d" % text, c='red')
+                # plt.gca().add_patch(mpatches.Rectangle(lines_bbox[line - 1, :2], *lines_bbox[line - 1, 2:4],
+                #                                        fill=False, linewidth=1, color='green'))
+                # plt.text(*lines_cent[line - 1], "line %d" % line, c='green')
+                # plt.show()
 
 def small_textlines_to_parent_adherence2(
         textregions: list[TextRegion],
@@ -1583,52 +1724,194 @@ def ensure_array(obj: Iterable) -> np.ndarray:
         return np.fromiter(obj, object)
     return obj
 
-def seg_mask_label(segmap:np.ndarray,
-                   mask:np.ndarray,
-                   only:bool=False,
-                   label:int=2,
-                   skeletonize:bool=False,
-                   dilate:int=0,
-                   keep:int=0,
+def seg_mask_label(segmap: np.ndarray,
+                   conf: np.ndarray,
+                   only: bool = False,
+                   label: int = 2,
+                   boundary: bool = False,
+                   dilate: int = 0,
+                   keep: int = 0,
 ) -> None:
     """
-    overwrite an existing segmentation map from a binary mask with a given label
+    overwrite an existing segmentation map for a given label and per-class probability map
+
+    (apply adaptive thresholding for that label independent of argmax predictions)
 
     Args:
         segmap: integer array of existing segmentation labels ([H, W] or [B, H, W] shape)
-        mask: boolean array for specific label
+        conf: float array of confidence for specific label
     Keyword Args:
         label: the class label to be written
         only: whether to suppress the `label` outside `mask`
-        skeletonize: whether to transform the mask to its skeleton
+        boundary: whether to use the thresholding mask to find new boundaries between segments
         dilate: whether to also apply dilatation after this (convolution with square kernel of given size)
-        keep: if nonzero, a clas label to be kept untouched
+        keep: if nonzero, a predicted class label to be kept untouched
 
     Use this to enforce specific confidence thresholds or rules after segmentation.
     """
-    if not mask.any():
-        return
     # plt.subplot(2, 2, 1, title="segmap orig")
     # plt.imshow(segmap)
-    # plt.subplot(2, 2, 2, title="mask")
-    # plt.imshow(mask)
+    # plt.subplot(2, 2, 2, title="conf")
+    # plt.imshow(conf)
     if keep:
         keepmask = segmap == keep
     if only:
-        segmap[segmap == label] = 0
-    if skeletonize:
-        if mask.ndim == 3:
-            mask = np.stack(morphology.skeletonize(m) for m in mask)
+        #segmap[segmap == label] = 1 if skeletonize else 0
+        if boundary:
+            segmap[:] = expand_labels(segmap, bg=label)
         else:
-            mask = morphology.skeletonize(mask)
+            segmap[segmap == label] = 0
+    if boundary:
+        # segment+label text regions by artificial boundary fg...
+        # (only applies to text regions / class label 1)
+        text = segmap == 1
+        # use (smoothed) local adaptive threshold instead of fixed parameter:
+        confs = gaussian_filter(conf, 2.0) #5.0
+        threshold = threshold_niblack(confs, window_size=51, k=0.02)
+        ##threshold *= 1.2
+        mask = (confs > threshold)
+        # plt.imshow(np.stack([conf, 0.2*mask, 0.2*mask], axis=2))
+        if not mask.any():
+            return
+        # remove boundary fg from text mask, label connected components
+        _, labels, stats, _ = cv2.connectedComponentsWithStats(
+            (text & ~mask).astype(np.uint8), connectivity=4)
+        # filter tiny segments
+        tiny = np.flatnonzero(stats[:, -1] < 1e-4 * mask.size)
+        labels[np.isin(labels, tiny)] = 0
+        # expand segment labels into boundary fg
+        labels = expand_labels(labels) * text
+        # find new boundaries where labels meet
+        mask = find_boundaries(labels)
+        # plt.subplot(2,2,3, title="art boundary labelling")
+        # cmap = cm.rainbow
+        # cmap.set_bad(color='black')
+        # cmap.set_under(color='red')
+        # cmap.set_over(color='white')
+        # plt.imshow(labels, vmin=0, cmap=cmap)
+        # dilate new boundaries so findContours will pick them up
         if dilate:
-            kernel = np.ones((dilate, dilate), np.uint8)
-            mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1) > 0
+            kernel = np.ones((3, 3), np.uint8)
+            mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=dilate) > 0
+    else:
+        # use adaptive threshold instead of fixed parameter
+        conf8 = (conf * 255).astype(np.uint8)
+        mask = conf8 > threshold_otsu(conf8)
+        if not mask.any():
+            return
+    # apply result
     segmap[mask] = label
-    # plt.subplot(2, 2, 3, title="segmap masked")
-    # plt.imshow(segmap)
     if keep:
         segmap[keepmask] = keep
     # plt.subplot(2, 2, 4, title="segmap final")
     # plt.imshow(segmap)
     # plt.show()
+
+SKEL_KERNELS = [
+    np.array([[-1, -1, -1], [0, 1, 0], [1, 1, 1]], dtype=int),
+    np.array([[0, -1, -1], [1, 1, -1], [0, 1, 0]], dtype=int),
+]
+for kernel in list(SKEL_KERNELS):
+    for k in range(1, 4):
+        SKEL_KERNELS.append(np.rot90(kernel, k))
+
+def skeletonize_boundary(img):
+    """implement skimage.morphology.skeletonize via OpenCV (faster and better)"""
+    img = img.copy()
+    while True:
+        last = img
+        mask = np.zeros_like(img)
+        for kernel in SKEL_KERNELS:
+            mask |= cv2.morphologyEx(img, cv2.MORPH_HITMISS, kernel)
+            img = img & (~mask)
+        if np.array_equal(img, last):
+            break
+    return img
+
+
+PRUNE_KERNELS = [
+    np.array([[-1, -1, -1], [-1, 1, -1], [-1, 0, 0]], dtype=int),
+    np.array([[-1, -1, -1], [-1, 1, -1], [0, 0, -1]], dtype=int),
+]
+for kernel in list(PRUNE_KERNELS):
+    for k in range(1, 4):
+        PRUNE_KERNELS.append(np.rot90(kernel, k))
+EP_KERNELS = [
+    np.array([[1, -1, -1], [-1, 1, -1], [-1, -1, -1]], dtype=int),
+    np.array([[-1, -1, -1], [1, 1, -1], [-1, -1, -1]], dtype=int),
+]
+for kernel in list(EP_KERNELS):
+    for k in range(1, 4):
+        EP_KERNELS.append(np.rot90(kernel, k))
+
+def prune_boundary(skel, iterations=1):
+    """remove small branches from a skeleton"""
+    pruned = skel.copy()
+    for _ in range(iterations):
+        last = pruned
+        mask = np.zeros_like(pruned)
+        for kernel in PRUNE_KERNELS:
+            mask |= cv2.morphologyEx(pruned, cv2.MORPH_HITMISS, kernel)
+        pruned = pruned & (~mask)
+        if np.array_equal(pruned, last):
+            break
+    # re-grow endpoints
+    mask = np.zeros_like(pruned)
+    for kernel in EP_KERNELS:
+        mask |= cv2.morphologyEx(pruned, cv2.MORPH_HITMISS, kernel)
+    kernel = np.ones((3, 3))
+    for _ in range(iterations):
+        last = mask
+        mask = cv2.dilate(mask, kernel) & skel
+        if np.array_equal(mask, last):
+            break
+    return pruned | mask
+
+def traverse_contours(contours, hierarchy):
+    """parse cv2.findContours results"""
+    def get_next(idx, level=0):
+        while 0 <= idx < len(contours):
+            next_idx, prev_idx, child_idx, parent_idx = hierarchy[0, idx].tolist()
+            yield contours[idx], level
+            if child_idx >= 0:
+                yield from get_next(child_idx, level + 1)
+            idx = next_idx
+    if len(contours):
+        yield from get_next(0)
+
+def expand_labels(labels, maxdist=None, bg=0):
+    """implement skimage.segmentation.expand_labels via OpenCV (faster)"""
+    if not labels.any():
+        return labels
+    where = np.isin(labels, bg)
+    distances, indexes = cv2.distanceTransformWithLabels(
+        where.astype(np.uint8),
+        cv2.DIST_L2,
+        cv2.DIST_MASK_PRECISE,
+        labelType=cv2.DIST_LABEL_PIXEL)
+    spread = labels[~where][indexes - 1]
+    if maxdist is None:
+        return spread
+    spread *= (distances < maxdist)
+    return spread
+
+CROSS_KERNEL = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=np.uint8)
+
+def find_boundaries(labels):
+    """implement skimage.segmentation.find_boundaries (mode=inner) via OpenCV (faster)"""
+    labels = labels.astype(np.uint8)
+    eroded = cv2.erode(labels, CROSS_KERNEL)
+    dilated = cv2.dilate(labels, CROSS_KERNEL)
+    boundaries = (eroded != dilated) & (eroded > 0) & (dilated > 0)
+    return boundaries & (labels > 0)
+
+def threshold_niblack(image, window_size=15, k=0.1):
+    """implement skimage.filter.threshold_niblack via OpenCV (faster)"""
+    m = cv2.blur(image, (window_size, window_size))
+    v = cv2.boxFilter(np.square(image), -1, (window_size, window_size)) - np.square(m)
+    s = cv2.sqrt(v)
+    return m - k * s
+
+def threshold_otsu(image):
+    """implement skimage.filter.threshold_otsu via OpenCV (faster)"""
+    return cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]

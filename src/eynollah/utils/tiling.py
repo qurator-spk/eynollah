@@ -45,13 +45,13 @@ def do_prediction(
 
         if thresholding_for_artificial_class:
             seg_mask_label(
-                seg, label_p_pred[:, :, artificial_class] >= threshold_art_class,
+                seg, label_p_pred[:, :, artificial_class],
                 label=artificial_class,
-                skeletonize=True)
+                boundary=True)
 
         if thresholding_for_heading:
             seg_mask_label(
-                seg, label_p_pred[:, :, heading_class] >= 0.2,
+                seg, label_p_pred[:, :, heading_class],
                 label=heading_class)
 
         return resize_image(seg, img_h_page, img_w_page)
@@ -166,22 +166,12 @@ def do_prediction(
         seg = np.round(prediction * 255).astype(np.uint8)
     else:
         seg = np.argmax(prediction, axis=2).astype(np.uint8)
-    if thresholding_for_some_classes:
-        seg_mask_label(
-            seg, prediction[:, :, 4] > 0.03,
-            label=4) # art
-        seg_mask_label(
-            seg, prediction[:, :, 0] > 0.25,
-            label=0) # bg
-        seg_mask_label(
-            seg, prediction[:, :, 3] > 0.10 & seg == 0,
-            label=3) # sep
     if thresholding_for_artificial_class:
-        seg_art = prediction[:, :, artificial_class] >= threshold_art_class
+        seg_art = prediction[:, :, artificial_class]
         seg_mask_label(seg, seg_art,
                        label=artificial_class,
                        only=True,
-                       skeletonize=True,
+                       boundary=True,
                        dilate=3)
 
     if img_h != img_h_page or img_w != img_w_page:
@@ -225,16 +215,16 @@ def do_prediction_new_concept(
 
         if thresholding_for_artificial_class:
             mask = resize_image(label_p_pred[:, :, artificial_class],
-                                img_h_page, img_w_page) >= threshold_art_class
+                                img_h_page, img_w_page)
             seg_mask_label(prediction, mask,
                            label=artificial_class,
                            only=True,
-                           skeletonize=True,
+                           boundary=True,
                            dilate=3,
                            keep=separator_class)
         if thresholding_for_heading:
             mask = resize_image(label_p_pred[:, :, heading_class],
-                                img_h_page, img_w_page) >= 0.2
+                                img_h_page, img_w_page)
             seg_mask_label(prediction, mask,
                            label=heading_class)
 
@@ -351,11 +341,11 @@ def do_prediction_new_concept(
     seg = np.argmax(prediction, axis=2).astype(np.uint8)
     conf = prediction[tuple(np.indices(seg.shape)) + (seg,)]
     if thresholding_for_artificial_class:
-        seg_art = prediction[:, :, artificial_class] >= threshold_art_class
+        seg_art = prediction[:, :, artificial_class]
         seg_mask_label(seg, seg_art,
                        label=artificial_class,
                        only=True,
-                       skeletonize=True,
+                       boundary=True,
                        dilate=3,
                        keep=separator_class)
     gc.collect()
@@ -388,14 +378,14 @@ def do_prediction_new_concept_autosize(
 
     if thresholding_for_artificial_class:
         seg_mask_label(segmentation,
-                       prediction[:, :, artificial_class] >= threshold_art_class,
+                       prediction[:, :, artificial_class],
                        label=artificial_class,
                        only=True,
-                       skeletonize=True,
+                       boundary=True,
                        dilate=3)
     if thresholding_for_heading:
         seg_mask_label(segmentation,
-                       prediction[:, :, 2] >= 0.2,
+                       prediction[:, :, 2],
                        label=2)
     gc.collect()
     return segmentation, confidence
